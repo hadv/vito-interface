@@ -1,21 +1,41 @@
-# Vito Interface
+# Vito Safe{Wallet}
 
-A secure and efficient application designed to interact with Safe{Wallet} through a minimalist Vito interface.
+A secure and efficient application designed to interact with Safe{Wallet} through a minimalist interface.
 
 ## Features
 
-- Vito-style keyboard navigation (j, k, h, l)
 - Command-based interface (:command)
-- Visual and normal mode operations
 - Safe Wallet management
 - Transaction viewing and execution
-- Modern, dark-mode UI inspired by coding editors
 
 ## Tech Stack
 
 - **Frontend**: React, TypeScript, Styled Components
 - **Backend**: Node.js, Express, TypeScript
 - **Styling**: CSS-in-JS with styled-components
+
+## Project Structure
+
+```
+vito-interface/
+├── client/                # React frontend
+│   ├── src/
+│   │   ├── commands/      # Command definitions
+│   │   ├── components/    # Reusable UI components
+│   │   ├── hooks/         # Custom React hooks
+│   │   ├── models/        # TypeScript interfaces/types
+│   │   ├── pages/         # Page components
+│   │   ├── styles/        # Global styles
+│   │   └── utils/         # Utility functions
+│   ├── public/            # Static assets
+│   └── .env               # Frontend environment variables
+├── server/                # Express backend
+│   ├── src/
+│   │   ├── routes/        # API endpoints
+│   │   └── index.ts       # Server entry point
+│   └── .env               # Backend environment variables
+└── package.json          # Root package configuration
+```
 
 ## Getting Started
 
@@ -24,11 +44,21 @@ A secure and efficient application designed to interact with Safe{Wallet} throug
 - Node.js (LTS version recommended)
 - npm or yarn
 
+### Environment Setup
+
+1. Configure the client environment:
+   - Copy `.env.example` to `.env` in the client directory
+   - Set appropriate values for all environment variables
+
+2. Configure the server environment:
+   - Create or edit `.env` file in the server directory
+   - Set required API keys and configuration values
+
 ### Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/vito-interface.git
+git clone https://github.com/hadv/vito-interface.git
 cd vito-interface
 ```
 
@@ -59,31 +89,16 @@ npm run start:client
 npm run start:server
 ```
 
-## Usage
+### Building for Production
 
-### Keyboard Navigation
+To create production builds for both client and server:
 
-- `j`: Move down
-- `k`: Move up
-- `h`: Move left
-- `l`: Move right
-- `i`: Enter insert mode
-- `v`: Enter visual mode
-- `Esc`: Return to normal mode
-- `:`: Enter command mode
+```bash
+npm run build
+```
 
-### Commands
 
-- `:accounts` or `:accs`: View wallet accounts
-- `:transactions` or `:txs`: View transactions
-- `:send [from] [to] [amount]`: Create a new transaction
-- `:help`: Show help information
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Inspired by [Vito](https://github.com/hadv/vito)
-- Uses Vito-style navigation concepts 
