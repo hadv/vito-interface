@@ -20,6 +20,7 @@ yarn-error.log*
 # IDE folders
 .idea/
 .vscode/
+.cursor/
 
 # OS specific
 .DS_Store

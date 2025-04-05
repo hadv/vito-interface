@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { VitoContainer } from '@components/vitoUI';
 import { createMockSafeWallet, sendTransaction } from '@models/SafeWallet';
 
 // Import refactored components
