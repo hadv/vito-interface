@@ -5,6 +5,7 @@ import { VitoContainer } from '@components/vitoUI';
 import { resolveAddressToEns, isValidEthereumAddress } from '@utils';
 import './App.css';
 import logo from './logo.svg';
+import { processCommand } from './commands';
 
 const AppContainer = styled.div`
   height: 100vh;
@@ -295,29 +296,16 @@ function App() {
     const cmd = command.trim().toLowerCase();
     console.log('Command received:', cmd);
     
-    // Handle commands without alert dialogs
-    switch (cmd) {
-      case 'q':
+    // Use the centralized command processor
+    processCommand(cmd, {
+      connectWallet,
+      disconnectWallet: () => {
         console.log('Disconnecting wallet');
         setWalletConnected(false);
         setWalletAddress('');
         setEnsName('');
-        break;
-      case 'c':
-        connectWallet();
-        break;
-      case 'help':
-        console.log('Showing help');
-        // Use console.log instead of alert
-        console.log(`Available commands:
-          - :c - Connect to Safe wallet
-          - :q - Disconnect from current wallet
-          - :help - Show this help message`);
-        break;
-      default:
-        console.log(`Unknown command: ${cmd}`);
-        break;
-    }
+      }
+    });
   };
 
   // Toggle network selector
