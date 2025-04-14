@@ -1,0 +1,3 @@
+[submodule "vito-contracts"]
+	path = vito-contracts
+	url = https://github.com/hadv/vito-contracts.git
