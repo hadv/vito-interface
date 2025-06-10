@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { formatWalletAddress, generateWalletAvatar } from '@utils';
+import { theme } from '../../../theme';
+import { Avatar } from '../../ui';
 
 // Icons
 const QRCodeIcon = () => (
@@ -28,21 +30,25 @@ const EtherscanIcon = () => (
 
 // Styled components
 const Container = styled.div`
-  padding: 12px 16px;
+  padding: ${theme.spacing[5]} ${theme.spacing[6]};
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  border-bottom: 1px solid #333;
-  margin-bottom: 6px;
-`;
+  border-bottom: 1px solid ${theme.colors.border.tertiary};
+  margin-bottom: ${theme.spacing[2]};
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+  backdrop-filter: blur(10px);
+  position: relative;
 
-const WalletAvatar = styled.img`
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  margin-right: 16px;
-  background-color: #333;
-  flex-shrink: 0;
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: ${theme.spacing[6]};
+    right: ${theme.spacing[6]};
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, ${theme.colors.primary[500]}40 50%, transparent 100%);
+  }
 `;
 
 const WalletInfoContainer = styled.div`
@@ -50,54 +56,90 @@ const WalletInfoContainer = styled.div`
   flex-direction: column;
   align-items: flex-start;
   width: 100%;
+  margin-left: ${theme.spacing[4]};
 `;
 
 const ENSName = styled.div`
-  font-size: 15px;
-  font-weight: 500;
-  margin-bottom: 2px;
-  color: #fff;
+  font-size: ${theme.typography.fontSize.lg};
+  font-weight: ${theme.typography.fontWeight.semibold};
+  margin-bottom: ${theme.spacing[1]};
+  color: ${theme.colors.text.primary};
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
+  background: linear-gradient(135deg, ${theme.colors.primary[400]} 0%, ${theme.colors.secondary[400]} 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 `;
 
 const ENSLoadingIndicator = styled.div`
-  font-size: 13px;
-  color: #9ca3af;
-  margin-bottom: 2px;
+  font-size: ${theme.typography.fontSize.sm};
+  color: ${theme.colors.text.tertiary};
+  margin-bottom: ${theme.spacing[1]};
   text-align: left;
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing[2]};
+
+  &::after {
+    content: '';
+    width: 12px;
+    height: 12px;
+    border: 2px solid ${theme.colors.primary[500]};
+    border-top: 2px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
 `;
 
 const WalletAddressValue = styled.div`
-  font-size: 13px;
-  color: #9ca3af;
-  margin-bottom: 8px;
+  font-size: ${theme.typography.fontSize.sm};
+  color: ${theme.colors.text.tertiary};
+  margin-bottom: ${theme.spacing[3]};
   text-align: left;
+  font-family: ${theme.typography.fontFamily.mono.join(', ')};
+  background: ${theme.colors.background.elevated};
+  padding: ${theme.spacing[2]} ${theme.spacing[3]};
+  border-radius: ${theme.borderRadius.md};
+  border: 1px solid ${theme.colors.border.tertiary};
 `;
 
 const WalletAddressActions = styled.div`
   display: flex;
   justify-content: flex-start;
-  gap: 6px;
-  margin-top: 2px;
+  gap: ${theme.spacing[2]};
+  margin-top: ${theme.spacing[1]};
 `;
 
 const ActionButton = styled.button`
-  background: transparent;
-  border: none;
-  color: #9ca3af;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid ${theme.colors.border.tertiary};
+  color: ${theme.colors.text.tertiary};
   cursor: pointer;
-  padding: 6px;
+  padding: ${theme.spacing[2]};
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s;
-  
+  border-radius: ${theme.borderRadius.lg};
+  transition: ${theme.transitions.normal};
+  backdrop-filter: blur(10px);
+
   &:hover {
-    background-color: #333;
-    color: #fff;
+    background: ${theme.colors.primary[500]}20;
+    border-color: ${theme.colors.primary[500]}40;
+    color: ${theme.colors.primary[400]};
+    transform: translateY(-1px);
+    box-shadow: ${theme.shadows.md};
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 `;
 
@@ -152,32 +194,34 @@ const WalletHeader: React.FC<WalletHeaderProps> = ({
   
   return (
     <Container>
-      <WalletAvatar 
-        src={avatarUrl} 
-        alt="Wallet Avatar" 
+      <Avatar
+        src={avatarUrl}
+        address={walletAddress}
+        size="xl"
+        alt="Wallet Avatar"
       />
-      
+
       <WalletInfoContainer>
         {isLoadingEns ? (
           <ENSLoadingIndicator>Resolving ENS...</ENSLoadingIndicator>
         ) : ensName ? (
           <ENSName>{ensName}</ENSName>
         ) : null}
-        
+
         <WalletAddressValue>
           {formatWalletAddress(walletAddress)}
         </WalletAddressValue>
-        
+
         <WalletAddressActions>
           <ActionButton onClick={onShowQRCode} title="Show QR Code">
             <QRCodeIcon />
           </ActionButton>
-          
+
           <ActionButton onClick={copyToClipboard} title="Copy Address" style={{ position: 'relative' }}>
             <CopyIcon />
             {showCopied && <CopyFeedback>Copied!</CopyFeedback>}
           </ActionButton>
-          
+
           <ActionButton onClick={openEtherscan} title="View on Etherscan">
             <EtherscanIcon />
           </ActionButton>

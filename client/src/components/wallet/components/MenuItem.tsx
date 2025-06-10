@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
+import { theme } from '../../../theme';
 
 interface MenuItemProps {
   active: boolean;
@@ -9,38 +10,63 @@ interface MenuItemProps {
 }
 
 const StyledMenuItem = styled.div<{ active: boolean }>`
-  padding: 12px 16px;
-  margin: 2px 0;
+  padding: ${theme.spacing[4]} ${theme.spacing[5]};
+  margin: ${theme.spacing[1]} ${theme.spacing[4]};
   cursor: pointer;
   user-select: none;
-  font-size: 14px;
-  font-weight: ${props => props.active ? '600' : '500'};
-  color: ${props => props.active ? '#fff' : '#9ca3af'};
-  background-color: ${props => props.active ? '#373737' : 'transparent'};
-  border-radius: 6px;
-  margin-left: 8px;
-  margin-right: 8px;
-  transition: background-color 0.2s, color 0.2s;
+  font-size: ${theme.typography.fontSize.base};
+  font-weight: ${props => props.active ? theme.typography.fontWeight.semibold : theme.typography.fontWeight.medium};
+  color: ${props => props.active ? theme.colors.text.primary : theme.colors.text.tertiary};
+  background: ${props => props.active ?
+    `linear-gradient(135deg, ${theme.colors.primary[500]}20 0%, ${theme.colors.primary[600]}10 100%)` :
+    'transparent'};
+  border: 1px solid ${props => props.active ? theme.colors.primary[500] + '40' : 'transparent'};
+  border-radius: ${theme.borderRadius.xl};
+  transition: ${theme.transitions.normal};
   display: flex;
   align-items: center;
-  
+  gap: ${theme.spacing[3]};
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: ${props => props.active ?
+      `linear-gradient(180deg, ${theme.colors.primary[400]} 0%, ${theme.colors.primary[600]} 100%)` :
+      'transparent'};
+    border-radius: 0 2px 2px 0;
+    transition: ${theme.transitions.normal};
+  }
+
   &:hover {
-    background-color: ${props => props.active ? '#373737' : '#303030'};
-    color: #fff;
+    background: ${props => props.active ?
+      `linear-gradient(135deg, ${theme.colors.primary[500]}30 0%, ${theme.colors.primary[600]}20 100%)` :
+      `rgba(255, 255, 255, 0.05)`};
+    color: ${theme.colors.text.primary};
+    transform: translateX(2px);
+    border-color: ${props => props.active ? theme.colors.primary[500] + '60' : theme.colors.border.tertiary};
   }
 `;
 
-const IconWrapper = styled.div`
-  margin-right: 12px;
+const IconWrapper = styled.div<{ active: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: ${props => props.active ? theme.colors.primary[400] : 'inherit'};
+  transition: ${theme.transitions.normal};
 `;
 
 const MenuItem: React.FC<MenuItemProps> = ({ active, onClick, children, icon }) => {
   return (
     <StyledMenuItem active={active} onClick={onClick}>
-      {icon && <IconWrapper>{icon}</IconWrapper>}
+      {icon && <IconWrapper active={active}>{icon}</IconWrapper>}
       {children}
     </StyledMenuItem>
   );
