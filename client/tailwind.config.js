@@ -82,11 +82,15 @@ module.exports = {
       boxShadow: {
         'glow': '0 0 20px rgba(34, 197, 94, 0.3)',
         'glow-lg': '0 0 30px rgba(34, 197, 94, 0.4)',
+      },
+      spacing: {
+        '18': '4.5rem',
+        '45': '11.25rem',
+      },
+      height: {
+        '13': '3.25rem',
       }
     },
   },
-  plugins: [
-    require('@tailwindcss/forms'),
-    require('@tailwindcss/typography'),
-  ],
+  plugins: [],
 }
