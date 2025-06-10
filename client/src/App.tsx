@@ -3,19 +3,21 @@ import styled from 'styled-components';
 import WalletPage from '@components/wallet/WalletPage';
 import { VitoContainer } from '@components/vitoUI';
 import { resolveAddressToEns, isValidEthereumAddress } from '@utils';
+import { Button, Input, Card, Badge } from '@components/ui';
+import { theme } from './theme';
 import './App.css';
 import logo from './logo.svg';
 import { processCommand } from './commands';
 
 const AppContainer = styled.div`
   height: 100vh;
-  color: #d4d4d4;
-  background-color: #1e1e1e;
-  font-family: 'Courier New', monospace;
-  overflow: hidden; /* Prevent scrolling */
+  color: ${theme.colors.text.primary};
+  background: linear-gradient(135deg, ${theme.colors.background.primary} 0%, ${theme.colors.background.secondary} 100%);
+  font-family: ${theme.typography.fontFamily.sans.join(', ')};
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  margin-bottom: env(safe-area-inset-bottom, 0px); /* Add space for mobile browsers */
+  margin-bottom: env(safe-area-inset-bottom, 0px);
   padding: 0;
   margin: 0;
 `;
@@ -24,28 +26,49 @@ const Header = styled.header`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #252526;
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid #333;
-  height: 48px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  padding: ${theme.spacing[4]} ${theme.spacing[6]};
+  border-bottom: 1px solid ${theme.colors.border.tertiary};
+  height: 64px;
   box-sizing: border-box;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, ${theme.colors.primary[500]}20 0%, transparent 50%, ${theme.colors.secondary[500]}20 100%);
+    pointer-events: none;
+  }
 `;
 
 const LogoContainer = styled.div`
   display: flex;
   align-items: center;
   height: 100%;
+  position: relative;
+  z-index: 1;
 `;
 
 const Logo = styled.img`
-  height: 24px;
-  margin-right: 10px;
+  height: 32px;
+  margin-right: ${theme.spacing[3]};
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 `;
 
 const AppName = styled.h1`
   margin: 0;
-  font-size: 1.25rem;
+  font-size: ${theme.typography.fontSize['2xl']};
+  font-weight: ${theme.typography.fontWeight.bold};
   line-height: 1;
+  background: linear-gradient(135deg, ${theme.colors.primary[400]} 0%, ${theme.colors.secondary[400]} 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 `;
 
 const NetworkSelectorContainer = styled.div`
@@ -53,62 +76,85 @@ const NetworkSelectorContainer = styled.div`
   height: 100%;
   display: flex;
   align-items: center;
+  z-index: 1;
 `;
 
 const ArrowIcon = styled.div<{ isOpen: boolean }>`
-  margin-left: 6px;
+  margin-left: ${theme.spacing[2]};
   display: inline-block;
   width: 0;
   height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 5px solid currentColor;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid currentColor;
   border-bottom: 0;
   transform: ${props => props.isOpen ? 'rotate(180deg)' : 'rotate(0deg)'};
-  transition: transform 0.2s;
+  transition: ${theme.transitions.normal};
 `;
 
 const CurrentNetwork = styled.div`
-  background-color: #252526;
-  color: #d4d4d4;
-  border: none;
-  border-left: 1px solid #333;
-  padding: 0 1rem;
-  height: 100%;
-  font-family: 'Courier New', monospace;
+  background: rgba(255, 255, 255, 0.1);
+  color: ${theme.colors.text.primary};
+  border: 1px solid ${theme.colors.border.tertiary};
+  border-radius: ${theme.borderRadius.lg};
+  padding: ${theme.spacing[2]} ${theme.spacing[4]};
+  height: 40px;
+  font-family: ${theme.typography.fontFamily.sans.join(', ')};
+  font-weight: ${theme.typography.fontWeight.medium};
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: ${theme.typography.fontSize.sm};
   display: flex;
   align-items: center;
   text-transform: capitalize;
-  
+  transition: ${theme.transitions.normal};
+  backdrop-filter: blur(10px);
+
   &:hover {
-    color: #ffffff;
+    background: rgba(255, 255, 255, 0.15);
+    border-color: ${theme.colors.border.secondary};
+    transform: translateY(-1px);
   }
 `;
 
 const NetworkOptions = styled.div<{ isOpen: boolean }>`
   position: absolute;
-  top: 40px;
+  top: 48px;
   right: 0;
-  background-color: #1e1e1e;
-  border: 1px solid #333;
-  border-radius: 0 0 4px 4px;
-  width: 150px;
+  background: ${theme.colors.background.card};
+  border: 1px solid ${theme.colors.border.primary};
+  border-radius: ${theme.borderRadius.xl};
+  width: 180px;
   z-index: 20;
   display: ${props => props.isOpen ? 'block' : 'none'};
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: ${theme.shadows.xl};
+  backdrop-filter: blur(20px);
+  overflow: hidden;
 `;
 
 const NetworkOption = styled.div<{ isActive: boolean }>`
-  padding: 0.75rem 1rem;
+  padding: ${theme.spacing[3]} ${theme.spacing[4]};
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: ${theme.typography.fontSize.sm};
+  font-weight: ${theme.typography.fontWeight.medium};
   text-transform: capitalize;
-  background-color: ${props => props.isActive ? '#252526' : 'transparent'};
-  
+  background-color: ${props => props.isActive ? theme.colors.primary[500] + '20' : 'transparent'};
+  color: ${props => props.isActive ? theme.colors.primary[400] : theme.colors.text.secondary};
+  transition: ${theme.transitions.normal};
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing[2]};
+
   &:hover {
-    background-color: #2a2d2e;
+    background-color: ${props => props.isActive ? theme.colors.primary[500] + '30' : theme.colors.background.elevated};
+    color: ${theme.colors.text.primary};
+  }
+
+  &:first-child {
+    border-radius: ${theme.borderRadius.xl} ${theme.borderRadius.xl} 0 0;
+  }
+
+  &:last-child {
+    border-radius: 0 0 ${theme.borderRadius.xl} ${theme.borderRadius.xl};
   }
 `;
 
@@ -120,51 +166,86 @@ const ContentContainer = styled.div`
   margin: 0;
 `;
 
-const InputContainer = styled.div`
-  margin-top: 2rem;
-  margin-bottom: 1rem;
+const WelcomeContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 64px);
+  padding: ${theme.spacing[8]};
+  text-align: center;
 `;
 
-const InputLabel = styled.label`
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: bold;
-`;
-
-const WalletInput = styled.input`
+const WelcomeCard = styled(Card)`
+  max-width: 600px;
   width: 100%;
-  max-width: 500px;
-  background-color: #333;
-  color: #d4d4d4;
-  border: 1px solid #555;
-  padding: 0.5rem;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-  
-  &:focus {
-    outline: none;
-    border-color: #0e639c;
-  }
+  text-align: center;
 `;
 
-const ConnectButton = styled.button`
-  margin-top: 1rem;
-  background-color: #0e639c;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-  cursor: pointer;
-  
-  &:hover {
-    background-color: #1177bb;
-  }
-  
-  &:disabled {
-    background-color: #555;
-    cursor: not-allowed;
-  }
+const WelcomeTitle = styled.h1`
+  font-size: ${theme.typography.fontSize['4xl']};
+  font-weight: ${theme.typography.fontWeight.bold};
+  margin-bottom: ${theme.spacing[4]};
+  background: linear-gradient(135deg, ${theme.colors.primary[400]} 0%, ${theme.colors.secondary[400]} 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+`;
+
+const WelcomeSubtitle = styled.p`
+  font-size: ${theme.typography.fontSize.lg};
+  color: ${theme.colors.text.secondary};
+  margin-bottom: ${theme.spacing[8]};
+  line-height: ${theme.typography.lineHeight.relaxed};
+`;
+
+const InputContainer = styled.div`
+  margin-bottom: ${theme.spacing[6]};
+  width: 100%;
+`;
+
+const CommandsSection = styled.div`
+  margin-top: ${theme.spacing[8]};
+  padding-top: ${theme.spacing[6]};
+  border-top: 1px solid ${theme.colors.border.tertiary};
+`;
+
+const CommandsTitle = styled.h3`
+  font-size: ${theme.typography.fontSize.lg};
+  font-weight: ${theme.typography.fontWeight.semibold};
+  color: ${theme.colors.text.primary};
+  margin-bottom: ${theme.spacing[4]};
+`;
+
+const CommandsList = styled.div`
+  display: grid;
+  gap: ${theme.spacing[2]};
+  text-align: left;
+`;
+
+const CommandItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing[3]};
+  padding: ${theme.spacing[2]};
+  border-radius: ${theme.borderRadius.md};
+  background: rgba(255, 255, 255, 0.05);
+  font-family: ${theme.typography.fontFamily.mono.join(', ')};
+  font-size: ${theme.typography.fontSize.sm};
+`;
+
+const CommandKey = styled.code`
+  background: ${theme.colors.primary[500]};
+  color: ${theme.colors.text.inverse};
+  padding: ${theme.spacing[1]} ${theme.spacing[2]};
+  border-radius: ${theme.borderRadius.base};
+  font-weight: ${theme.typography.fontWeight.medium};
+  min-width: 24px;
+  text-align: center;
+`;
+
+const CommandDescription = styled.span`
+  color: ${theme.colors.text.secondary};
 `;
 
 const Overlay = styled.div<{ isVisible: boolean }>`
@@ -184,17 +265,17 @@ const NoWalletPage = ({ walletAddress, setWalletAddress, onConnect }: {
   onConnect: () => void;
 }) => {
   const [isValidAddress, setIsValidAddress] = useState(true);
-  
+
   // Validate wallet address
   const validateAddress = (address: string) => {
     if (!address) {
       setIsValidAddress(true);
       return;
     }
-    
+
     setIsValidAddress(isValidEthereumAddress(address));
   };
-  
+
   const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newAddress = e.target.value;
     setWalletAddress(newAddress);
@@ -202,42 +283,69 @@ const NoWalletPage = ({ walletAddress, setWalletAddress, onConnect }: {
   };
 
   return (
-    <div style={{ padding: '2rem', height: 'calc(100% - 4rem)', overflowY: 'auto' }}>
-      <h1>Vito Safe Wallet Interface</h1>
-      <p>Welcome to the Vito UI for Safe Wallet interaction.</p>
-      <p>Please enter your Safe Wallet address to get started.</p>
-      <p>Navigate using keyboard shortcuts and commands (press : to enter command mode).</p>
-      
-      <InputContainer>
-        <InputLabel htmlFor="wallet-address">Safe Wallet Address:</InputLabel>
-        <WalletInput 
-          id="wallet-address"
-          type="text"
-          value={walletAddress}
-          onChange={handleAddressChange}
-          placeholder="Enter your Safe wallet address..."
-          style={{ borderColor: !isValidAddress ? '#f48771' : undefined }}
-        />
-        {!isValidAddress && (
-          <div style={{ color: '#f48771', fontSize: '0.8rem', marginTop: '0.5rem' }}>
-            Please enter a valid Ethereum address
-          </div>
-        )}
-      </InputContainer>
-      
-      <ConnectButton 
-        onClick={onConnect}
-        disabled={!walletAddress || !isValidAddress}
-      >
-        Connect Wallet
-      </ConnectButton>
-      
-      <div style={{ marginTop: '2rem' }}>
-        <p><strong>Available Commands:</strong></p>
-        <p>:c - Connect to Safe wallet</p>
-        <p>:help - Show help information</p>
-      </div>
-    </div>
+    <WelcomeContainer>
+      <WelcomeCard variant="glass" padding="xl">
+        <WelcomeTitle>Vito Safe Wallet</WelcomeTitle>
+        <WelcomeSubtitle>
+          Secure multi-signature wallet interface for Ethereum and EVM networks.
+          Connect your Safe wallet to manage assets, transactions, and settings.
+        </WelcomeSubtitle>
+
+        <InputContainer>
+          <Input
+            label="Safe Wallet Address"
+            placeholder="Enter your Safe wallet address (0x...)"
+            value={walletAddress}
+            onChange={handleAddressChange}
+            error={!isValidAddress ? 'Please enter a valid Ethereum address' : undefined}
+            variant="outlined"
+            inputSize="lg"
+            fullWidth
+            leftIcon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            }
+          />
+        </InputContainer>
+
+        <Button
+          variant="primary"
+          size="lg"
+          fullWidth
+          onClick={onConnect}
+          disabled={!walletAddress || !isValidAddress}
+          rightIcon={
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M12 5L19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          }
+        >
+          Connect Safe Wallet
+        </Button>
+
+        <CommandsSection>
+          <CommandsTitle>Keyboard Shortcuts</CommandsTitle>
+          <CommandsList>
+            <CommandItem>
+              <CommandKey>:c</CommandKey>
+              <CommandDescription>Connect to Safe wallet</CommandDescription>
+            </CommandItem>
+            <CommandItem>
+              <CommandKey>:help</CommandKey>
+              <CommandDescription>Show help information</CommandDescription>
+            </CommandItem>
+            <CommandItem>
+              <CommandKey>:</CommandKey>
+              <CommandDescription>Enter command mode</CommandDescription>
+            </CommandItem>
+          </CommandsList>
+        </CommandsSection>
+      </WelcomeCard>
+    </WelcomeContainer>
   );
 };
 
@@ -373,22 +481,25 @@ function App() {
             <ArrowIcon isOpen={networkSelectorOpen} />
           </CurrentNetwork>
           <NetworkOptions isOpen={networkSelectorOpen}>
-            <NetworkOption 
-              isActive={network === 'ethereum'} 
+            <NetworkOption
+              isActive={network === 'ethereum'}
               onClick={() => selectNetwork('ethereum')}
             >
+              <Badge variant="primary" size="sm" dot />
               Ethereum
             </NetworkOption>
-            <NetworkOption 
-              isActive={network === 'sepolia'} 
+            <NetworkOption
+              isActive={network === 'sepolia'}
               onClick={() => selectNetwork('sepolia')}
             >
+              <Badge variant="warning" size="sm" dot />
               Sepolia
             </NetworkOption>
-            <NetworkOption 
-              isActive={network === 'arbitrum'} 
+            <NetworkOption
+              isActive={network === 'arbitrum'}
               onClick={() => selectNetwork('arbitrum')}
             >
+              <Badge variant="info" size="sm" dot />
               Arbitrum
             </NetworkOption>
           </NetworkOptions>

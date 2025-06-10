@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { createMockSafeWallet, sendTransaction } from '@models/SafeWallet';
+import { theme } from '../../theme';
 
 // Import refactored components
 import MenuItem from './components/MenuItem';
@@ -69,9 +70,9 @@ const WalletPageLayout = styled.div`
 `;
 
 const LeftSidebar = styled.div`
-  width: 280px;
-  background-color: #252526;
-  border-right: 1px solid #333;
+  width: 320px;
+  background: linear-gradient(180deg, ${theme.colors.background.card} 0%, ${theme.colors.background.secondary} 100%);
+  border-right: 1px solid ${theme.colors.border.tertiary};
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -81,12 +82,14 @@ const LeftSidebar = styled.div`
   left: 0;
   top: 0;
   box-sizing: border-box;
+  backdrop-filter: blur(10px);
 `;
 
 const MainContent = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: 1rem;
+  padding: ${theme.spacing[6]};
+  background: ${theme.colors.background.primary};
 `;
 
 const WalletPage: React.FC<WalletPageProps> = ({ 
