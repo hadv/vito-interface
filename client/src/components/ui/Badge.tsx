@@ -1,6 +1,5 @@
 import React from 'react';
-import styled from 'styled-components';
-import { theme } from '../../theme';
+import { cn } from '../../utils/cn';
 
 interface BadgeProps {
   children?: React.ReactNode;
@@ -10,91 +9,42 @@ interface BadgeProps {
   className?: string;
 }
 
-const StyledBadge = styled.span<{
-  variant: BadgeProps['variant'];
-  size: BadgeProps['size'];
-  dot: boolean;
-}>`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: ${theme.typography.fontFamily.sans.join(', ')};
-  font-weight: ${theme.typography.fontWeight.medium};
-  border-radius: ${theme.borderRadius.full};
-  white-space: nowrap;
-  
-  ${({ size, dot }) => {
-    if (dot) {
-      return `
-        width: 8px;
-        height: 8px;
-        padding: 0;
-      `;
-    }
-    
-    switch (size) {
-      case 'sm':
-        return `
-          padding: ${theme.spacing[1]} ${theme.spacing[2]};
-          font-size: ${theme.typography.fontSize.xs};
-          height: 20px;
-        `;
-      case 'lg':
-        return `
-          padding: ${theme.spacing[2]} ${theme.spacing[4]};
-          font-size: ${theme.typography.fontSize.base};
-          height: 32px;
-        `;
-      default:
-        return `
-          padding: ${theme.spacing[1]} ${theme.spacing[3]};
-          font-size: ${theme.typography.fontSize.sm};
-          height: 24px;
-        `;
-    }
-  }}
-  
-  ${({ variant }) => {
-    switch (variant) {
-      case 'primary':
-        return `
-          background: ${theme.colors.primary[500]};
-          color: ${theme.colors.text.inverse};
-        `;
-      case 'secondary':
-        return `
-          background: ${theme.colors.secondary[500]};
-          color: ${theme.colors.text.inverse};
-        `;
-      case 'success':
-        return `
-          background: ${theme.colors.status.success};
-          color: ${theme.colors.text.inverse};
-        `;
-      case 'warning':
-        return `
-          background: ${theme.colors.status.warning};
-          color: ${theme.colors.text.inverse};
-        `;
-      case 'error':
-        return `
-          background: ${theme.colors.status.error};
-          color: ${theme.colors.text.inverse};
-        `;
-      case 'info':
-        return `
-          background: ${theme.colors.status.info};
-          color: ${theme.colors.text.inverse};
-        `;
-      default:
-        return `
-          background: ${theme.colors.background.elevated};
-          color: ${theme.colors.text.secondary};
-          border: 1px solid ${theme.colors.border.primary};
-        `;
-    }
-  }}
-`;
+const getBadgeClasses = (
+  variant: BadgeProps['variant'] = 'default',
+  size: BadgeProps['size'] = 'md',
+  dot: boolean = false
+) => {
+  const baseClasses = [
+    'inline-flex items-center justify-center',
+    'font-medium rounded-full whitespace-nowrap'
+  ];
+
+  // Size classes
+  const sizeClasses = dot
+    ? 'w-2 h-2 p-0'
+    : {
+        sm: 'px-2 py-1 text-xs h-5',
+        md: 'px-3 py-1 text-sm h-6',
+        lg: 'px-4 py-2 text-base h-8'
+      }[size];
+
+  // Variant classes
+  const variantClasses = {
+    primary: 'bg-primary-500 text-white',
+    secondary: 'bg-secondary-500 text-white',
+    success: 'bg-green-500 text-white',
+    warning: 'bg-yellow-500 text-white',
+    error: 'bg-red-500 text-white',
+    info: 'bg-blue-500 text-white',
+    default: 'bg-dark-800 text-gray-300 border border-dark-600'
+  };
+
+  return cn(
+    baseClasses,
+    sizeClasses,
+    variantClasses[variant]
+  );
+};
 
 const Badge: React.FC<BadgeProps> = ({
   children,
@@ -104,16 +54,15 @@ const Badge: React.FC<BadgeProps> = ({
   className,
   ...props
 }) => {
+  const badgeClasses = getBadgeClasses(variant, size, dot);
+
   return (
-    <StyledBadge
-      variant={variant}
-      size={size}
-      dot={dot}
-      className={className}
+    <span
+      className={cn(badgeClasses, className)}
       {...props}
     >
       {!dot && children}
-    </StyledBadge>
+    </span>
   );
 };
 

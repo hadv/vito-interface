@@ -1,6 +1,5 @@
 import React from 'react';
-import styled from 'styled-components';
-import { theme } from '../../theme';
+import { cn } from '../../utils/cn';
 
 interface AvatarProps {
   src?: string;
@@ -11,94 +10,46 @@ interface AvatarProps {
   className?: string;
 }
 
-const StyledAvatar = styled.div<{ size: AvatarProps['size'] }>`
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: ${theme.borderRadius.full};
-  overflow: hidden;
-  background: linear-gradient(135deg, ${theme.colors.primary[500]} 0%, ${theme.colors.secondary[500]} 100%);
-  color: ${theme.colors.text.inverse};
-  font-weight: ${theme.typography.fontWeight.medium};
-  flex-shrink: 0;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  box-shadow: ${theme.shadows.md};
-  
-  ${({ size }) => {
-    switch (size) {
-      case 'xs':
-        return `
-          width: 24px;
-          height: 24px;
-          font-size: ${theme.typography.fontSize.xs};
-        `;
-      case 'sm':
-        return `
-          width: 32px;
-          height: 32px;
-          font-size: ${theme.typography.fontSize.sm};
-        `;
-      case 'md':
-        return `
-          width: 40px;
-          height: 40px;
-          font-size: ${theme.typography.fontSize.base};
-        `;
-      case 'lg':
-        return `
-          width: 56px;
-          height: 56px;
-          font-size: ${theme.typography.fontSize.lg};
-        `;
-      case 'xl':
-        return `
-          width: 72px;
-          height: 72px;
-          font-size: ${theme.typography.fontSize.xl};
-          box-shadow: ${theme.shadows.lg};
-        `;
-      case '2xl':
-        return `
-          width: 96px;
-          height: 96px;
-          font-size: ${theme.typography.fontSize['2xl']};
-          box-shadow: ${theme.shadows.xl};
-        `;
-      default:
-        return `
-          width: 40px;
-          height: 40px;
-          font-size: ${theme.typography.fontSize.base};
-        `;
-    }
-  }}
-`;
+const getAvatarClasses = (size: AvatarProps['size'] = 'md') => {
+  const baseClasses = [
+    'relative inline-flex items-center justify-center',
+    'rounded-full overflow-hidden',
+    'bg-gradient-to-br from-primary-500 to-secondary-500',
+    'text-white font-medium flex-shrink-0',
+    'border-2 border-white/10 shadow-md'
+  ];
 
-const AvatarImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`;
+  // Size classes
+  const sizeClasses = {
+    xs: 'w-6 h-6 text-xs',
+    sm: 'w-8 h-8 text-sm',
+    md: 'w-10 h-10 text-base',
+    lg: 'w-14 h-14 text-lg',
+    xl: 'w-18 h-18 text-xl shadow-lg',
+    '2xl': 'w-24 h-24 text-2xl shadow-xl'
+  };
 
-const AvatarFallback = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  text-transform: uppercase;
-`;
+  return cn(baseClasses, sizeClasses[size]);
+};
+
+const getImageClasses = () => 'w-full h-full object-cover';
+
+const getFallbackClasses = () => cn(
+  'flex items-center justify-center',
+  'w-full h-full uppercase'
+);
 
 // Generate a consistent color based on address
-const generateAvatarGradient = (address: string): string => {
-  if (!address) return `linear-gradient(135deg, ${theme.colors.primary[500]} 0%, ${theme.colors.secondary[500]} 100%)`;
-  
+const generateAvatarGradient = (address: string): React.CSSProperties => {
+  if (!address) return {};
+
   const hash = address.slice(2, 8); // Use first 6 chars after 0x
   const hue1 = parseInt(hash.slice(0, 2), 16) % 360;
   const hue2 = (hue1 + 60) % 360;
-  
-  return `linear-gradient(135deg, hsl(${hue1}, 70%, 50%) 0%, hsl(${hue2}, 70%, 60%) 100%)`;
+
+  return {
+    background: `linear-gradient(135deg, hsl(${hue1}, 70%, 50%) 0%, hsl(${hue2}, 70%, 60%) 100%)`
+  };
 };
 
 // Generate Ethereum-style blockies avatar URL
@@ -117,43 +68,44 @@ const Avatar: React.FC<AvatarProps> = ({
   ...props
 }) => {
   const [imageError, setImageError] = React.useState(false);
-  
+
   // Generate fallback text
   const getFallbackText = (): string => {
     if (fallback) return fallback.slice(0, 2);
     if (address) return address.slice(2, 4).toUpperCase();
     return '??';
   };
-  
+
   // Generate avatar source
   const getAvatarSrc = (): string => {
     if (src && !imageError) return src;
     if (address) return generateBlockiesUrl(address);
     return '';
   };
-  
+
   const avatarSrc = getAvatarSrc();
-  const gradient = address ? generateAvatarGradient(address) : undefined;
-  
+  const gradientStyle = address ? generateAvatarGradient(address) : {};
+  const avatarClasses = getAvatarClasses(size);
+
   return (
-    <StyledAvatar
-      size={size}
-      className={className}
-      style={gradient ? { background: gradient } : undefined}
+    <div
+      className={cn(avatarClasses, className)}
+      style={gradientStyle}
       {...props}
     >
       {avatarSrc ? (
-        <AvatarImage
+        <img
           src={avatarSrc}
           alt={alt || 'Avatar'}
+          className={getImageClasses()}
           onError={() => setImageError(true)}
         />
       ) : (
-        <AvatarFallback>
+        <div className={getFallbackClasses()}>
           {getFallbackText()}
-        </AvatarFallback>
+        </div>
       )}
-    </StyledAvatar>
+    </div>
   );
 };
 

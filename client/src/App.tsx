@@ -1,263 +1,125 @@
 import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
 import WalletPage from '@components/wallet/WalletPage';
 import { VitoContainer } from '@components/vitoUI';
 import { resolveAddressToEns, isValidEthereumAddress } from '@utils';
 import { Button, Input, Card, Badge } from '@components/ui';
-import { theme } from './theme';
+import { cn } from './utils/cn';
 import './App.css';
 import logo from './logo.svg';
 import { processCommand } from './commands';
 
-const AppContainer = styled.div`
-  height: 100vh;
-  color: ${theme.colors.text.primary};
-  background: linear-gradient(135deg, ${theme.colors.background.primary} 0%, ${theme.colors.background.secondary} 100%);
-  font-family: ${theme.typography.fontFamily.sans.join(', ')};
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  margin-bottom: env(safe-area-inset-bottom, 0px);
-  padding: 0;
-  margin: 0;
-`;
+// Tailwind classes for app container
+const appContainerClasses = cn(
+  'h-screen text-white overflow-hidden',
+  'bg-gradient-to-br from-gray-950 to-gray-900',
+  'font-sans flex flex-col',
+  'p-0 m-0'
+);
 
-const Header = styled.header`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  padding: ${theme.spacing[4]} ${theme.spacing[6]};
-  border-bottom: 1px solid ${theme.colors.border.tertiary};
-  height: 64px;
-  box-sizing: border-box;
-  position: relative;
+// Tailwind classes for header
+const headerClasses = cn(
+  'flex justify-between items-center',
+  'bg-white/5 backdrop-blur-md',
+  'px-6 py-4 border-b border-gray-800',
+  'h-16 box-border relative',
+  'before:absolute before:inset-0',
+  'before:bg-gradient-to-r before:from-primary-500/20 before:via-transparent before:to-secondary-500/20',
+  'before:pointer-events-none'
+);
 
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(90deg, ${theme.colors.primary[500]}20 0%, transparent 50%, ${theme.colors.secondary[500]}20 100%);
-    pointer-events: none;
-  }
-`;
+// Tailwind classes for logo section
+const logoContainerClasses = 'flex items-center h-full relative z-10';
+const logoClasses = 'h-8 mr-3 drop-shadow-md';
+const appNameClasses = cn(
+  'm-0 text-2xl font-bold leading-none',
+  'bg-gradient-to-br from-primary-400 to-secondary-400',
+  'bg-clip-text text-transparent'
+);
 
-const LogoContainer = styled.div`
-  display: flex;
-  align-items: center;
-  height: 100%;
-  position: relative;
-  z-index: 1;
-`;
+// Tailwind classes for network selector
+const networkSelectorClasses = 'relative h-full flex items-center z-10';
 
-const Logo = styled.img`
-  height: 32px;
-  margin-right: ${theme.spacing[3]};
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-`;
+const getArrowClasses = (isOpen: boolean) => cn(
+  'ml-2 inline-block w-0 h-0',
+  'border-l-[4px] border-r-[4px] border-t-[4px]',
+  'border-l-transparent border-r-transparent border-t-current',
+  'transition-transform duration-250',
+  isOpen ? 'rotate-180' : 'rotate-0'
+);
 
-const AppName = styled.h1`
-  margin: 0;
-  font-size: ${theme.typography.fontSize['2xl']};
-  font-weight: ${theme.typography.fontWeight.bold};
-  line-height: 1;
-  background: linear-gradient(135deg, ${theme.colors.primary[400]} 0%, ${theme.colors.secondary[400]} 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-`;
+const currentNetworkClasses = cn(
+  'bg-white/10 text-white border border-gray-700',
+  'rounded-lg px-4 py-2 h-10 cursor-pointer',
+  'font-medium text-sm flex items-center capitalize',
+  'transition-all duration-250 backdrop-blur-md',
+  'hover:bg-white/15 hover:border-gray-600 hover:-translate-y-0.5'
+);
 
-const NetworkSelectorContainer = styled.div`
-  position: relative;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  z-index: 1;
-`;
+const getNetworkOptionsClasses = (isOpen: boolean) => cn(
+  'absolute top-12 right-0 bg-dark-900 border border-dark-600',
+  'rounded-xl w-45 z-20 shadow-xl backdrop-blur-lg overflow-hidden',
+  isOpen ? 'block' : 'hidden'
+);
 
-const ArrowIcon = styled.div<{ isOpen: boolean }>`
-  margin-left: ${theme.spacing[2]};
-  display: inline-block;
-  width: 0;
-  height: 0;
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
-  border-top: 4px solid currentColor;
-  border-bottom: 0;
-  transform: ${props => props.isOpen ? 'rotate(180deg)' : 'rotate(0deg)'};
-  transition: ${theme.transitions.normal};
-`;
+const getNetworkOptionClasses = (isActive: boolean) => cn(
+  'px-4 py-3 cursor-pointer text-sm font-medium capitalize',
+  'transition-all duration-250 flex items-center gap-2',
+  isActive
+    ? 'bg-primary-500/20 text-primary-400'
+    : 'text-gray-300 hover:bg-dark-800 hover:text-white'
+);
 
-const CurrentNetwork = styled.div`
-  background: rgba(255, 255, 255, 0.1);
-  color: ${theme.colors.text.primary};
-  border: 1px solid ${theme.colors.border.tertiary};
-  border-radius: ${theme.borderRadius.lg};
-  padding: ${theme.spacing[2]} ${theme.spacing[4]};
-  height: 40px;
-  font-family: ${theme.typography.fontFamily.sans.join(', ')};
-  font-weight: ${theme.typography.fontWeight.medium};
-  cursor: pointer;
-  font-size: ${theme.typography.fontSize.sm};
-  display: flex;
-  align-items: center;
-  text-transform: capitalize;
-  transition: ${theme.transitions.normal};
-  backdrop-filter: blur(10px);
+const contentContainerClasses = 'flex-1 overflow-hidden relative p-0 m-0';
 
-  &:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: ${theme.colors.border.secondary};
-    transform: translateY(-1px);
-  }
-`;
+// Tailwind classes for welcome page
+const welcomeContainerClasses = cn(
+  'flex flex-col items-center justify-center',
+  'min-h-[calc(100vh-4rem)] p-8 text-center'
+);
 
-const NetworkOptions = styled.div<{ isOpen: boolean }>`
-  position: absolute;
-  top: 48px;
-  right: 0;
-  background: ${theme.colors.background.card};
-  border: 1px solid ${theme.colors.border.primary};
-  border-radius: ${theme.borderRadius.xl};
-  width: 180px;
-  z-index: 20;
-  display: ${props => props.isOpen ? 'block' : 'none'};
-  box-shadow: ${theme.shadows.xl};
-  backdrop-filter: blur(20px);
-  overflow: hidden;
-`;
+const welcomeCardClasses = 'max-w-2xl w-full text-center';
 
-const NetworkOption = styled.div<{ isActive: boolean }>`
-  padding: ${theme.spacing[3]} ${theme.spacing[4]};
-  cursor: pointer;
-  font-size: ${theme.typography.fontSize.sm};
-  font-weight: ${theme.typography.fontWeight.medium};
-  text-transform: capitalize;
-  background-color: ${props => props.isActive ? theme.colors.primary[500] + '20' : 'transparent'};
-  color: ${props => props.isActive ? theme.colors.primary[400] : theme.colors.text.secondary};
-  transition: ${theme.transitions.normal};
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing[2]};
+const welcomeTitleClasses = cn(
+  'text-4xl font-bold mb-4',
+  'bg-gradient-to-br from-primary-400 to-secondary-400',
+  'bg-clip-text text-transparent'
+);
 
-  &:hover {
-    background-color: ${props => props.isActive ? theme.colors.primary[500] + '30' : theme.colors.background.elevated};
-    color: ${theme.colors.text.primary};
-  }
+const welcomeSubtitleClasses = cn(
+  'text-lg text-gray-300 mb-8 leading-relaxed'
+);
 
-  &:first-child {
-    border-radius: ${theme.borderRadius.xl} ${theme.borderRadius.xl} 0 0;
-  }
+const inputContainerClasses = 'mb-6 w-full';
 
-  &:last-child {
-    border-radius: 0 0 ${theme.borderRadius.xl} ${theme.borderRadius.xl};
-  }
-`;
+const commandsSectionClasses = cn(
+  'mt-8 pt-6 border-t border-gray-800'
+);
 
-const ContentContainer = styled.div`
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-  padding: 0;
-  margin: 0;
-`;
+const commandsTitleClasses = cn(
+  'text-lg font-semibold text-white mb-4'
+);
 
-const WelcomeContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: calc(100vh - 64px);
-  padding: ${theme.spacing[8]};
-  text-align: center;
-`;
+const commandsListClasses = 'grid gap-2 text-left';
 
-const WelcomeCard = styled(Card)`
-  max-width: 600px;
-  width: 100%;
-  text-align: center;
-`;
+const commandItemClasses = cn(
+  'flex items-center gap-3 p-2',
+  'rounded-md bg-white/5',
+  'font-mono text-sm'
+);
 
-const WelcomeTitle = styled.h1`
-  font-size: ${theme.typography.fontSize['4xl']};
-  font-weight: ${theme.typography.fontWeight.bold};
-  margin-bottom: ${theme.spacing[4]};
-  background: linear-gradient(135deg, ${theme.colors.primary[400]} 0%, ${theme.colors.secondary[400]} 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-`;
+const commandKeyClasses = cn(
+  'bg-primary-500 text-white',
+  'px-2 py-1 rounded font-medium',
+  'min-w-[24px] text-center'
+);
 
-const WelcomeSubtitle = styled.p`
-  font-size: ${theme.typography.fontSize.lg};
-  color: ${theme.colors.text.secondary};
-  margin-bottom: ${theme.spacing[8]};
-  line-height: ${theme.typography.lineHeight.relaxed};
-`;
+const commandDescriptionClasses = 'text-gray-300';
 
-const InputContainer = styled.div`
-  margin-bottom: ${theme.spacing[6]};
-  width: 100%;
-`;
-
-const CommandsSection = styled.div`
-  margin-top: ${theme.spacing[8]};
-  padding-top: ${theme.spacing[6]};
-  border-top: 1px solid ${theme.colors.border.tertiary};
-`;
-
-const CommandsTitle = styled.h3`
-  font-size: ${theme.typography.fontSize.lg};
-  font-weight: ${theme.typography.fontWeight.semibold};
-  color: ${theme.colors.text.primary};
-  margin-bottom: ${theme.spacing[4]};
-`;
-
-const CommandsList = styled.div`
-  display: grid;
-  gap: ${theme.spacing[2]};
-  text-align: left;
-`;
-
-const CommandItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing[3]};
-  padding: ${theme.spacing[2]};
-  border-radius: ${theme.borderRadius.md};
-  background: rgba(255, 255, 255, 0.05);
-  font-family: ${theme.typography.fontFamily.mono.join(', ')};
-  font-size: ${theme.typography.fontSize.sm};
-`;
-
-const CommandKey = styled.code`
-  background: ${theme.colors.primary[500]};
-  color: ${theme.colors.text.inverse};
-  padding: ${theme.spacing[1]} ${theme.spacing[2]};
-  border-radius: ${theme.borderRadius.base};
-  font-weight: ${theme.typography.fontWeight.medium};
-  min-width: 24px;
-  text-align: center;
-`;
-
-const CommandDescription = styled.span`
-  color: ${theme.colors.text.secondary};
-`;
-
-const Overlay = styled.div<{ isVisible: boolean }>`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 5;
-  display: ${props => props.isVisible ? 'block' : 'none'};
-`;
+// Tailwind classes for overlay
+const getOverlayClasses = (isVisible: boolean) => cn(
+  'fixed inset-0 bg-black/50 z-[5]',
+  isVisible ? 'block' : 'hidden'
+);
 
 const NoWalletPage = ({ walletAddress, setWalletAddress, onConnect }: {
   walletAddress: string;
@@ -283,15 +145,15 @@ const NoWalletPage = ({ walletAddress, setWalletAddress, onConnect }: {
   };
 
   return (
-    <WelcomeContainer>
-      <WelcomeCard variant="glass" padding="xl">
-        <WelcomeTitle>Vito Safe Wallet</WelcomeTitle>
-        <WelcomeSubtitle>
+    <div className={welcomeContainerClasses}>
+      <Card variant="glass" padding="xl" className={welcomeCardClasses}>
+        <h1 className={welcomeTitleClasses}>Vito Safe Wallet</h1>
+        <p className={welcomeSubtitleClasses}>
           Secure multi-signature wallet interface for Ethereum and EVM networks.
           Connect your Safe wallet to manage assets, transactions, and settings.
-        </WelcomeSubtitle>
+        </p>
 
-        <InputContainer>
+        <div className={inputContainerClasses}>
           <Input
             label="Safe Wallet Address"
             placeholder="Enter your Safe wallet address (0x...)"
@@ -309,7 +171,7 @@ const NoWalletPage = ({ walletAddress, setWalletAddress, onConnect }: {
               </svg>
             }
           />
-        </InputContainer>
+        </div>
 
         <Button
           variant="primary"
@@ -327,25 +189,25 @@ const NoWalletPage = ({ walletAddress, setWalletAddress, onConnect }: {
           Connect Safe Wallet
         </Button>
 
-        <CommandsSection>
-          <CommandsTitle>Keyboard Shortcuts</CommandsTitle>
-          <CommandsList>
-            <CommandItem>
-              <CommandKey>:c</CommandKey>
-              <CommandDescription>Connect to Safe wallet</CommandDescription>
-            </CommandItem>
-            <CommandItem>
-              <CommandKey>:help</CommandKey>
-              <CommandDescription>Show help information</CommandDescription>
-            </CommandItem>
-            <CommandItem>
-              <CommandKey>:</CommandKey>
-              <CommandDescription>Enter command mode</CommandDescription>
-            </CommandItem>
-          </CommandsList>
-        </CommandsSection>
-      </WelcomeCard>
-    </WelcomeContainer>
+        <div className={commandsSectionClasses}>
+          <h3 className={commandsTitleClasses}>Keyboard Shortcuts</h3>
+          <div className={commandsListClasses}>
+            <div className={commandItemClasses}>
+              <code className={commandKeyClasses}>:c</code>
+              <span className={commandDescriptionClasses}>Connect to Safe wallet</span>
+            </div>
+            <div className={commandItemClasses}>
+              <code className={commandKeyClasses}>:help</code>
+              <span className={commandDescriptionClasses}>Show help information</span>
+            </div>
+            <div className={commandItemClasses}>
+              <code className={commandKeyClasses}>:</code>
+              <span className={commandDescriptionClasses}>Enter command mode</span>
+            </div>
+          </div>
+        </div>
+      </Card>
+    </div>
   );
 };
 
@@ -469,64 +331,64 @@ function App() {
   }, []);
 
   return (
-    <AppContainer>
-      <Header>
-        <LogoContainer>
-          <Logo src={logo} alt="Vito Logo" />
-          <AppName>Vito</AppName>
-        </LogoContainer>
-        <NetworkSelectorContainer className="network-selector">
-          <CurrentNetwork onClick={toggleNetworkSelector}>
+    <div className={appContainerClasses}>
+      <header className={headerClasses}>
+        <div className={logoContainerClasses}>
+          <img src={logo} alt="Vito Logo" className={logoClasses} />
+          <h1 className={appNameClasses}>Vito</h1>
+        </div>
+        <div className={cn(networkSelectorClasses, "network-selector")}>
+          <div className={currentNetworkClasses} onClick={toggleNetworkSelector}>
             {network}
-            <ArrowIcon isOpen={networkSelectorOpen} />
-          </CurrentNetwork>
-          <NetworkOptions isOpen={networkSelectorOpen}>
-            <NetworkOption
-              isActive={network === 'ethereum'}
+            <div className={getArrowClasses(networkSelectorOpen)} />
+          </div>
+          <div className={getNetworkOptionsClasses(networkSelectorOpen)}>
+            <div
+              className={getNetworkOptionClasses(network === 'ethereum')}
               onClick={() => selectNetwork('ethereum')}
             >
               <Badge variant="primary" size="sm" dot />
               Ethereum
-            </NetworkOption>
-            <NetworkOption
-              isActive={network === 'sepolia'}
+            </div>
+            <div
+              className={getNetworkOptionClasses(network === 'sepolia')}
               onClick={() => selectNetwork('sepolia')}
             >
               <Badge variant="warning" size="sm" dot />
               Sepolia
-            </NetworkOption>
-            <NetworkOption
-              isActive={network === 'arbitrum'}
+            </div>
+            <div
+              className={getNetworkOptionClasses(network === 'arbitrum')}
               onClick={() => selectNetwork('arbitrum')}
             >
               <Badge variant="info" size="sm" dot />
               Arbitrum
-            </NetworkOption>
-          </NetworkOptions>
-        </NetworkSelectorContainer>
-      </Header>
-      <Overlay isVisible={networkSelectorOpen} />
-      <ContentContainer>
+            </div>
+          </div>
+        </div>
+      </header>
+      <div className={getOverlayClasses(networkSelectorOpen)} />
+      <div className={contentContainerClasses}>
         {walletConnected ? (
           <VitoContainer onCommand={handleCommand}>
-            <WalletPage 
-              walletAddress={walletAddress} 
-              ensName={ensName} 
+            <WalletPage
+              walletAddress={walletAddress}
+              ensName={ensName}
               network={network}
               isLoadingEns={isLoadingEns}
             />
           </VitoContainer>
         ) : (
           <VitoContainer onCommand={handleCommand}>
-            <NoWalletPage 
+            <NoWalletPage
               walletAddress={walletAddress}
               setWalletAddress={setWalletAddress}
               onConnect={connectWallet}
             />
           </VitoContainer>
         )}
-      </ContentContainer>
-    </AppContainer>
+      </div>
+    </div>
   );
 }
 

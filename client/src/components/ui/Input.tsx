@@ -1,6 +1,5 @@
 import React, { forwardRef } from 'react';
-import styled from 'styled-components';
-import { theme } from '../../theme';
+import { cn } from '../../utils/cn';
 
 interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
   label?: string;
@@ -13,136 +12,87 @@ interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, '
   fullWidth?: boolean;
 }
 
-const InputContainer = styled.div<{ fullWidth: boolean }>`
-  display: flex;
-  flex-direction: column;
-  gap: ${theme.spacing[1]};
-  ${({ fullWidth }) => fullWidth && 'width: 100%;'}
-`;
+const getInputContainerClasses = (fullWidth: boolean) => cn(
+  'flex flex-col gap-1',
+  fullWidth && 'w-full'
+);
 
-const Label = styled.label`
-  font-size: ${theme.typography.fontSize.sm};
-  font-weight: ${theme.typography.fontWeight.medium};
-  color: ${theme.colors.text.secondary};
-`;
+const getLabelClasses = () => 'text-sm font-medium text-gray-300';
 
-const InputWrapper = styled.div<{
-  variant: InputProps['variant'];
-  inputSize: InputProps['inputSize'];
-  hasError: boolean;
-  hasLeftIcon: boolean;
-  hasRightIcon: boolean;
-}>`
-  position: relative;
-  display: flex;
-  align-items: center;
-  
-  ${({ variant, hasError }) => {
-    switch (variant) {
-      case 'filled':
-        return `
-          background: ${theme.colors.background.elevated};
-          border: 1px solid transparent;
-          border-radius: ${theme.borderRadius.lg};
-          
-          &:focus-within {
-            border-color: ${hasError ? theme.colors.status.error : theme.colors.primary[500]};
-            box-shadow: 0 0 0 3px ${hasError ? 
-              `rgba(239, 68, 68, 0.1)` : 
-              `rgba(34, 197, 94, 0.1)`};
-          }
-        `;
-      case 'outlined':
-        return `
-          background: transparent;
-          border: 1px solid ${hasError ? theme.colors.status.error : theme.colors.border.primary};
-          border-radius: ${theme.borderRadius.lg};
-          
-          &:focus-within {
-            border-color: ${hasError ? theme.colors.status.error : theme.colors.primary[500]};
-            box-shadow: 0 0 0 3px ${hasError ? 
-              `rgba(239, 68, 68, 0.1)` : 
-              `rgba(34, 197, 94, 0.1)`};
-          }
-        `;
-      default:
-        return `
-          background: ${theme.colors.background.card};
-          border: 1px solid ${hasError ? theme.colors.status.error : theme.colors.border.primary};
-          border-radius: ${theme.borderRadius.lg};
-          
-          &:focus-within {
-            border-color: ${hasError ? theme.colors.status.error : theme.colors.primary[500]};
-            background: ${theme.colors.background.elevated};
-          }
-        `;
-    }
-  }}
-  
-  ${({ inputSize, hasLeftIcon, hasRightIcon }) => {
-    const iconPadding = theme.spacing[10]; // 40px for icon space
+const getInputWrapperClasses = (
+  variant: InputProps['variant'] = 'default',
+  inputSize: InputProps['inputSize'] = 'md',
+  hasError: boolean = false,
+  hasLeftIcon: boolean = false,
+  hasRightIcon: boolean = false
+) => {
+  const baseClasses = [
+    'relative flex items-center transition-all duration-250',
+    'rounded-lg border',
+    hasLeftIcon && 'pl-10',
+    hasRightIcon && 'pr-10'
+  ];
 
-    switch (inputSize) {
-      case 'sm':
-        return `
-          height: 36px;
-          padding: 0 ${hasRightIcon ? iconPadding : theme.spacing[3]} 0 ${hasLeftIcon ? iconPadding : theme.spacing[3]};
-        `;
-      case 'lg':
-        return `
-          height: 52px;
-          padding: 0 ${hasRightIcon ? iconPadding : theme.spacing[4]} 0 ${hasLeftIcon ? iconPadding : theme.spacing[4]};
-        `;
-      default:
-        return `
-          height: 44px;
-          padding: 0 ${hasRightIcon ? iconPadding : theme.spacing[4]} 0 ${hasLeftIcon ? iconPadding : theme.spacing[4]};
-        `;
-    }
-  }}
-  
-  transition: ${theme.transitions.normal};
-`;
+  // Size classes
+  const sizeClasses = {
+    sm: 'h-9',
+    md: 'h-11',
+    lg: 'h-13'
+  };
 
-const StyledInput = styled.input`
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: ${theme.colors.text.primary};
-  font-size: ${theme.typography.fontSize.base};
-  font-family: ${theme.typography.fontFamily.sans.join(', ')};
-  
-  &::placeholder {
-    color: ${theme.colors.text.muted};
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
+  // Variant classes
+  const variantClasses = {
+    default: [
+      'bg-dark-900 border-dark-600',
+      'focus-within:border-primary-500 focus-within:bg-dark-800',
+      hasError ? 'border-red-500' : 'border-dark-600'
+    ],
+    filled: [
+      'bg-dark-800 border-transparent',
+      'focus-within:border-primary-500',
+      hasError ? 'border-red-500' : 'border-transparent'
+    ],
+    outlined: [
+      'bg-transparent',
+      'focus-within:border-primary-500',
+      hasError ? 'border-red-500' : 'border-dark-600'
+    ]
+  };
 
-const IconContainer = styled.div<{ position: 'left' | 'right' }>`
-  position: absolute;
-  ${({ position }) => position}: ${theme.spacing[3]};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: ${theme.colors.text.tertiary};
-  pointer-events: none;
-  
-  svg {
-    width: 18px;
-    height: 18px;
-  }
-`;
+  // Focus ring
+  const focusClasses = hasError
+    ? 'focus-within:ring-2 focus-within:ring-red-500/20'
+    : 'focus-within:ring-2 focus-within:ring-primary-500/20';
 
-const HelperText = styled.div<{ isError: boolean }>`
-  font-size: ${theme.typography.fontSize.xs};
-  color: ${({ isError }) => isError ? theme.colors.status.error : theme.colors.text.muted};
-  margin-top: ${theme.spacing[1]};
-`;
+  return cn(
+    baseClasses,
+    sizeClasses[inputSize],
+    variantClasses[variant],
+    focusClasses
+  );
+};
+
+const getInputClasses = () => cn(
+  'flex-1 bg-transparent border-0 outline-none',
+  'text-white text-base font-sans',
+  'placeholder:text-gray-500',
+  'disabled:opacity-50 disabled:cursor-not-allowed',
+  'px-3'
+);
+
+const getIconClasses = (position: 'left' | 'right') => cn(
+  'absolute flex items-center justify-center',
+  'text-gray-400 pointer-events-none',
+  position === 'left' ? 'left-3' : 'right-3',
+  '[&>svg]:w-[18px] [&>svg]:h-[18px]'
+);
+
+const getHelperTextClasses = (isError: boolean) => cn(
+  'text-xs mt-1',
+  isError ? 'text-red-400' : 'text-gray-500'
+);
+
+// Styled components replaced with Tailwind classes above
 
 const Input = forwardRef<HTMLInputElement, InputProps>(({
   label,
@@ -157,42 +107,41 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
   ...props
 }, ref) => {
   const hasError = !!error;
-  
+
   return (
-    <InputContainer fullWidth={fullWidth} className={className}>
-      {label && <Label>{label}</Label>}
-      
-      <InputWrapper
-        variant={variant}
-        inputSize={inputSize}
-        hasError={hasError}
-        hasLeftIcon={!!leftIcon}
-        hasRightIcon={!!rightIcon}
-      >
+    <div className={cn(getInputContainerClasses(fullWidth), className)}>
+      {label && (
+        <label className={getLabelClasses()}>
+          {label}
+        </label>
+      )}
+
+      <div className={getInputWrapperClasses(variant, inputSize, hasError, !!leftIcon, !!rightIcon)}>
         {leftIcon && (
-          <IconContainer position="left">
+          <div className={getIconClasses('left')}>
             {leftIcon}
-          </IconContainer>
+          </div>
         )}
-        
-        <StyledInput
+
+        <input
           ref={ref}
+          className={getInputClasses()}
           {...props}
         />
-        
+
         {rightIcon && (
-          <IconContainer position="right">
+          <div className={getIconClasses('right')}>
             {rightIcon}
-          </IconContainer>
+          </div>
         )}
-      </InputWrapper>
-      
+      </div>
+
       {(error || helperText) && (
-        <HelperText isError={hasError}>
+        <div className={getHelperTextClasses(hasError)}>
           {error || helperText}
-        </HelperText>
+        </div>
       )}
-    </InputContainer>
+    </div>
   );
 });
 
