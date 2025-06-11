@@ -32,8 +32,13 @@ export class SafeTxPoolService {
 
   constructor(network: string = 'ethereum') {
     this.network = network;
-    this.provider = getProviderForNetwork(network);
-    this.initializeContract();
+    try {
+      this.provider = getProviderForNetwork(network);
+      this.initializeContract();
+    } catch (error) {
+      console.error(`Failed to initialize provider for network ${network}:`, error);
+      this.provider = null;
+    }
   }
 
   /**
@@ -43,6 +48,11 @@ export class SafeTxPoolService {
     const networkConfig = NETWORK_CONFIGS[this.network as keyof typeof NETWORK_CONFIGS];
     if (!networkConfig || !networkConfig.safeTxPoolAddress) {
       console.warn(`SafeTxPool contract address not configured for network: ${this.network}`);
+      return;
+    }
+
+    if (!this.provider) {
+      console.warn(`Provider not available for network: ${this.network}`);
       return;
     }
 
@@ -64,6 +74,21 @@ export class SafeTxPoolService {
   }
 
   /**
+   * Check if the contract is properly initialized
+   */
+  isInitialized(): boolean {
+    return this.contract !== null;
+  }
+
+  /**
+   * Get the contract address for the current network
+   */
+  getContractAddress(): string | null {
+    const networkConfig = NETWORK_CONFIGS[this.network as keyof typeof NETWORK_CONFIGS];
+    return networkConfig?.safeTxPoolAddress || null;
+  }
+
+  /**
    * Generate transaction hash for Safe transaction
    */
   generateTxHash(params: ProposeTransactionParams): string {
@@ -80,8 +105,11 @@ export class SafeTxPoolService {
    * Propose a new Safe transaction to the pool
    */
   async proposeTx(params: ProposeTransactionParams): Promise<string> {
-    if (!this.contract || !this.signer) {
-      throw new Error('Contract not initialized or signer not set');
+    if (!this.contract) {
+      throw new Error('SafeTxPool contract not initialized. Check network configuration and contract address.');
+    }
+    if (!this.signer) {
+      throw new Error('Signer not set. Call setSigner() first.');
     }
 
     try {
