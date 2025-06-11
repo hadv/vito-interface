@@ -1,4 +1,4 @@
-const { override, addWebpackAlias } = require('customize-cra');
+const { override, addWebpackAlias, addWebpackResolve } = require('customize-cra');
 const path = require('path');
 
 module.exports = override(
@@ -11,5 +11,18 @@ module.exports = override(
     '@pages': path.resolve(__dirname, 'src/pages'),
     '@models': path.resolve(__dirname, 'src/models'),
     '@vimUI': path.resolve(__dirname, 'src/components/vimUI')
+  }),
+  addWebpackResolve({
+    fallback: {
+      "stream": require.resolve("stream-browserify"),
+      "crypto": require.resolve("crypto-browserify"),
+      "buffer": require.resolve("buffer"),
+      "util": require.resolve("util"),
+      "assert": require.resolve("assert"),
+      "url": require.resolve("url"),
+      "fs": false,
+      "path": require.resolve("path-browserify"),
+      "os": require.resolve("os-browserify/browser")
+    }
   })
-); 
+);

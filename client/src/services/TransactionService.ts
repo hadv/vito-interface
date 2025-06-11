@@ -1,6 +1,5 @@
 import { ethers } from 'ethers';
 import { safeWalletService, TransactionRequest, SafeTransactionResult } from './SafeWalletService';
-import { SafeTransaction } from '@safe-global/types-kit';
 
 export interface SendTransactionParams {
   to: string;
@@ -92,7 +91,7 @@ export class TransactionService {
   /**
    * Execute a Safe transaction (when threshold is met)
    */
-  async executeTransaction(safeTransaction: SafeTransaction): Promise<ethers.ContractTransaction> {
+  async executeTransaction(safeTransaction: any): Promise<any> {
     try {
       return await safeWalletService.executeTransaction(safeTransaction);
     } catch (error) {
