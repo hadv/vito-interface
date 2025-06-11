@@ -41,10 +41,13 @@ export class SafeWalletService {
       this.signer = signer;
     }
 
+    // Get user address for mock data
+    const userAddress = signer ? await signer.getAddress() : '0x0000000000000000000000000000000000000000';
+
     // Mock Safe instance for now
     this.safe = {
       getAddress: () => config.safeAddress,
-      getOwners: () => [await signer?.getAddress() || '0x0000000000000000000000000000000000000000'],
+      getOwners: () => [userAddress],
       getThreshold: () => 1,
       getBalance: () => ethers.utils.parseEther('1.0'),
       getChainId: () => this.provider?.getNetwork().then(n => n.chainId) || 1,
