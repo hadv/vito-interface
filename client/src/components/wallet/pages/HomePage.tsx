@@ -4,6 +4,7 @@ import { Asset, Transaction } from '../types';
 import { formatWalletAddress } from '@utils';
 import { theme } from '../../../theme';
 import { Card, Badge } from '../../ui';
+import TransactionModal from '../components/TransactionModal';
 
 const Container = styled.div`
   padding: 0;
@@ -134,6 +135,7 @@ interface HomePageProps {
   walletAddress: string;
   ensName?: string;
   network: string;
+  onTransactionCreated?: (transaction: any) => void;
 }
 
 // Mock data - In a real app these would be fetched from an API
@@ -166,7 +168,19 @@ const mockPendingTransactions: Transaction[] = [
   }
 ];
 
-const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network }) => {
+const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, onTransactionCreated }) => {
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+
+  const handleSendTokensClick = () => {
+    setIsTransactionModalOpen(true);
+  };
+
+  const handleTransactionCreated = (transaction: any) => {
+    if (onTransactionCreated) {
+      onTransactionCreated(transaction);
+    }
+  };
+
   const quickActions = [
     {
       icon: (
@@ -258,7 +272,13 @@ const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network }) 
 
         <QuickActionsGrid>
           {quickActions.map((action, index) => (
-            <ActionCard key={index} variant="glass" padding="lg" hover>
+            <ActionCard
+              key={index}
+              variant="glass"
+              padding="lg"
+              hover
+              onClick={index === 0 ? handleSendTokensClick : undefined}
+            >
               <ActionIcon>{action.icon}</ActionIcon>
               <ActionTitle>{action.title}</ActionTitle>
               <ActionDescription>{action.description}</ActionDescription>
@@ -266,6 +286,13 @@ const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network }) 
           ))}
         </QuickActionsGrid>
       </QuickActionsSection>
+
+      <TransactionModal
+        isOpen={isTransactionModalOpen}
+        onClose={() => setIsTransactionModalOpen(false)}
+        onTransactionCreated={handleTransactionCreated}
+        fromAddress={walletAddress}
+      />
     </Container>
   );
 };
