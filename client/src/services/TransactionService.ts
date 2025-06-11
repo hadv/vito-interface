@@ -42,7 +42,7 @@ export class TransactionService {
       const safeTransaction = await safeWalletService.createTransaction(transactionRequest);
       
       // Get transaction hash
-      const safeTxHash = await safeWalletService.safe!.getTransactionHash(safeTransaction);
+      const safeTxHash = safeWalletService.getTransactionHash(safeTransaction);
       
       // Sign the transaction
       const signedTransaction = await safeWalletService.signTransaction(safeTransaction);

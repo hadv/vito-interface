@@ -1,30 +1,41 @@
-# Safe Wallet Integration
+# Safe Wallet Integration with SafeTxPool Contract
 
-This document describes the implementation of Safe Wallet transaction signing and submission functionality in the Vito interface.
+This document describes the implementation of Safe Wallet transaction signing and submission functionality in the Vito interface, integrated with the custom SafeTxPool smart contract.
 
 ## Overview
 
 The integration enables users to:
 - Connect to their Safe multi-signature wallets
-- Create and sign transactions
-- Submit transactions to the blockchain
-- Monitor transaction status and confirmations
-- View transaction history
+- Create and propose transactions via the SafeTxPool contract
+- Sign transactions and submit signatures to the pool
+- Monitor transaction status and confirmations from the pool
+- Execute transactions when threshold is met
+- View pending transactions from the SafeTxPool
 
 ## Architecture
 
 ### Services
 
-#### 1. SafeWalletService (`client/src/services/SafeWalletService.ts`)
-Core service for Safe wallet operations using the Safe Protocol Kit.
+#### 1. SafeTxPoolService (`client/src/services/SafeTxPoolService.ts`)
+Core service for interacting with the SafeTxPool smart contract.
 
 **Key Features:**
-- Initialize Safe wallet connection
-- Create Safe transactions
-- Sign transactions with connected wallet
-- Execute transactions when threshold is met
+- Propose transactions to the SafeTxPool contract
+- Sign proposed transactions and submit signatures
+- Retrieve pending transactions from the pool
+- Mark transactions as executed
+- Generate transaction hashes
+- Listen for contract events
+
+#### 2. SafeWalletService (`client/src/services/SafeWalletService.ts`)
+High-level service that integrates SafeTxPool with Safe wallet operations.
+
+**Key Features:**
+- Initialize Safe wallet connection with SafeTxPool integration
+- Create Safe transactions and propose them to the pool
+- Sign transactions and submit signatures to the pool
 - Get Safe information (owners, threshold, balance)
-- Retrieve transaction history and pending transactions
+- Retrieve pending transactions from SafeTxPool
 
 #### 2. TransactionService (`client/src/services/TransactionService.ts`)
 High-level service for transaction management.
@@ -78,16 +89,40 @@ Replaced mock implementations with real Safe SDK integration.
 
 ## Usage
 
-### 1. Connecting to a Safe Wallet
+### 1. Connecting to a Safe Wallet with SafeTxPool
 
 ```typescript
 import { walletConnectionService } from './services/WalletConnectionService';
 
-// Connect to Safe wallet
+// Connect to Safe wallet (automatically initializes SafeTxPool integration)
 await walletConnectionService.connectWallet({
   safeAddress: '0x...', // Safe wallet address
   network: 'ethereum'   // Network name
 });
+```
+
+### 1.1. Direct SafeTxPool Usage
+
+```typescript
+import { SafeTxPoolService } from './services/SafeTxPoolService';
+
+// Create SafeTxPool service
+const safeTxPool = new SafeTxPoolService('ethereum');
+safeTxPool.setSigner(signer);
+
+// Propose a transaction
+const txHash = await safeTxPool.proposeTx({
+  safe: '0x...',
+  to: '0x...',
+  value: '1000000000000000000', // 1 ETH in wei
+  data: '0x',
+  operation: 0,
+  nonce: 123
+});
+
+// Sign the transaction
+const signature = await signer.signMessage(ethers.utils.arrayify(txHash));
+await safeTxPool.signTx(txHash, signature);
 ```
 
 ### 2. Creating a Transaction
@@ -140,15 +175,29 @@ REACT_APP_ALCHEMY_KEY=your_alchemy_key_here
 - **Sepolia Testnet**: For testing and development
 - **Arbitrum One**: Layer 2 scaling solution
 
-## Transaction Flow
+## Transaction Flow with SafeTxPool
 
 1. **User initiates transaction** via UI (TransactionModal)
 2. **Transaction validation** (address format, amount, balance)
-3. **Safe transaction creation** using Safe Protocol Kit
-4. **Transaction signing** with user's connected wallet
-5. **Transaction proposal** to Safe API (for multi-sig approval)
-6. **Execution** when threshold signatures are collected
-7. **Status monitoring** and user feedback
+3. **Transaction proposal** to SafeTxPool contract via `proposeTx()`
+4. **Transaction hash generation** based on transaction parameters
+5. **Transaction signing** with user's connected wallet
+6. **Signature submission** to SafeTxPool via `signTx()`
+7. **Multi-signature collection** from other Safe owners
+8. **Transaction execution** when threshold is met
+9. **Execution marking** in SafeTxPool via `markAsExecuted()`
+10. **Status monitoring** and user feedback
+
+### SafeTxPool Contract Integration
+
+The SafeTxPool contract (`SafeTxPool.sol`) provides the following key functions:
+
+- **`proposeTx()`**: Propose a new Safe transaction to the pool
+- **`signTx()`**: Sign a proposed transaction
+- **`markAsExecuted()`**: Mark a transaction as executed
+- **`getTxDetails()`**: Get transaction details
+- **`getPendingTxHashes()`**: Get pending transaction hashes for a Safe
+- **`hasSignedTx()`**: Check if an address has signed a transaction
 
 ## Multi-Signature Workflow
 

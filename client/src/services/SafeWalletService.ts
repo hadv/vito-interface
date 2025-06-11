@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { safeTxPoolService, SafeTxPoolService } from './SafeTxPoolService';
 
 export interface SafeWalletConfig {
   safeAddress: string;
@@ -26,6 +27,7 @@ export class SafeWalletService {
   private provider: ethers.providers.Provider | null = null;
   private signer: ethers.Signer | null = null;
   private config: SafeWalletConfig | null = null;
+  private safeTxPoolService: SafeTxPoolService | null = null;
 
   /**
    * Initialize the Safe Wallet Service
@@ -39,6 +41,12 @@ export class SafeWalletService {
     // Use provided signer or create a read-only provider
     if (signer) {
       this.signer = signer;
+    }
+
+    // Initialize SafeTxPool service
+    this.safeTxPoolService = new SafeTxPoolService(config.network);
+    if (this.signer) {
+      this.safeTxPoolService.setSigner(this.signer);
     }
 
     // Get user address for mock data
@@ -112,37 +120,75 @@ export class SafeWalletService {
   }
 
   /**
-   * Create a Safe transaction
+   * Create a Safe transaction and propose it to the SafeTxPool
    */
   async createTransaction(transactionRequest: TransactionRequest): Promise<any> {
     this.ensureInitialized();
 
-    const safeTransactionData = {
-      to: transactionRequest.to,
-      value: transactionRequest.value,
-      data: transactionRequest.data || '0x',
-      operation: transactionRequest.operation || 0
-    };
+    if (!this.safeTxPoolService) {
+      throw new Error('SafeTxPool service not initialized');
+    }
 
-    const safeTransaction = await this.safe!.createTransaction({
-      transactions: [safeTransactionData]
-    });
+    try {
+      // Get current nonce for the Safe
+      const nonce = await this.getNonce();
 
-    return safeTransaction;
+      // Propose transaction to SafeTxPool contract
+      const txHash = await this.safeTxPoolService.proposeTx({
+        safe: this.config!.safeAddress,
+        to: transactionRequest.to,
+        value: transactionRequest.value,
+        data: transactionRequest.data || '0x',
+        operation: transactionRequest.operation || 0,
+        nonce
+      });
+
+      // Return transaction data with hash
+      return {
+        data: {
+          to: transactionRequest.to,
+          value: transactionRequest.value,
+          data: transactionRequest.data || '0x',
+          operation: transactionRequest.operation || 0,
+          nonce
+        },
+        txHash
+      };
+    } catch (error) {
+      console.error('Error creating transaction:', error);
+      throw error;
+    }
   }
 
   /**
-   * Sign a Safe transaction
+   * Sign a Safe transaction and submit signature to SafeTxPool
    */
   async signTransaction(safeTransaction: any): Promise<any> {
     this.ensureInitialized();
 
-    if (!this.signer) {
-      throw new Error('No signer available. Cannot sign transaction.');
+    if (!this.signer || !this.safeTxPoolService) {
+      throw new Error('No signer available or SafeTxPool service not initialized.');
     }
 
-    const signedTransaction = await this.safe!.signTransaction(safeTransaction);
-    return signedTransaction;
+    try {
+      // Get transaction hash
+      const txHash = safeTransaction.txHash;
+
+      // Sign the transaction hash
+      const signature = await this.signer.signMessage(ethers.utils.arrayify(txHash));
+
+      // Submit signature to SafeTxPool contract
+      await this.safeTxPoolService.signTx(txHash, signature);
+
+      // Return signed transaction with signature
+      return {
+        ...safeTransaction,
+        signature
+      };
+    } catch (error) {
+      console.error('Error signing transaction:', error);
+      throw error;
+    }
   }
 
   /**
@@ -160,42 +206,48 @@ export class SafeWalletService {
   }
 
   /**
-   * Get pending transactions for the Safe
+   * Get pending transactions for the Safe from SafeTxPool
    */
   async getPendingTransactions(): Promise<any[]> {
     this.ensureInitialized();
 
-    // Mock pending transactions
-    return [
-      {
-        safeTxHash: '0x123...',
-        to: '0xabcd...',
-        value: '1000000000000000000',
+    if (!this.safeTxPoolService) {
+      throw new Error('SafeTxPool service not initialized');
+    }
+
+    try {
+      const pendingTxs = await this.safeTxPoolService.getPendingTransactions(this.config!.safeAddress);
+
+      return pendingTxs.map(tx => ({
+        safeTxHash: tx.txHash,
+        to: tx.to,
+        value: tx.value,
+        data: tx.data,
+        operation: tx.operation,
         isExecuted: false,
-        confirmations: [],
-        submissionDate: new Date().toISOString()
-      }
-    ];
+        confirmations: tx.signatures,
+        submissionDate: new Date().toISOString(), // SafeTxPool doesn't store submission date
+        proposer: tx.proposer,
+        nonce: tx.nonce,
+        txId: tx.txId
+      }));
+    } catch (error) {
+      console.error('Error getting pending transactions:', error);
+      return [];
+    }
   }
 
   /**
    * Get transaction history for the Safe
+   * Note: SafeTxPool only stores pending transactions, executed ones are removed
    */
   async getTransactionHistory(): Promise<any[]> {
     this.ensureInitialized();
 
-    // Mock transaction history
-    return [
-      {
-        safeTxHash: '0x456...',
-        to: '0xefgh...',
-        value: '500000000000000000',
-        isExecuted: true,
-        confirmations: [{ owner: '0x789...' }],
-        submissionDate: new Date(Date.now() - 86400000).toISOString(),
-        transactionHash: '0x789...'
-      }
-    ];
+    // For now, return empty array since SafeTxPool removes executed transactions
+    // In a full implementation, you might want to query blockchain events
+    // or maintain a separate history service
+    return [];
   }
 
   /**
@@ -206,6 +258,41 @@ export class SafeWalletService {
 
     const owners = await this.safe!.getOwners();
     return owners.includes(address);
+  }
+
+  /**
+   * Get the current nonce for the Safe
+   */
+  async getNonce(): Promise<number> {
+    this.ensureInitialized();
+
+    // For mock implementation, return a simple incrementing nonce
+    // In a real implementation, this would query the Safe contract
+    return Date.now() % 1000000; // Simple mock nonce
+  }
+
+  /**
+   * Get transaction hash for a transaction
+   */
+  getTransactionHash(safeTransaction: any): string {
+    if (safeTransaction.txHash) {
+      return safeTransaction.txHash;
+    }
+
+    // Generate hash from transaction data
+    if (this.safeTxPoolService) {
+      return this.safeTxPoolService.generateTxHash({
+        safe: this.config!.safeAddress,
+        to: safeTransaction.data.to,
+        value: safeTransaction.data.value,
+        data: safeTransaction.data.data,
+        operation: safeTransaction.data.operation,
+        nonce: safeTransaction.data.nonce
+      });
+    }
+
+    // Fallback to simple hash
+    return `0x${Date.now().toString(16)}`;
   }
 }
 
