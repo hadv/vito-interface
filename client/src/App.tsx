@@ -220,9 +220,7 @@ function App() {
   const [isLoadingEns, setIsLoadingEns] = useState(false);
   const [networkSelectorOpen, setNetworkSelectorOpen] = useState(false);
 
-  const handleNetworkChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setNetwork(e.target.value);
-  };
+  // Network change is handled by selectNetwork function in the UI
 
   // Resolve ENS name when wallet address changes
   useEffect(() => {

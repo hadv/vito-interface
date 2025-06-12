@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { createSafeWallet, sendTransaction, connectSafeWallet } from '@models/SafeWallet';
+import { createSafeWallet, connectSafeWallet } from '@models/SafeWallet';
 import { walletConnectionService } from '../../services/WalletConnectionService';
 import { theme } from '../../theme';
 

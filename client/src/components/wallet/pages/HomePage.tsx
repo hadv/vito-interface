@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Asset, Transaction } from '../types';
 import { formatWalletAddress } from '@utils';
 import { theme } from '../../../theme';
-import { Card, Badge } from '../../ui';
+import { Card } from '../../ui';
 import TransactionModal from '../components/TransactionModal';
 
 const Container = styled.div`
@@ -139,13 +139,13 @@ interface HomePageProps {
 }
 
 // Mock data - In a real app these would be fetched from an API
-const mockAssets: Asset[] = [
-  { symbol: 'ETH', name: 'Ethereum', balance: '1.23', value: '$2,460', type: 'native' },
-  { symbol: 'USDC', name: 'USD Coin', balance: '1,000', value: '$1,000', type: 'erc20' },
-  { symbol: 'UNI', name: 'Uniswap', balance: '50', value: '$450', type: 'erc20' },
-];
+// const mockAssets: Asset[] = [
+//   { symbol: 'ETH', name: 'Ethereum', balance: '1.23', value: '$2,460', type: 'native' },
+//   { symbol: 'USDC', name: 'USD Coin', balance: '1,000', value: '$1,000', type: 'erc20' },
+//   { symbol: 'UNI', name: 'Uniswap', balance: '50', value: '$450', type: 'erc20' },
+// ];
 
-const mockPendingTransactions: Transaction[] = [
+// const mockPendingTransactions: Transaction[] = [
   { 
     id: 'tx1', 
     from: '0x1234567890abcdef1234567890abcdef12345678', 
@@ -166,7 +166,7 @@ const mockPendingTransactions: Transaction[] = [
     type: 'receive',
     token: 'USDC'
   }
-];
+// ];
 
 const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, onTransactionCreated }) => {
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);

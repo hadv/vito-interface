@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { SafeTxPoolService } from './SafeTxPoolService';
-import { SAFE_ABI, NETWORK_CONFIGS } from '../contracts/abis';
+import { SAFE_ABI } from '../contracts/abis';
 import { getProviderForNetwork } from '../utils/ens';
 
 export interface SafeWalletConfig {

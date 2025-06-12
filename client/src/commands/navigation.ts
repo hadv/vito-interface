@@ -1,5 +1,5 @@
 // Navigation command handlers
-import { MenuSection } from '../components/wallet/types';
+// import { MenuSection } from '../components/wallet/types';
 
 const handleNavigationCommands = (
   command: string,

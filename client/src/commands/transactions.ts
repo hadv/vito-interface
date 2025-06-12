@@ -1,6 +1,6 @@
 // Transaction command handlers
 import { sendTransaction as sendSafeTransaction } from '../models/SafeWallet';
-import { transactionService } from '../services/TransactionService';
+// import { transactionService } from '../services/TransactionService';
 
 const handleTransactionCommands = (
   command: string,
@@ -14,7 +14,7 @@ const handleTransactionCommands = (
   switch (action) {
     case 'send':
       if (commandParts.length >= 4) {
-        const [_, from, to, amount] = commandParts;
+        const [, from, to, amount] = commandParts;
         handleSendTransaction(from, to, amount, callbacks.updateTransactions);
         return true;
       } else {
