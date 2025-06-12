@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import { ethers } from 'ethers';
 import { Button, Input } from '@components/ui';
-import { sendTransaction } from '../../../models/SafeWallet';
 import { isValidEthereumAddress } from '../../../utils/ens';
 import EIP712SigningModal from './EIP712SigningModal';
-import { SafeTransactionData } from '../../../utils/eip712';
+import { SafeTransactionData, SafeDomain } from '../../../utils/eip712';
+import { safeWalletService } from '../../../services/SafeWalletService';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -42,6 +43,48 @@ const ModalTitle = styled.h2`
   font-size: 20px;
   font-weight: 600;
   margin: 0;
+`;
+
+const StepIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+`;
+
+const StepBadge = styled.div<{ active: boolean; completed: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 600;
+  background: ${props =>
+    props.completed ? '#10b981' :
+    props.active ? '#3b82f6' : '#374151'
+  };
+  color: ${props => props.active || props.completed ? '#fff' : '#9ca3af'};
+`;
+
+const StepText = styled.span<{ active: boolean; completed: boolean }>`
+  font-size: 14px;
+  color: ${props =>
+    props.completed ? '#10b981' :
+    props.active ? '#3b82f6' : '#9ca3af'
+  };
+  font-weight: ${props => props.active ? '600' : '400'};
+`;
+
+const StepSeparator = styled.div`
+  width: 20px;
+  height: 2px;
+  background: #374151;
+  margin: 0 4px;
 `;
 
 const CloseButton = styled.button`
@@ -142,11 +185,12 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [currentStep, setCurrentStep] = useState<'form' | 'signing' | 'proposing'>('form');
   const [showEIP712Modal, setShowEIP712Modal] = useState(false);
   const [pendingTransaction, setPendingTransaction] = useState<{
     data: SafeTransactionData;
-    safeAddress: string;
-    chainId: number;
+    domain: SafeDomain;
+    txHash: string;
   } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -171,32 +215,28 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     }
 
     setIsLoading(true);
+    setCurrentStep('form');
 
     try {
-      // First create the transaction (this will show EIP-712 signing)
-      const transaction = await sendTransaction(
-        fromAddress || '',
-        toAddress,
-        amount
-      );
+      // Step 1: Create domain type EIP-712 transaction
+      const { safeTransactionData, domain, txHash } = await safeWalletService.createEIP712Transaction({
+        to: toAddress,
+        value: ethers.utils.parseEther(amount).toString(),
+        data: '0x',
+        operation: 0
+      });
 
-      setSuccess(`Transaction created and signed! Hash: ${transaction.safeTxHash}`);
-
-      if (onTransactionCreated) {
-        onTransactionCreated(transaction);
-      }
-
-      // Reset form
-      setTimeout(() => {
-        setToAddress('');
-        setAmount('');
-        setSuccess('');
-        onClose();
-      }, 2000);
+      // Set up for Step 2: Request user to sign
+      setPendingTransaction({
+        data: safeTransactionData,
+        domain,
+        txHash
+      });
+      setCurrentStep('signing');
+      setShowEIP712Modal(true);
 
     } catch (error: any) {
-      setError(error.message || 'Failed to create transaction');
-    } finally {
+      setError(error.message || 'Failed to create EIP-712 transaction');
       setIsLoading(false);
     }
   };
@@ -204,13 +244,51 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   const handleEIP712Sign = async () => {
     if (!pendingTransaction) return;
 
+    setCurrentStep('signing');
+
     try {
-      // The actual signing will be handled by the SafeWalletService
-      // This is just to close the modal
+      // Step 2: Request user to sign
+      const signature = await safeWalletService.signEIP712Transaction(
+        pendingTransaction.data,
+        pendingTransaction.domain
+      );
+
       setShowEIP712Modal(false);
-      setPendingTransaction(null);
+      setCurrentStep('proposing');
+
+      // Step 3: Use signed transaction data to propose transaction on SafeTxPool contract
+      await safeWalletService.proposeSignedTransaction(
+        pendingTransaction.data,
+        pendingTransaction.txHash,
+        signature
+      );
+
+      setSuccess(`Transaction flow completed! Hash: ${pendingTransaction.txHash}`);
+
+      if (onTransactionCreated) {
+        onTransactionCreated({
+          ...pendingTransaction.data,
+          txHash: pendingTransaction.txHash,
+          signature
+        });
+      }
+
+      // Reset form
+      setTimeout(() => {
+        setToAddress('');
+        setAmount('');
+        setSuccess('');
+        setCurrentStep('form');
+        setPendingTransaction(null);
+        onClose();
+      }, 2000);
+
     } catch (error: any) {
-      setError(error.message || 'Failed to sign transaction');
+      setError(error.message || 'Failed to complete transaction flow');
+      setShowEIP712Modal(false);
+      setCurrentStep('form');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -230,6 +308,33 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
           <ModalTitle>Send Transaction</ModalTitle>
           <CloseButton onClick={onClose}>&times;</CloseButton>
         </ModalHeader>
+
+        <StepIndicator>
+          <StepBadge active={currentStep === 'form'} completed={currentStep !== 'form'}>
+            1
+          </StepBadge>
+          <StepText active={currentStep === 'form'} completed={currentStep !== 'form'}>
+            Create EIP-712 Transaction
+          </StepText>
+
+          <StepSeparator />
+
+          <StepBadge active={currentStep === 'signing'} completed={currentStep === 'proposing'}>
+            2
+          </StepBadge>
+          <StepText active={currentStep === 'signing'} completed={currentStep === 'proposing'}>
+            Sign Transaction
+          </StepText>
+
+          <StepSeparator />
+
+          <StepBadge active={currentStep === 'proposing'} completed={false}>
+            3
+          </StepBadge>
+          <StepText active={currentStep === 'proposing'} completed={false}>
+            Propose to SafeTxPool
+          </StepText>
+        </StepIndicator>
 
         <form onSubmit={handleSubmit}>
           <FormGroup>
@@ -293,7 +398,12 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
               variant="primary"
               disabled={isLoading || !toAddress || !amount}
             >
-              {isLoading ? 'Creating...' : 'Create Transaction'}
+              {isLoading ?
+                (currentStep === 'form' ? 'Creating EIP-712 Transaction...' :
+                 currentStep === 'signing' ? 'Waiting for Signature...' :
+                 'Proposing to SafeTxPool...') :
+                'Create EIP-712 Transaction'
+              }
             </Button>
           </ButtonGroup>
         </form>
@@ -305,11 +415,13 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             onClose={() => {
               setShowEIP712Modal(false);
               setPendingTransaction(null);
+              setCurrentStep('form');
+              setIsLoading(false);
             }}
             onSign={handleEIP712Sign}
             transactionData={pendingTransaction.data}
-            safeAddress={pendingTransaction.safeAddress}
-            chainId={pendingTransaction.chainId}
+            safeAddress={pendingTransaction.domain.verifyingContract}
+            chainId={pendingTransaction.domain.chainId}
           />
         )}
       </ModalContainer>

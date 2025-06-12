@@ -177,18 +177,28 @@ REACT_APP_ALCHEMY_KEY=your_alchemy_key_here
 
 ## Transaction Flow with SafeTxPool and EIP-712
 
-1. **User initiates transaction** via UI (TransactionModal)
-2. **Transaction validation** (address format, amount, balance)
-3. **EIP-712 signing request** - Structured data signing for security
-4. **Transaction proposal** to SafeTxPool contract via `proposeTx()`
-5. **Transaction hash generation** based on transaction parameters
-6. **EIP-712 signature generation** with domain separation and structured data
-7. **Signature submission** to SafeTxPool via `signTx()`
-8. **Multi-signature collection** from other Safe owners (each using EIP-712)
-9. **Signature combination** with proper sorting for Safe execution
-10. **Transaction execution** when threshold is met via `Safe.execTransaction()`
-11. **Execution marking** in SafeTxPool via `markAsExecuted()`
-12. **Status monitoring** and user feedback
+### **Exact Implementation Flow:**
+
+#### **Step 1: Create Domain Type EIP-712 Transaction**
+- User initiates transaction via UI (TransactionModal)
+- Transaction validation (address format, amount, balance)
+- Create Safe transaction data structure with nonce, gas parameters
+- Generate EIP-712 domain with chainId and Safe address
+- Create EIP-712 transaction hash for SafeTxPool
+
+#### **Step 2: Request User to Sign**
+- Display EIP-712 signing modal with transaction details
+- User reviews structured transaction data in wallet
+- User signs EIP-712 typed data with domain separation
+- Signature generated with Safe-specific domain
+
+#### **Step 3: Use Signed Transaction Data to Propose Transaction on SafeTxPool Contract**
+- Call `SafeTxPool.proposeTx()` with EIP-712 transaction hash
+- Submit user's signature via `SafeTxPool.signTx()`
+- Transaction stored in SafeTxPool with EIP-712 hash as identifier
+- Multi-signature collection from other Safe owners
+- Transaction execution when threshold is met
+- Mark as executed via `SafeTxPool.markAsExecuted()`
 
 ### EIP-712 Structured Data Signing
 

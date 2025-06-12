@@ -121,21 +121,29 @@ export class SafeWalletService {
   }
 
   /**
-   * Create a Safe transaction and propose it to the SafeTxPool using EIP-712 hash
+   * Step 1: Create domain type EIP-712 transaction
    */
-  async createTransaction(transactionRequest: TransactionRequest): Promise<SafeTransactionData & { txHash: string }> {
+  async createEIP712Transaction(transactionRequest: TransactionRequest): Promise<{
+    safeTransactionData: SafeTransactionData;
+    domain: SafeDomain;
+    txHash: string;
+  }> {
     this.ensureInitialized();
 
-    if (!this.safeTxPoolService || !this.safeContract || !this.provider) {
-      throw new Error('SafeTxPool service, Safe contract, or provider not initialized');
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
     }
 
     try {
       // Get current nonce for the Safe
       const nonce = await this.getNonce();
 
-      // Get network info for EIP-712
+      // Get network info for EIP-712 domain
       const network = await this.provider.getNetwork();
+      const domain: SafeDomain = {
+        chainId: network.chainId,
+        verifyingContract: this.config!.safeAddress
+      };
 
       // Create Safe transaction data with default gas parameters
       const safeTransactionData: SafeTransactionData = {
@@ -151,8 +159,63 @@ export class SafeWalletService {
         nonce
       };
 
-      // Propose transaction to SafeTxPool contract with EIP-712 hash
-      const txHash = await this.safeTxPoolService.proposeTx({
+      // Generate EIP-712 transaction hash
+      const txHash = await this.getEIP712TransactionHash(safeTransactionData);
+
+      return {
+        safeTransactionData,
+        domain,
+        txHash
+      };
+    } catch (error) {
+      console.error('Error creating EIP-712 transaction:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Step 2: Request user to sign EIP-712 transaction
+   */
+  async signEIP712Transaction(
+    safeTransactionData: SafeTransactionData,
+    domain: SafeDomain
+  ): Promise<string> {
+    this.ensureInitialized();
+
+    if (!this.signer) {
+      throw new Error('No signer available.');
+    }
+
+    try {
+      // Sign using EIP-712 typed data
+      const signature = await signSafeTransaction(this.signer, domain, safeTransactionData);
+      return signature;
+    } catch (error) {
+      console.error('Error signing EIP-712 transaction:', error);
+      throw new Error(`Failed to sign transaction: ${error}`);
+    }
+  }
+
+  /**
+   * Step 3: Use signed transaction data to propose transaction on SafeTxPool contract
+   */
+  async proposeSignedTransaction(
+    safeTransactionData: SafeTransactionData,
+    txHash: string,
+    signature: string
+  ): Promise<void> {
+    this.ensureInitialized();
+
+    if (!this.safeTxPoolService || !this.provider) {
+      throw new Error('SafeTxPool service or provider not initialized');
+    }
+
+    try {
+      // Get network info
+      const network = await this.provider.getNetwork();
+
+      // Propose transaction to SafeTxPool contract
+      await this.safeTxPoolService.proposeTx({
         safe: this.config!.safeAddress,
         to: safeTransactionData.to,
         value: safeTransactionData.value,
@@ -161,12 +224,35 @@ export class SafeWalletService {
         nonce: safeTransactionData.nonce
       }, network.chainId);
 
+      // Submit the signature to SafeTxPool
+      await this.safeTxPoolService.signTx(txHash, signature);
+    } catch (error) {
+      console.error('Error proposing signed transaction:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Complete transaction flow: Create EIP-712 → Sign → Propose
+   */
+  async createTransaction(transactionRequest: TransactionRequest): Promise<SafeTransactionData & { txHash: string; signature: string }> {
+    try {
+      // Step 1: Create domain type EIP-712 transaction
+      const { safeTransactionData, domain, txHash } = await this.createEIP712Transaction(transactionRequest);
+
+      // Step 2: Request user to sign
+      const signature = await this.signEIP712Transaction(safeTransactionData, domain);
+
+      // Step 3: Use signed transaction data to propose transaction on SafeTxPool contract
+      await this.proposeSignedTransaction(safeTransactionData, txHash, signature);
+
       return {
         ...safeTransactionData,
-        txHash
+        txHash,
+        signature
       };
     } catch (error) {
-      console.error('Error creating transaction:', error);
+      console.error('Error in complete transaction flow:', error);
       throw error;
     }
   }
