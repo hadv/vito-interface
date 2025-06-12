@@ -3,10 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@safe-global/api-kit": "^3.0.2",
-    "@safe-global/protocol-kit": "^6.0.5",
-    "@safe-global/safe-apps-sdk": "^9.1.0",
-    "@safe-global/types-kit": "^2.0.1",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
