@@ -121,18 +121,21 @@ export class SafeWalletService {
   }
 
   /**
-   * Create a Safe transaction and propose it to the SafeTxPool
+   * Create a Safe transaction and propose it to the SafeTxPool using EIP-712 hash
    */
   async createTransaction(transactionRequest: TransactionRequest): Promise<SafeTransactionData & { txHash: string }> {
     this.ensureInitialized();
 
-    if (!this.safeTxPoolService || !this.safeContract) {
-      throw new Error('SafeTxPool service or Safe contract not initialized');
+    if (!this.safeTxPoolService || !this.safeContract || !this.provider) {
+      throw new Error('SafeTxPool service, Safe contract, or provider not initialized');
     }
 
     try {
       // Get current nonce for the Safe
       const nonce = await this.getNonce();
+
+      // Get network info for EIP-712
+      const network = await this.provider.getNetwork();
 
       // Create Safe transaction data with default gas parameters
       const safeTransactionData: SafeTransactionData = {
@@ -148,7 +151,7 @@ export class SafeWalletService {
         nonce
       };
 
-      // Propose transaction to SafeTxPool contract
+      // Propose transaction to SafeTxPool contract with EIP-712 hash
       const txHash = await this.safeTxPoolService.proposeTx({
         safe: this.config!.safeAddress,
         to: safeTransactionData.to,
@@ -156,7 +159,7 @@ export class SafeWalletService {
         data: safeTransactionData.data,
         operation: safeTransactionData.operation,
         nonce: safeTransactionData.nonce
-      });
+      }, network.chainId);
 
       return {
         ...safeTransactionData,

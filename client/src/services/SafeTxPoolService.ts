@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { SAFE_TX_POOL_ABI, NETWORK_CONFIGS } from '../contracts/abis';
 import { getProviderForNetwork } from '../utils/ens';
+import { createSafeContractTransactionHash, SafeTransactionData } from '../utils/eip712';
 
 export interface SafeTxPoolTransaction {
   txHash: string;
@@ -89,22 +90,36 @@ export class SafeTxPoolService {
   }
 
   /**
-   * Generate transaction hash for Safe transaction
+   * Generate EIP-712 transaction hash for Safe transaction
+   * This should match the hash used by Safe contracts
    */
-  generateTxHash(params: ProposeTransactionParams): string {
-    // Create a hash of the transaction parameters
-    // This should match the hash generation logic used by Safe
-    const encoded = ethers.utils.defaultAbiCoder.encode(
-      ['address', 'address', 'uint256', 'bytes', 'uint8', 'uint256'],
-      [params.safe, params.to, params.value, params.data, params.operation, params.nonce]
+  generateTxHash(params: ProposeTransactionParams, chainId: number): string {
+    // Create Safe transaction data structure
+    const safeTransactionData: SafeTransactionData = {
+      to: params.to,
+      value: params.value,
+      data: params.data,
+      operation: params.operation,
+      safeTxGas: '0', // Default values for gas parameters
+      baseGas: '0',
+      gasPrice: '0',
+      gasToken: ethers.constants.AddressZero,
+      refundReceiver: ethers.constants.AddressZero,
+      nonce: params.nonce
+    };
+
+    // Generate EIP-712 domain transaction hash
+    return createSafeContractTransactionHash(
+      params.safe,
+      chainId,
+      safeTransactionData
     );
-    return ethers.utils.keccak256(encoded);
   }
 
   /**
-   * Propose a new Safe transaction to the pool
+   * Propose a new Safe transaction to the pool using EIP-712 transaction hash
    */
-  async proposeTx(params: ProposeTransactionParams): Promise<string> {
+  async proposeTx(params: ProposeTransactionParams, chainId?: number): Promise<string> {
     if (!this.contract) {
       throw new Error('SafeTxPool contract not initialized. Check network configuration and contract address.');
     }
@@ -113,8 +128,18 @@ export class SafeTxPoolService {
     }
 
     try {
-      // Generate transaction hash
-      const txHash = this.generateTxHash(params);
+      // Get chainId if not provided
+      let networkChainId = chainId;
+      if (!networkChainId && this.provider) {
+        const network = await this.provider.getNetwork();
+        networkChainId = network.chainId;
+      }
+      if (!networkChainId) {
+        throw new Error('Unable to determine chain ID for EIP-712 hash generation');
+      }
+
+      // Generate EIP-712 transaction hash
+      const txHash = this.generateTxHash(params, networkChainId);
 
       // Call the proposeTx function on the contract
       const tx = await this.contract.proposeTx(

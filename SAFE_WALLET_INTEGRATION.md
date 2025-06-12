@@ -194,21 +194,34 @@ REACT_APP_ALCHEMY_KEY=your_alchemy_key_here
 
 The implementation uses **EIP-712** for secure, readable transaction signing:
 
-- **Domain Separation**: Each Safe has its own signing domain
+- **Domain Separation**: Each Safe has its own signing domain (chainId + Safe address)
 - **Structured Data**: Transaction details are clearly readable in wallet
 - **Type Safety**: Prevents signature replay attacks
 - **User Experience**: Wallets show human-readable transaction details
+- **Hash Consistency**: Same EIP-712 hash used for signing and SafeTxPool storage
+
+#### EIP-712 Hash Usage Flow:
+
+1. **Transaction Creation**: Generate EIP-712 hash from Safe transaction data
+2. **SafeTxPool Proposal**: Use EIP-712 hash as `txHash` in `proposeTx()`
+3. **User Signing**: Sign the same EIP-712 structured data
+4. **Signature Submission**: Submit signature to SafeTxPool with same `txHash`
+5. **Verification**: All parties use the same EIP-712 hash for consistency
+
+This ensures that the hash used for signing is identical to the hash stored in the SafeTxPool contract, providing end-to-end consistency and security.
 
 ### SafeTxPool Contract Integration
 
 The SafeTxPool contract (`SafeTxPool.sol`) provides the following key functions:
 
-- **`proposeTx()`**: Propose a new Safe transaction to the pool
-- **`signTx()`**: Sign a proposed transaction
-- **`markAsExecuted()`**: Mark a transaction as executed
-- **`getTxDetails()`**: Get transaction details
-- **`getPendingTxHashes()`**: Get pending transaction hashes for a Safe
-- **`hasSignedTx()`**: Check if an address has signed a transaction
+- **`proposeTx(txHash, ...)`**: Propose a new Safe transaction using **EIP-712 transaction hash**
+- **`signTx(txHash, signature)`**: Sign a proposed transaction with **EIP-712 signature**
+- **`markAsExecuted(txHash)`**: Mark a transaction as executed
+- **`getTxDetails(txHash)`**: Get transaction details by **EIP-712 hash**
+- **`getPendingTxHashes(safe, ...)`**: Get pending transaction hashes for a Safe
+- **`hasSignedTx(txHash, signer)`**: Check if an address has signed a transaction
+
+**Key Integration Point**: The `txHash` parameter in all SafeTxPool functions uses the **EIP-712 domain transaction hash**, ensuring consistency between the signing process and the contract storage.
 
 ## Multi-Signature Workflow
 
