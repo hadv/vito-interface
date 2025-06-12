@@ -49,10 +49,18 @@
     ]
   },
   "devDependencies": {
+    "assert": "^2.1.0",
     "autoprefixer": "^10.4.21",
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.1",
     "customize-cra": "^1.0.0",
+    "os-browserify": "^0.3.0",
+    "path-browserify": "^1.0.1",
     "postcss": "^8.5.4",
     "react-app-rewired": "^2.2.1",
-    "tailwindcss": "^4.1.8"
+    "stream-browserify": "^3.0.0",
+    "tailwindcss": "^4.1.8",
+    "url": "^0.11.4",
+    "util": "^0.12.5"
   }
 }

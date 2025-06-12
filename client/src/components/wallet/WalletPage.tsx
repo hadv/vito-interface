@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { createMockSafeWallet, sendTransaction } from '@models/SafeWallet';
+import { createSafeWallet, connectSafeWallet } from '@models/SafeWallet';
+import { walletConnectionService } from '../../services/WalletConnectionService';
 import { theme } from '../../theme';
 
 // Import refactored components
@@ -103,6 +104,11 @@ const WalletPage: React.FC<WalletPageProps> = ({
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showQRCode, setShowQRCode] = useState(false);
+
+  const handleTransactionCreated = (transaction: any) => {
+    // Add the new transaction to the list
+    setTransactions(prev => [transaction, ...prev]);
+  };
   const [currentNetwork, setCurrentNetwork] = useState(network);
   const menuRef = React.useRef<HTMLDivElement>(null);
 
@@ -116,66 +122,65 @@ const WalletPage: React.FC<WalletPageProps> = ({
     setShowQRCode(!showQRCode);
   };
 
-  // Initialize mock wallet data
+  // Initialize Safe wallet data
   useEffect(() => {
     const loadWallet = async () => {
       setIsLoading(true);
       try {
-        const wallet = createMockSafeWallet();
-        
-        // Create mock assets
+        // First connect to Safe wallet if not already connected
+        if (walletAddress && !walletConnectionService.isConnected()) {
+          await connectSafeWallet(walletAddress, network || 'ethereum');
+        }
+
+        // Load wallet data from Safe services
+        const wallet = await createSafeWallet();
+
+        // Create assets based on Safe balance (simplified for now)
         const mockAssets: Asset[] = [
           {
             symbol: 'ETH',
             name: 'Ethereum',
-            balance: '10.5',
-            value: '$21,000',
+            balance: wallet.accounts[0]?.balance || '0',
+            value: `$${(parseFloat(wallet.accounts[0]?.balance || '0') * 2000).toFixed(2)}`, // Mock ETH price
             type: 'native'
           },
+          // TODO: Add ERC20 token detection and balances
           {
             symbol: 'USDC',
             name: 'USD Coin',
-            balance: '5000',
-            value: '$5,000',
-            type: 'erc20'
-          },
-          {
-            symbol: 'DAI',
-            name: 'Dai Stablecoin',
-            balance: '2500',
-            value: '$2,500',
-            type: 'erc20'
-          },
-          {
-            symbol: 'LINK',
-            name: 'Chainlink',
-            balance: '150',
-            value: '$1,875',
+            balance: '0',
+            value: '$0',
             type: 'erc20'
           }
         ];
-        
+
         setAssets(mockAssets);
         setTransactions(wallet.transactions);
       } catch (error) {
-        console.error('Error loading wallet:', error);
+        console.error('Error loading Safe wallet:', error);
+        // Fall back to empty state on error
+        setAssets([]);
+        setTransactions([]);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadWallet();
-  }, []);
+    if (walletAddress) {
+      loadWallet();
+    }
+  }, [walletAddress, network]);
 
   // Render appropriate content based on active section
   const renderContent = () => {
     switch (activeSection) {
       case 'home':
         return (
-          <HomePage 
+          <HomePage
             walletAddress={walletAddress}
             ensName={ensName}
             network={currentNetwork}
+            onTransactionCreated={handleTransactionCreated}
           />
         );
       case 'assets':

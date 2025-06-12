@@ -7,7 +7,7 @@ import { ethers } from 'ethers';
  */
 export const getProviderForNetwork = (network: string): ethers.providers.Provider => {
   // Use environment variables with fallbacks
-  const INFURA_KEY = process.env.REACT_APP_INFURA_KEY || 'YOUR_INFURA_KEY';
+  // const INFURA_KEY = process.env.REACT_APP_INFURA_KEY || 'YOUR_INFURA_KEY';
   const ALCHEMY_KEY = process.env.REACT_APP_ALCHEMY_KEY || 'YOUR_ALCHEMY_KEY';
 
   switch(network.toLowerCase()) {

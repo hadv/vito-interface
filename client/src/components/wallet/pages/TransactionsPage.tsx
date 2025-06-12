@@ -101,11 +101,11 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
   isLoading 
 }) => {
   // Derive transaction type based on from/to addresses
-  const getTransactionType = (tx: Transaction, walletAddress?: string): 'send' | 'receive' | 'contract' => {
-    // This is a placeholder implementation
-    // In a real app, would compare tx.from/to with current wallet address
-    return tx.from === walletAddress ? 'send' : 'receive';
-  };
+  // const getTransactionType = (tx: Transaction, walletAddress?: string): 'send' | 'receive' | 'contract' => {
+  //   // This is a placeholder implementation
+  //   // In a real app, would compare tx.from/to with current wallet address
+  //   return tx.from === walletAddress ? 'send' : 'receive';
+  // };
   
   const formatDate = (timestamp: number): string => {
     return new Date(timestamp).toLocaleString();

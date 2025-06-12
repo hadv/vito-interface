@@ -1,16 +1,6 @@
 // Transaction command handlers
-
-// Mock function for sending transactions - replace with actual implementation
-const sendTransaction = async (from: string, to: string, amount: string) => {
-  return {
-    id: Date.now().toString(),
-    from,
-    to,
-    amount,
-    status: 'pending',
-    timestamp: new Date().toISOString()
-  };
-};
+import { sendTransaction as sendSafeTransaction } from '../models/SafeWallet';
+// import { transactionService } from '../services/TransactionService';
 
 const handleTransactionCommands = (
   command: string,
@@ -24,7 +14,7 @@ const handleTransactionCommands = (
   switch (action) {
     case 'send':
       if (commandParts.length >= 4) {
-        const [_, from, to, amount] = commandParts;
+        const [, from, to, amount] = commandParts;
         handleSendTransaction(from, to, amount, callbacks.updateTransactions);
         return true;
       } else {
@@ -38,18 +28,18 @@ const handleTransactionCommands = (
 
 // Helper function to handle send transaction logic
 const handleSendTransaction = async (
-  from: string, 
-  to: string, 
+  from: string,
+  to: string,
   amount: string,
   updateTransactions: (tx: any) => void
 ) => {
   try {
-    const tx = await sendTransaction(from, to, amount);
+    const tx = await sendSafeTransaction(from, to, amount);
     updateTransactions(tx);
-    alert(`Transaction initiated: ${amount} from ${from} to ${to}`);
-  } catch (error) {
-    console.error('Error sending transaction:', error);
-    alert('Failed to send transaction');
+    alert(`Safe transaction created: ${amount} ETH to ${to}\nTransaction Hash: ${tx.safeTxHash}\nStatus: ${tx.status}`);
+  } catch (error: any) {
+    console.error('Error sending Safe transaction:', error);
+    alert(`Failed to send transaction: ${error.message || 'Unknown error'}`);
   }
 };
 

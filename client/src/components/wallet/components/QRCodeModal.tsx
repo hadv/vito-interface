@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { formatWalletAddress, generateWalletAvatar } from '@utils';
+import { generateWalletAvatar } from '@utils';
+// import { formatWalletAddress } from '@utils';
 
 // Helper function to get QR code URL
 const getQRCodeUrl = (address: string): string => {

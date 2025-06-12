@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Asset, Transaction } from '../types';
 import { formatWalletAddress } from '@utils';
 import { theme } from '../../../theme';
-import { Card, Badge } from '../../ui';
+import { Card } from '../../ui';
+import TransactionModal from '../components/TransactionModal';
 
 const Container = styled.div`
   padding: 0;
@@ -134,39 +135,52 @@ interface HomePageProps {
   walletAddress: string;
   ensName?: string;
   network: string;
+  onTransactionCreated?: (transaction: any) => void;
 }
 
 // Mock data - In a real app these would be fetched from an API
-const mockAssets: Asset[] = [
-  { symbol: 'ETH', name: 'Ethereum', balance: '1.23', value: '$2,460', type: 'native' },
-  { symbol: 'USDC', name: 'USD Coin', balance: '1,000', value: '$1,000', type: 'erc20' },
-  { symbol: 'UNI', name: 'Uniswap', balance: '50', value: '$450', type: 'erc20' },
-];
+// const mockAssets: Asset[] = [
+//   { symbol: 'ETH', name: 'Ethereum', balance: '1.23', value: '$2,460', type: 'native' },
+//   { symbol: 'USDC', name: 'USD Coin', balance: '1,000', value: '$1,000', type: 'erc20' },
+//   { symbol: 'UNI', name: 'Uniswap', balance: '50', value: '$450', type: 'erc20' },
+// ];
 
-const mockPendingTransactions: Transaction[] = [
-  { 
-    id: 'tx1', 
-    from: '0x1234567890abcdef1234567890abcdef12345678', 
-    to: '0xabcdef1234567890abcdef1234567890abcdef12', 
-    amount: '0.5', 
-    status: 'pending', 
-    timestamp: Date.now() - 3600000,
-    type: 'send',
-    token: 'ETH'
-  },
-  { 
-    id: 'tx2', 
-    from: '0xfedcba0987654321fedcba0987654321fedcba09', 
-    to: '0x1234567890abcdef1234567890abcdef12345678', 
-    amount: '100', 
-    status: 'pending', 
-    timestamp: Date.now() - 7200000,
-    type: 'receive',
-    token: 'USDC'
-  }
-];
+// const mockPendingTransactions: Transaction[] = [
+//   {
+//     id: 'tx1',
+//     from: '0x1234567890abcdef1234567890abcdef12345678',
+//     to: '0xabcdef1234567890abcdef1234567890abcdef12',
+//     amount: '0.5',
+//     status: 'pending',
+//     timestamp: Date.now() - 3600000,
+//     type: 'send',
+//     token: 'ETH'
+//   },
+//   {
+//     id: 'tx2',
+//     from: '0xfedcba0987654321fedcba0987654321fedcba09',
+//     to: '0x1234567890abcdef1234567890abcdef12345678',
+//     amount: '100',
+//     status: 'pending',
+//     timestamp: Date.now() - 7200000,
+//     type: 'receive',
+//     token: 'USDC'
+//   }
+// ];
 
-const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network }) => {
+const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, onTransactionCreated }) => {
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+
+  const handleSendTokensClick = () => {
+    setIsTransactionModalOpen(true);
+  };
+
+  const handleTransactionCreated = (transaction: any) => {
+    if (onTransactionCreated) {
+      onTransactionCreated(transaction);
+    }
+  };
+
   const quickActions = [
     {
       icon: (
@@ -258,7 +272,13 @@ const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network }) 
 
         <QuickActionsGrid>
           {quickActions.map((action, index) => (
-            <ActionCard key={index} variant="glass" padding="lg" hover>
+            <ActionCard
+              key={index}
+              variant="glass"
+              padding="lg"
+              hover
+              onClick={index === 0 ? handleSendTokensClick : undefined}
+            >
               <ActionIcon>{action.icon}</ActionIcon>
               <ActionTitle>{action.title}</ActionTitle>
               <ActionDescription>{action.description}</ActionDescription>
@@ -266,6 +286,13 @@ const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network }) 
           ))}
         </QuickActionsGrid>
       </QuickActionsSection>
+
+      <TransactionModal
+        isOpen={isTransactionModalOpen}
+        onClose={() => setIsTransactionModalOpen(false)}
+        onTransactionCreated={handleTransactionCreated}
+        fromAddress={walletAddress}
+      />
     </Container>
   );
 };

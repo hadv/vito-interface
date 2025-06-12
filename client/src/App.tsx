@@ -3,6 +3,7 @@ import WalletPage from '@components/wallet/WalletPage';
 import { VitoContainer } from '@components/vitoUI';
 import { resolveAddressToEns, isValidEthereumAddress } from '@utils';
 import { Button, Input, Card, Badge } from '@components/ui';
+import { walletConnectionService } from './services/WalletConnectionService';
 import { cn } from './utils/cn';
 import './App.css';
 import logo from './logo.svg';
@@ -219,9 +220,7 @@ function App() {
   const [isLoadingEns, setIsLoadingEns] = useState(false);
   const [networkSelectorOpen, setNetworkSelectorOpen] = useState(false);
 
-  const handleNetworkChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setNetwork(e.target.value);
-  };
+  // Network change is handled by selectNetwork function in the UI
 
   // Resolve ENS name when wallet address changes
   useEffect(() => {
@@ -255,10 +254,23 @@ function App() {
     };
   }, [walletAddress, network, walletConnected]);
 
-  const connectWallet = () => {
+  const connectWallet = async () => {
     if (walletAddress.trim() && isValidEthereumAddress(walletAddress)) {
-      console.log(`Connecting to wallet: ${walletAddress} on network: ${network}`);
-      setWalletConnected(true);
+      try {
+        console.log(`Connecting to Safe wallet: ${walletAddress} on network: ${network}`);
+
+        await walletConnectionService.connectWallet({
+          safeAddress: walletAddress,
+          network: network
+        });
+
+        setWalletConnected(true);
+      } catch (error: any) {
+        console.error('Failed to connect to Safe wallet:', error);
+        alert(`Failed to connect to Safe wallet: ${error.message}`);
+      }
+    } else {
+      alert('Please enter a valid Safe wallet address');
     }
   };
   
@@ -269,8 +281,13 @@ function App() {
     // Use the centralized command processor
     processCommand(cmd, {
       connectWallet,
-      disconnectWallet: () => {
+      disconnectWallet: async () => {
         console.log('Disconnecting wallet');
+        try {
+          await walletConnectionService.disconnectWallet();
+        } catch (error) {
+          console.error('Error disconnecting wallet:', error);
+        }
         setWalletConnected(false);
         setWalletAddress('');
         setEnsName('');

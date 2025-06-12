@@ -11,7 +11,7 @@ export interface Transaction {
   from: string;
   to: string;
   amount: string;
-  status: 'pending' | 'completed' | 'failed';
+  status: 'pending' | 'completed' | 'failed' | 'confirmed' | 'executed';
   timestamp: number;
   type?: 'send' | 'receive' | 'swap' | 'contract';
   token?: string;
@@ -19,6 +19,10 @@ export interface Transaction {
   gasPrice?: string;
   description?: string;
   hash?: string;
+  safeTxHash?: string;
+  executionTxHash?: string;
+  confirmations?: number;
+  threshold?: number;
 }
 
 export type MenuSection = 'home' | 'assets' | 'transactions' | 'settings';
