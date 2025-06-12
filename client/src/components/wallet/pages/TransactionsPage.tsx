@@ -1,8 +1,10 @@
 import React from 'react';
 import styled from 'styled-components';
+import { ethers } from 'ethers';
 import { VitoList } from '@components/vitoUI';
 import { formatWalletAddress } from '@utils';
 import { Transaction } from '../types';
+import { useTransactionHistory, useMultipleTransactionStatus } from '../../../hooks/useTransactionStatus';
 
 // Format amount to display with token symbol
 const formatAmount = (amount: string): string => {
@@ -91,40 +93,125 @@ const DateText = styled.div`
   color: #9ca3af;
 `;
 
+const RefreshButton = styled.button`
+  background: #374151;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-bottom: 16px;
+
+  &:hover {
+    background: #4b5563;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const StatusIndicator = styled.div<{ status: string }>`
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  background-color: ${props =>
+    props.status === 'executed' ? '#10b981' :
+    props.status === 'confirmed' ? '#3b82f6' :
+    props.status === 'pending' ? '#f59e0b' :
+    '#ef4444'};
+`;
+
+const TransactionMeta = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+`;
+
+const ConfirmationCount = styled.span<{ hasEnough: boolean }>`
+  color: ${props => props.hasEnough ? '#10b981' : '#f59e0b'};
+  font-weight: 500;
+`;
+
 interface TransactionsPageProps {
-  transactions: Transaction[];
-  isLoading: boolean;
+  transactions?: Transaction[];
+  isLoading?: boolean;
 }
 
-const TransactionsPage: React.FC<TransactionsPageProps> = ({ 
-  transactions, 
-  isLoading 
+const TransactionsPage: React.FC<TransactionsPageProps> = ({
+  transactions: propTransactions,
+  isLoading: propIsLoading
 }) => {
-  // Derive transaction type based on from/to addresses
-  // const getTransactionType = (tx: Transaction, walletAddress?: string): 'send' | 'receive' | 'contract' => {
-  //   // This is a placeholder implementation
-  //   // In a real app, would compare tx.from/to with current wallet address
-  //   return tx.from === walletAddress ? 'send' : 'receive';
-  // };
-  
+  // const [useRealTimeData, setUseRealTimeData] = useState(true);
+
+  // Use real-time transaction history if no props provided
+  const {
+    transactions: realTimeTransactions,
+    isLoading: realTimeLoading,
+    error: historyError,
+    refresh: refreshHistory
+  } = useTransactionHistory(30000); // Refresh every 30 seconds
+
+  // Get transaction hashes for status monitoring
+  const transactionHashes = (propTransactions || realTimeTransactions)
+    .filter(tx => tx.safeTxHash)
+    .map(tx => tx.safeTxHash!);
+
+  // Monitor transaction statuses
+  const {
+    statuses,
+    isLoading: statusLoading,
+    refresh: refreshStatuses
+  } = useMultipleTransactionStatus(transactionHashes, 10000); // Poll every 10 seconds
+
+  // Use prop data if provided, otherwise use real-time data
+  const transactions = propTransactions || realTimeTransactions;
+  const isLoading = propIsLoading !== undefined ? propIsLoading : realTimeLoading;
+
   const formatDate = (timestamp: number): string => {
-    return new Date(timestamp).toLocaleString();
+    return new Date(timestamp * 1000).toLocaleString();
+  };
+
+  const handleRefresh = () => {
+    refreshHistory();
+    refreshStatuses();
   };
 
   const renderTransactionItem = (tx: Transaction, isSelected: boolean, isFocused: boolean) => {
     const txType = tx.type || 'contract';
-    
+    const currentStatus = tx.safeTxHash && statuses[tx.safeTxHash]
+      ? statuses[tx.safeTxHash]
+      : {
+          status: tx.status,
+          confirmations: tx.confirmations || 0,
+          blockNumber: tx.blockNumber,
+          gasUsed: tx.gasUsed,
+          gasPrice: tx.gasPrice,
+          executionTxHash: tx.executionTxHash,
+          timestamp: tx.timestamp
+        };
+
+    const hasEnoughConfirmations = currentStatus.confirmations >= (tx.threshold || 1);
+
     return (
       <TransactionItem>
         <TransactionHeader>
           <TransactionType txType={txType}>
+            <StatusIndicator status={currentStatus.status} />
             {txType.charAt(0).toUpperCase() + txType.slice(1)}
           </TransactionType>
           <TransactionAmount txType={txType}>
-            {txType === 'send' ? '-' : '+'}{formatAmount(tx.amount)} {tx.token || 'ETH'}
+            {txType === 'send' ? '-' : '+'}{formatAmount(tx.amount || tx.value || '0')} {tx.token || 'ETH'}
           </TransactionAmount>
         </TransactionHeader>
-        
+
         <TransactionDetails>
           <div>
             <AddressLabel>From:</AddressLabel>
@@ -135,13 +222,47 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
             <Address>{formatWalletAddress(tx.to)}</Address>
           </div>
         </TransactionDetails>
-        
+
         <TransactionDetails>
-          <TransactionStatus status={tx.status}>
-            {tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
+          <TransactionStatus status={currentStatus.status}>
+            {currentStatus.status.charAt(0).toUpperCase() + currentStatus.status.slice(1)}
           </TransactionStatus>
           <DateText>{formatDate(tx.timestamp)}</DateText>
         </TransactionDetails>
+
+        {/* Enhanced transaction metadata */}
+        <TransactionMeta>
+          <div>
+            {tx.safeTxHash && (
+              <span>Safe TX: {formatWalletAddress(tx.safeTxHash)}</span>
+            )}
+            {tx.executionTxHash && (
+              <span> | Execution TX: {formatWalletAddress(tx.executionTxHash)}</span>
+            )}
+          </div>
+          <div>
+            {tx.threshold && (
+              <ConfirmationCount hasEnough={hasEnoughConfirmations}>
+                {currentStatus.confirmations}/{tx.threshold} confirmations
+              </ConfirmationCount>
+            )}
+            {currentStatus.blockNumber && (
+              <span> | Block: {currentStatus.blockNumber}</span>
+            )}
+          </div>
+        </TransactionMeta>
+
+        {/* Gas information */}
+        {(currentStatus.gasUsed || tx.gasUsed) && (
+          <TransactionMeta>
+            <span>
+              Gas Used: {currentStatus.gasUsed || tx.gasUsed}
+              {(currentStatus.gasPrice || tx.gasPrice) &&
+                ` | Gas Price: ${ethers.utils.formatUnits(currentStatus.gasPrice || tx.gasPrice || '0', 'gwei')} gwei`
+              }
+            </span>
+          </TransactionMeta>
+        )}
       </TransactionItem>
     );
   };
@@ -149,14 +270,36 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
   return (
     <Container>
       <Heading>Transactions</Heading>
-      
+
+      <RefreshButton
+        onClick={handleRefresh}
+        disabled={isLoading || statusLoading}
+      >
+        {isLoading || statusLoading ? 'Refreshing...' : 'Refresh'}
+      </RefreshButton>
+
+      {historyError && (
+        <div style={{ color: '#ef4444', marginBottom: '16px', fontSize: '14px' }}>
+          Error loading transactions: {historyError}
+        </div>
+      )}
+
       {isLoading ? (
         <div>Loading transactions...</div>
+      ) : transactions.length === 0 ? (
+        <div style={{ color: '#9ca3af', textAlign: 'center', padding: '40px' }}>
+          No transactions found
+        </div>
       ) : (
         <VitoList
           items={transactions}
           renderItem={renderTransactionItem}
-          onItemEnter={(tx) => window.open(`https://etherscan.io/tx/${tx.hash || tx.id}`, '_blank')}
+          onItemEnter={(tx) => {
+            const txHash = tx.executionTxHash || tx.hash || tx.id;
+            if (txHash && txHash.startsWith('0x')) {
+              window.open(`https://etherscan.io/tx/${txHash}`, '_blank');
+            }
+          }}
         />
       )}
     </Container>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Asset, Transaction } from '../types';
+// import { Asset, Transaction } from '../types';
 import { formatWalletAddress } from '@utils';
 import { theme } from '../../../theme';
 import { Card } from '../../ui';

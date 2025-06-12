@@ -195,7 +195,7 @@ const WalletPage: React.FC<WalletPageProps> = ({
         );
       case 'transactions':
         return (
-          <TransactionsPage 
+          <TransactionsPage
             transactions={transactions}
             isLoading={isLoading}
           />

@@ -23,6 +23,23 @@ export interface Transaction {
   executionTxHash?: string;
   confirmations?: number;
   threshold?: number;
+  // Enhanced on-chain data fields
+  blockNumber?: number;
+  blockHash?: string;
+  nonce?: number;
+  operation?: number;
+  data?: string;
+  executor?: string;
+  isExecuted?: boolean;
+  submissionDate?: string;
+  proposer?: string;
+  txId?: number;
+  signatures?: string[];
+  value?: string;
+  gasToken?: string;
+  safeTxGas?: string;
+  baseGas?: string;
+  refundReceiver?: string;
 }
 
 export type MenuSection = 'home' | 'assets' | 'transactions' | 'settings';

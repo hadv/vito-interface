@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { SafeTxPoolService } from './SafeTxPoolService';
+import { OnChainDataService, OnChainTransactionStatus } from './OnChainDataService';
 import { SAFE_ABI } from '../contracts/abis';
 import { getProviderForNetwork } from '../utils/ens';
 import {
@@ -49,6 +50,7 @@ export class SafeWalletService {
   private signer: ethers.Signer | null = null;
   private config: SafeWalletConfig | null = null;
   private safeTxPoolService: SafeTxPoolService | null = null;
+  private onChainDataService: OnChainDataService | null = null;
 
   /**
    * Initialize the Safe Wallet Service
@@ -78,6 +80,9 @@ export class SafeWalletService {
     if (this.signer) {
       this.safeTxPoolService.setSigner(this.signer);
     }
+
+    // Initialize OnChainData service
+    this.onChainDataService = new OnChainDataService(config.network);
   }
 
   /**
@@ -384,16 +389,65 @@ export class SafeWalletService {
   }
 
   /**
-   * Get transaction history for the Safe
-   * Note: SafeTxPool only stores pending transactions, executed ones are removed
+   * Get transaction history for the Safe from on-chain data
    */
   async getTransactionHistory(): Promise<any[]> {
     this.ensureInitialized();
 
-    // For now, return empty array since SafeTxPool removes executed transactions
-    // In a full implementation, you might want to query blockchain events
-    // or maintain a separate history service
-    return [];
+    if (!this.onChainDataService || !this.config) {
+      console.warn('OnChainDataService not initialized');
+      return [];
+    }
+
+    try {
+      // Get executed transactions from blockchain events
+      const executedTxs = await this.onChainDataService.getSafeTransactionEvents(
+        this.config.safeAddress,
+        0, // From genesis block
+        'latest'
+      );
+
+      // Get pending transactions from SafeTxPool
+      const pendingTxs = await this.getPendingTransactions();
+
+      // Combine and format transactions
+      const allTransactions = [
+        ...executedTxs.map(tx => ({
+          id: tx.safeTxHash || tx.transactionHash,
+          safeTxHash: tx.safeTxHash,
+          executionTxHash: tx.transactionHash,
+          from: this.config!.safeAddress,
+          to: tx.to,
+          value: tx.value,
+          data: tx.data,
+          operation: tx.operation,
+          gasUsed: tx.gasUsed,
+          gasPrice: tx.gasPrice,
+          nonce: tx.nonce,
+          executor: tx.executor,
+          blockNumber: tx.blockNumber,
+          timestamp: tx.timestamp,
+          status: 'executed',
+          isExecuted: true,
+          confirmations: 999, // Executed transactions are fully confirmed
+        })),
+        ...pendingTxs.map(tx => ({
+          ...tx,
+          status: 'pending',
+          isExecuted: false,
+        }))
+      ];
+
+      // Sort by timestamp (newest first)
+      return allTransactions.sort((a, b) => {
+        const aTime = a.timestamp || a.submissionDate ? new Date(a.submissionDate).getTime() : 0;
+        const bTime = b.timestamp || b.submissionDate ? new Date(b.submissionDate).getTime() : 0;
+        return bTime - aTime;
+      });
+    } catch (error) {
+      console.error('Error getting transaction history:', error);
+      return [];
+    }
   }
 
   /**
@@ -438,6 +492,89 @@ export class SafeWalletService {
    */
   getTransactionHash(safeTransaction: SafeTransactionData & { txHash: string }): string {
     return safeTransaction.txHash;
+  }
+
+  /**
+   * Get transaction status from on-chain data
+   */
+  async getTransactionStatus(safeTxHash: string): Promise<OnChainTransactionStatus> {
+    this.ensureInitialized();
+
+    if (!this.onChainDataService || !this.safeTxPoolService) {
+      throw new Error('Services not initialized');
+    }
+
+    try {
+      // First check if transaction exists in SafeTxPool (pending)
+      const pendingTxs = await this.safeTxPoolService.getPendingTransactions(this.config!.safeAddress);
+      const pendingTx = pendingTxs.find(tx => tx.txHash === safeTxHash);
+
+      if (pendingTx) {
+        // Transaction is still pending
+        const safeInfo = await this.getSafeInfo();
+        const hasEnoughSignatures = pendingTx.signatures.length >= safeInfo.threshold;
+
+        return {
+          status: hasEnoughSignatures ? 'confirmed' : 'pending',
+          confirmations: pendingTx.signatures.length,
+          blockNumber: undefined,
+          gasUsed: undefined,
+          gasPrice: undefined,
+          executionTxHash: undefined
+        };
+      }
+
+      // Check if transaction was executed on-chain
+      const executedTxs = await this.onChainDataService.getSafeTransactionEvents(
+        this.config!.safeAddress,
+        0,
+        'latest'
+      );
+
+      const executedTx = executedTxs.find(tx => tx.safeTxHash === safeTxHash);
+      if (executedTx) {
+        return {
+          status: 'executed',
+          confirmations: 999, // Executed transactions are fully confirmed
+          blockNumber: executedTx.blockNumber,
+          gasUsed: executedTx.gasUsed,
+          gasPrice: executedTx.gasPrice,
+          executionTxHash: executedTx.transactionHash,
+          timestamp: executedTx.timestamp
+        };
+      }
+
+      // Transaction not found
+      return {
+        status: 'pending',
+        confirmations: 0
+      };
+    } catch (error) {
+      console.error('Error getting transaction status:', error);
+      return {
+        status: 'pending',
+        confirmations: 0
+      };
+    }
+  }
+
+  /**
+   * Check if transaction can be executed (has enough confirmations)
+   */
+  async canExecuteTransaction(safeTxHash: string): Promise<boolean> {
+    this.ensureInitialized();
+
+    if (!this.safeTxPoolService) {
+      return false;
+    }
+
+    try {
+      const status = await this.getTransactionStatus(safeTxHash);
+      return status.status === 'confirmed';
+    } catch (error) {
+      console.error('Error checking if transaction can be executed:', error);
+      return false;
+    }
   }
 
   /**

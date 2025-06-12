@@ -24,6 +24,23 @@ export interface Transaction {
   token?: string;
   gasUsed?: string;
   gasPrice?: string;
+  // Enhanced on-chain data fields
+  blockNumber?: number;
+  blockHash?: string;
+  nonce?: number;
+  operation?: number;
+  data?: string;
+  executor?: string;
+  isExecuted?: boolean;
+  submissionDate?: string;
+  proposer?: string;
+  txId?: number;
+  signatures?: string[];
+  value?: string;
+  gasToken?: string;
+  safeTxGas?: string;
+  baseGas?: string;
+  refundReceiver?: string;
 }
 
 export interface SafeWallet {
@@ -88,14 +105,31 @@ function convertSafeTransactionToTransaction(safeTx: any, defaultStatus: Transac
     to: safeTx.to || '',
     amount: safeTx.value || '0',
     status: safeTx.isExecuted ? 'executed' : defaultStatus,
-    timestamp: safeTx.submissionDate ? new Date(safeTx.submissionDate).getTime() : Date.now(),
+    timestamp: safeTx.timestamp || (safeTx.submissionDate ? new Date(safeTx.submissionDate).getTime() / 1000 : Date.now() / 1000),
     safeTxHash: safeTx.safeTxHash,
-    executionTxHash: safeTx.transactionHash,
-    confirmations: safeTx.confirmations?.length || 0,
-    threshold: safeTx.confirmationsRequired || 1,
+    executionTxHash: safeTx.transactionHash || safeTx.executionTxHash,
+    confirmations: safeTx.confirmations?.length || safeTx.confirmations || 0,
+    threshold: safeTx.confirmationsRequired || safeTx.threshold || 1,
     token: safeTx.tokenAddress ? 'ERC20' : 'ETH',
     gasUsed: safeTx.gasUsed?.toString(),
-    gasPrice: safeTx.gasPrice?.toString()
+    gasPrice: safeTx.gasPrice?.toString(),
+    // Enhanced on-chain data
+    blockNumber: safeTx.blockNumber,
+    blockHash: safeTx.blockHash,
+    nonce: safeTx.nonce,
+    operation: safeTx.operation,
+    data: safeTx.data,
+    executor: safeTx.executor,
+    isExecuted: safeTx.isExecuted,
+    submissionDate: safeTx.submissionDate,
+    proposer: safeTx.proposer,
+    txId: safeTx.txId,
+    signatures: safeTx.signatures,
+    value: safeTx.value,
+    gasToken: safeTx.gasToken,
+    safeTxGas: safeTx.safeTxGas,
+    baseGas: safeTx.baseGas,
+    refundReceiver: safeTx.refundReceiver
   };
 }
 
