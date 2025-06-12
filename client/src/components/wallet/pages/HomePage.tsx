@@ -146,26 +146,26 @@ interface HomePageProps {
 // ];
 
 // const mockPendingTransactions: Transaction[] = [
-  { 
-    id: 'tx1', 
-    from: '0x1234567890abcdef1234567890abcdef12345678', 
-    to: '0xabcdef1234567890abcdef1234567890abcdef12', 
-    amount: '0.5', 
-    status: 'pending', 
-    timestamp: Date.now() - 3600000,
-    type: 'send',
-    token: 'ETH'
-  },
-  { 
-    id: 'tx2', 
-    from: '0xfedcba0987654321fedcba0987654321fedcba09', 
-    to: '0x1234567890abcdef1234567890abcdef12345678', 
-    amount: '100', 
-    status: 'pending', 
-    timestamp: Date.now() - 7200000,
-    type: 'receive',
-    token: 'USDC'
-  }
+//   {
+//     id: 'tx1',
+//     from: '0x1234567890abcdef1234567890abcdef12345678',
+//     to: '0xabcdef1234567890abcdef1234567890abcdef12',
+//     amount: '0.5',
+//     status: 'pending',
+//     timestamp: Date.now() - 3600000,
+//     type: 'send',
+//     token: 'ETH'
+//   },
+//   {
+//     id: 'tx2',
+//     from: '0xfedcba0987654321fedcba0987654321fedcba09',
+//     to: '0x1234567890abcdef1234567890abcdef12345678',
+//     amount: '100',
+//     status: 'pending',
+//     timestamp: Date.now() - 7200000,
+//     type: 'receive',
+//     token: 'USDC'
+//   }
 // ];
 
 const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, onTransactionCreated }) => {
