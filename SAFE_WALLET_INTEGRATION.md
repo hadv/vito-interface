@@ -175,18 +175,29 @@ REACT_APP_ALCHEMY_KEY=your_alchemy_key_here
 - **Sepolia Testnet**: For testing and development
 - **Arbitrum One**: Layer 2 scaling solution
 
-## Transaction Flow with SafeTxPool
+## Transaction Flow with SafeTxPool and EIP-712
 
 1. **User initiates transaction** via UI (TransactionModal)
 2. **Transaction validation** (address format, amount, balance)
-3. **Transaction proposal** to SafeTxPool contract via `proposeTx()`
-4. **Transaction hash generation** based on transaction parameters
-5. **Transaction signing** with user's connected wallet
-6. **Signature submission** to SafeTxPool via `signTx()`
-7. **Multi-signature collection** from other Safe owners
-8. **Transaction execution** when threshold is met
-9. **Execution marking** in SafeTxPool via `markAsExecuted()`
-10. **Status monitoring** and user feedback
+3. **EIP-712 signing request** - Structured data signing for security
+4. **Transaction proposal** to SafeTxPool contract via `proposeTx()`
+5. **Transaction hash generation** based on transaction parameters
+6. **EIP-712 signature generation** with domain separation and structured data
+7. **Signature submission** to SafeTxPool via `signTx()`
+8. **Multi-signature collection** from other Safe owners (each using EIP-712)
+9. **Signature combination** with proper sorting for Safe execution
+10. **Transaction execution** when threshold is met via `Safe.execTransaction()`
+11. **Execution marking** in SafeTxPool via `markAsExecuted()`
+12. **Status monitoring** and user feedback
+
+### EIP-712 Structured Data Signing
+
+The implementation uses **EIP-712** for secure, readable transaction signing:
+
+- **Domain Separation**: Each Safe has its own signing domain
+- **Structured Data**: Transaction details are clearly readable in wallet
+- **Type Safety**: Prevents signature replay attacks
+- **User Experience**: Wallets show human-readable transaction details
 
 ### SafeTxPool Contract Integration
 

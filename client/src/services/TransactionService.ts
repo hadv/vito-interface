@@ -91,7 +91,10 @@ export class TransactionService {
   /**
    * Execute a Safe transaction (when threshold is met)
    */
-  async executeTransaction(safeTransaction: SafeTransactionData, signatures: string[]): Promise<ethers.ContractTransaction> {
+  async executeTransaction(
+    safeTransaction: SafeTransactionData,
+    signatures: Array<{ signature: string; signer: string }>
+  ): Promise<ethers.ContractTransaction> {
     try {
       return await safeWalletService.executeTransaction(safeTransaction, signatures);
     } catch (error) {

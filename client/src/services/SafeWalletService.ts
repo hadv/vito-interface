@@ -2,6 +2,12 @@ import { ethers } from 'ethers';
 import { SafeTxPoolService } from './SafeTxPoolService';
 import { SAFE_ABI } from '../contracts/abis';
 import { getProviderForNetwork } from '../utils/ens';
+import {
+  signSafeTransaction,
+  createSafeContractTransactionHash,
+  SafeDomain,
+  combineSignatures
+} from '../utils/eip712';
 
 export interface SafeWalletConfig {
   safeAddress: string;
@@ -163,32 +169,25 @@ export class SafeWalletService {
   }
 
   /**
-   * Sign a Safe transaction and submit signature to SafeTxPool
+   * Sign a Safe transaction using EIP-712 and submit signature to SafeTxPool
    */
   async signTransaction(safeTransaction: SafeTransactionData & { txHash: string }): Promise<SafeTransactionData & { txHash: string; signature: string }> {
     this.ensureInitialized();
 
-    if (!this.signer || !this.safeTxPoolService || !this.safeContract) {
+    if (!this.signer || !this.safeTxPoolService || !this.provider) {
       throw new Error('No signer available or services not initialized.');
     }
 
     try {
-      // Get the Safe transaction hash using the Safe contract
-      const safeTxHash = await this.safeContract.getTransactionHash(
-        safeTransaction.to,
-        safeTransaction.value,
-        safeTransaction.data,
-        safeTransaction.operation,
-        safeTransaction.safeTxGas,
-        safeTransaction.baseGas,
-        safeTransaction.gasPrice,
-        safeTransaction.gasToken,
-        safeTransaction.refundReceiver,
-        safeTransaction.nonce
-      );
+      // Get network info for EIP-712 domain
+      const network = await this.provider.getNetwork();
+      const domain: SafeDomain = {
+        chainId: network.chainId,
+        verifyingContract: this.config!.safeAddress
+      };
 
-      // Sign the Safe transaction hash
-      const signature = await this.signer.signMessage(ethers.utils.arrayify(safeTxHash));
+      // Sign using EIP-712 typed data
+      const signature = await signSafeTransaction(this.signer, domain, safeTransaction);
 
       // Submit signature to SafeTxPool contract
       await this.safeTxPoolService.signTx(safeTransaction.txHash, signature);
@@ -199,15 +198,18 @@ export class SafeWalletService {
         signature
       };
     } catch (error) {
-      console.error('Error signing transaction:', error);
-      throw error;
+      console.error('Error signing Safe transaction with EIP-712:', error);
+      throw new Error(`Failed to sign transaction: ${error}`);
     }
   }
 
   /**
    * Execute a Safe transaction when threshold is met
    */
-  async executeTransaction(safeTransaction: SafeTransactionData, signatures: string[]): Promise<ethers.ContractTransaction> {
+  async executeTransaction(
+    safeTransaction: SafeTransactionData,
+    signatures: Array<{ signature: string; signer: string }>
+  ): Promise<ethers.ContractTransaction> {
     this.ensureInitialized();
 
     if (!this.signer || !this.safeContract) {
@@ -215,8 +217,8 @@ export class SafeWalletService {
     }
 
     try {
-      // Combine signatures into the format expected by Safe
-      const combinedSignatures = this.combineSignatures(signatures);
+      // Combine signatures using EIP-712 utility (properly sorted)
+      const combinedSignatures = combineSignatures(signatures);
 
       // Execute the transaction on the Safe contract
       const tx = await this.safeContract.execTransaction(
@@ -234,18 +236,9 @@ export class SafeWalletService {
 
       return tx;
     } catch (error) {
-      console.error('Error executing transaction:', error);
-      throw error;
+      console.error('Error executing Safe transaction:', error);
+      throw new Error(`Failed to execute transaction: ${error}`);
     }
-  }
-
-  /**
-   * Combine multiple signatures into the format expected by Safe
-   */
-  private combineSignatures(signatures: string[]): string {
-    // Sort signatures by signer address (Safe requirement)
-    // For now, just concatenate them - in production, proper sorting is needed
-    return signatures.join('');
   }
 
   /**
@@ -335,6 +328,29 @@ export class SafeWalletService {
    */
   getTransactionHash(safeTransaction: SafeTransactionData & { txHash: string }): string {
     return safeTransaction.txHash;
+  }
+
+  /**
+   * Get EIP-712 transaction hash for Safe transaction
+   */
+  async getEIP712TransactionHash(safeTransaction: SafeTransactionData): Promise<string> {
+    this.ensureInitialized();
+
+    if (!this.provider) {
+      throw new Error('Provider not available');
+    }
+
+    try {
+      const network = await this.provider.getNetwork();
+      return createSafeContractTransactionHash(
+        this.config!.safeAddress,
+        network.chainId,
+        safeTransaction
+      );
+    } catch (error) {
+      console.error('Error creating EIP-712 transaction hash:', error);
+      throw new Error(`Failed to create transaction hash: ${error}`);
+    }
   }
 }
 

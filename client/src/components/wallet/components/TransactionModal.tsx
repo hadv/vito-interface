@@ -3,6 +3,8 @@ import styled from 'styled-components';
 import { Button, Input } from '@components/ui';
 import { sendTransaction } from '../../../models/SafeWallet';
 import { isValidEthereumAddress } from '../../../utils/ens';
+import EIP712SigningModal from './EIP712SigningModal';
+import { SafeTransactionData } from '../../../utils/eip712';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -140,6 +142,12 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showEIP712Modal, setShowEIP712Modal] = useState(false);
+  const [pendingTransaction, setPendingTransaction] = useState<{
+    data: SafeTransactionData;
+    safeAddress: string;
+    chainId: number;
+  } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,14 +173,15 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     setIsLoading(true);
 
     try {
+      // First create the transaction (this will show EIP-712 signing)
       const transaction = await sendTransaction(
         fromAddress || '',
         toAddress,
         amount
       );
 
-      setSuccess(`Transaction created successfully! Hash: ${transaction.safeTxHash}`);
-      
+      setSuccess(`Transaction created and signed! Hash: ${transaction.safeTxHash}`);
+
       if (onTransactionCreated) {
         onTransactionCreated(transaction);
       }
@@ -189,6 +198,19 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       setError(error.message || 'Failed to create transaction');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleEIP712Sign = async () => {
+    if (!pendingTransaction) return;
+
+    try {
+      // The actual signing will be handled by the SafeWalletService
+      // This is just to close the modal
+      setShowEIP712Modal(false);
+      setPendingTransaction(null);
+    } catch (error: any) {
+      setError(error.message || 'Failed to sign transaction');
     }
   };
 
@@ -275,6 +297,21 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             </Button>
           </ButtonGroup>
         </form>
+
+        {/* EIP-712 Signing Modal */}
+        {pendingTransaction && (
+          <EIP712SigningModal
+            isOpen={showEIP712Modal}
+            onClose={() => {
+              setShowEIP712Modal(false);
+              setPendingTransaction(null);
+            }}
+            onSign={handleEIP712Sign}
+            transactionData={pendingTransaction.data}
+            safeAddress={pendingTransaction.safeAddress}
+            chainId={pendingTransaction.chainId}
+          />
+        )}
       </ModalContainer>
     </ModalOverlay>
   );
