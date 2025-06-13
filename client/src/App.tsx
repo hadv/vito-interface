@@ -59,11 +59,10 @@ const getCurrentNetworkClasses = (isOpen: boolean) => cn(
 );
 
 const getNetworkOptionsClasses = (isOpen: boolean) => cn(
-  'fixed top-20 right-6 bg-gray-900/95 border border-gray-600',
-  'rounded-xl w-48 z-[9999] shadow-2xl backdrop-blur-lg overflow-hidden',
-  'transition-all duration-200 transform origin-top-right',
-  'ring-1 ring-white/10',
-  isOpen ? 'block opacity-100 scale-100 translate-y-0' : 'hidden opacity-0 scale-95 -translate-y-2'
+  'fixed top-20 right-6 bg-gray-900 border-2 border-white',
+  'rounded-xl w-48 z-[9999] shadow-2xl',
+  'min-h-[120px]',
+  isOpen ? 'block' : 'hidden'
 );
 
 const getNetworkOptionClasses = (isActive: boolean) => cn(
