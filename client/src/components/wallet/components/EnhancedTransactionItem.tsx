@@ -23,7 +23,26 @@ const getTransactionType = (tx: Transaction, safeAddress: string) => {
   const value = ethers.BigNumber.from(tx.value || tx.amount || '0');
   const hasValue = !value.isZero();
 
-  // Determine transaction type and description
+  // Check for token transfer information first
+  if (tx.tokenTransfer) {
+    const transfer = tx.tokenTransfer;
+    const isReceive = transfer.direction === 'in';
+
+    return {
+      type: isReceive ? 'receive' : 'send',
+      direction: transfer.direction,
+      title: isReceive ? `Received ${transfer.tokenSymbol}` : `Sent ${transfer.tokenSymbol}`,
+      description: isReceive
+        ? `From ${formatWalletAddress(tx.from)}`
+        : `To ${formatWalletAddress(tx.to)}`,
+      icon: isReceive ? '↓' : '↑',
+      color: isReceive ? 'text-green-400' : 'text-red-400',
+      bgColor: isReceive ? 'bg-green-400/10' : 'bg-red-400/10',
+      borderColor: isReceive ? 'border-green-400/20' : 'border-red-400/20'
+    };
+  }
+
+  // Fallback to original logic for non-token transfers
   if (isIncoming && hasValue) {
     return {
       type: 'receive',
@@ -97,10 +116,10 @@ const formatAmount = (amount: string, decimals: number = 18): string => {
   try {
     const value = ethers.BigNumber.from(amount);
     if (value.isZero()) return '0';
-    
+
     const formatted = ethers.utils.formatUnits(value, decimals);
     const num = parseFloat(formatted);
-    
+
     if (num >= 1000) {
       return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
     } else if (num >= 1) {
@@ -111,6 +130,38 @@ const formatAmount = (amount: string, decimals: number = 18): string => {
   } catch {
     return '0';
   }
+};
+
+// Render transaction amount with proper token information
+const renderTransactionAmount = (transaction: Transaction, txInfo: any) => {
+  // Use token transfer info if available
+  if (transaction.tokenTransfer) {
+    const transfer = transaction.tokenTransfer;
+    if (transfer.formattedAmount !== '0') {
+      return (
+        <div className={`font-medium text-sm ${txInfo.color} flex items-center space-x-1`}>
+          {transfer.direction === 'out' && <span>-</span>}
+          {transfer.direction === 'in' && <span>+</span>}
+          <span>{transfer.formattedAmount} {transfer.tokenSymbol}</span>
+        </div>
+      );
+    }
+    return null;
+  }
+
+  // Fallback to original amount display for ETH
+  const amount = formatAmount(transaction.value || transaction.amount || '0');
+  if (amount !== '0') {
+    return (
+      <div className={`font-medium text-sm ${txInfo.color} flex items-center space-x-1`}>
+        {txInfo.direction === 'out' && <span>-</span>}
+        {txInfo.direction === 'in' && <span>+</span>}
+        <span>{amount} ETH</span>
+      </div>
+    );
+  }
+
+  return null;
 };
 
 // Format timestamp to human-readable date
@@ -144,7 +195,6 @@ const EnhancedTransactionItem: React.FC<EnhancedTransactionItemProps> = ({
   onClick
 }) => {
   const txInfo = getTransactionType(transaction, safeAddress);
-  const amount = formatAmount(transaction.value || transaction.amount || '0');
   const timeStr = formatTimestamp(transaction.timestamp);
   
   const handleClick = () => {
@@ -222,14 +272,8 @@ const EnhancedTransactionItem: React.FC<EnhancedTransactionItemProps> = ({
 
         {/* Right side: Amount and direction */}
         <div className="text-right flex-shrink-0">
-          {amount !== '0' && (
-            <div className={`font-medium text-sm ${txInfo.color} flex items-center space-x-1`}>
-              {txInfo.direction === 'out' && <span>-</span>}
-              {txInfo.direction === 'in' && <span>+</span>}
-              <span>{amount} ETH</span>
-            </div>
-          )}
-          
+          {renderTransactionAmount(transaction, txInfo)}
+
           {/* Gas information */}
           {transaction.gasUsed && (
             <div className="text-xs text-gray-500 mt-0.5">

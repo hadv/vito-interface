@@ -5,6 +5,7 @@
 import { transactionCacheService, TransactionPage } from './TransactionCacheService';
 import { OnChainDataService } from './OnChainDataService';
 import { SafeWalletService } from './SafeWalletService';
+import { TransactionEnhancementService } from './TransactionEnhancementService';
 
 export interface TransactionFilters {
   status?: 'all' | 'executed' | 'pending' | 'failed';
@@ -30,12 +31,20 @@ export interface PaginatedTransactionResult {
 export class OptimizedTransactionService {
   private onChainService: OnChainDataService;
   private safeWalletService: SafeWalletService;
+  private enhancementService: TransactionEnhancementService;
   private readonly PAGE_SIZE = 20;
   private readonly PRELOAD_PAGES = 2;
 
   constructor(network: string = 'ethereum') {
     this.onChainService = new OnChainDataService(network);
     this.safeWalletService = new SafeWalletService();
+
+    const provider = this.onChainService.getProvider();
+    if (!provider) {
+      throw new Error(`Failed to initialize provider for network: ${network}`);
+    }
+
+    this.enhancementService = new TransactionEnhancementService(provider, network);
   }
 
   /**
@@ -107,10 +116,16 @@ export class OptimizedTransactionService {
         this.formatExecutedTransaction(tx, safeAddress)
       );
 
+      // Enhance transactions with token transfer information
+      const enhancedTransactions = await this.enhancementService.enhanceTransactions(
+        formattedTransactions,
+        safeAddress
+      );
+
       // Apply filters if provided
       const filteredTransactions = filters
-        ? this.applyFilters(formattedTransactions, filters)
-        : formattedTransactions;
+        ? this.applyFilters(enhancedTransactions, filters)
+        : enhancedTransactions;
 
       // Determine if there are more pages
       const hasMore = executedTxs.length > limit;
@@ -131,11 +146,11 @@ export class OptimizedTransactionService {
   /**
    * Format pending transaction for display with stable status
    */
-  private formatPendingTransaction(tx: any, safeAddress: string): any {
+  private async formatPendingTransaction(tx: any, safeAddress: string): Promise<any> {
     // Create a stable ID that won't change between refreshes
     const stableId = tx.safeTxHash || `pending_${tx.nonce}_${safeAddress}`;
 
-    return {
+    const formattedTx = {
       id: stableId,
       safeTxHash: tx.safeTxHash,
       from: safeAddress,
@@ -149,27 +164,31 @@ export class OptimizedTransactionService {
       confirmations: Array.isArray(tx.confirmations) ? tx.confirmations.length : 0,
       threshold: tx.confirmationsRequired || 1,
       proposer: tx.proposer,
-      executor: null, // Pending transactions don't have executors yet
+      executor: undefined, // Pending transactions don't have executors yet
       gasToken: tx.gasToken,
       safeTxGas: tx.safeTxGas,
       baseGas: tx.baseGas,
       gasPrice: tx.gasPrice,
       refundReceiver: tx.refundReceiver,
       signatures: Array.isArray(tx.confirmations) ? tx.confirmations.map((c: any) => c.signature) : [],
-      status: 'pending', // Always pending for this formatter
+      status: 'pending' as const, // Always pending for this formatter
       isExecuted: false,
       timestamp: tx.timestamp || new Date(tx.submissionDate).getTime() / 1000,
       type: this.determineTransactionType(tx),
-      blockNumber: null, // Pending transactions don't have block numbers
-      transactionHash: null, // Pending transactions don't have execution hashes
+      blockNumber: undefined, // Pending transactions don't have block numbers
+      transactionHash: undefined, // Pending transactions don't have execution hashes
       _isStable: true // Flag to indicate this is a stable status
     };
+
+    // Enhance with token transfer information
+    return await this.enhancementService.enhanceTransaction(formattedTx, safeAddress);
   }
 
   /**
    * Format executed transaction for display with stable status
    */
   private formatExecutedTransaction(tx: any, safeAddress: string): any {
+    // Note: Enhancement with token info happens in fetchTransactionPage
     return {
       id: tx.safeTxHash || tx.transactionHash,
       safeTxHash: tx.safeTxHash,
@@ -187,7 +206,7 @@ export class OptimizedTransactionService {
       executor: tx.executor,
       blockNumber: tx.blockNumber,
       timestamp: tx.timestamp,
-      status: 'executed', // Always executed for this formatter
+      status: 'executed' as const, // Always executed for this formatter
       isExecuted: true,
       confirmations: Array.isArray(tx.confirmations) ? tx.confirmations.length : tx.confirmationsRequired || 1,
       threshold: tx.confirmationsRequired || 1,

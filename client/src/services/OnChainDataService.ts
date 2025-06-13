@@ -75,6 +75,13 @@ export class OnChainDataService {
   }
 
   /**
+   * Get the provider instance
+   */
+  getProvider(): ethers.providers.Provider | null {
+    return this.provider;
+  }
+
+  /**
    * Get transaction receipt from blockchain
    */
   async getTransactionReceipt(txHash: string): Promise<TransactionReceipt | null> {

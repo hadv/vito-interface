@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import WalletPage from '@components/wallet/WalletPage';
+import TokenTransferDemo from './components/demo/TokenTransferDemo';
 import { VitoContainer } from '@components/vitoUI';
 import { resolveAddressToEns, isValidEthereumAddress } from '@utils';
 import { Button, Input, Card, Badge } from '@components/ui';
@@ -208,6 +209,10 @@ const NoWalletPage = ({ walletAddress, setWalletAddress, onConnect }: {
               <span className={commandDescriptionClasses}>Connect to Safe wallet</span>
             </div>
             <div className={commandItemClasses}>
+              <code className={commandKeyClasses}>:demo</code>
+              <span className={commandDescriptionClasses}>Show token transfer demo</span>
+            </div>
+            <div className={commandItemClasses}>
               <code className={commandKeyClasses}>:help</code>
               <span className={commandDescriptionClasses}>Show help information</span>
             </div>
@@ -231,6 +236,7 @@ function App() {
   const [networkSelectorOpen, setNetworkSelectorOpen] = useState(false);
   const [isNetworkSwitching, setIsNetworkSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDemo, setShowDemo] = useState(false);
 
   // Network change is handled by selectNetwork function in the UI
 
@@ -301,7 +307,13 @@ function App() {
   const handleCommand = (command: string) => {
     const cmd = command.trim().toLowerCase();
     console.log('Command received:', cmd);
-    
+
+    // Handle demo command
+    if (cmd === 'demo' || cmd === ':demo') {
+      setShowDemo(!showDemo);
+      return;
+    }
+
     // Use the centralized command processor
     processCommand(cmd, {
       connectWallet,
@@ -484,7 +496,11 @@ function App() {
 
       <div className={getOverlayClasses(networkSelectorOpen)} />
       <div className={contentContainerClasses}>
-        {walletConnected ? (
+        {showDemo ? (
+          <VitoContainer onCommand={handleCommand}>
+            <TokenTransferDemo />
+          </VitoContainer>
+        ) : walletConnected ? (
           <VitoContainer onCommand={handleCommand}>
             <WalletPage
               walletAddress={walletAddress}
