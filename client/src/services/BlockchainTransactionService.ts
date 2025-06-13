@@ -56,55 +56,20 @@ export class BlockchainTransactionService {
   }
 
   /**
-   * Get all transactions for a Safe wallet directly from blockchain using provider
+   * Get all transactions for a Safe wallet using Etherscan API
    */
   async getTransactionsFromBlockchain(
     safeAddress: string,
     limit: number = 50,
     fromBlock: number = 0
   ): Promise<BlockchainTransaction[]> {
-    if (!this.provider) {
-      throw new Error('Provider not initialized');
-    }
-
     try {
-      console.log(`Fetching blockchain transactions for Safe: ${safeAddress} on ${this.network}`);
+      console.log(`Fetching blockchain transactions for Safe: ${safeAddress} on ${this.network} using Etherscan API`);
 
-      // Get current block number
-      const currentBlock = await this.provider.getBlockNumber();
-      console.log(`Current block: ${currentBlock}`);
+      // Use Etherscan API directly - it's fast and reliable
+      const transactions = await this.getTransactionsFromEtherscanAPI(safeAddress, 0, 99999999);
 
-      // For Sepolia, scan the last 50,000 blocks (about 6 months of history)
-      const startBlock = Math.max(0, currentBlock - 50000);
-      const endBlock = currentBlock;
-
-      console.log(`Scanning blocks ${startBlock} to ${endBlock} for transactions`);
-
-      const transactions: BlockchainTransaction[] = [];
-
-      // Scan blocks in batches to find transactions
-      const batchSize = 1000;
-      for (let blockStart = startBlock; blockStart <= endBlock; blockStart += batchSize) {
-        const blockEnd = Math.min(blockStart + batchSize - 1, endBlock);
-
-        console.log(`Scanning blocks ${blockStart} to ${blockEnd}`);
-
-        try {
-          // Get all transactions in this block range
-          const blockTxs = await this.scanBlocksForTransactions(safeAddress, blockStart, blockEnd);
-          transactions.push(...blockTxs);
-
-          if (transactions.length >= limit) {
-            break;
-          }
-        } catch (error) {
-          console.warn(`Error scanning blocks ${blockStart}-${blockEnd}:`, error);
-          // Continue with next batch
-        }
-
-        // Add delay to avoid overwhelming the provider
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
+      console.log(`Found ${transactions.length} total transactions from Etherscan API`);
 
       // Sort by block number (newest first)
       transactions.sort((a, b) => b.blockNumber - a.blockNumber);
@@ -112,13 +77,155 @@ export class BlockchainTransactionService {
       // Limit results
       const limitedTransactions = transactions.slice(0, limit);
 
-      console.log(`Found ${limitedTransactions.length} blockchain transactions for Safe ${safeAddress}`);
+      console.log(`Returning ${limitedTransactions.length} blockchain transactions for Safe ${safeAddress}`);
       return limitedTransactions;
 
     } catch (error) {
       console.error('Error fetching blockchain transactions:', error);
       throw error;
     }
+  }
+
+  /**
+   * Fast method using Covalent API (no API key required for basic queries)
+   */
+  private async getTransactionsFromCovalent(
+    address: string,
+    limit: number
+  ): Promise<BlockchainTransaction[]> {
+    const chainIds = {
+      ethereum: 1,
+      sepolia: 11155111,
+      arbitrum: 42161
+    };
+
+    const chainId = chainIds[this.network as keyof typeof chainIds];
+    if (!chainId) {
+      throw new Error(`Covalent not supported for network: ${this.network}`);
+    }
+
+    const url = `https://api.covalenthq.com/v1/${chainId}/address/${address}/transactions_v2/?page-size=${limit}&no-logs=true`;
+
+    console.log(`Fetching from Covalent: ${url}`);
+
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Covalent API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.data || !data.data.items) {
+      throw new Error('No transaction data from Covalent');
+    }
+
+    const transactions: BlockchainTransaction[] = [];
+
+    for (const tx of data.data.items) {
+      if (tx.successful) {
+        transactions.push({
+          hash: tx.tx_hash,
+          blockNumber: tx.block_height,
+          blockHash: tx.block_hash || '',
+          transactionIndex: tx.tx_offset || 0,
+          from: tx.from_address,
+          to: tx.to_address || '',
+          value: tx.value || '0',
+          gasPrice: tx.gas_price?.toString() || '0',
+          gasUsed: tx.gas_spent?.toString() || '0',
+          gasLimit: tx.gas_offered?.toString() || '0',
+          timestamp: new Date(tx.block_signed_at).getTime() / 1000,
+          status: 'success' as const,
+          methodName: this.getMethodName(tx.log_events?.[0]?.raw_log_topics?.[0] || ''),
+          data: '0x',
+          logs: tx.log_events || [],
+          isExecuted: true,
+          safeTxHash: undefined
+        });
+      }
+    }
+
+    return transactions;
+  }
+
+  /**
+   * Fast method using Alchemy API (free tier available)
+   */
+  private async getTransactionsFromAlchemy(
+    address: string,
+    limit: number
+  ): Promise<BlockchainTransaction[]> {
+    const alchemyUrls = {
+      ethereum: 'https://eth-mainnet.g.alchemy.com/v2/demo',
+      sepolia: 'https://eth-sepolia.g.alchemy.com/v2/demo',
+      arbitrum: 'https://arb-mainnet.g.alchemy.com/v2/demo'
+    };
+
+    const baseUrl = alchemyUrls[this.network as keyof typeof alchemyUrls];
+    if (!baseUrl) {
+      throw new Error(`Alchemy not supported for network: ${this.network}`);
+    }
+
+    const response = await fetch(baseUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'alchemy_getAssetTransfers',
+        params: [{
+          fromBlock: '0x0',
+          toBlock: 'latest',
+          fromAddress: address,
+          toAddress: address,
+          category: ['external', 'internal'],
+          maxCount: `0x${limit.toString(16)}`
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Alchemy API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.result || !data.result.transfers) {
+      throw new Error('No transfer data from Alchemy');
+    }
+
+    const transactions: BlockchainTransaction[] = [];
+
+    for (const transfer of data.result.transfers) {
+      transactions.push({
+        hash: transfer.hash,
+        blockNumber: parseInt(transfer.blockNum, 16),
+        blockHash: '',
+        transactionIndex: 0,
+        from: transfer.from,
+        to: transfer.to || '',
+        value: (parseFloat(transfer.value || '0') * 1e18).toString(),
+        gasPrice: '0',
+        gasUsed: '0',
+        gasLimit: '0',
+        timestamp: 0, // Will be filled by block data
+        status: 'success' as const,
+        methodName: 'Transfer',
+        data: '0x',
+        logs: [],
+        isExecuted: true,
+        safeTxHash: undefined
+      });
+    }
+
+    return transactions;
   }
 
   /**
@@ -195,7 +302,7 @@ export class BlockchainTransactionService {
   }
 
   /**
-   * Get transactions using Etherscan API (more efficient than scanning blocks)
+   * Get transactions using Etherscan API with proper error handling
    */
   private async getTransactionsFromEtherscanAPI(
     address: string,
@@ -213,62 +320,147 @@ export class BlockchainTransactionService {
       throw new Error(`Etherscan API not supported for network: ${this.network}`);
     }
 
-    // Get normal transactions (no API key needed for basic queries)
-    const normalTxUrl = `${baseUrl}?module=account&action=txlist&address=${address}&startblock=${startBlock}&endblock=${endBlock}&page=1&offset=100&sort=desc`;
+    // Get API key from environment or use demo key
+    const apiKey = process.env.REACT_APP_ETHERSCAN_API_KEY || 'YourApiKeyToken';
 
-    // Get internal transactions (no API key needed for basic queries)
-    const internalTxUrl = `${baseUrl}?module=account&action=txlistinternal&address=${address}&startblock=${startBlock}&endblock=${endBlock}&page=1&offset=100&sort=desc`;
+    // Build URLs with API key
+    const normalTxUrl = `${baseUrl}?module=account&action=txlist&address=${address}&startblock=${startBlock}&endblock=${endBlock}&page=1&offset=100&sort=desc&apikey=${apiKey}`;
+    const internalTxUrl = `${baseUrl}?module=account&action=txlistinternal&address=${address}&startblock=${startBlock}&endblock=${endBlock}&page=1&offset=100&sort=desc&apikey=${apiKey}`;
 
-    console.log(`Fetching normal transactions: ${normalTxUrl}`);
-    console.log(`Fetching internal transactions: ${internalTxUrl}`);
+    console.log(`Using API key: ${apiKey.substring(0, 10)}...`);
+
+    console.log(`Fetching transactions from Etherscan for ${this.network}`);
 
     try {
-      const [normalResponse, internalResponse] = await Promise.all([
+      // Try to fetch both normal and internal transactions
+      const responses = await Promise.allSettled([
         fetch(normalTxUrl),
         fetch(internalTxUrl)
       ]);
 
-      console.log(`Normal response status: ${normalResponse.status}`);
-      console.log(`Internal response status: ${internalResponse.status}`);
-
-      const normalData = await normalResponse.json();
-      const internalData = await internalResponse.json();
-
-      console.log(`Normal data:`, normalData);
-      console.log(`Internal data:`, internalData);
-
       const transactions: BlockchainTransaction[] = [];
 
       // Process normal transactions
-      if (normalData.status === '1' && normalData.result) {
-        console.log(`Processing ${normalData.result.length} normal transactions`);
-        for (const tx of normalData.result) {
-          // Only include successful transactions
-          if (tx.txreceipt_status === '1') {
-            transactions.push(await this.formatBlockchainTransaction(tx, 'normal'));
+      if (responses[0].status === 'fulfilled' && responses[0].value.ok) {
+        const normalData = await responses[0].value.json();
+        console.log(`Normal transactions response:`, normalData);
+
+        if (normalData.status === '1' && normalData.result && Array.isArray(normalData.result)) {
+          console.log(`Processing ${normalData.result.length} normal transactions`);
+          for (const tx of normalData.result) {
+            if (tx.txreceipt_status === '1') {
+              transactions.push(await this.formatBlockchainTransaction(tx, 'normal'));
+            }
           }
         }
       } else {
-        console.warn('No normal transactions found or API error:', normalData);
+        console.warn('Failed to fetch normal transactions');
       }
 
-      // Process internal transactions (these are often Safe executions)
-      if (internalData.status === '1' && internalData.result) {
-        console.log(`Processing ${internalData.result.length} internal transactions`);
-        for (const tx of internalData.result) {
-          // Only include successful transactions
-          if (tx.isError === '0') {
-            transactions.push(await this.formatBlockchainTransaction(tx, 'internal'));
+      // Process internal transactions
+      if (responses[1].status === 'fulfilled' && responses[1].value.ok) {
+        const internalData = await responses[1].value.json();
+        console.log(`Internal transactions response:`, internalData);
+
+        if (internalData.status === '1' && internalData.result && Array.isArray(internalData.result)) {
+          console.log(`Processing ${internalData.result.length} internal transactions`);
+          for (const tx of internalData.result) {
+            if (tx.isError === '0') {
+              transactions.push(await this.formatBlockchainTransaction(tx, 'internal'));
+            }
           }
         }
       } else {
-        console.warn('No internal transactions found or API error:', internalData);
+        console.warn('Failed to fetch internal transactions');
       }
 
-      console.log(`Total transactions processed: ${transactions.length}`);
-      return transactions;
+      // Remove duplicates based on transaction hash
+      const uniqueTransactions = transactions.filter((tx, index, self) =>
+        index === self.findIndex(t => t.hash === tx.hash)
+      );
+
+      console.log(`Total unique transactions processed: ${uniqueTransactions.length}`);
+      return uniqueTransactions;
+
     } catch (error) {
       console.error('Error fetching from Etherscan API:', error);
+
+      // If Etherscan fails, try a simple provider-based approach for recent transactions
+      console.log('Etherscan failed, trying provider-based approach...');
+      return this.getRecentTransactionsFromProvider(address, 100); // Last 100 blocks
+    }
+  }
+
+  /**
+   * Fallback method using provider for recent transactions only
+   */
+  private async getRecentTransactionsFromProvider(
+    address: string,
+    blockRange: number = 100
+  ): Promise<BlockchainTransaction[]> {
+    if (!this.provider) {
+      return [];
+    }
+
+    try {
+      console.log(`Scanning last ${blockRange} blocks for transactions...`);
+
+      const currentBlock = await this.provider.getBlockNumber();
+      const startBlock = Math.max(0, currentBlock - blockRange);
+
+      const transactions: BlockchainTransaction[] = [];
+
+      // Scan recent blocks only (much faster)
+      for (let blockNumber = currentBlock; blockNumber >= startBlock; blockNumber--) {
+        try {
+          const block = await this.provider.getBlockWithTransactions(blockNumber);
+
+          if (block && block.transactions) {
+            for (const tx of block.transactions) {
+              if (tx.to?.toLowerCase() === address.toLowerCase() ||
+                  tx.from?.toLowerCase() === address.toLowerCase()) {
+
+                const receipt = await this.provider.getTransactionReceipt(tx.hash);
+
+                if (receipt && receipt.status === 1) {
+                  transactions.push({
+                    hash: tx.hash,
+                    blockNumber: tx.blockNumber || 0,
+                    blockHash: tx.blockHash || '',
+                    transactionIndex: receipt.transactionIndex || 0,
+                    from: tx.from,
+                    to: tx.to || '',
+                    value: tx.value.toString(),
+                    gasPrice: tx.gasPrice?.toString() || '0',
+                    gasUsed: receipt.gasUsed.toString(),
+                    gasLimit: tx.gasLimit.toString(),
+                    timestamp: block.timestamp,
+                    status: 'success' as const,
+                    methodName: this.getMethodName(tx.data.slice(0, 10)),
+                    data: tx.data,
+                    logs: receipt.logs,
+                    isExecuted: true,
+                    safeTxHash: undefined
+                  });
+                }
+              }
+            }
+          }
+        } catch (blockError) {
+          console.warn(`Error processing block ${blockNumber}:`, blockError);
+        }
+
+        // Limit to prevent too many API calls
+        if (transactions.length >= 50) {
+          break;
+        }
+      }
+
+      console.log(`Found ${transactions.length} transactions from provider scan`);
+      return transactions;
+
+    } catch (error) {
+      console.error('Error in provider-based transaction scan:', error);
       return [];
     }
   }

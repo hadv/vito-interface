@@ -119,7 +119,7 @@ export class OnChainDataService {
       // First try to get Safe transaction events from the contract directly
       // This is more reliable for Safe wallets since we can listen to specific events
       console.log('Attempting to get Safe transaction events from contract...');
-      const safeEvents = await this.getSafeTransactionEventsFromChain(safeAddress, -50000); // Last 50k blocks
+      const safeEvents = await this.getSafeTransactionEventsFromChain(safeAddress, -10000); // Last 10k blocks (faster)
 
       if (safeEvents.length > 0) {
         console.log(`Found ${safeEvents.length} Safe transaction events from contract`);
@@ -130,7 +130,7 @@ export class OnChainDataService {
         return paginatedEvents;
       }
 
-      console.log('No Safe events found, trying blockchain transaction scan...');
+      console.log('No Safe events found, trying Etherscan API...');
 
       // Fallback to blockchain transaction scanning
       const blockchainTxs = await this.blockchainService.getTransactionsFromBlockchain(
