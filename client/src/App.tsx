@@ -395,7 +395,7 @@ function App() {
           <img src={logo} alt="Vito Logo" className={logoClasses} />
           <h1 className={appNameClasses}>Vito</h1>
         </div>
-        <div className="relative">
+        <div className="relative network-selector">
           <button
             className="bg-white/10 text-white border-2 border-gray-700 rounded-lg px-4 py-2 h-10 cursor-pointer font-medium text-sm flex items-center capitalize"
             onClick={toggleNetworkSelector}
@@ -407,25 +407,34 @@ function App() {
       </header>
 
       {networkSelectorOpen && (
-        <div className="fixed top-20 right-6 bg-white border-2 border-black rounded-lg w-48 z-[9999] shadow-2xl">
+        <div className="fixed top-20 right-6 bg-white border-2 border-black rounded-lg w-48 z-[9999] shadow-2xl network-selector">
           <div className="p-2 text-black font-bold">NETWORK SELECTOR</div>
           <div
             className="px-4 py-3 cursor-pointer text-black hover:bg-gray-200"
-            onClick={() => selectNetwork('ethereum')}
+            onClick={() => {
+              console.log('Ethereum clicked');
+              selectNetwork('ethereum');
+            }}
           >
-            Ethereum
+            Ethereum {network === 'ethereum' ? '✓' : ''}
           </div>
           <div
             className="px-4 py-3 cursor-pointer text-black hover:bg-gray-200"
-            onClick={() => selectNetwork('sepolia')}
+            onClick={() => {
+              console.log('Sepolia clicked');
+              selectNetwork('sepolia');
+            }}
           >
-            Sepolia
+            Sepolia {network === 'sepolia' ? '✓' : ''}
           </div>
           <div
             className="px-4 py-3 cursor-pointer text-black hover:bg-gray-200"
-            onClick={() => selectNetwork('arbitrum')}
+            onClick={() => {
+              console.log('Arbitrum clicked');
+              selectNetwork('arbitrum');
+            }}
           >
-            Arbitrum
+            Arbitrum {network === 'arbitrum' ? '✓' : ''}
           </div>
         </div>
       )}
