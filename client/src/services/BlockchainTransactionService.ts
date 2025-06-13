@@ -34,15 +34,22 @@ export class BlockchainTransactionService {
    * Test function to verify Etherscan API connectivity with API key
    */
   async testEtherscanAPI(address: string): Promise<void> {
-    const etherscanUrls = {
-      ethereum: 'https://api.etherscan.io/api',
-      sepolia: 'https://api-sepolia.etherscan.io/api',
-      arbitrum: 'https://api.arbiscan.io/api'
+    // Use the new Etherscan API v2 unified endpoint with chainid
+    const chainIds = {
+      ethereum: '1',
+      sepolia: '11155111',
+      arbitrum: '42161'
     };
 
-    const baseUrl = etherscanUrls[this.network as keyof typeof etherscanUrls];
+    const chainId = chainIds[this.network as keyof typeof chainIds];
+    if (!chainId) {
+      console.error(`Etherscan API not supported for network: ${this.network}`);
+      return;
+    }
+
+    const baseUrl = `https://api.etherscan.io/v2/api?chainid=${chainId}`;
     const apiKey = process.env.REACT_APP_ETHERSCAN_API_KEY || 'YourApiKeyToken';
-    const testUrl = `${baseUrl}?module=account&action=txlist&address=${address}&page=1&offset=5&sort=desc&apikey=${apiKey}`;
+    const testUrl = `${baseUrl}&module=account&action=txlist&address=${address}&page=1&offset=5&sort=desc&apikey=${apiKey}`;
 
     console.log(`Testing Etherscan API for ${this.network}:`);
     console.log(`URL: ${testUrl}`);
@@ -320,25 +327,28 @@ export class BlockchainTransactionService {
     startBlock: number,
     endBlock: number
   ): Promise<BlockchainTransaction[]> {
-    const etherscanUrls = {
-      ethereum: 'https://api.etherscan.io/api',
-      sepolia: 'https://api-sepolia.etherscan.io/api',
-      arbitrum: 'https://api.arbiscan.io/api'
+    // Use the new Etherscan API v2 unified endpoint with chainid
+    const chainIds = {
+      ethereum: '1',
+      sepolia: '11155111',
+      arbitrum: '42161'
     };
 
-    const baseUrl = etherscanUrls[this.network as keyof typeof etherscanUrls];
-    if (!baseUrl) {
+    const chainId = chainIds[this.network as keyof typeof chainIds];
+    if (!chainId) {
       throw new Error(`Etherscan API not supported for network: ${this.network}`);
     }
+
+    const baseUrl = `https://api.etherscan.io/v2/api?chainid=${chainId}`;
 
     // Get API key from environment or use demo key
     const apiKey = process.env.REACT_APP_ETHERSCAN_API_KEY || 'YourApiKeyToken';
     console.log(`Environment API key: ${process.env.REACT_APP_ETHERSCAN_API_KEY ? 'Found' : 'Not found'}`);
     console.log(`Using API key: ${apiKey}`);
 
-    // Build URLs with API key - use 0 to latest for full history
-    const normalTxUrl = `${baseUrl}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${apiKey}`;
-    const internalTxUrl = `${baseUrl}?module=account&action=txlistinternal&address=${address}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${apiKey}`;
+    // Build URLs with API key using v2 API format
+    const normalTxUrl = `${baseUrl}&module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${apiKey}`;
+    const internalTxUrl = `${baseUrl}&module=account&action=txlistinternal&address=${address}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${apiKey}`;
 
     console.log(`Full API key for debugging: ${apiKey}`);
     console.log(`Normal TX URL: ${normalTxUrl}`);
