@@ -24,7 +24,7 @@ const headerClasses = cn(
   'px-6 py-4 border-b border-gray-800',
   'h-16 box-border relative overflow-visible',
   'before:absolute before:inset-0',
-  'before:bg-gradient-to-r before:from-primary-500/20 before:via-transparent before:to-secondary-500/20',
+  'before:bg-gradient-to-r before:from-blue-500/20 before:via-transparent before:to-purple-500/20',
   'before:pointer-events-none'
 );
 
@@ -33,7 +33,7 @@ const logoContainerClasses = 'flex items-center h-full relative z-10';
 const logoClasses = 'h-8 mr-3 drop-shadow-md';
 const appNameClasses = cn(
   'm-0 text-2xl font-bold leading-none',
-  'bg-gradient-to-br from-primary-400 to-secondary-400',
+  'bg-gradient-to-br from-blue-400 to-purple-400',
   'bg-clip-text text-transparent'
 );
 
@@ -58,7 +58,7 @@ const getCurrentNetworkClasses = (isOpen: boolean) => cn(
   'transition-all duration-200 backdrop-blur-md',
   'hover:bg-white/20 hover:border-gray-500 hover:shadow-lg',
   'active:scale-95',
-  isOpen ? 'bg-white/20 border-gray-500 shadow-lg ring-2 ring-primary-500/30' : ''
+  isOpen ? 'bg-white/20 border-gray-500 shadow-lg ring-2 ring-blue-500/30' : ''
 );
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -75,7 +75,7 @@ const getNetworkOptionClasses = (isActive: boolean) => cn(
   'transition-all duration-200 flex items-center gap-2',
   'hover:bg-gray-800 hover:text-white',
   isActive
-    ? 'bg-primary-500/20 text-primary-400 border-l-2 border-primary-500'
+    ? 'bg-blue-500/20 text-blue-400 border-l-2 border-blue-500'
     : 'text-gray-300'
 );
 
@@ -91,7 +91,7 @@ const welcomeCardClasses = 'max-w-2xl w-full text-center';
 
 const welcomeTitleClasses = cn(
   'text-4xl font-bold mb-4',
-  'bg-gradient-to-br from-primary-400 to-secondary-400',
+  'bg-gradient-to-br from-blue-400 to-purple-400',
   'bg-clip-text text-transparent'
 );
 
@@ -118,7 +118,7 @@ const commandItemClasses = cn(
 );
 
 const commandKeyClasses = cn(
-  'bg-primary-500 text-white',
+  'bg-blue-500 text-white',
   'px-2 py-1 rounded font-medium',
   'min-w-[24px] text-center'
 );
@@ -437,7 +437,7 @@ function App() {
         </div>
         <div className="relative network-selector">
           <div
-            className={`bg-white/10 text-white border-2 border-gray-700 rounded-lg px-4 py-2 h-10 cursor-pointer font-medium text-sm flex items-center capitalize transition-all duration-200 backdrop-blur-md hover:bg-white/20 hover:border-gray-500 hover:shadow-lg active:scale-95 ${networkSelectorOpen ? 'bg-white/20 border-gray-500 shadow-lg ring-2 ring-primary-500/30' : ''}`}
+            className={`bg-white/10 text-white border-2 border-gray-700 rounded-lg px-4 py-2 h-10 cursor-pointer font-medium text-sm flex items-center capitalize transition-all duration-200 backdrop-blur-md hover:bg-white/20 hover:border-gray-500 hover:shadow-lg active:scale-95 ${networkSelectorOpen ? 'bg-white/20 border-gray-500 shadow-lg ring-2 ring-blue-500/30' : ''}`}
             onClick={toggleNetworkSelector}
             title="Click to switch network"
           >
@@ -459,21 +459,21 @@ function App() {
       {networkSelectorOpen && (
         <div className="fixed top-20 right-6 bg-gray-900/95 border border-gray-600 rounded-xl w-48 z-[9999] shadow-2xl backdrop-blur-lg overflow-hidden network-selector">
           <div
-            className={`px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white ${network === 'ethereum' ? 'bg-primary-500/20 text-primary-400 border-l-2 border-primary-500' : 'text-gray-300'}`}
+            className={`px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white ${network === 'ethereum' ? 'bg-blue-500/20 text-blue-400 border-l-2 border-blue-500' : 'text-gray-300'}`}
             onClick={() => selectNetwork('ethereum')}
           >
             <Badge variant="primary" size="sm" dot />
             Ethereum
           </div>
           <div
-            className={`px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white ${network === 'sepolia' ? 'bg-primary-500/20 text-primary-400 border-l-2 border-primary-500' : 'text-gray-300'}`}
+            className={`px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white ${network === 'sepolia' ? 'bg-blue-500/20 text-blue-400 border-l-2 border-blue-500' : 'text-gray-300'}`}
             onClick={() => selectNetwork('sepolia')}
           >
             <Badge variant="warning" size="sm" dot />
             Sepolia
           </div>
           <div
-            className={`px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white ${network === 'arbitrum' ? 'bg-primary-500/20 text-primary-400 border-l-2 border-primary-500' : 'text-gray-300'}`}
+            className={`px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white ${network === 'arbitrum' ? 'bg-blue-500/20 text-blue-400 border-l-2 border-blue-500' : 'text-gray-300'}`}
             onClick={() => selectNetwork('arbitrum')}
           >
             <Badge variant="info" size="sm" dot />
