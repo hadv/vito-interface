@@ -197,8 +197,6 @@ const WalletPage: React.FC<WalletPageProps> = ({
       case 'transactions':
         return (
           <TransactionsPage
-            transactions={transactions}
-            isLoading={isLoading}
             safeAddress={walletAddress}
             network={network}
           />

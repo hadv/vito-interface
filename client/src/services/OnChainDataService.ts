@@ -109,7 +109,7 @@ export class OnChainDataService {
     offset: number = 0
   ): Promise<SafeTransactionEvent[]> {
     try {
-      const url = `${this.safeServiceUrl}/api/v1/safes/${safeAddress}/multisig-transactions/?limit=${limit}&offset=${offset}&executed=true&ordering=-executionDate`;
+      const url = `${this.safeServiceUrl}/api/v1/safes/${safeAddress}/multisig-transactions/?limit=${limit}&offset=${offset}&executed=true&successful=true&ordering=-executionDate`;
 
       // Add timeout for faster failure
       const controller = new AbortController();
@@ -142,14 +142,19 @@ export class OnChainDataService {
 
       for (const batch of txBatches) {
         const batchPromises = batch.map(async (tx: any) => {
-          // Only handle executed transactions
-          if (tx.isExecuted && tx.transactionHash) {
+          // Only handle successfully executed transactions
+          if (tx.isExecuted && tx.transactionHash && tx.isSuccessful !== false) {
             let receipt = null;
             const isRecent = new Date(tx.executionDate).getTime() > Date.now() - (7 * 24 * 60 * 60 * 1000); // Last 7 days
 
             if (isRecent) {
               try {
                 receipt = await this.getTransactionReceipt(tx.transactionHash);
+                // Double-check transaction was successful on-chain
+                if (receipt && receipt.status !== 1) {
+                  console.warn(`Transaction ${tx.transactionHash} failed on-chain, skipping`);
+                  return null;
+                }
               } catch (error) {
                 console.warn(`Failed to get receipt for ${tx.transactionHash}:`, error);
               }

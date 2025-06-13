@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { VitoList } from '@components/vitoUI';
 import { formatWalletAddress } from '@utils';
-import { Transaction } from '../types';
-import { useTransactionHistory, useMultipleTransactionStatus } from '../../../hooks/useTransactionStatus';
 import OptimizedTransactionsPage from './OptimizedTransactionsPage';
+import { SafeTxPoolService, SafeTxPoolTransaction } from '../../../services/SafeTxPoolService';
 
 
 
@@ -17,79 +16,66 @@ const activeTabClasses = "text-blue-400 border-b-2 border-blue-400";
 const inactiveTabClasses = "text-gray-400 hover:text-gray-300";
 const tabContentClasses = "mt-6";
 
-// Utility functions for dynamic styling
-const getTransactionTypeColor = (txType: string) => {
-  switch (txType) {
-    case 'send': return 'text-red-400';
-    case 'receive': return 'text-green-400';
-    default: return 'text-white';
-  }
-};
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'completed':
-    case 'executed': return 'text-green-400 bg-green-400/20';
-    case 'pending': return 'text-yellow-400 bg-yellow-400/20';
-    default: return 'text-red-400 bg-red-400/20';
-  }
-};
-
-const getStatusIndicatorColor = (status: string) => {
-  switch (status) {
-    case 'executed': return 'bg-green-400';
-    case 'confirmed': return 'bg-blue-400';
-    case 'pending': return 'bg-yellow-400';
-    default: return 'bg-red-400';
-  }
-};
-
-const getConfirmationColor = (hasEnough: boolean) => {
-  return hasEnough ? 'text-green-400' : 'text-yellow-400';
-};
 
 interface TransactionsPageProps {
-  transactions?: Transaction[];
-  isLoading?: boolean;
   safeAddress?: string;
   network?: string;
 }
 
 const TransactionsPage: React.FC<TransactionsPageProps> = ({
-  transactions: propTransactions,
-  isLoading: propIsLoading,
   safeAddress,
   network = 'ethereum'
 }) => {
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
+  const [pendingTxs, setPendingTxs] = useState<SafeTxPoolTransaction[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [pendingError, setPendingError] = useState<string | null>(null);
 
-  // Use real-time transaction history if no props provided
-  const {
-    transactions: realTimeTransactions,
-    isLoading: realTimeLoading,
-    error: historyError,
-    refresh: refreshHistory
-  } = useTransactionHistory(30000); // Refresh every 30 seconds
+  // Initialize SafeTxPoolService for the current network
+  const [safeTxPoolService] = useState(() => new SafeTxPoolService(network));
 
-  // Get transaction hashes for status monitoring
-  const transactionHashes = (propTransactions || realTimeTransactions)
-    .filter(tx => tx.safeTxHash)
-    .map(tx => tx.safeTxHash!);
+  // Load pending transactions from Safe TX pool smart contract
+  const loadPendingTransactions = useCallback(async () => {
+    if (!safeAddress) return;
 
-  // Monitor transaction statuses
-  const {
-    statuses,
-    isLoading: statusLoading,
-    refresh: refreshStatuses
-  } = useMultipleTransactionStatus(transactionHashes, 10000); // Poll every 10 seconds
+    setPendingLoading(true);
+    setPendingError(null);
 
-  // Use prop data if provided, otherwise use real-time data
-  const transactions = propTransactions || realTimeTransactions;
-  const isLoading = propIsLoading !== undefined ? propIsLoading : realTimeLoading;
+    try {
+      if (!safeTxPoolService.isConfigured()) {
+        console.warn('SafeTxPool not configured for network:', network);
+        setPendingTxs([]);
+        return;
+      }
 
-  const formatDate = (timestamp: number): string => {
-    return new Date(timestamp * 1000).toLocaleString();
-  };
+      const pending = await safeTxPoolService.getPendingTransactions(safeAddress);
+      setPendingTxs(pending);
+    } catch (error) {
+      console.error('Error loading pending transactions:', error);
+      setPendingError('Failed to load pending transactions from Safe TX pool');
+      setPendingTxs([]);
+    } finally {
+      setPendingLoading(false);
+    }
+  }, [safeAddress, network, safeTxPoolService]);
+
+  // Load pending transactions when component mounts or dependencies change
+  useEffect(() => {
+    if (activeTab === 'pending') {
+      loadPendingTransactions();
+    }
+  }, [activeTab, safeAddress, network, loadPendingTransactions]);
+
+  // Auto-refresh pending transactions every 30 seconds
+  useEffect(() => {
+    if (activeTab === 'pending') {
+      const interval = setInterval(loadPendingTransactions, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, safeAddress, network, loadPendingTransactions]);
+
+
 
   const formatAmount = (amount: string): string => {
     try {
@@ -99,96 +85,70 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     }
   };
 
-  const handleRefresh = () => {
-    refreshHistory();
-    refreshStatuses();
+  const handleRefreshPending = () => {
+    loadPendingTransactions();
   };
 
-  const renderTransactionItem = (tx: Transaction, isSelected: boolean, isFocused: boolean) => {
-    const txType = tx.type || 'contract';
-    const currentStatus = tx.safeTxHash && statuses[tx.safeTxHash]
-      ? statuses[tx.safeTxHash]
-      : {
-          status: tx.status,
-          confirmations: tx.confirmations || 0,
-          blockNumber: tx.blockNumber,
-          gasUsed: tx.gasUsed,
-          gasPrice: tx.gasPrice,
-          executionTxHash: tx.executionTxHash,
-          timestamp: tx.timestamp
-        };
-
-    const hasEnoughConfirmations = currentStatus.confirmations >= (tx.threshold || 1);
+  // Render pending transaction from Safe TX pool smart contract
+  const renderPendingTxItem = (tx: SafeTxPoolTransaction, isSelected: boolean, isFocused: boolean) => {
+    const confirmationProgress = `${tx.signatures.length}/${tx.signatures.length + 1}`; // Assuming threshold is signatures + 1
 
     return (
       <div className="flex flex-col p-4 border-b border-gray-700 last:border-b-0">
         {/* Transaction Header */}
         <div className="flex justify-between items-center mb-2">
-          <div className={`text-base font-medium flex items-center ${getTransactionTypeColor(txType)}`}>
-            <span className={`inline-block w-2 h-2 rounded-full mr-2 ${getStatusIndicatorColor(currentStatus.status)}`} />
-            {txType.charAt(0).toUpperCase() + txType.slice(1)}
+          <div className="text-base font-medium flex items-center text-yellow-400">
+            <span className="inline-block w-2 h-2 rounded-full mr-2 bg-yellow-400" />
+            Pending Transaction
           </div>
-          <div className={`text-base font-medium ${getTransactionTypeColor(txType)}`}>
-            {txType === 'send' ? '-' : '+'}{formatAmount(tx.amount || tx.value || '0')} {tx.token || 'ETH'}
+          <div className="text-base font-medium text-yellow-400">
+            {formatAmount(tx.value)} ETH
           </div>
         </div>
 
         {/* Transaction Details */}
         <div className="flex justify-between mb-2">
           <div>
-            <div className="text-sm text-gray-400">From:</div>
-            <div className="text-sm font-mono text-gray-300">{formatWalletAddress(tx.from)}</div>
-          </div>
-          <div>
             <div className="text-sm text-gray-400">To:</div>
             <div className="text-sm font-mono text-gray-300">{formatWalletAddress(tx.to)}</div>
           </div>
-        </div>
-
-        {/* Status and Date */}
-        <div className="flex justify-between mb-2">
-          <div className={`inline-block text-xs px-2 py-1 rounded-full ${getStatusColor(currentStatus.status)}`}>
-            {currentStatus.status.charAt(0).toUpperCase() + currentStatus.status.slice(1)}
+          <div>
+            <div className="text-sm text-gray-400">Nonce:</div>
+            <div className="text-sm text-gray-300">{tx.nonce}</div>
           </div>
-          <div className="text-sm text-gray-400">{formatDate(tx.timestamp)}</div>
         </div>
 
-        {/* Enhanced transaction metadata */}
+        {/* Status and Confirmations */}
+        <div className="flex justify-between mb-2">
+          <div className="inline-block text-xs px-2 py-1 rounded-full text-yellow-400 bg-yellow-400/20">
+            Pending in Pool
+          </div>
+          <div className="text-sm text-gray-400">
+            Signatures: {confirmationProgress}
+          </div>
+        </div>
+
+        {/* Transaction metadata */}
         <div className="flex justify-between items-center text-xs text-gray-500 mt-1">
           <div>
-            {tx.safeTxHash && (
-              <span>Safe TX: {formatWalletAddress(tx.safeTxHash)}</span>
-            )}
-            {tx.executionTxHash && (
-              <span> | Execution TX: {formatWalletAddress(tx.executionTxHash)}</span>
-            )}
+            <span>TX Hash: {formatWalletAddress(tx.txHash)}</span>
           </div>
           <div>
-            {tx.threshold && (
-              <span className={`font-medium ${getConfirmationColor(hasEnoughConfirmations)}`}>
-                {currentStatus.confirmations}/{tx.threshold} confirmations
-              </span>
-            )}
-            {currentStatus.blockNumber && (
-              <span> | Block: {currentStatus.blockNumber}</span>
-            )}
+            <span>Proposer: {formatWalletAddress(tx.proposer)}</span>
           </div>
         </div>
 
-        {/* Gas information */}
-        {(currentStatus.gasUsed || tx.gasUsed) && (
-          <div className="flex justify-between items-center text-xs text-gray-500 mt-1">
-            <span>
-              Gas Used: {currentStatus.gasUsed || tx.gasUsed}
-              {(currentStatus.gasPrice || tx.gasPrice) &&
-                ` | Gas Price: ${ethers.utils.formatUnits(currentStatus.gasPrice || tx.gasPrice || '0', 'gwei')} gwei`
-              }
-            </span>
+        {/* Operation details */}
+        {tx.data && tx.data !== '0x' && (
+          <div className="text-xs text-gray-500 mt-1">
+            <span>Data: {tx.data.slice(0, 20)}...</span>
           </div>
         )}
       </div>
     );
   };
+
+
 
   return (
     <div className={containerClasses}>
@@ -213,53 +173,70 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
       {/* Tab Content */}
       <div className={tabContentClasses}>
         {activeTab === 'pending' ? (
-          // Pending transactions tab (existing functionality)
+          // Pending & Queue tab - transactions from Safe TX pool smart contract
           <>
-            <button
-              className="bg-gray-700 text-white border-none px-4 py-2 rounded-md cursor-pointer text-sm mb-4 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={handleRefresh}
-              disabled={isLoading || statusLoading}
-            >
-              {isLoading || statusLoading ? 'Refreshing...' : 'Refresh'}
-            </button>
+            <div className="flex justify-between items-center mb-4">
+              <div className="text-sm text-gray-400">
+                Showing transactions from Safe TX pool smart contract
+              </div>
+              <button
+                className="bg-gray-700 text-white border-none px-4 py-2 rounded-md cursor-pointer text-sm hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleRefreshPending}
+                disabled={pendingLoading}
+              >
+                {pendingLoading ? 'Refreshing...' : 'Refresh Pool'}
+              </button>
+            </div>
 
-            {historyError && (
+            {pendingError && (
               <div className="text-red-400 mb-4 text-sm">
-                Error loading transactions: {historyError}
+                {pendingError}
               </div>
             )}
 
-            {isLoading ? (
-              <div className="text-gray-400">Loading transactions...</div>
-            ) : transactions.length === 0 ? (
+            {!safeTxPoolService.isConfigured() && (
+              <div className="text-yellow-400 mb-4 text-sm p-3 bg-yellow-400/10 rounded-md">
+                SafeTxPool smart contract not configured for {network} network.
+                Pending transactions from smart contract are not available.
+              </div>
+            )}
+
+            {pendingLoading ? (
+              <div className="text-gray-400">Loading pending transactions from Safe TX pool...</div>
+            ) : pendingTxs.length === 0 ? (
               <div className="text-gray-400 text-center py-10">
-                No pending transactions found
+                {safeTxPoolService.isConfigured()
+                  ? "No pending transactions in Safe TX pool"
+                  : "Safe TX pool not available"}
               </div>
             ) : (
               <VitoList
-                items={transactions}
-                renderItem={renderTransactionItem}
+                items={pendingTxs}
+                renderItem={renderPendingTxItem}
                 onItemEnter={(tx) => {
-                  const txHash = tx.executionTxHash || tx.hash || tx.id;
-                  if (txHash && txHash.startsWith('0x')) {
-                    window.open(`https://etherscan.io/tx/${txHash}`, '_blank');
-                  }
+                  // For pending transactions, we could open Safe app or show transaction details
+                  console.log('Pending transaction selected:', tx.txHash);
                 }}
               />
             )}
           </>
         ) : (
-          // History tab (executed transactions only)
-          safeAddress ? (
-            <OptimizedTransactionsPage
-              safeAddress={safeAddress}
-              network={network}
-            />
-          ) : (
-            <div className="text-gray-400 text-center py-10">
-              Safe address not available
+          // History tab - successful executed on-chain transactions only
+          <>
+            <div className="text-sm text-gray-400 mb-4">
+              Showing only successful executed on-chain transactions
             </div>
-          )
+            {safeAddress ? (
+              <OptimizedTransactionsPage
+                safeAddress={safeAddress}
+                network={network}
+              />
+            ) : (
+              <div className="text-gray-400 text-center py-10">
+                Safe address not available
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

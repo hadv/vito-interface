@@ -1,5 +1,6 @@
 /**
  * Optimized Transactions Page with caching, pagination, and infinite scroll
+ * Shows only successful executed on-chain transactions
  */
 
 import React, { useState, useCallback, useMemo } from 'react';
