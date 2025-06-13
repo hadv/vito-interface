@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { ERC20_ABI, TOKEN_ADDRESSES } from '../contracts/abis';
+import { ERC20_ABI } from '../contracts/abis';
 
 export interface TokenInfo {
   address: string;
@@ -21,28 +21,11 @@ export class TokenService {
 
   /**
    * Initialize cache with known tokens for the current network
+   * We'll populate this cache as we discover tokens dynamically
    */
   private initializeKnownTokens(): void {
-    const networkTokens = TOKEN_ADDRESSES[this.network as keyof typeof TOKEN_ADDRESSES];
-    if (!networkTokens) return;
-
-    // Add known tokens to cache
-    const knownTokens: { [key: string]: Omit<TokenInfo, 'address'> } = {
-      USDC: { symbol: 'USDC', name: 'USD Coin', decimals: 6 },
-      USDT: { symbol: 'USDT', name: 'Tether USD', decimals: 6 },
-      DAI: { symbol: 'DAI', name: 'Dai Stablecoin', decimals: 18 },
-      WETH: { symbol: 'WETH', name: 'Wrapped Ether', decimals: 18 }
-    };
-
-    Object.entries(networkTokens).forEach(([symbol, address]) => {
-      const tokenInfo = knownTokens[symbol];
-      if (tokenInfo) {
-        this.tokenCache.set(address.toLowerCase(), {
-          address: address.toLowerCase(),
-          ...tokenInfo
-        });
-      }
-    });
+    // Start with empty cache - we'll populate it as we discover tokens
+    // This is more flexible than hardcoding addresses
   }
 
   /**
