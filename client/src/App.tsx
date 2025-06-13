@@ -441,8 +441,6 @@ function App() {
               </div>
             </div>
           )}
-
-          </div>
         </div>
       </header>
       <div className={getOverlayClasses(networkSelectorOpen)} />
