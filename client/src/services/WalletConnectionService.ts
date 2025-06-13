@@ -55,29 +55,31 @@ export class WalletConnectionService {
       // Get Safe info to validate the Safe wallet exists
       const safeInfo = await safeWalletService.getSafeInfo();
 
+      // COMPLETELY DISABLE SIGNER CONNECTION FOR NOW TO PREVENT METAMASK POPUP
+      console.log('Signer connection disabled to prevent MetaMask popup');
       // Only try to connect signer after Safe wallet is validated
-      if (!readOnlyMode) {
-        try {
-          // Check if MetaMask or other wallet is available
-          if (typeof window.ethereum !== 'undefined') {
-            // Request account access
-            await window.ethereum.request({ method: 'eth_requestAccounts' });
+      // if (!readOnlyMode) {
+      //   try {
+      //     // Check if MetaMask or other wallet is available
+      //     if (typeof window.ethereum !== 'undefined') {
+      //       // Request account access
+      //       await window.ethereum.request({ method: 'eth_requestAccounts' });
 
-            // Create provider and signer
-            this.provider = new ethers.providers.Web3Provider(window.ethereum);
-            this.signer = this.provider.getSigner();
+      //       // Create provider and signer
+      //       this.provider = new ethers.providers.Web3Provider(window.ethereum);
+      //       this.signer = this.provider.getSigner();
 
-            // Get user address
-            userAddress = await this.signer.getAddress();
+      //       // Get user address
+      //       userAddress = await this.signer.getAddress();
 
-            // Update Safe Wallet Service with signer
-            await safeWalletService.setSigner(this.signer);
-          }
-        } catch (signerError) {
-          console.warn('Failed to connect signer wallet, continuing in read-only mode:', signerError);
-          // Continue in read-only mode if signer connection fails
-        }
-      }
+      //       // Update Safe Wallet Service with signer
+      //       await safeWalletService.setSigner(this.signer);
+      //     }
+      //   } catch (signerError) {
+      //     console.warn('Failed to connect signer wallet, continuing in read-only mode:', signerError);
+      //     // Continue in read-only mode if signer connection fails
+      //   }
+      // }
 
       // Check if user is owner (only if we have a signer)
       if (userAddress) {
