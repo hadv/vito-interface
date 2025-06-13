@@ -396,45 +396,48 @@ function App() {
           <h1 className={appNameClasses}>Vito</h1>
         </div>
         <div className="relative network-selector">
-          <button
-            className="bg-white/10 text-white border-2 border-gray-700 rounded-lg px-4 py-2 h-10 cursor-pointer font-medium text-sm flex items-center capitalize"
+          <div
+            className={`bg-white/10 text-white border-2 border-gray-700 rounded-lg px-4 py-2 h-10 cursor-pointer font-medium text-sm flex items-center capitalize transition-all duration-200 backdrop-blur-md hover:bg-white/20 hover:border-gray-500 hover:shadow-lg active:scale-95 ${networkSelectorOpen ? 'bg-white/20 border-gray-500 shadow-lg ring-2 ring-primary-500/30' : ''}`}
             onClick={toggleNetworkSelector}
+            title="Click to switch network"
           >
-            <span className="mr-2">{network}</span>
-            <span>▼</span>
-          </button>
+            {isNetworkSwitching ? (
+              <>
+                <span className="animate-pulse">{network}</span>
+                <div className="w-3 h-3 border border-gray-400 border-t-white rounded-full animate-spin ml-2" />
+              </>
+            ) : (
+              <>
+                <span className="mr-2">{network}</span>
+                <div className={`ml-2 inline-block w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] border-l-transparent border-r-transparent border-t-current transition-transform duration-250 ${networkSelectorOpen ? 'rotate-180' : 'rotate-0'}`} />
+              </>
+            )}
+          </div>
         </div>
       </header>
 
       {networkSelectorOpen && (
-        <div className="fixed top-20 right-6 bg-white border-2 border-black rounded-lg w-48 z-[9999] shadow-2xl network-selector">
-          <div className="p-2 text-black font-bold">NETWORK SELECTOR</div>
+        <div className="fixed top-20 right-6 bg-gray-900/95 border border-gray-600 rounded-xl w-48 z-[9999] shadow-2xl backdrop-blur-lg overflow-hidden network-selector">
           <div
-            className="px-4 py-3 cursor-pointer text-black hover:bg-gray-200"
-            onClick={() => {
-              console.log('Ethereum clicked');
-              selectNetwork('ethereum');
-            }}
+            className={`px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white ${network === 'ethereum' ? 'bg-primary-500/20 text-primary-400 border-l-2 border-primary-500' : 'text-gray-300'}`}
+            onClick={() => selectNetwork('ethereum')}
           >
-            Ethereum {network === 'ethereum' ? '✓' : ''}
+            <Badge variant="primary" size="sm" dot />
+            Ethereum
           </div>
           <div
-            className="px-4 py-3 cursor-pointer text-black hover:bg-gray-200"
-            onClick={() => {
-              console.log('Sepolia clicked');
-              selectNetwork('sepolia');
-            }}
+            className={`px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white ${network === 'sepolia' ? 'bg-primary-500/20 text-primary-400 border-l-2 border-primary-500' : 'text-gray-300'}`}
+            onClick={() => selectNetwork('sepolia')}
           >
-            Sepolia {network === 'sepolia' ? '✓' : ''}
+            <Badge variant="warning" size="sm" dot />
+            Sepolia
           </div>
           <div
-            className="px-4 py-3 cursor-pointer text-black hover:bg-gray-200"
-            onClick={() => {
-              console.log('Arbitrum clicked');
-              selectNetwork('arbitrum');
-            }}
+            className={`px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white ${network === 'arbitrum' ? 'bg-primary-500/20 text-primary-400 border-l-2 border-primary-500' : 'text-gray-300'}`}
+            onClick={() => selectNetwork('arbitrum')}
           >
-            Arbitrum {network === 'arbitrum' ? '✓' : ''}
+            <Badge variant="info" size="sm" dot />
+            Arbitrum
           </div>
         </div>
       )}
