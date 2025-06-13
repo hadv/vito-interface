@@ -200,6 +200,55 @@ export const SAFE_ABI = [
     "inputs": [{"name": "owner", "type": "address"}],
     "outputs": [{"name": "", "type": "bool"}],
     "stateMutability": "view"
+  },
+  // Events for tracking executed transactions
+  {
+    "type": "event",
+    "name": "ExecutionSuccess",
+    "inputs": [
+      {"name": "txHash", "type": "bytes32", "indexed": true},
+      {"name": "payment", "type": "uint256", "indexed": false}
+    ]
+  },
+  {
+    "type": "event",
+    "name": "ExecutionFailure",
+    "inputs": [
+      {"name": "txHash", "type": "bytes32", "indexed": true},
+      {"name": "payment", "type": "uint256", "indexed": false}
+    ]
+  },
+  {
+    "type": "event",
+    "name": "SafeSetup",
+    "inputs": [
+      {"name": "initiator", "type": "address", "indexed": true},
+      {"name": "owners", "type": "address[]", "indexed": false},
+      {"name": "threshold", "type": "uint256", "indexed": false},
+      {"name": "initializer", "type": "address", "indexed": false},
+      {"name": "fallbackHandler", "type": "address", "indexed": false}
+    ]
+  },
+  {
+    "type": "event",
+    "name": "AddedOwner",
+    "inputs": [
+      {"name": "owner", "type": "address", "indexed": true}
+    ]
+  },
+  {
+    "type": "event",
+    "name": "RemovedOwner",
+    "inputs": [
+      {"name": "owner", "type": "address", "indexed": true}
+    ]
+  },
+  {
+    "type": "event",
+    "name": "ChangedThreshold",
+    "inputs": [
+      {"name": "threshold", "type": "uint256", "indexed": false}
+    ]
   }
 ];
 

@@ -42,10 +42,25 @@ export interface OnChainTransactionStatus {
 export class OnChainDataService {
   private provider: ethers.providers.Provider | null = null;
   private network: string = 'ethereum';
+  private safeServiceUrl: string;
 
   constructor(network: string = 'ethereum') {
     this.network = network;
     this.provider = getProviderForNetwork(network);
+
+    // Safe Transaction Service URLs for different networks
+    this.safeServiceUrl = this.getSafeServiceUrl(network);
+  }
+
+  private getSafeServiceUrl(network: string): string {
+    const urls = {
+      ethereum: 'https://safe-transaction-mainnet.safe.global',
+      sepolia: 'https://safe-transaction-sepolia.safe.global',
+      arbitrum: 'https://safe-transaction-arbitrum.safe.global',
+      gnosis: 'https://safe-transaction-gnosis-chain.safe.global'
+    };
+
+    return urls[network as keyof typeof urls] || urls.ethereum;
   }
 
   /**
@@ -80,9 +95,85 @@ export class OnChainDataService {
   }
 
   /**
-   * Get Safe transaction events from blockchain
+   * Get Safe transaction history from Safe Transaction Service API
    */
-  async getSafeTransactionEvents(
+  async getSafeTransactionHistory(
+    safeAddress: string,
+    limit: number = 100,
+    offset: number = 0
+  ): Promise<SafeTransactionEvent[]> {
+    try {
+      const url = `${this.safeServiceUrl}/api/v1/safes/${safeAddress}/multisig-transactions/?limit=${limit}&offset=${offset}&executed=true`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.warn(`Safe Transaction Service API error: ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      const transactions: SafeTransactionEvent[] = [];
+
+      for (const tx of data.results || []) {
+        if (tx.isExecuted && tx.transactionHash) {
+          // Get additional on-chain data
+          const receipt = await this.getTransactionReceipt(tx.transactionHash);
+
+          transactions.push({
+            safeTxHash: tx.safeTxHash || '',
+            to: tx.to || '',
+            value: tx.value || '0',
+            data: tx.data || '0x',
+            operation: tx.operation || 0,
+            gasToken: tx.gasToken || ethers.constants.AddressZero,
+            gasPrice: receipt?.gasPrice || '0',
+            gasUsed: receipt?.gasUsed || '0',
+            nonce: tx.nonce || 0,
+            executor: tx.executor || '',
+            blockNumber: receipt?.blockNumber || 0,
+            transactionHash: tx.transactionHash,
+            timestamp: new Date(tx.executionDate || tx.submissionDate).getTime() / 1000
+          });
+        }
+      }
+
+      return transactions.sort((a, b) => b.timestamp - a.timestamp);
+    } catch (error) {
+      console.error('Error fetching from Safe Transaction Service:', error);
+      // Fallback to on-chain events
+      return this.getSafeTransactionEventsFromChain(safeAddress);
+    }
+  }
+
+  /**
+   * Get pending Safe transactions from Safe Transaction Service API
+   */
+  async getSafePendingTransactions(
+    safeAddress: string,
+    limit: number = 100,
+    offset: number = 0
+  ): Promise<any[]> {
+    try {
+      const url = `${this.safeServiceUrl}/api/v1/safes/${safeAddress}/multisig-transactions/?limit=${limit}&offset=${offset}&executed=false`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.warn(`Safe Transaction Service API error: ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      return data.results || [];
+    } catch (error) {
+      console.error('Error fetching pending transactions from Safe Transaction Service:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get Safe transaction events from blockchain (fallback method)
+   */
+  async getSafeTransactionEventsFromChain(
     safeAddress: string,
     fromBlock: number = 0,
     toBlock: number | string = 'latest'
@@ -93,29 +184,66 @@ export class OnChainDataService {
 
     try {
       const safeContract = new ethers.Contract(safeAddress, SAFE_ABI, this.provider);
-      
+
       // Get ExecutionSuccess events (when transactions are executed)
-      const filter = safeContract.filters.ExecutionSuccess();
-      const events = await safeContract.queryFilter(filter, fromBlock, toBlock);
+      const successFilter = safeContract.filters.ExecutionSuccess();
+      const successEvents = await safeContract.queryFilter(successFilter, fromBlock, toBlock);
+
+      // Get ExecutionFailure events (when transactions fail)
+      const failureFilter = safeContract.filters.ExecutionFailure();
+      const failureEvents = await safeContract.queryFilter(failureFilter, fromBlock, toBlock);
 
       const transactionEvents: SafeTransactionEvent[] = [];
 
-      for (const event of events) {
+      // Process successful executions
+      for (const event of successEvents) {
         const block = await this.provider.getBlock(event.blockNumber);
         const receipt = await this.provider.getTransactionReceipt(event.transactionHash);
+        const transaction = await this.provider.getTransaction(event.transactionHash);
 
         if (event.args) {
+          // Parse the transaction input data to get Safe transaction details
+          const txDetails = await this.parseSafeTransactionFromTx(transaction, safeContract);
+
           transactionEvents.push({
             safeTxHash: event.args.txHash || '',
-            to: event.args.to || '',
-            value: event.args.value?.toString() || '0',
-            data: event.args.data || '0x',
-            operation: event.args.operation || 0,
-            gasToken: event.args.gasToken || ethers.constants.AddressZero,
-            gasPrice: event.args.gasPrice?.toString() || '0',
+            to: txDetails.to || '',
+            value: txDetails.value || '0',
+            data: txDetails.data || '0x',
+            operation: txDetails.operation || 0,
+            gasToken: txDetails.gasToken || ethers.constants.AddressZero,
+            gasPrice: receipt.effectiveGasPrice?.toString() || '0',
             gasUsed: receipt.gasUsed.toString(),
-            nonce: event.args.nonce?.toNumber() || 0,
-            executor: event.args.executor || '',
+            nonce: txDetails.nonce || 0,
+            executor: transaction.from || '',
+            blockNumber: event.blockNumber,
+            transactionHash: event.transactionHash,
+            timestamp: block.timestamp
+          });
+        }
+      }
+
+      // Process failed executions
+      for (const event of failureEvents) {
+        const block = await this.provider.getBlock(event.blockNumber);
+        const receipt = await this.provider.getTransactionReceipt(event.transactionHash);
+        const transaction = await this.provider.getTransaction(event.transactionHash);
+
+        if (event.args) {
+          // Parse the transaction input data to get Safe transaction details
+          const txDetails = await this.parseSafeTransactionFromTx(transaction, safeContract);
+
+          transactionEvents.push({
+            safeTxHash: event.args.txHash || '',
+            to: txDetails.to || '',
+            value: txDetails.value || '0',
+            data: txDetails.data || '0x',
+            operation: txDetails.operation || 0,
+            gasToken: txDetails.gasToken || ethers.constants.AddressZero,
+            gasPrice: receipt.effectiveGasPrice?.toString() || '0',
+            gasUsed: receipt.gasUsed.toString(),
+            nonce: txDetails.nonce || 0,
+            executor: transaction.from || '',
             blockNumber: event.blockNumber,
             transactionHash: event.transactionHash,
             timestamp: block.timestamp
@@ -128,6 +256,50 @@ export class OnChainDataService {
       console.error('Error getting Safe transaction events:', error);
       return [];
     }
+  }
+
+  /**
+   * Parse Safe transaction details from the execution transaction
+   */
+  private async parseSafeTransactionFromTx(
+    transaction: ethers.providers.TransactionResponse,
+    safeContract: ethers.Contract
+  ): Promise<{
+    to: string;
+    value: string;
+    data: string;
+    operation: number;
+    gasToken: string;
+    nonce: number;
+  }> {
+    try {
+      // Decode the execTransaction call data
+      const iface = safeContract.interface;
+      const decoded = iface.parseTransaction({ data: transaction.data });
+
+      if (decoded.name === 'execTransaction') {
+        return {
+          to: decoded.args.to,
+          value: decoded.args.value.toString(),
+          data: decoded.args.data,
+          operation: decoded.args.operation,
+          gasToken: decoded.args.gasToken,
+          nonce: 0 // We'll need to get this from the Safe contract state
+        };
+      }
+    } catch (error) {
+      console.error('Error parsing Safe transaction:', error);
+    }
+
+    // Return default values if parsing fails
+    return {
+      to: '',
+      value: '0',
+      data: '0x',
+      operation: 0,
+      gasToken: ethers.constants.AddressZero,
+      nonce: 0
+    };
   }
 
   /**

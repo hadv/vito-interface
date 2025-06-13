@@ -400,15 +400,47 @@ export class SafeWalletService {
     }
 
     try {
-      // Get executed transactions from blockchain events
-      const executedTxs = await this.onChainDataService.getSafeTransactionEvents(
+      // Get executed transactions from Safe Transaction Service API (faster and more reliable)
+      const executedTxs = await this.onChainDataService.getSafeTransactionHistory(
         this.config.safeAddress,
-        0, // From genesis block
-        'latest'
+        100, // Limit to last 100 transactions
+        0    // Offset
       );
 
-      // Get pending transactions from SafeTxPool
-      const pendingTxs = await this.getPendingTransactions();
+      // Get pending transactions from SafeTxPool, with Safe Transaction Service as fallback
+      let pendingTxs = await this.getPendingTransactions();
+
+      // If SafeTxPool returns no results, try Safe Transaction Service
+      if (pendingTxs.length === 0) {
+        const servicePendingTxs = await this.onChainDataService.getSafePendingTransactions(
+          this.config.safeAddress,
+          50, // Limit to last 50 pending transactions
+          0   // Offset
+        );
+
+        // Convert Safe Transaction Service format to our format
+        pendingTxs = servicePendingTxs.map(tx => ({
+          id: tx.safeTxHash || `pending_${Date.now()}`,
+          safeTxHash: tx.safeTxHash,
+          from: this.config!.safeAddress,
+          to: tx.to,
+          value: tx.value,
+          data: tx.data,
+          operation: tx.operation,
+          nonce: tx.nonce,
+          submissionDate: tx.submissionDate,
+          confirmations: tx.confirmations?.length || 0,
+          confirmationsRequired: tx.confirmationsRequired || 1,
+          proposer: tx.proposer,
+          executor: tx.executor,
+          gasToken: tx.gasToken,
+          safeTxGas: tx.safeTxGas,
+          baseGas: tx.baseGas,
+          gasPrice: tx.gasPrice,
+          refundReceiver: tx.refundReceiver,
+          signatures: tx.confirmations?.map((c: any) => c.signature) || []
+        }));
+      }
 
       // Combine and format transactions
       const allTransactions = [
@@ -525,10 +557,10 @@ export class SafeWalletService {
       }
 
       // Check if transaction was executed on-chain
-      const executedTxs = await this.onChainDataService.getSafeTransactionEvents(
+      const executedTxs = await this.onChainDataService.getSafeTransactionHistory(
         this.config!.safeAddress,
-        0,
-        'latest'
+        100,
+        0
       );
 
       const executedTx = executedTxs.find(tx => tx.safeTxHash === safeTxHash);
