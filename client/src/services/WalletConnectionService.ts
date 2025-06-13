@@ -319,9 +319,11 @@ export class WalletConnectionService {
     // Reload the page or reconnect when network changes
     if (this.state.isConnected && this.state.safeAddress) {
       try {
+        // Always use read-only mode to avoid MetaMask popup on network change
         await this.connectWallet({
           safeAddress: this.state.safeAddress,
-          network: this.state.network || 'ethereum'
+          network: this.state.network || 'ethereum',
+          readOnlyMode: true
         });
       } catch (error) {
         console.error('Error reconnecting after network change:', error);
