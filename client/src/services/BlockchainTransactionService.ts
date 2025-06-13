@@ -373,9 +373,11 @@ export class BlockchainTransactionService {
         if (normalData.status === '1' && normalData.result && Array.isArray(normalData.result)) {
           console.log(`Processing ${normalData.result.length} normal transactions`);
           for (const tx of normalData.result) {
-            if (tx.txreceipt_status === '1') {
-              transactions.push(await this.formatBlockchainTransaction(tx, 'normal'));
-            }
+            console.log(`Normal TX: ${tx.hash}, txreceipt_status: ${tx.txreceipt_status}, isError: ${tx.isError}`);
+            // Include all transactions (no status filtering)
+            const formattedTx = await this.formatBlockchainTransaction(tx, 'normal');
+            console.log(`Formatted normal TX: ${formattedTx.hash}, status: ${formattedTx.status}`);
+            transactions.push(formattedTx);
           }
         } else {
           console.warn('Normal transactions API response indicates error or no data:', normalData);
@@ -398,9 +400,8 @@ export class BlockchainTransactionService {
         if (internalData.status === '1' && internalData.result && Array.isArray(internalData.result)) {
           console.log(`Processing ${internalData.result.length} internal transactions`);
           for (const tx of internalData.result) {
-            if (tx.isError === '0') {
-              transactions.push(await this.formatBlockchainTransaction(tx, 'internal'));
-            }
+            // Include all internal transactions (no status filtering)
+            transactions.push(await this.formatBlockchainTransaction(tx, 'internal'));
           }
         } else {
           console.warn('Internal transactions API response indicates error or no data:', internalData);

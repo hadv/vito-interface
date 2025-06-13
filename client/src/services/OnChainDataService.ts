@@ -162,30 +162,31 @@ export class OnChainDataService {
       const safeTransactions: SafeTransactionEvent[] = [];
 
       for (const tx of paginatedTxs) {
-        // Only include successful transactions
-        if (tx.status === 'success') {
-          const safeTransaction: SafeTransactionEvent = {
-            safeTxHash: tx.safeTxHash || tx.hash, // Use transaction hash as fallback
-            to: tx.to,
-            value: tx.value,
-            data: tx.data,
-            operation: 0, // Default to CALL operation
-            gasToken: ethers.constants.AddressZero,
-            gasPrice: tx.gasPrice,
-            gasUsed: tx.gasUsed,
-            nonce: 0, // Will be populated if we can decode from logs
-            executor: tx.from,
-            blockNumber: tx.blockNumber,
-            transactionHash: tx.hash,
-            timestamp: tx.timestamp,
-            isExecuted: true,
-            status: 'executed' as const,
-            confirmations: [],
-            confirmationsRequired: 1
-          };
+        console.log(`Processing transaction ${tx.hash}: status=${tx.status}, from=${tx.from}, to=${tx.to}, value=${tx.value}`);
 
-          safeTransactions.push(safeTransaction);
-        }
+        // Include all transactions from Etherscan API (no status filtering needed)
+        const safeTransaction: SafeTransactionEvent = {
+          safeTxHash: tx.safeTxHash || tx.hash, // Use transaction hash as fallback
+          to: tx.to,
+          value: tx.value,
+          data: tx.data,
+          operation: 0, // Default to CALL operation
+          gasToken: ethers.constants.AddressZero,
+          gasPrice: tx.gasPrice,
+          gasUsed: tx.gasUsed,
+          nonce: 0, // Will be populated if we can decode from logs
+          executor: tx.from,
+          blockNumber: tx.blockNumber,
+          transactionHash: tx.hash,
+          timestamp: tx.timestamp,
+          isExecuted: true,
+          status: tx.status === 'success' ? 'executed' : 'failed',
+          confirmations: [],
+          confirmationsRequired: 1
+        };
+
+        safeTransactions.push(safeTransaction);
+        console.log(`✅ Added transaction ${tx.hash} to safe transactions (status: ${safeTransaction.status})`);
       }
 
       console.log(`Processed ${safeTransactions.length} valid blockchain transactions`);
