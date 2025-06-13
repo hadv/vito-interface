@@ -6,6 +6,17 @@ export interface Asset {
   type: 'native' | 'erc20' | 'erc721';
 }
 
+export interface TokenTransferInfo {
+  tokenAddress: string;
+  tokenSymbol: string;
+  tokenName: string;
+  tokenDecimals: number;
+  amount: string;
+  formattedAmount: string;
+  direction: 'in' | 'out';
+  isNative: boolean; // true for ETH, false for ERC20
+}
+
 export interface Transaction {
   id: string;
   from: string;
@@ -23,6 +34,25 @@ export interface Transaction {
   executionTxHash?: string;
   confirmations?: number;
   threshold?: number;
+  // Enhanced on-chain data fields
+  blockNumber?: number;
+  blockHash?: string;
+  nonce?: number;
+  operation?: number;
+  data?: string;
+  executor?: string;
+  isExecuted?: boolean;
+  submissionDate?: string;
+  proposer?: string;
+  txId?: number;
+  signatures?: string[];
+  value?: string;
+  gasToken?: string;
+  safeTxGas?: string;
+  baseGas?: string;
+  refundReceiver?: string;
+  // Token transfer information
+  tokenTransfer?: TokenTransferInfo;
 }
 
 export type MenuSection = 'home' | 'assets' | 'transactions' | 'settings';

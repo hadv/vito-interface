@@ -27,7 +27,7 @@ const getButtonClasses = (
     'border-0 rounded-lg font-medium cursor-pointer',
     'transition-all duration-250 ease-in-out',
     'relative overflow-hidden',
-    'focus-visible:outline-2 focus-visible:outline-primary-500 focus-visible:outline-offset-2',
+    'focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2',
     fullWidth && 'w-full',
     (disabled || loading) && 'opacity-50 cursor-not-allowed pointer-events-none'
   ];
@@ -40,26 +40,26 @@ const getButtonClasses = (
     xl: 'px-8 py-5 text-xl h-14'
   };
 
-  // Variant classes
+  // Variant classes using standard Tailwind colors
   const variantClasses = {
     primary: [
-      'bg-gradient-to-br from-primary-500 to-primary-600',
+      'bg-gradient-to-br from-blue-500 to-blue-600',
       'text-white shadow-md',
-      'hover:from-primary-600 hover:to-primary-700',
+      'hover:from-blue-600 hover:to-blue-700',
       'hover:shadow-lg hover:-translate-y-0.5',
       'active:translate-y-0 active:shadow-sm'
     ],
     secondary: [
-      'bg-dark-800 text-white border border-dark-600',
-      'hover:bg-dark-700 hover:border-dark-500'
+      'bg-gray-800 text-white border border-gray-600',
+      'hover:bg-gray-700 hover:border-gray-500'
     ],
     outline: [
-      'bg-transparent text-primary-500 border border-primary-500',
-      'hover:bg-primary-500 hover:text-white'
+      'bg-transparent text-blue-500 border border-blue-500',
+      'hover:bg-blue-500 hover:text-white'
     ],
     ghost: [
       'bg-transparent text-gray-300',
-      'hover:bg-dark-800 hover:text-white'
+      'hover:bg-gray-800 hover:text-white'
     ],
     danger: [
       'bg-gradient-to-br from-red-500 to-red-600',

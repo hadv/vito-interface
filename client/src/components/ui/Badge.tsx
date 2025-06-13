@@ -28,15 +28,15 @@ const getBadgeClasses = (
         lg: 'px-4 py-2 text-base h-8'
       }[size];
 
-  // Variant classes
+  // Variant classes using standard Tailwind colors
   const variantClasses = {
-    primary: 'bg-primary-500 text-white',
-    secondary: 'bg-secondary-500 text-white',
+    primary: 'bg-blue-500 text-white',
+    secondary: 'bg-purple-500 text-white',
     success: 'bg-green-500 text-white',
     warning: 'bg-yellow-500 text-white',
     error: 'bg-red-500 text-white',
     info: 'bg-blue-500 text-white',
-    default: 'bg-dark-800 text-gray-300 border border-dark-600'
+    default: 'bg-gray-800 text-gray-300 border border-gray-600'
   };
 
   return cn(

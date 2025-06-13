@@ -114,7 +114,7 @@ export class TransactionService {
   }
 
   /**
-   * Get transaction history
+   * Get transaction history from on-chain data
    */
   async getTransactionHistory(): Promise<any[]> {
     try {
@@ -122,6 +122,74 @@ export class TransactionService {
     } catch (error) {
       throw this.handleTransactionError(error);
     }
+  }
+
+  /**
+   * Get transaction status from blockchain
+   */
+  async getTransactionStatus(safeTxHash: string): Promise<{
+    status: 'pending' | 'confirmed' | 'executed' | 'failed';
+    confirmations: number;
+    blockNumber?: number;
+    gasUsed?: string;
+    gasPrice?: string;
+    executionTxHash?: string;
+  }> {
+    try {
+      return await safeWalletService.getTransactionStatus(safeTxHash);
+    } catch (error) {
+      throw this.handleTransactionError(error);
+    }
+  }
+
+  /**
+   * Check if transaction can be executed (has enough confirmations)
+   */
+  async canExecuteTransaction(safeTxHash: string): Promise<boolean> {
+    try {
+      return await safeWalletService.canExecuteTransaction(safeTxHash);
+    } catch (error) {
+      console.error('Error checking if transaction can be executed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Monitor transaction status with real-time updates
+   */
+  async monitorTransactionStatus(
+    safeTxHash: string,
+    onStatusUpdate: (status: any) => void,
+    pollInterval: number = 5000
+  ): Promise<() => void> {
+    let isMonitoring = true;
+
+    const poll = async () => {
+      if (!isMonitoring) return;
+
+      try {
+        const status = await this.getTransactionStatus(safeTxHash);
+        onStatusUpdate(status);
+
+        // Continue polling if transaction is still pending
+        if (status.status === 'pending' && isMonitoring) {
+          setTimeout(poll, pollInterval);
+        }
+      } catch (error) {
+        console.error('Error monitoring transaction status:', error);
+        if (isMonitoring) {
+          setTimeout(poll, pollInterval);
+        }
+      }
+    };
+
+    // Start polling
+    poll();
+
+    // Return cleanup function
+    return () => {
+      isMonitoring = false;
+    };
   }
 
   /**

@@ -40,29 +40,29 @@ const getInputWrapperClasses = (
     lg: 'h-13'
   };
 
-  // Variant classes
+  // Variant classes using standard Tailwind colors
   const variantClasses = {
     default: [
-      'bg-dark-900 border-dark-600',
-      'focus-within:border-primary-500 focus-within:bg-dark-800',
-      hasError ? 'border-red-500' : 'border-dark-600'
+      'bg-gray-900 border-gray-600',
+      'focus-within:border-blue-500 focus-within:bg-gray-800',
+      hasError ? 'border-red-500' : 'border-gray-600'
     ],
     filled: [
-      'bg-dark-800 border-transparent',
-      'focus-within:border-primary-500',
+      'bg-gray-800 border-transparent',
+      'focus-within:border-blue-500',
       hasError ? 'border-red-500' : 'border-transparent'
     ],
     outlined: [
       'bg-transparent',
-      'focus-within:border-primary-500',
-      hasError ? 'border-red-500' : 'border-dark-600'
+      'focus-within:border-blue-500',
+      hasError ? 'border-red-500' : 'border-gray-600'
     ]
   };
 
-  // Focus ring
+  // Focus ring using standard Tailwind colors
   const focusClasses = hasError
     ? 'focus-within:ring-2 focus-within:ring-red-500/20'
-    : 'focus-within:ring-2 focus-within:ring-primary-500/20';
+    : 'focus-within:ring-2 focus-within:ring-blue-500/20';
 
   return cn(
     baseClasses,

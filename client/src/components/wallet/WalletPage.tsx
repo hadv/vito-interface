@@ -104,6 +104,7 @@ const WalletPage: React.FC<WalletPageProps> = ({
 }) => {
   const [activeSection, setActiveSection] = useState<MenuSection>('home');
   const [assets, setAssets] = useState<Asset[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showQRCode, setShowQRCode] = useState(false);
@@ -195,9 +196,9 @@ const WalletPage: React.FC<WalletPageProps> = ({
         );
       case 'transactions':
         return (
-          <TransactionsPage 
-            transactions={transactions}
-            isLoading={isLoading}
+          <TransactionsPage
+            safeAddress={walletAddress}
+            network={network}
           />
         );
       case 'settings':

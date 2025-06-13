@@ -66,6 +66,36 @@ export const getEtherscanAddressUrl = (address: string, network: string): string
 };
 
 /**
+ * Generates a URL for an Etherscan transaction page
+ * @param txHash The transaction hash
+ * @param network The network (e.g., 'ethereum', 'sepolia', 'arbitrum')
+ * @returns URL to view the transaction on Etherscan
+ */
+export const getEtherscanTransactionUrl = (txHash: string, network: string): string => {
+  switch(network.toLowerCase()) {
+    case 'arbitrum':
+      return `https://arbiscan.io/tx/${txHash}`;
+    case 'sepolia':
+      return `https://sepolia.etherscan.io/tx/${txHash}`;
+    case 'ethereum':
+    default:
+      return `https://etherscan.io/tx/${txHash}`;
+  }
+};
+
+/**
+ * Generates a URL for Safe transaction details
+ * @param safeAddress The Safe address
+ * @param safeTxHash The Safe transaction hash
+ * @param network The network (e.g., 'ethereum', 'sepolia', 'arbitrum')
+ * @returns URL to view the Safe transaction
+ */
+export const getSafeTransactionUrl = (safeAddress: string, safeTxHash: string, network: string): string => {
+  const networkPrefix = network.toLowerCase() === 'ethereum' ? '' : `${network.toLowerCase()}.`;
+  return `https://${networkPrefix}app.safe.global/transactions/tx?safe=${network.toLowerCase()}:${safeAddress}&id=multisig_${safeAddress}_${safeTxHash}`;
+};
+
+/**
  * Generates a QR code URL for a wallet address
  * Using QR Server which is more reliable than Google Charts API
  * @param address The wallet address
