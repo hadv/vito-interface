@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { ethers } from 'ethers';
 import { Button, Input } from '@components/ui';
@@ -6,6 +6,8 @@ import { isValidEthereumAddress } from '../../../utils/ens';
 import EIP712SigningModal from './EIP712SigningModal';
 import { SafeTransactionData, SafeDomain } from '../../../utils/eip712';
 import { safeWalletService } from '../../../services/SafeWalletService';
+import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
+import { isSafeTxPoolConfigured } from '../../../contracts/abis';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -187,11 +189,31 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   const [success, setSuccess] = useState('');
   const [currentStep, setCurrentStep] = useState<'form' | 'signing' | 'proposing'>('form');
   const [showEIP712Modal, setShowEIP712Modal] = useState(false);
+  const [connectionState, setConnectionState] = useState<WalletConnectionState>({ isConnected: false });
   const [pendingTransaction, setPendingTransaction] = useState<{
     data: SafeTransactionData;
     domain: SafeDomain;
     txHash: string;
   } | null>(null);
+
+  // Subscribe to wallet connection state changes
+  useEffect(() => {
+    setConnectionState(walletConnectionService.getState());
+
+    const unsubscribe = walletConnectionService.subscribe((state) => {
+      setConnectionState(state);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const handleConnectSigner = async () => {
+    try {
+      await walletConnectionService.connectSignerWallet();
+    } catch (error: any) {
+      setError(`Failed to connect signer wallet: ${error.message}`);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -211,6 +233,18 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
     if (!amount.trim() || parseFloat(amount) <= 0) {
       setError('Amount must be greater than 0');
+      return;
+    }
+
+    // Check if signer is connected
+    if (!connectionState.signerConnected) {
+      setError('Please connect your wallet to sign transactions');
+      return;
+    }
+
+    // Check if Safe TX Pool is configured for the current network
+    if (!isSafeTxPoolConfigured(connectionState.network || 'ethereum')) {
+      setError(`Safe TX Pool contract is not configured for ${connectionState.network}. Please configure the contract address to enable transactions.`);
       return;
     }
 
@@ -393,18 +427,29 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={isLoading || !toAddress || !amount}
-            >
-              {isLoading ?
-                (currentStep === 'form' ? 'Creating EIP-712 Transaction...' :
-                 currentStep === 'signing' ? 'Waiting for Signature...' :
-                 'Proposing to SafeTxPool...') :
-                'Create EIP-712 Transaction'
-              }
-            </Button>
+            {!connectionState.signerConnected ? (
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleConnectSigner}
+                disabled={isLoading}
+              >
+                Connect Wallet to Sign
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={isLoading || !toAddress || !amount}
+              >
+                {isLoading ?
+                  (currentStep === 'form' ? 'Creating EIP-712 Transaction...' :
+                   currentStep === 'signing' ? 'Waiting for Signature...' :
+                   'Proposing to SafeTxPool...') :
+                  'Create EIP-712 Transaction'
+                }
+              </Button>
+            )}
           </ButtonGroup>
         </form>
 

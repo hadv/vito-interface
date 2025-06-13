@@ -11,7 +11,7 @@ import { processCommand } from './commands';
 
 // Tailwind classes for app container
 const appContainerClasses = cn(
-  'h-screen text-white overflow-hidden',
+  'h-screen text-white',
   'bg-gradient-to-br from-gray-950 to-gray-900',
   'font-sans flex flex-col',
   'p-0 m-0'
@@ -22,7 +22,7 @@ const headerClasses = cn(
   'flex justify-between items-center',
   'bg-white/5 backdrop-blur-md',
   'px-6 py-4 border-b border-gray-800',
-  'h-16 box-border relative',
+  'h-16 box-border relative overflow-visible',
   'before:absolute before:inset-0',
   'before:bg-gradient-to-r before:from-primary-500/20 before:via-transparent before:to-secondary-500/20',
   'before:pointer-events-none'
@@ -38,7 +38,7 @@ const appNameClasses = cn(
 );
 
 // Tailwind classes for network selector
-const networkSelectorClasses = 'relative h-full flex items-center z-10';
+const networkSelectorClasses = 'relative h-full flex items-center z-20 overflow-visible';
 
 const getArrowClasses = (isOpen: boolean) => cn(
   'ml-2 inline-block w-0 h-0',
@@ -48,29 +48,33 @@ const getArrowClasses = (isOpen: boolean) => cn(
   isOpen ? 'rotate-180' : 'rotate-0'
 );
 
-const currentNetworkClasses = cn(
-  'bg-white/10 text-white border border-gray-700',
+const getCurrentNetworkClasses = (isOpen: boolean) => cn(
+  'bg-white/10 text-white border-2 border-gray-700',
   'rounded-lg px-4 py-2 h-10 cursor-pointer',
   'font-medium text-sm flex items-center capitalize',
-  'transition-all duration-250 backdrop-blur-md',
-  'hover:bg-white/15 hover:border-gray-600 hover:-translate-y-0.5'
+  'transition-all duration-200 backdrop-blur-md',
+  'hover:bg-white/20 hover:border-gray-500 hover:shadow-lg',
+  'active:scale-95',
+  isOpen ? 'bg-white/20 border-gray-500 shadow-lg ring-2 ring-primary-500/30' : ''
 );
 
 const getNetworkOptionsClasses = (isOpen: boolean) => cn(
-  'absolute top-12 right-0 bg-dark-900 border border-dark-600',
-  'rounded-xl w-45 z-20 shadow-xl backdrop-blur-lg overflow-hidden',
+  'fixed top-20 right-6 bg-gray-900 border-2 border-white',
+  'rounded-xl w-48 z-[9999] shadow-2xl',
+  'min-h-[120px]',
   isOpen ? 'block' : 'hidden'
 );
 
 const getNetworkOptionClasses = (isActive: boolean) => cn(
   'px-4 py-3 cursor-pointer text-sm font-medium capitalize',
-  'transition-all duration-250 flex items-center gap-2',
+  'transition-all duration-200 flex items-center gap-2',
+  'hover:bg-gray-800 hover:text-white',
   isActive
-    ? 'bg-primary-500/20 text-primary-400'
-    : 'text-gray-300 hover:bg-dark-800 hover:text-white'
+    ? 'bg-primary-500/20 text-primary-400 border-l-2 border-primary-500'
+    : 'text-gray-300'
 );
 
-const contentContainerClasses = 'flex-1 overflow-hidden relative p-0 m-0';
+const contentContainerClasses = 'flex-1 overflow-auto relative p-0 m-0';
 
 // Tailwind classes for welcome page
 const welcomeContainerClasses = cn(
@@ -118,8 +122,9 @@ const commandDescriptionClasses = 'text-gray-300';
 
 // Tailwind classes for overlay
 const getOverlayClasses = (isVisible: boolean) => cn(
-  'fixed inset-0 bg-black/50 z-[5]',
-  isVisible ? 'block' : 'hidden'
+  'fixed inset-0 bg-black/30 z-40',
+  'transition-opacity duration-200',
+  isVisible ? 'block opacity-100' : 'hidden opacity-0'
 );
 
 const NoWalletPage = ({ walletAddress, setWalletAddress, onConnect }: {
@@ -219,6 +224,8 @@ function App() {
   const [ensName, setEnsName] = useState('');
   const [isLoadingEns, setIsLoadingEns] = useState(false);
   const [networkSelectorOpen, setNetworkSelectorOpen] = useState(false);
+  const [isNetworkSwitching, setIsNetworkSwitching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Network change is handled by selectNetwork function in the UI
 
@@ -254,23 +261,35 @@ function App() {
     };
   }, [walletAddress, network, walletConnected]);
 
+  // Auto-dismiss error after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
   const connectWallet = async () => {
     if (walletAddress.trim() && isValidEthereumAddress(walletAddress)) {
       try {
         console.log(`Connecting to Safe wallet: ${walletAddress} on network: ${network}`);
 
+        // Connect in read-only mode by default - user can connect signer later
         await walletConnectionService.connectWallet({
           safeAddress: walletAddress,
-          network: network
+          network: network,
+          readOnlyMode: true
         });
 
         setWalletConnected(true);
       } catch (error: any) {
         console.error('Failed to connect to Safe wallet:', error);
-        alert(`Failed to connect to Safe wallet: ${error.message}`);
+        setError(`Failed to connect to Safe wallet: ${error.message.includes('Safe information') ? 'Invalid Safe wallet address or network' : 'Connection failed'}`);
       }
     } else {
-      alert('Please enter a valid Safe wallet address');
+      setError('Please enter a valid Safe wallet address');
     }
   };
   
@@ -297,13 +316,39 @@ function App() {
 
   // Toggle network selector
   const toggleNetworkSelector = () => {
-    setNetworkSelectorOpen(!networkSelectorOpen);
+    console.log('Toggle network selector clicked, isNetworkSwitching:', isNetworkSwitching, 'current state:', networkSelectorOpen);
+    if (!isNetworkSwitching) {
+      setNetworkSelectorOpen(!networkSelectorOpen);
+    }
   };
 
   // Handle network selection
-  const selectNetwork = (selectedNetwork: string) => {
+  const selectNetwork = async (selectedNetwork: string) => {
+    console.log(`Network selection clicked: ${selectedNetwork}, current: ${network}`);
+    const previousNetwork = network;
     setNetwork(selectedNetwork);
     setNetworkSelectorOpen(false);
+
+    // If wallet is connected, switch the network for the connected wallet
+    if (walletConnected && walletAddress) {
+      setIsNetworkSwitching(true);
+      try {
+        console.log(`Switching network from ${previousNetwork} to ${selectedNetwork} for wallet: ${walletAddress}`);
+
+        await walletConnectionService.switchNetwork(selectedNetwork);
+
+        console.log(`Successfully switched to ${selectedNetwork}`);
+      } catch (error: any) {
+        console.error('Failed to switch network:', error);
+        // Revert network selection on error
+        setNetwork(previousNetwork);
+        setError(`Failed to switch to ${selectedNetwork}: ${error.message.includes('Safe information') ? 'Safe wallet not found on this network' : 'Network connection failed'}`);
+      } finally {
+        setIsNetworkSwitching(false);
+      }
+    } else {
+      console.log(`Network changed to ${selectedNetwork} (no wallet connected)`);
+    }
   };
 
   // Add click outside handler
@@ -349,41 +394,89 @@ function App() {
 
   return (
     <div className={appContainerClasses}>
+      {/* Debug Panel - Remove in production */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed top-4 left-4 bg-black/80 text-white p-2 rounded text-xs z-[100] font-mono">
+          Network: {network} | Selector Open: {networkSelectorOpen ? 'Yes' : 'No'} | Switching: {isNetworkSwitching ? 'Yes' : 'No'}
+        </div>
+      )}
+
+      {/* Error Notification */}
+      {error && (
+        <div className="fixed top-4 right-4 bg-red-500/90 text-white p-4 rounded-lg shadow-lg z-[9999] max-w-md backdrop-blur-sm border border-red-400">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <svg className="w-5 h-5 text-red-200" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">{error}</p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="flex-shrink-0 text-red-200 hover:text-white transition-colors"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className={headerClasses}>
         <div className={logoContainerClasses}>
           <img src={logo} alt="Vito Logo" className={logoClasses} />
           <h1 className={appNameClasses}>Vito</h1>
         </div>
-        <div className={cn(networkSelectorClasses, "network-selector")}>
-          <div className={currentNetworkClasses} onClick={toggleNetworkSelector}>
-            {network}
-            <div className={getArrowClasses(networkSelectorOpen)} />
-          </div>
-          <div className={getNetworkOptionsClasses(networkSelectorOpen)}>
-            <div
-              className={getNetworkOptionClasses(network === 'ethereum')}
-              onClick={() => selectNetwork('ethereum')}
-            >
-              <Badge variant="primary" size="sm" dot />
-              Ethereum
-            </div>
-            <div
-              className={getNetworkOptionClasses(network === 'sepolia')}
-              onClick={() => selectNetwork('sepolia')}
-            >
-              <Badge variant="warning" size="sm" dot />
-              Sepolia
-            </div>
-            <div
-              className={getNetworkOptionClasses(network === 'arbitrum')}
-              onClick={() => selectNetwork('arbitrum')}
-            >
-              <Badge variant="info" size="sm" dot />
-              Arbitrum
-            </div>
+        <div className="relative network-selector">
+          <div
+            className={`bg-white/10 text-white border-2 border-gray-700 rounded-lg px-4 py-2 h-10 cursor-pointer font-medium text-sm flex items-center capitalize transition-all duration-200 backdrop-blur-md hover:bg-white/20 hover:border-gray-500 hover:shadow-lg active:scale-95 ${networkSelectorOpen ? 'bg-white/20 border-gray-500 shadow-lg ring-2 ring-primary-500/30' : ''}`}
+            onClick={toggleNetworkSelector}
+            title="Click to switch network"
+          >
+            {isNetworkSwitching ? (
+              <>
+                <span className="animate-pulse">{network}</span>
+                <div className="w-3 h-3 border border-gray-400 border-t-white rounded-full animate-spin ml-2" />
+              </>
+            ) : (
+              <>
+                <span className="mr-2">{network}</span>
+                <div className={`ml-2 inline-block w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] border-l-transparent border-r-transparent border-t-current transition-transform duration-250 ${networkSelectorOpen ? 'rotate-180' : 'rotate-0'}`} />
+              </>
+            )}
           </div>
         </div>
       </header>
+
+      {networkSelectorOpen && (
+        <div className="fixed top-20 right-6 bg-gray-900/95 border border-gray-600 rounded-xl w-48 z-[9999] shadow-2xl backdrop-blur-lg overflow-hidden network-selector">
+          <div
+            className={`px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white ${network === 'ethereum' ? 'bg-primary-500/20 text-primary-400 border-l-2 border-primary-500' : 'text-gray-300'}`}
+            onClick={() => selectNetwork('ethereum')}
+          >
+            <Badge variant="primary" size="sm" dot />
+            Ethereum
+          </div>
+          <div
+            className={`px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white ${network === 'sepolia' ? 'bg-primary-500/20 text-primary-400 border-l-2 border-primary-500' : 'text-gray-300'}`}
+            onClick={() => selectNetwork('sepolia')}
+          >
+            <Badge variant="warning" size="sm" dot />
+            Sepolia
+          </div>
+          <div
+            className={`px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white ${network === 'arbitrum' ? 'bg-primary-500/20 text-primary-400 border-l-2 border-primary-500' : 'text-gray-300'}`}
+            onClick={() => selectNetwork('arbitrum')}
+          >
+            <Badge variant="info" size="sm" dot />
+            Arbitrum
+          </div>
+        </div>
+      )}
+
       <div className={getOverlayClasses(networkSelectorOpen)} />
       <div className={contentContainerClasses}>
         {walletConnected ? (

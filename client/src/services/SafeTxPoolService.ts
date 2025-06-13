@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { SAFE_TX_POOL_ABI, NETWORK_CONFIGS } from '../contracts/abis';
+import { SAFE_TX_POOL_ABI, NETWORK_CONFIGS, isSafeTxPoolConfigured, getSafeTxPoolAddress } from '../contracts/abis';
 import { getProviderForNetwork } from '../utils/ens';
 import { createSafeContractTransactionHash, SafeTransactionData } from '../utils/eip712';
 
@@ -47,8 +47,13 @@ export class SafeTxPoolService {
    */
   private initializeContract(): void {
     const networkConfig = NETWORK_CONFIGS[this.network as keyof typeof NETWORK_CONFIGS];
-    if (!networkConfig || !networkConfig.safeTxPoolAddress) {
-      console.warn(`SafeTxPool contract address not configured for network: ${this.network}`);
+    if (!networkConfig) {
+      console.warn(`Network configuration not found for: ${this.network}`);
+      return;
+    }
+
+    if (!isSafeTxPoolConfigured(this.network)) {
+      console.warn(`SafeTxPool contract address not configured for network: ${this.network}. Please set the contract address in environment variables or abis.ts`);
       return;
     }
 
@@ -57,8 +62,14 @@ export class SafeTxPoolService {
       return;
     }
 
+    const contractAddress = getSafeTxPoolAddress(this.network);
+    if (!contractAddress) {
+      console.error(`Failed to get SafeTxPool address for network: ${this.network}`);
+      return;
+    }
+
     this.contract = new ethers.Contract(
-      networkConfig.safeTxPoolAddress,
+      contractAddress,
       SAFE_TX_POOL_ABI,
       this.provider
     );
@@ -67,10 +78,15 @@ export class SafeTxPoolService {
   /**
    * Set the signer for write operations
    */
-  setSigner(signer: ethers.Signer): void {
+  setSigner(signer: ethers.Signer | null): void {
     this.signer = signer;
     if (this.contract) {
-      this.contract = this.contract.connect(signer);
+      if (signer) {
+        this.contract = this.contract.connect(signer);
+      } else {
+        // Reconnect to provider for read-only operations
+        this.contract = this.contract.connect(this.provider!);
+      }
     }
   }
 
@@ -85,8 +101,14 @@ export class SafeTxPoolService {
    * Get the contract address for the current network
    */
   getContractAddress(): string | null {
-    const networkConfig = NETWORK_CONFIGS[this.network as keyof typeof NETWORK_CONFIGS];
-    return networkConfig?.safeTxPoolAddress || null;
+    return getSafeTxPoolAddress(this.network);
+  }
+
+  /**
+   * Check if SafeTxPool is configured for the current network
+   */
+  isConfigured(): boolean {
+    return isSafeTxPoolConfigured(this.network);
   }
 
   /**
@@ -120,6 +142,9 @@ export class SafeTxPoolService {
    * Propose a new Safe transaction to the pool using EIP-712 transaction hash
    */
   async proposeTx(params: ProposeTransactionParams, chainId?: number): Promise<string> {
+    if (!this.isConfigured()) {
+      throw new Error(`SafeTxPool contract not configured for network: ${this.network}. Please configure the contract address.`);
+    }
     if (!this.contract) {
       throw new Error('SafeTxPool contract not initialized. Check network configuration and contract address.');
     }

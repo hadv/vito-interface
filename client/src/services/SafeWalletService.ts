@@ -81,6 +81,27 @@ export class SafeWalletService {
   }
 
   /**
+   * Set or update the signer for the Safe Wallet Service
+   */
+  async setSigner(signer: ethers.Signer | null): Promise<void> {
+    this.signer = signer;
+
+    if (this.config && this.provider) {
+      // Update Safe contract with new signer
+      this.safeContract = new ethers.Contract(
+        this.config.safeAddress,
+        SAFE_ABI,
+        this.signer || this.provider
+      );
+
+      // Update SafeTxPool service with new signer
+      if (this.safeTxPoolService) {
+        this.safeTxPoolService.setSigner(this.signer);
+      }
+    }
+  }
+
+  /**
    * Check if the service is properly initialized
    */
   private ensureInitialized(): void {

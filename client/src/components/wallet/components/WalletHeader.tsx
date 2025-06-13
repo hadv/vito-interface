@@ -187,8 +187,32 @@ const WalletHeader: React.FC<WalletHeaderProps> = ({
   };
   
   const openEtherscan = () => {
-    const baseUrl = network === 'ethereum' ? 'https://etherscan.io' : 
-                    `https://${network}.etherscan.io`;
+    let baseUrl: string;
+
+    switch (network.toLowerCase()) {
+      case 'ethereum':
+      case 'mainnet':
+        baseUrl = 'https://etherscan.io';
+        break;
+      case 'sepolia':
+        baseUrl = 'https://sepolia.etherscan.io';
+        break;
+      case 'arbitrum':
+        baseUrl = 'https://arbiscan.io';
+        break;
+      case 'optimism':
+        baseUrl = 'https://optimistic.etherscan.io';
+        break;
+      case 'polygon':
+        baseUrl = 'https://polygonscan.com';
+        break;
+      case 'base':
+        baseUrl = 'https://basescan.org';
+        break;
+      default:
+        baseUrl = 'https://etherscan.io';
+    }
+
     window.open(`${baseUrl}/address/${walletAddress}`, '_blank');
   };
   

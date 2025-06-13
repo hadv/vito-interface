@@ -284,10 +284,23 @@ export const TOKEN_ADDRESSES = {
 };
 
 // SafeTxPool contract addresses for different networks
+// These addresses should be updated with the actual deployed contract addresses
 export const SAFE_TX_POOL_ADDRESSES = {
-  ethereum: '0x0000000000000000000000000000000000000000', // TODO: Add deployed address
-  sepolia: '0x0000000000000000000000000000000000000000',   // TODO: Add deployed address
-  arbitrum: '0x0000000000000000000000000000000000000000'   // TODO: Add deployed address
+  ethereum: process.env.REACT_APP_SAFE_TX_POOL_ETHEREUM || '0x0000000000000000000000000000000000000000',
+  sepolia: process.env.REACT_APP_SAFE_TX_POOL_SEPOLIA || '0x0000000000000000000000000000000000000000',
+  arbitrum: process.env.REACT_APP_SAFE_TX_POOL_ARBITRUM || '0x0000000000000000000000000000000000000000'
+};
+
+// Utility function to check if a Safe TX Pool address is configured
+export const isSafeTxPoolConfigured = (network: string): boolean => {
+  const address = SAFE_TX_POOL_ADDRESSES[network as keyof typeof SAFE_TX_POOL_ADDRESSES];
+  return Boolean(address && address !== '0x0000000000000000000000000000000000000000');
+};
+
+// Utility function to get Safe TX Pool address with validation
+export const getSafeTxPoolAddress = (network: string): string | null => {
+  const address = SAFE_TX_POOL_ADDRESSES[network as keyof typeof SAFE_TX_POOL_ADDRESSES];
+  return isSafeTxPoolConfigured(network) ? address : null;
 };
 
 // Network configurations
@@ -297,20 +310,23 @@ export const NETWORK_CONFIGS = {
     name: 'Ethereum Mainnet',
     rpcUrl: 'https://mainnet.infura.io/v3/',
     blockExplorer: 'https://etherscan.io',
-    safeTxPoolAddress: SAFE_TX_POOL_ADDRESSES.ethereum
+    safeTxPoolAddress: SAFE_TX_POOL_ADDRESSES.ethereum,
+    isTestnet: false
   },
   sepolia: {
     chainId: 11155111,
     name: 'Sepolia Testnet',
     rpcUrl: 'https://sepolia.infura.io/v3/',
     blockExplorer: 'https://sepolia.etherscan.io',
-    safeTxPoolAddress: SAFE_TX_POOL_ADDRESSES.sepolia
+    safeTxPoolAddress: SAFE_TX_POOL_ADDRESSES.sepolia,
+    isTestnet: true
   },
   arbitrum: {
     chainId: 42161,
     name: 'Arbitrum One',
     rpcUrl: 'https://arb1.arbitrum.io/rpc',
     blockExplorer: 'https://arbiscan.io',
-    safeTxPoolAddress: SAFE_TX_POOL_ADDRESSES.arbitrum
+    safeTxPoolAddress: SAFE_TX_POOL_ADDRESSES.arbitrum,
+    isTestnet: false
   }
 };

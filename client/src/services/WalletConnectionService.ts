@@ -9,27 +9,130 @@ export interface WalletConnectionState {
   balance?: string;
   isOwner?: boolean;
   error?: string;
+  // New fields for signer wallet state
+  signerConnected?: boolean;
+  signerAddress?: string;
+  readOnlyMode?: boolean;
 }
 
 export interface ConnectWalletParams {
   safeAddress: string;
   network: string;
   rpcUrl?: string;
+  readOnlyMode?: boolean; // New option for read-only connection
 }
 
 export class WalletConnectionService {
   private state: WalletConnectionState = {
-    isConnected: false
+    isConnected: false,
+    signerConnected: false,
+    readOnlyMode: false
   };
-  
+
   private listeners: ((state: WalletConnectionState) => void)[] = [];
   private provider: ethers.providers.Web3Provider | null = null;
   private signer: ethers.Signer | null = null;
 
   /**
-   * Connect to a Safe wallet
+   * Connect to a Safe wallet (can be read-only or with signer)
    */
   async connectWallet(params: ConnectWalletParams): Promise<WalletConnectionState> {
+    try {
+      const readOnlyMode = params.readOnlyMode || false;
+      let userAddress: string | undefined;
+      let isOwner = false;
+
+      // Initialize Safe Wallet Service first to validate the Safe wallet
+      const config: SafeWalletConfig = {
+        safeAddress: params.safeAddress,
+        network: params.network,
+        rpcUrl: params.rpcUrl
+      };
+
+      // Initialize without signer first to validate Safe wallet
+      await safeWalletService.initialize(config, undefined);
+
+      // Get Safe info to validate the Safe wallet exists
+      const safeInfo = await safeWalletService.getSafeInfo();
+
+      // Only try to connect signer after Safe wallet is validated
+      if (!readOnlyMode) {
+        try {
+          // Check if MetaMask or other wallet is available
+          if (typeof window.ethereum !== 'undefined') {
+            // Request account access
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+            // Create provider and signer
+            this.provider = new ethers.providers.Web3Provider(window.ethereum);
+            this.signer = this.provider.getSigner();
+
+            // Get user address
+            userAddress = await this.signer.getAddress();
+
+            // Update Safe Wallet Service with signer
+            await safeWalletService.setSigner(this.signer);
+          }
+        } catch (signerError) {
+          console.warn('Failed to connect signer wallet, continuing in read-only mode:', signerError);
+          // Continue in read-only mode if signer connection fails
+        }
+      }
+
+      // Check if user is owner (only if we have a signer)
+      if (userAddress) {
+        isOwner = await safeWalletService.isOwner(userAddress);
+      }
+
+      // Update state
+      this.state = {
+        isConnected: true,
+        address: userAddress,
+        safeAddress: params.safeAddress,
+        network: params.network,
+        balance: safeInfo.balance,
+        isOwner,
+        signerConnected: !!this.signer,
+        signerAddress: userAddress,
+        readOnlyMode: !this.signer,
+        error: undefined
+      };
+
+      // Always remove existing event listeners first
+      this.removeEventListeners();
+
+      // Don't set up event listeners in read-only mode to prevent MetaMask interactions
+      // Set up event listeners for account/network changes (only if signer is connected)
+      if (this.signer && !readOnlyMode) {
+        this.setupEventListeners();
+      }
+
+      // Notify listeners
+      this.notifyListeners();
+
+      return this.state;
+    } catch (error: any) {
+      const errorMessage = error.message || 'Failed to connect wallet';
+      this.state = {
+        isConnected: false,
+        signerConnected: false,
+        readOnlyMode: false,
+        error: errorMessage
+      };
+
+      this.notifyListeners();
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
+   * Connect signer wallet to an already connected Safe wallet
+   */
+  async connectSignerWallet(): Promise<WalletConnectionState> {
+    if (!this.state.isConnected || !this.state.safeAddress) {
+      throw new Error('Safe wallet must be connected first');
+    }
+
     try {
       // Check if MetaMask or other wallet is available
       if (typeof window.ethereum === 'undefined') {
@@ -42,48 +145,41 @@ export class WalletConnectionService {
       // Create provider and signer
       this.provider = new ethers.providers.Web3Provider(window.ethereum);
       this.signer = this.provider.getSigner();
-      
+
       // Get user address
       const userAddress = await this.signer.getAddress();
-      
-      // Initialize Safe Wallet Service
-      const config: SafeWalletConfig = {
-        safeAddress: params.safeAddress,
-        network: params.network,
-        rpcUrl: params.rpcUrl
-      };
-      
-      await safeWalletService.initialize(config, this.signer);
-      
-      // Get Safe info and check if user is owner
-      const safeInfo = await safeWalletService.getSafeInfo();
+
+      // Update Safe Wallet Service with signer
+      await safeWalletService.setSigner(this.signer);
+
+      // Check if user is owner
       const isOwner = await safeWalletService.isOwner(userAddress);
-      
+
       // Update state
       this.state = {
-        isConnected: true,
+        ...this.state,
         address: userAddress,
-        safeAddress: params.safeAddress,
-        network: params.network,
-        balance: safeInfo.balance,
         isOwner,
+        signerConnected: true,
+        signerAddress: userAddress,
+        readOnlyMode: false,
         error: undefined
       };
 
       // Set up event listeners for account/network changes
       this.setupEventListeners();
-      
+
       // Notify listeners
       this.notifyListeners();
-      
+
       return this.state;
     } catch (error: any) {
-      const errorMessage = error.message || 'Failed to connect wallet';
+      const errorMessage = error.message || 'Failed to connect signer wallet';
       this.state = {
-        isConnected: false,
+        ...this.state,
         error: errorMessage
       };
-      
+
       this.notifyListeners();
       throw new Error(errorMessage);
     }
@@ -95,13 +191,67 @@ export class WalletConnectionService {
   async disconnectWallet(): Promise<void> {
     this.provider = null;
     this.signer = null;
-    
+
     this.state = {
-      isConnected: false
+      isConnected: false,
+      signerConnected: false,
+      readOnlyMode: false
     };
-    
+
     this.removeEventListeners();
     this.notifyListeners();
+  }
+
+  /**
+   * Disconnect only the signer wallet (keep Safe wallet connected in read-only mode)
+   */
+  async disconnectSignerWallet(): Promise<void> {
+    this.provider = null;
+    this.signer = null;
+
+    // Update Safe Wallet Service to remove signer
+    await safeWalletService.setSigner(null);
+
+    this.state = {
+      ...this.state,
+      address: undefined,
+      isOwner: false,
+      signerConnected: false,
+      signerAddress: undefined,
+      readOnlyMode: true,
+      error: undefined
+    };
+
+    this.removeEventListeners();
+    this.notifyListeners();
+  }
+
+  /**
+   * Switch network for an already connected Safe wallet
+   */
+  async switchNetwork(newNetwork: string): Promise<WalletConnectionState> {
+    if (!this.state.isConnected || !this.state.safeAddress) {
+      throw new Error('Safe wallet must be connected first');
+    }
+
+    try {
+      // Reconnect to the same Safe wallet on the new network
+      // Always use read-only mode for network switching to avoid MetaMask popup
+      return await this.connectWallet({
+        safeAddress: this.state.safeAddress,
+        network: newNetwork,
+        readOnlyMode: true
+      });
+    } catch (error: any) {
+      const errorMessage = error.message || 'Failed to switch network';
+      this.state = {
+        ...this.state,
+        error: errorMessage
+      };
+
+      this.notifyListeners();
+      throw new Error(errorMessage);
+    }
   }
 
   /**
@@ -137,13 +287,15 @@ export class WalletConnectionService {
    * Setup event listeners for wallet events
    */
   private setupEventListeners(): void {
-    if (!window.ethereum) return;
+    // DISABLED TO PREVENT METAMASK POPUP
+    console.log('Event listeners disabled to prevent MetaMask popup');
+    // if (!window.ethereum) return;
 
-    // Account changed
-    window.ethereum.on('accountsChanged', this.handleAccountsChanged.bind(this));
-    
-    // Network changed
-    window.ethereum.on('chainChanged', this.handleChainChanged.bind(this));
+    // // Account changed
+    // window.ethereum.on('accountsChanged', this.handleAccountsChanged.bind(this));
+
+    // // Network changed
+    // window.ethereum.on('chainChanged', this.handleChainChanged.bind(this));
   }
 
   /**
@@ -152,8 +304,12 @@ export class WalletConnectionService {
   private removeEventListeners(): void {
     if (!window.ethereum) return;
 
-    window.ethereum.removeListener('accountsChanged', this.handleAccountsChanged.bind(this));
-    window.ethereum.removeListener('chainChanged', this.handleChainChanged.bind(this));
+    try {
+      window.ethereum.removeAllListeners('accountsChanged');
+      window.ethereum.removeAllListeners('chainChanged');
+    } catch (error) {
+      console.warn('Error removing MetaMask listeners:', error);
+    }
   }
 
   /**
@@ -173,9 +329,11 @@ export class WalletConnectionService {
     // Reload the page or reconnect when network changes
     if (this.state.isConnected && this.state.safeAddress) {
       try {
+        // Always use read-only mode to avoid MetaMask popup on network change
         await this.connectWallet({
           safeAddress: this.state.safeAddress,
-          network: this.state.network || 'ethereum'
+          network: this.state.network || 'ethereum',
+          readOnlyMode: true
         });
       } catch (error) {
         console.error('Error reconnecting after network change:', error);

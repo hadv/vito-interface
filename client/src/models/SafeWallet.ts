@@ -156,7 +156,8 @@ export const connectSafeWallet = async (
   try {
     await walletConnectionService.connectWallet({
       safeAddress,
-      network
+      network,
+      readOnlyMode: true  // Always use read-only mode to prevent MetaMask popup
     });
   } catch (error) {
     console.error('Error connecting to Safe wallet:', error);
