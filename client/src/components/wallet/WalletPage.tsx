@@ -16,7 +16,7 @@ import SafeTxPoolWarningBanner from './components/SafeTxPoolWarningBanner';
 // Import page components
 import HomePage from './pages/HomePage';
 import AssetsPage from './pages/AssetsPage';
-import OptimizedTransactionsPage from './pages/OptimizedTransactionsPage';
+import TransactionsPage from './pages/TransactionsPage';
 import SettingsPage from './pages/SettingsPage';
 
 // Import types
@@ -196,7 +196,9 @@ const WalletPage: React.FC<WalletPageProps> = ({
         );
       case 'transactions':
         return (
-          <OptimizedTransactionsPage
+          <TransactionsPage
+            transactions={transactions}
+            isLoading={isLoading}
             safeAddress={walletAddress}
             network={network}
           />

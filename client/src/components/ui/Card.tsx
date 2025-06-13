@@ -20,14 +20,14 @@ const getCardClasses = (
     'rounded-xl transition-all duration-250 ease-in-out',
     'relative overflow-hidden',
     clickable && 'cursor-pointer',
-    clickable && hover && 'hover:-translate-y-0.5 hover:shadow-xl hover:border-dark-500'
+    clickable && hover && 'hover:-translate-y-0.5 hover:shadow-xl hover:border-gray-500'
   ];
 
-  // Variant classes
+  // Variant classes using standard Tailwind colors
   const variantClasses = {
-    default: 'bg-dark-900 border border-dark-700',
-    elevated: 'bg-dark-800 shadow-lg border border-dark-700',
-    outlined: 'bg-transparent border border-dark-600',
+    default: 'bg-gray-900 border border-gray-700',
+    elevated: 'bg-gray-800 shadow-lg border border-gray-700',
+    outlined: 'bg-transparent border border-gray-600',
     glass: 'bg-white/5 backdrop-blur-md border border-white/10'
   };
 

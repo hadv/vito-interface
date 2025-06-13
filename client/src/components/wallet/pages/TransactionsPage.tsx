@@ -1,155 +1,67 @@
-import React from 'react';
-import styled from 'styled-components';
+import React, { useState } from 'react';
 import { ethers } from 'ethers';
 import { VitoList } from '@components/vitoUI';
 import { formatWalletAddress } from '@utils';
 import { Transaction } from '../types';
 import { useTransactionHistory, useMultipleTransactionStatus } from '../../../hooks/useTransactionStatus';
+import OptimizedTransactionsPage from './OptimizedTransactionsPage';
 
-// Format amount to display with token symbol
-const formatAmount = (amount: string): string => {
-  return amount;
+
+
+// Tailwind CSS classes for the new tabbed interface
+const containerClasses = "p-6 bg-gray-900 text-white min-h-screen";
+const headingClasses = "text-2xl font-medium text-white mb-6";
+const tabsContainerClasses = "flex border-b border-gray-700 mb-6";
+const tabClasses = "px-4 py-2 text-sm font-medium cursor-pointer transition-colors";
+const activeTabClasses = "text-blue-400 border-b-2 border-blue-400";
+const inactiveTabClasses = "text-gray-400 hover:text-gray-300";
+const tabContentClasses = "mt-6";
+
+// Utility functions for dynamic styling
+const getTransactionTypeColor = (txType: string) => {
+  switch (txType) {
+    case 'send': return 'text-red-400';
+    case 'receive': return 'text-green-400';
+    default: return 'text-white';
+  }
 };
 
-const Container = styled.div`
-  padding: 24px;
-`;
-
-const Heading = styled.h1`
-  font-size: 24px;
-  font-weight: 500;
-  margin-bottom: 24px;
-  color: #fff;
-`;
-
-const TransactionItem = styled.div`
-  display: flex;
-  flex-direction: column;
-  padding: 16px;
-  border-bottom: 1px solid #333;
-  
-  &:last-child {
-    border-bottom: none;
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'completed':
+    case 'executed': return 'text-green-400 bg-green-400/20';
+    case 'pending': return 'text-yellow-400 bg-yellow-400/20';
+    default: return 'text-red-400 bg-red-400/20';
   }
-`;
+};
 
-const TransactionHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-`;
-
-const TransactionType = styled.div<{ txType: string }>`
-  font-size: 16px;
-  font-weight: 500;
-  color: ${props => 
-    props.txType === 'send' ? '#ff4a6a' : 
-    props.txType === 'receive' ? '#10b981' : '#fff'};
-`;
-
-const TransactionAmount = styled.div<{ txType: string }>`
-  font-size: 16px;
-  font-weight: 500;
-  color: ${props => 
-    props.txType === 'send' ? '#ff4a6a' : 
-    props.txType === 'receive' ? '#10b981' : '#fff'};
-`;
-
-const TransactionDetails = styled.div`
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 8px;
-`;
-
-const AddressLabel = styled.div`
-  font-size: 14px;
-  color: #9ca3af;
-`;
-
-const Address = styled.div`
-  font-size: 14px;
-  font-family: monospace;
-  color: #d1d5db;
-`;
-
-const TransactionStatus = styled.div<{ status: string }>`
-  display: inline-block;
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 12px;
-  background-color: ${props => 
-    props.status === 'completed' ? 'rgba(16, 185, 129, 0.2)' : 
-    props.status === 'pending' ? 'rgba(245, 158, 11, 0.2)' : 
-    'rgba(239, 68, 68, 0.2)'};
-  color: ${props => 
-    props.status === 'completed' ? '#10b981' : 
-    props.status === 'pending' ? '#f59e0b' : 
-    '#ef4444'};
-`;
-
-const DateText = styled.div`
-  font-size: 14px;
-  color: #9ca3af;
-`;
-
-const RefreshButton = styled.button`
-  background: #374151;
-  color: #fff;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  margin-bottom: 16px;
-
-  &:hover {
-    background: #4b5563;
+const getStatusIndicatorColor = (status: string) => {
+  switch (status) {
+    case 'executed': return 'bg-green-400';
+    case 'confirmed': return 'bg-blue-400';
+    case 'pending': return 'bg-yellow-400';
+    default: return 'bg-red-400';
   }
+};
 
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
-const StatusIndicator = styled.div<{ status: string }>`
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-right: 8px;
-  background-color: ${props =>
-    props.status === 'executed' ? '#10b981' :
-    props.status === 'confirmed' ? '#3b82f6' :
-    props.status === 'pending' ? '#f59e0b' :
-    '#ef4444'};
-`;
-
-const TransactionMeta = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  color: #6b7280;
-  margin-top: 4px;
-`;
-
-const ConfirmationCount = styled.span<{ hasEnough: boolean }>`
-  color: ${props => props.hasEnough ? '#10b981' : '#f59e0b'};
-  font-weight: 500;
-`;
+const getConfirmationColor = (hasEnough: boolean) => {
+  return hasEnough ? 'text-green-400' : 'text-yellow-400';
+};
 
 interface TransactionsPageProps {
   transactions?: Transaction[];
   isLoading?: boolean;
+  safeAddress?: string;
+  network?: string;
 }
 
 const TransactionsPage: React.FC<TransactionsPageProps> = ({
   transactions: propTransactions,
-  isLoading: propIsLoading
+  isLoading: propIsLoading,
+  safeAddress,
+  network = 'ethereum'
 }) => {
-  // const [useRealTimeData, setUseRealTimeData] = useState(true);
+  const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
 
   // Use real-time transaction history if no props provided
   const {
@@ -179,6 +91,14 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     return new Date(timestamp * 1000).toLocaleString();
   };
 
+  const formatAmount = (amount: string): string => {
+    try {
+      return parseFloat(ethers.utils.formatEther(amount)).toFixed(4);
+    } catch {
+      return '0.0000';
+    }
+  };
+
   const handleRefresh = () => {
     refreshHistory();
     refreshStatuses();
@@ -201,37 +121,40 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     const hasEnoughConfirmations = currentStatus.confirmations >= (tx.threshold || 1);
 
     return (
-      <TransactionItem>
-        <TransactionHeader>
-          <TransactionType txType={txType}>
-            <StatusIndicator status={currentStatus.status} />
+      <div className="flex flex-col p-4 border-b border-gray-700 last:border-b-0">
+        {/* Transaction Header */}
+        <div className="flex justify-between items-center mb-2">
+          <div className={`text-base font-medium flex items-center ${getTransactionTypeColor(txType)}`}>
+            <span className={`inline-block w-2 h-2 rounded-full mr-2 ${getStatusIndicatorColor(currentStatus.status)}`} />
             {txType.charAt(0).toUpperCase() + txType.slice(1)}
-          </TransactionType>
-          <TransactionAmount txType={txType}>
+          </div>
+          <div className={`text-base font-medium ${getTransactionTypeColor(txType)}`}>
             {txType === 'send' ? '-' : '+'}{formatAmount(tx.amount || tx.value || '0')} {tx.token || 'ETH'}
-          </TransactionAmount>
-        </TransactionHeader>
+          </div>
+        </div>
 
-        <TransactionDetails>
+        {/* Transaction Details */}
+        <div className="flex justify-between mb-2">
           <div>
-            <AddressLabel>From:</AddressLabel>
-            <Address>{formatWalletAddress(tx.from)}</Address>
+            <div className="text-sm text-gray-400">From:</div>
+            <div className="text-sm font-mono text-gray-300">{formatWalletAddress(tx.from)}</div>
           </div>
           <div>
-            <AddressLabel>To:</AddressLabel>
-            <Address>{formatWalletAddress(tx.to)}</Address>
+            <div className="text-sm text-gray-400">To:</div>
+            <div className="text-sm font-mono text-gray-300">{formatWalletAddress(tx.to)}</div>
           </div>
-        </TransactionDetails>
+        </div>
 
-        <TransactionDetails>
-          <TransactionStatus status={currentStatus.status}>
+        {/* Status and Date */}
+        <div className="flex justify-between mb-2">
+          <div className={`inline-block text-xs px-2 py-1 rounded-full ${getStatusColor(currentStatus.status)}`}>
             {currentStatus.status.charAt(0).toUpperCase() + currentStatus.status.slice(1)}
-          </TransactionStatus>
-          <DateText>{formatDate(tx.timestamp)}</DateText>
-        </TransactionDetails>
+          </div>
+          <div className="text-sm text-gray-400">{formatDate(tx.timestamp)}</div>
+        </div>
 
         {/* Enhanced transaction metadata */}
-        <TransactionMeta>
+        <div className="flex justify-between items-center text-xs text-gray-500 mt-1">
           <div>
             {tx.safeTxHash && (
               <span>Safe TX: {formatWalletAddress(tx.safeTxHash)}</span>
@@ -242,67 +165,104 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
           </div>
           <div>
             {tx.threshold && (
-              <ConfirmationCount hasEnough={hasEnoughConfirmations}>
+              <span className={`font-medium ${getConfirmationColor(hasEnoughConfirmations)}`}>
                 {currentStatus.confirmations}/{tx.threshold} confirmations
-              </ConfirmationCount>
+              </span>
             )}
             {currentStatus.blockNumber && (
               <span> | Block: {currentStatus.blockNumber}</span>
             )}
           </div>
-        </TransactionMeta>
+        </div>
 
         {/* Gas information */}
         {(currentStatus.gasUsed || tx.gasUsed) && (
-          <TransactionMeta>
+          <div className="flex justify-between items-center text-xs text-gray-500 mt-1">
             <span>
               Gas Used: {currentStatus.gasUsed || tx.gasUsed}
               {(currentStatus.gasPrice || tx.gasPrice) &&
                 ` | Gas Price: ${ethers.utils.formatUnits(currentStatus.gasPrice || tx.gasPrice || '0', 'gwei')} gwei`
               }
             </span>
-          </TransactionMeta>
+          </div>
         )}
-      </TransactionItem>
+      </div>
     );
   };
 
   return (
-    <Container>
-      <Heading>Transactions</Heading>
+    <div className={containerClasses}>
+      <h1 className={headingClasses}>Transactions</h1>
 
-      <RefreshButton
-        onClick={handleRefresh}
-        disabled={isLoading || statusLoading}
-      >
-        {isLoading || statusLoading ? 'Refreshing...' : 'Refresh'}
-      </RefreshButton>
+      {/* Tab Navigation */}
+      <div className={tabsContainerClasses}>
+        <button
+          className={`${tabClasses} ${activeTab === 'pending' ? activeTabClasses : inactiveTabClasses}`}
+          onClick={() => setActiveTab('pending')}
+        >
+          Pending & Queue
+        </button>
+        <button
+          className={`${tabClasses} ${activeTab === 'history' ? activeTabClasses : inactiveTabClasses}`}
+          onClick={() => setActiveTab('history')}
+        >
+          History
+        </button>
+      </div>
 
-      {historyError && (
-        <div style={{ color: '#ef4444', marginBottom: '16px', fontSize: '14px' }}>
-          Error loading transactions: {historyError}
-        </div>
-      )}
+      {/* Tab Content */}
+      <div className={tabContentClasses}>
+        {activeTab === 'pending' ? (
+          // Pending transactions tab (existing functionality)
+          <>
+            <button
+              className="bg-gray-700 text-white border-none px-4 py-2 rounded-md cursor-pointer text-sm mb-4 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleRefresh}
+              disabled={isLoading || statusLoading}
+            >
+              {isLoading || statusLoading ? 'Refreshing...' : 'Refresh'}
+            </button>
 
-      {isLoading ? (
-        <div>Loading transactions...</div>
-      ) : transactions.length === 0 ? (
-        <div style={{ color: '#9ca3af', textAlign: 'center', padding: '40px' }}>
-          No transactions found
-        </div>
-      ) : (
-        <VitoList
-          items={transactions}
-          renderItem={renderTransactionItem}
-          onItemEnter={(tx) => {
-            const txHash = tx.executionTxHash || tx.hash || tx.id;
-            if (txHash && txHash.startsWith('0x')) {
-              window.open(`https://etherscan.io/tx/${txHash}`, '_blank');
-            }
-          }}
-        />
-      )}
-    </Container>
+            {historyError && (
+              <div className="text-red-400 mb-4 text-sm">
+                Error loading transactions: {historyError}
+              </div>
+            )}
+
+            {isLoading ? (
+              <div className="text-gray-400">Loading transactions...</div>
+            ) : transactions.length === 0 ? (
+              <div className="text-gray-400 text-center py-10">
+                No pending transactions found
+              </div>
+            ) : (
+              <VitoList
+                items={transactions}
+                renderItem={renderTransactionItem}
+                onItemEnter={(tx) => {
+                  const txHash = tx.executionTxHash || tx.hash || tx.id;
+                  if (txHash && txHash.startsWith('0x')) {
+                    window.open(`https://etherscan.io/tx/${txHash}`, '_blank');
+                  }
+                }}
+              />
+            )}
+          </>
+        ) : (
+          // History tab (executed transactions only)
+          safeAddress ? (
+            <OptimizedTransactionsPage
+              safeAddress={safeAddress}
+              network={network}
+            />
+          ) : (
+            <div className="text-gray-400 text-center py-10">
+              Safe address not available
+            </div>
+          )
+        )}
+      </div>
+    </div>
   );
 };
 
