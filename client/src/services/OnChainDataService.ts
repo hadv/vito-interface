@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { getProviderForNetwork } from '../utils/ens';
+import { BlockchainTransactionService } from './BlockchainTransactionService';
 import { SAFE_ABI } from '../contracts/abis';
 
 export interface TransactionReceipt {
@@ -49,6 +50,7 @@ export class OnChainDataService {
   private provider: ethers.providers.Provider | null = null;
   private network: string = 'ethereum';
   private safeServiceUrl: string;
+  private blockchainService: BlockchainTransactionService;
 
   constructor(network: string = 'ethereum') {
     this.network = network;
@@ -56,6 +58,9 @@ export class OnChainDataService {
 
     // Safe Transaction Service URLs for different networks
     this.safeServiceUrl = this.getSafeServiceUrl(network);
+
+    // Initialize blockchain service for direct blockchain queries
+    this.blockchainService = new BlockchainTransactionService(network);
   }
 
   private getSafeServiceUrl(network: string): string {
@@ -101,7 +106,7 @@ export class OnChainDataService {
   }
 
   /**
-   * Get Safe transaction history from Safe Transaction Service API (optimized)
+   * Get Safe transaction history directly from blockchain data
    */
   async getSafeTransactionHistory(
     safeAddress: string,
@@ -109,6 +114,78 @@ export class OnChainDataService {
     offset: number = 0
   ): Promise<SafeTransactionEvent[]> {
     try {
+      console.log(`Fetching Safe transaction history from blockchain for ${safeAddress} (limit: ${limit}, offset: ${offset})`);
+
+      // Get transactions directly from blockchain
+      const blockchainTxs = await this.blockchainService.getTransactionsFromBlockchain(
+        safeAddress,
+        limit + offset, // Get extra to handle offset
+        0 // Start from beginning
+      );
+
+      console.log(`Received ${blockchainTxs.length} transactions from blockchain`);
+
+      if (blockchainTxs.length === 0) {
+        console.log('No blockchain transactions found, falling back to Safe API...');
+        return this.getSafeTransactionHistoryFromAPI(safeAddress, limit, offset);
+      }
+
+      // Apply offset and limit
+      const paginatedTxs = blockchainTxs.slice(offset, offset + limit);
+
+      // Convert blockchain transactions to SafeTransactionEvent format
+      const safeTransactions: SafeTransactionEvent[] = [];
+
+      for (const tx of paginatedTxs) {
+        // Only include successful transactions
+        if (tx.status === 'success') {
+          const safeTransaction: SafeTransactionEvent = {
+            safeTxHash: tx.safeTxHash || tx.hash, // Use transaction hash as fallback
+            to: tx.to,
+            value: tx.value,
+            data: tx.data,
+            operation: 0, // Default to CALL operation
+            gasToken: ethers.constants.AddressZero,
+            gasPrice: tx.gasPrice,
+            gasUsed: tx.gasUsed,
+            nonce: 0, // Will be populated if we can decode from logs
+            executor: tx.from,
+            blockNumber: tx.blockNumber,
+            transactionHash: tx.hash,
+            timestamp: tx.timestamp,
+            isExecuted: true,
+            status: 'executed' as const,
+            confirmations: [],
+            confirmationsRequired: 1
+          };
+
+          safeTransactions.push(safeTransaction);
+        }
+      }
+
+      console.log(`Processed ${safeTransactions.length} valid blockchain transactions`);
+      return safeTransactions;
+
+    } catch (error) {
+      console.error('Error fetching blockchain transaction history:', error);
+
+      // Fallback to Safe API if blockchain query fails
+      console.log('Falling back to Safe API...');
+      return this.getSafeTransactionHistoryFromAPI(safeAddress, limit, offset);
+    }
+  }
+
+  /**
+   * Fallback method using Safe API (original implementation)
+   */
+  private async getSafeTransactionHistoryFromAPI(
+    safeAddress: string,
+    limit: number = 20,
+    offset: number = 0
+  ): Promise<SafeTransactionEvent[]> {
+    try {
+      console.log(`Fetching Safe transaction history from API for ${safeAddress} (limit: ${limit}, offset: ${offset})`);
+
       const url = `${this.safeServiceUrl}/api/v1/safes/${safeAddress}/multisig-transactions/?limit=${limit}&offset=${offset}&executed=true&successful=true&ordering=-executionDate`;
 
       // Add timeout for faster failure
@@ -187,6 +264,7 @@ export class OnChainDataService {
         transactions.push(...batchResults.filter(Boolean) as SafeTransactionEvent[]);
       }
 
+      console.log(`Processed ${transactions.length} valid transactions from API`);
       return transactions;
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
@@ -195,7 +273,7 @@ export class OnChainDataService {
         console.error('Error fetching from Safe Transaction Service:', error);
       }
 
-      // Fallback to on-chain events only for small ranges
+      // Final fallback to on-chain events only for small ranges
       if (limit <= 50) {
         return this.getSafeTransactionEventsFromChain(safeAddress, -1000); // Last 1000 blocks
       }
