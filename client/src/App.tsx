@@ -413,7 +413,7 @@ function App() {
               </>
             )}
           </div>
-          <div className={getNetworkOptionsClasses(networkSelectorOpen)}>
+          <div className="fixed top-20 right-6 bg-red-500 border-2 border-white rounded-xl w-48 z-[9999] min-h-[120px] block p-4">
             <div
               className={getNetworkOptionClasses(network === 'ethereum')}
               onClick={() => !isNetworkSwitching && selectNetwork('ethereum')}
