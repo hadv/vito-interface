@@ -140,11 +140,14 @@ export class OptimizedTransactionService {
   }
 
   /**
-   * Format pending transaction for display
+   * Format pending transaction for display with stable status
    */
   private formatPendingTransaction(tx: any, safeAddress: string): any {
+    // Create a stable ID that won't change between refreshes
+    const stableId = tx.safeTxHash || `pending_${tx.nonce}_${safeAddress}`;
+
     return {
-      id: tx.safeTxHash || `pending_${Date.now()}`,
+      id: stableId,
       safeTxHash: tx.safeTxHash,
       from: safeAddress,
       to: tx.to,
@@ -164,15 +167,16 @@ export class OptimizedTransactionService {
       gasPrice: tx.gasPrice,
       refundReceiver: tx.refundReceiver,
       signatures: tx.confirmations?.map((c: any) => c.signature) || [],
-      status: 'pending',
+      status: 'pending', // Always pending for this formatter
       isExecuted: false,
       timestamp: new Date(tx.submissionDate).getTime() / 1000,
-      type: this.determineTransactionType(tx)
+      type: this.determineTransactionType(tx),
+      _isStable: true // Flag to indicate this is a stable status
     };
   }
 
   /**
-   * Format executed transaction for display
+   * Format executed transaction for display with stable status
    */
   private formatExecutedTransaction(tx: any, safeAddress: string): any {
     return {
@@ -192,11 +196,12 @@ export class OptimizedTransactionService {
       executor: tx.executor,
       blockNumber: tx.blockNumber,
       timestamp: tx.timestamp,
-      status: 'executed',
+      status: 'executed', // Always executed for this formatter
       isExecuted: true,
       confirmations: 999, // Executed transactions are fully confirmed
       threshold: 1,
-      type: this.determineTransactionType(tx)
+      type: this.determineTransactionType(tx),
+      _isStable: true // Flag to indicate this is a stable status
     };
   }
 

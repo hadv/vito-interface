@@ -3,174 +3,27 @@
  */
 
 import React, { useState, useCallback, useMemo } from 'react';
-import styled from 'styled-components';
 import { ethers } from 'ethers';
-import { VitoList } from '@components/vitoUI';
 import { formatWalletAddress } from '@utils';
 import { Transaction } from '../types';
 import { useInfiniteTransactionHistory } from '../../../hooks/useOptimizedTransactionHistory';
 import { TransactionFilters } from '../../../services/OptimizedTransactionService';
 
-// Styled components (reusing from original)
-const Container = styled.div`
-  padding: 24px;
-  max-height: 100vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-`;
-
-const Header = styled.div`
-  display: flex;
-  justify-content: between;
-  align-items: center;
-  margin-bottom: 24px;
-  gap: 16px;
-  flex-wrap: wrap;
-`;
-
-const Heading = styled.h1`
-  font-size: 24px;
-  font-weight: 500;
-  color: #fff;
-  margin: 0;
-`;
-
-const Controls = styled.div`
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-`;
-
-const SearchInput = styled.input`
-  background: #374151;
-  color: #fff;
-  border: 1px solid #4b5563;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 14px;
-  width: 200px;
-  
-  &:focus {
-    outline: none;
-    border-color: #3b82f6;
-  }
-  
-  &::placeholder {
-    color: #9ca3af;
-  }
-`;
-
-const FilterSelect = styled.select`
-  background: #374151;
-  color: #fff;
-  border: 1px solid #4b5563;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 14px;
-  
-  &:focus {
-    outline: none;
-    border-color: #3b82f6;
-  }
-`;
-
-const RefreshButton = styled.button`
-  background: #374151;
-  color: #fff;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  
-  &:hover {
-    background: #4b5563;
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
-const StatsBar = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  margin-bottom: 16px;
-  font-size: 14px;
-  color: #9ca3af;
-`;
-
-const TransactionList = styled.div`
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
-`;
-
-const LoadMoreButton = styled.button`
-  width: 100%;
-  background: #374151;
-  color: #fff;
-  border: none;
-  padding: 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  margin-top: 16px;
-  
-  &:hover {
-    background: #4b5563;
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
-const LoadingSpinner = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  color: #9ca3af;
-`;
-
-const ErrorMessage = styled.div`
-  color: #ef4444;
-  background: #1f2937;
-  border: 1px solid #ef4444;
-  padding: 12px;
-  border-radius: 6px;
-  margin-bottom: 16px;
-  font-size: 14px;
-`;
-
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 60px 20px;
-  color: #9ca3af;
-  
-  h3 {
-    margin: 0 0 8px 0;
-    font-size: 18px;
-  }
-  
-  p {
-    margin: 0;
-    font-size: 14px;
-  }
-`;
-
-const CacheStats = styled.div`
-  font-size: 12px;
-  color: #6b7280;
-  margin-left: auto;
-`;
+// Tailwind CSS classes for styling
+const containerClasses = "p-6 max-h-screen overflow-hidden flex flex-col bg-gray-900 text-white";
+const headerClasses = "flex justify-between items-center mb-6 gap-4 flex-wrap";
+const headingClasses = "text-2xl font-medium text-white m-0";
+const controlsClasses = "flex gap-3 items-center flex-wrap";
+const searchInputClasses = "bg-gray-700 text-white border border-gray-600 px-3 py-2 rounded-md text-sm w-48 focus:outline-none focus:border-blue-500 placeholder-gray-400";
+const filterSelectClasses = "bg-gray-700 text-white border border-gray-600 px-3 py-2 rounded-md text-sm focus:outline-none focus:border-blue-500";
+const refreshButtonClasses = "bg-gray-700 text-white border-none px-4 py-2 rounded-md cursor-pointer text-sm hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed";
+const statsBarClasses = "flex justify-between items-center py-2 mb-4 text-sm text-gray-400";
+const transactionListClasses = "flex-1 overflow-y-auto min-h-0";
+const loadMoreButtonClasses = "w-full bg-gray-700 text-white border-none p-3 rounded-md cursor-pointer text-sm mt-4 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed";
+const loadingSpinnerClasses = "flex justify-center items-center p-5 text-gray-400";
+const errorMessageClasses = "text-red-400 bg-gray-800 border border-red-400 p-3 rounded-md mb-4 text-sm";
+const emptyStateClasses = "text-center py-15 px-5 text-gray-400";
+const cacheStatsClasses = "text-xs text-gray-500 ml-auto";
 
 interface OptimizedTransactionsPageProps {
   safeAddress: string;
@@ -248,41 +101,35 @@ const OptimizedTransactionsPage: React.FC<OptimizedTransactionsPageProps> = ({
     signatures: tx.signatures
   }), []);
 
-  // Render transaction item (simplified version)
+  // Render transaction item with proper Tailwind styling
   const renderTransactionItem = useCallback((tx: Transaction) => (
-    <div key={tx.id} style={{ 
-      padding: '16px', 
-      borderBottom: '1px solid #374151',
-      cursor: 'pointer'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={{ fontWeight: '500', color: '#fff' }}>
+    <div key={tx.id} className="p-4 border-b border-gray-700 cursor-pointer hover:bg-gray-800/50 transition-colors">
+      <div className="flex justify-between items-center">
+        <div className="flex-1">
+          <div className="font-medium text-white">
             {tx.type ? (tx.type.charAt(0).toUpperCase() + tx.type.slice(1)) : 'Transaction'}
           </div>
-          <div style={{ fontSize: '14px', color: '#9ca3af', marginTop: '4px' }}>
+          <div className="text-sm text-gray-400 mt-1">
             To: {formatWalletAddress(tx.to)}
           </div>
           {tx.safeTxHash && (
-            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+            <div className="text-xs text-gray-500 mt-0.5">
               Safe TX: {formatWalletAddress(tx.safeTxHash)}
             </div>
           )}
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontWeight: '500', color: '#fff' }}>
+        <div className="text-right">
+          <div className="font-medium text-white">
             {ethers.utils.formatEther(tx.amount || '0')} ETH
           </div>
-          <div style={{ 
-            fontSize: '12px', 
-            color: tx.status === 'executed' ? '#10b981' :
-                   tx.status === 'pending' ? '#f59e0b' : '#ef4444',
-            marginTop: '4px'
-          }}>
+          <div className={`text-xs mt-1 ${
+            tx.status === 'executed' ? 'text-green-400' :
+            tx.status === 'pending' ? 'text-yellow-400' : 'text-red-400'
+          }`}>
             {tx.status ? (tx.status.charAt(0).toUpperCase() + tx.status.slice(1)) : 'Unknown'}
           </div>
           {tx.confirmations !== undefined && tx.threshold && (
-            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+            <div className="text-xs text-gray-500 mt-0.5">
               {tx.confirmations}/{tx.threshold} confirmations
             </div>
           )}
@@ -292,90 +139,92 @@ const OptimizedTransactionsPage: React.FC<OptimizedTransactionsPageProps> = ({
   ), []);
 
   return (
-    <Container>
-      <Header>
-        <Heading>Transactions</Heading>
-        <Controls>
-          <SearchInput
+    <div className={containerClasses}>
+      <div className={headerClasses}>
+        <h1 className={headingClasses}>Transactions</h1>
+        <div className={controlsClasses}>
+          <input
             type="text"
             placeholder="Search transactions..."
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
+            className={searchInputClasses}
           />
-          <FilterSelect
+          <select
             value={statusFilter}
             onChange={(e) => handleFilterChange(e.target.value as typeof statusFilter)}
+            className={filterSelectClasses}
           >
             <option value="all">All Status</option>
             <option value="executed">Executed</option>
             <option value="pending">Pending</option>
             <option value="failed">Failed</option>
-          </FilterSelect>
-          <RefreshButton onClick={refresh} disabled={isLoading}>
+          </select>
+          <button onClick={refresh} disabled={isLoading} className={refreshButtonClasses}>
             {isLoading ? 'Refreshing...' : 'Refresh'}
-          </RefreshButton>
-          <button 
+          </button>
+          <button
             onClick={() => setShowCacheStats(!showCacheStats)}
-            style={{ fontSize: '12px', background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer' }}
+            className="text-xs bg-transparent border-none text-gray-500 cursor-pointer"
           >
             Cache Stats
           </button>
-        </Controls>
-      </Header>
+        </div>
+      </div>
 
-      <StatsBar>
+      <div className={statsBarClasses}>
         <div>
           {totalCount > 0 ? `${totalCount} total transactions` : `${transactions.length} transactions`}
           {currentPage > 0 && ` (page ${currentPage + 1})`}
         </div>
         {showCacheStats && (
-          <CacheStats>
-            Memory: {cacheStats.memoryEntries} entries ({cacheStats.memorySize}) | 
-            Persistent: {cacheStats.persistentEntries} entries | 
+          <div className={cacheStatsClasses}>
+            Memory: {cacheStats.memoryEntries} entries ({cacheStats.memorySize}) |
+            Persistent: {cacheStats.persistentEntries} entries |
             Active: {cacheStats.activeRequests} requests
-          </CacheStats>
+          </div>
         )}
-      </StatsBar>
+      </div>
 
       {error && (
-        <ErrorMessage>
+        <div className={errorMessageClasses}>
           {error}
-        </ErrorMessage>
+        </div>
       )}
 
-      <TransactionList>
+      <div className={transactionListClasses}>
         {isLoading && transactions.length === 0 ? (
-          <LoadingSpinner>Loading transactions...</LoadingSpinner>
+          <div className={loadingSpinnerClasses}>Loading transactions...</div>
         ) : transactions.length === 0 ? (
-          <EmptyState>
-            <h3>No transactions found</h3>
-            <p>
-              {searchQuery 
+          <div className={emptyStateClasses}>
+            <h3 className="m-0 mb-2 text-lg">No transactions found</h3>
+            <p className="m-0 text-sm">
+              {searchQuery
                 ? `No transactions match "${searchQuery}"`
                 : 'This Safe has no transactions yet'
               }
             </p>
-          </EmptyState>
+          </div>
         ) : (
           <>
             {transactions.map(tx => renderTransactionItem(formatTransaction(tx)))}
-            
+
             {/* Infinite scroll trigger */}
             {hasMore && (
               <div ref={loadMoreRef}>
                 {isLoadingMore ? (
-                  <LoadingSpinner>Loading more transactions...</LoadingSpinner>
+                  <div className={loadingSpinnerClasses}>Loading more transactions...</div>
                 ) : (
-                  <LoadMoreButton onClick={loadMore} disabled={isLoadingMore}>
+                  <button onClick={loadMore} disabled={isLoadingMore} className={loadMoreButtonClasses}>
                     Load More Transactions
-                  </LoadMoreButton>
+                  </button>
                 )}
               </div>
             )}
           </>
         )}
-      </TransactionList>
-    </Container>
+      </div>
+    </div>
   );
 };
 

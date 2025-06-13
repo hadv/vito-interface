@@ -195,7 +195,7 @@ export const useOptimizedTransactionHistory = (
     };
   }, []);
 
-  // Background refresh every 30 seconds for first page
+  // Background refresh every 60 seconds for first page (reduced frequency)
   useEffect(() => {
     if (!safeAddress || searchQuery) return;
 
@@ -209,7 +209,7 @@ export const useOptimizedTransactionHistory = (
           // Ignore background refresh errors
         }
       }
-    }, 30000); // 30 seconds
+    }, 60000); // 60 seconds (reduced from 30s to prevent flickering)
 
     return () => clearInterval(interval);
   }, [safeAddress, currentPage, isLoading, isLoadingMore, searchQuery, loadPage]);
@@ -239,29 +239,41 @@ export const useInfiniteTransactionHistory = (
 ) => {
   const result = useOptimizedTransactionHistory(safeAddress, filters);
   
-  // Intersection Observer for infinite scroll
+  // Intersection Observer for infinite scroll with debouncing
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const loadMoreRef = useCallback((node: HTMLElement | null) => {
     if (result.isLoadingMore) return;
-    
+
     if (observerRef.current) observerRef.current.disconnect();
-    
+
     observerRef.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && result.hasMore && !result.isLoading) {
-        result.loadMore();
+      if (entries[0].isIntersecting && result.hasMore && !result.isLoading && !result.isLoadingMore) {
+        // Debounce the load more to prevent rapid firing
+        if (loadMoreTimeoutRef.current) {
+          clearTimeout(loadMoreTimeoutRef.current);
+        }
+
+        loadMoreTimeoutRef.current = setTimeout(() => {
+          result.loadMore();
+        }, 300); // 300ms debounce
       }
     }, {
       threshold: 0.1,
-      rootMargin: '100px' // Start loading 100px before the element is visible
+      rootMargin: '200px' // Start loading 200px before the element is visible
     });
-    
+
     if (node) observerRef.current.observe(node);
-  }, [result.isLoadingMore, result.hasMore, result.isLoading, result.loadMore]);
+  }, [result]);
 
   useEffect(() => {
     return () => {
       if (observerRef.current) {
         observerRef.current.disconnect();
+      }
+      if (loadMoreTimeoutRef.current) {
+        clearTimeout(loadMoreTimeoutRef.current);
       }
     };
   }, []);
@@ -292,14 +304,14 @@ export const useVirtualizedTransactionHistory = (
       result.transactions.length,
       start + visibleCount + bufferSize * 2
     );
-    
+
     setVisibleRange({ start, end });
-    
+
     // Load more if we're near the end
     if (end > result.transactions.length - 10 && result.hasMore && !result.isLoadingMore) {
       result.loadMore();
     }
-  }, [itemHeight, bufferSize, visibleCount, result.transactions.length, result.hasMore, result.isLoadingMore, result.loadMore]);
+  }, [itemHeight, bufferSize, visibleCount, result]);
 
   const visibleTransactions = result.transactions.slice(visibleRange.start, visibleRange.end);
   const totalHeight = result.transactions.length * itemHeight;
