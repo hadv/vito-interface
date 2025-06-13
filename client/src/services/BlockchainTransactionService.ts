@@ -31,7 +31,32 @@ export class BlockchainTransactionService {
   }
 
   /**
-   * Get all transactions for a Safe wallet directly from blockchain
+   * Test function to verify Etherscan API connectivity
+   */
+  async testEtherscanAPI(address: string): Promise<void> {
+    const etherscanUrls = {
+      ethereum: 'https://api.etherscan.io/api',
+      sepolia: 'https://api-sepolia.etherscan.io/api',
+      arbitrum: 'https://api.arbiscan.io/api'
+    };
+
+    const baseUrl = etherscanUrls[this.network as keyof typeof etherscanUrls];
+    const testUrl = `${baseUrl}?module=account&action=txlist&address=${address}&page=1&offset=10&sort=desc`;
+
+    console.log(`Testing Etherscan API for ${this.network}:`);
+    console.log(`URL: ${testUrl}`);
+
+    try {
+      const response = await fetch(testUrl);
+      const data = await response.json();
+      console.log(`API Response:`, data);
+    } catch (error) {
+      console.error(`API Test failed:`, error);
+    }
+  }
+
+  /**
+   * Get all transactions for a Safe wallet directly from blockchain using provider
    */
   async getTransactionsFromBlockchain(
     safeAddress: string,
@@ -44,39 +69,41 @@ export class BlockchainTransactionService {
 
     try {
       console.log(`Fetching blockchain transactions for Safe: ${safeAddress} on ${this.network}`);
-      
+
       // Get current block number
       const currentBlock = await this.provider.getBlockNumber();
       console.log(`Current block: ${currentBlock}`);
 
-      // Calculate block range (get last 10000 blocks or from specified block)
-      const startBlock = Math.max(fromBlock, currentBlock - 10000);
+      // For Sepolia, scan the last 50,000 blocks (about 6 months of history)
+      const startBlock = Math.max(0, currentBlock - 50000);
       const endBlock = currentBlock;
 
-      console.log(`Scanning blocks ${startBlock} to ${endBlock}`);
+      console.log(`Scanning blocks ${startBlock} to ${endBlock} for transactions`);
 
-      // Get all transactions to/from the Safe address
       const transactions: BlockchainTransaction[] = [];
 
-      // Batch process blocks to avoid rate limiting
+      // Scan blocks in batches to find transactions
       const batchSize = 1000;
       for (let blockStart = startBlock; blockStart <= endBlock; blockStart += batchSize) {
         const blockEnd = Math.min(blockStart + batchSize - 1, endBlock);
-        
-        console.log(`Processing blocks ${blockStart} to ${blockEnd}`);
+
+        console.log(`Scanning blocks ${blockStart} to ${blockEnd}`);
 
         try {
-          // Get transaction history using Etherscan-style API if available
-          const blockchainTxs = await this.getTransactionsFromEtherscanAPI(safeAddress, blockStart, blockEnd);
-          transactions.push(...blockchainTxs);
+          // Get all transactions in this block range
+          const blockTxs = await this.scanBlocksForTransactions(safeAddress, blockStart, blockEnd);
+          transactions.push(...blockTxs);
 
           if (transactions.length >= limit) {
             break;
           }
         } catch (error) {
-          console.warn(`Error processing blocks ${blockStart}-${blockEnd}:`, error);
+          console.warn(`Error scanning blocks ${blockStart}-${blockEnd}:`, error);
           // Continue with next batch
         }
+
+        // Add delay to avoid overwhelming the provider
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       // Sort by block number (newest first)
@@ -84,7 +111,7 @@ export class BlockchainTransactionService {
 
       // Limit results
       const limitedTransactions = transactions.slice(0, limit);
-      
+
       console.log(`Found ${limitedTransactions.length} blockchain transactions for Safe ${safeAddress}`);
       return limitedTransactions;
 
@@ -92,6 +119,79 @@ export class BlockchainTransactionService {
       console.error('Error fetching blockchain transactions:', error);
       throw error;
     }
+  }
+
+  /**
+   * Scan blocks for transactions involving the Safe address
+   */
+  private async scanBlocksForTransactions(
+    address: string,
+    startBlock: number,
+    endBlock: number
+  ): Promise<BlockchainTransaction[]> {
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+
+    const transactions: BlockchainTransaction[] = [];
+
+    try {
+      // Get blocks in this range and check for transactions
+      for (let blockNumber = startBlock; blockNumber <= endBlock; blockNumber++) {
+        try {
+          const block = await this.provider.getBlockWithTransactions(blockNumber);
+
+          if (block && block.transactions) {
+            for (const tx of block.transactions) {
+              // Check if transaction involves our Safe address
+              if (tx.to?.toLowerCase() === address.toLowerCase() ||
+                  tx.from?.toLowerCase() === address.toLowerCase()) {
+
+                // Get transaction receipt to check if it was successful
+                const receipt = await this.provider.getTransactionReceipt(tx.hash);
+
+                if (receipt && receipt.status === 1) {
+                  // Format the transaction
+                  const formattedTx: BlockchainTransaction = {
+                    hash: tx.hash,
+                    blockNumber: tx.blockNumber || 0,
+                    blockHash: tx.blockHash || '',
+                    transactionIndex: receipt.transactionIndex || 0,
+                    from: tx.from,
+                    to: tx.to || '',
+                    value: tx.value.toString(),
+                    gasPrice: tx.gasPrice?.toString() || '0',
+                    gasUsed: receipt.gasUsed.toString(),
+                    gasLimit: tx.gasLimit.toString(),
+                    timestamp: block.timestamp,
+                    status: 'success' as const,
+                    methodName: this.getMethodName(tx.data.slice(0, 10)),
+                    data: tx.data,
+                    logs: receipt.logs,
+                    isExecuted: true,
+                    safeTxHash: undefined
+                  };
+
+                  transactions.push(formattedTx);
+                }
+              }
+            }
+          }
+        } catch (blockError) {
+          console.warn(`Error processing block ${blockNumber}:`, blockError);
+          // Continue with next block
+        }
+
+        // Add small delay every 10 blocks to avoid overwhelming the provider
+        if (blockNumber % 10 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+      }
+    } catch (error) {
+      console.error('Error scanning blocks:', error);
+    }
+
+    return transactions;
   }
 
   /**
@@ -113,11 +213,14 @@ export class BlockchainTransactionService {
       throw new Error(`Etherscan API not supported for network: ${this.network}`);
     }
 
-    // Get normal transactions
-    const normalTxUrl = `${baseUrl}?module=account&action=txlist&address=${address}&startblock=${startBlock}&endblock=${endBlock}&page=1&offset=100&sort=desc&apikey=YourApiKeyToken`;
-    
-    // Get internal transactions
-    const internalTxUrl = `${baseUrl}?module=account&action=txlistinternal&address=${address}&startblock=${startBlock}&endblock=${endBlock}&page=1&offset=100&sort=desc&apikey=YourApiKeyToken`;
+    // Get normal transactions (no API key needed for basic queries)
+    const normalTxUrl = `${baseUrl}?module=account&action=txlist&address=${address}&startblock=${startBlock}&endblock=${endBlock}&page=1&offset=100&sort=desc`;
+
+    // Get internal transactions (no API key needed for basic queries)
+    const internalTxUrl = `${baseUrl}?module=account&action=txlistinternal&address=${address}&startblock=${startBlock}&endblock=${endBlock}&page=1&offset=100&sort=desc`;
+
+    console.log(`Fetching normal transactions: ${normalTxUrl}`);
+    console.log(`Fetching internal transactions: ${internalTxUrl}`);
 
     try {
       const [normalResponse, internalResponse] = await Promise.all([
@@ -125,31 +228,44 @@ export class BlockchainTransactionService {
         fetch(internalTxUrl)
       ]);
 
+      console.log(`Normal response status: ${normalResponse.status}`);
+      console.log(`Internal response status: ${internalResponse.status}`);
+
       const normalData = await normalResponse.json();
       const internalData = await internalResponse.json();
+
+      console.log(`Normal data:`, normalData);
+      console.log(`Internal data:`, internalData);
 
       const transactions: BlockchainTransaction[] = [];
 
       // Process normal transactions
       if (normalData.status === '1' && normalData.result) {
+        console.log(`Processing ${normalData.result.length} normal transactions`);
         for (const tx of normalData.result) {
           // Only include successful transactions
           if (tx.txreceipt_status === '1') {
             transactions.push(await this.formatBlockchainTransaction(tx, 'normal'));
           }
         }
+      } else {
+        console.warn('No normal transactions found or API error:', normalData);
       }
 
       // Process internal transactions (these are often Safe executions)
       if (internalData.status === '1' && internalData.result) {
+        console.log(`Processing ${internalData.result.length} internal transactions`);
         for (const tx of internalData.result) {
           // Only include successful transactions
           if (tx.isError === '0') {
             transactions.push(await this.formatBlockchainTransaction(tx, 'internal'));
           }
         }
+      } else {
+        console.warn('No internal transactions found or API error:', internalData);
       }
 
+      console.log(`Total transactions processed: ${transactions.length}`);
       return transactions;
     } catch (error) {
       console.error('Error fetching from Etherscan API:', error);

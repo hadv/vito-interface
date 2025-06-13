@@ -116,14 +116,30 @@ export class OnChainDataService {
     try {
       console.log(`Fetching Safe transaction history from blockchain for ${safeAddress} (limit: ${limit}, offset: ${offset})`);
 
-      // Get transactions directly from blockchain
+      // First try to get Safe transaction events from the contract directly
+      // This is more reliable for Safe wallets since we can listen to specific events
+      console.log('Attempting to get Safe transaction events from contract...');
+      const safeEvents = await this.getSafeTransactionEventsFromChain(safeAddress, -50000); // Last 50k blocks
+
+      if (safeEvents.length > 0) {
+        console.log(`Found ${safeEvents.length} Safe transaction events from contract`);
+
+        // Apply offset and limit
+        const paginatedEvents = safeEvents.slice(offset, offset + limit);
+        console.log(`Returning ${paginatedEvents.length} Safe transaction events`);
+        return paginatedEvents;
+      }
+
+      console.log('No Safe events found, trying blockchain transaction scan...');
+
+      // Fallback to blockchain transaction scanning
       const blockchainTxs = await this.blockchainService.getTransactionsFromBlockchain(
         safeAddress,
         limit + offset, // Get extra to handle offset
         0 // Start from beginning
       );
 
-      console.log(`Received ${blockchainTxs.length} transactions from blockchain`);
+      console.log(`Received ${blockchainTxs.length} transactions from blockchain scan`);
 
       if (blockchainTxs.length === 0) {
         console.log('No blockchain transactions found, falling back to Safe API...');
@@ -169,8 +185,8 @@ export class OnChainDataService {
     } catch (error) {
       console.error('Error fetching blockchain transaction history:', error);
 
-      // Fallback to Safe API if blockchain query fails
-      console.log('Falling back to Safe API...');
+      // Final fallback to Safe API
+      console.log('All blockchain methods failed, falling back to Safe API...');
       return this.getSafeTransactionHistoryFromAPI(safeAddress, limit, offset);
     }
   }
