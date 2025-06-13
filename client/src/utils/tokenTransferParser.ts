@@ -25,29 +25,23 @@ export class TokenTransferParser {
     safeAddress: string
   ): Promise<TokenTransferInfo | null> {
     try {
-      console.log('🔍 Parsing token transfer for tx:', transaction.id, 'value:', transaction.value, 'data:', transaction.data?.slice(0, 20));
-
       // Check for native ETH transfer
       const value = ethers.BigNumber.from(transaction.value || transaction.amount || '0');
       if (!value.isZero() && (!transaction.data || transaction.data === '0x')) {
-        console.log('💰 Native ETH transfer detected, value:', value.toString());
         return await this.parseNativeTransfer(transaction, safeAddress, value);
       }
 
       // Check for ERC20 transfer in transaction data
       if (transaction.data && transaction.data.length > 10) {
         const methodId = transaction.data.slice(0, 10);
-        console.log('🔍 Checking method ID:', methodId);
 
         // ERC20 transfer method: 0xa9059cbb
         if (methodId === '0xa9059cbb') {
-          console.log('📤 ERC20 transfer detected');
           return await this.parseERC20Transfer(transaction, safeAddress);
         }
 
         // ERC20 transferFrom method: 0x23b872dd
         if (methodId === '0x23b872dd') {
-          console.log('📤 ERC20 transferFrom detected');
           return await this.parseERC20TransferFrom(transaction, safeAddress);
         }
       }
@@ -58,8 +52,7 @@ export class TokenTransferParser {
         if (logResult) return logResult;
       }
 
-      // If no logs available, try to detect from transaction data
-      console.log('❌ No token transfer detected for transaction:', transaction.id);
+      // If no logs available, no token transfer detected
       return null;
     } catch (error) {
       console.error('Error parsing token transfer:', error);
@@ -179,32 +172,23 @@ export class TokenTransferParser {
       // ERC20 Transfer event signature: Transfer(address,address,uint256)
       const transferEventTopic = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
-      console.log('🔍 Checking', transaction.logs.length, 'logs for Transfer events');
-
       for (const log of transaction.logs) {
         if (log.topics && log.topics[0] === transferEventTopic && log.topics.length >= 3) {
-          console.log('📤 Found Transfer event in log:', log.address);
-
           const tokenAddress = log.address;
           const from = ethers.utils.getAddress('0x' + log.topics[1].slice(26));
           const to = ethers.utils.getAddress('0x' + log.topics[2].slice(26));
           const amount = ethers.BigNumber.from(log.data);
-
-          console.log('Transfer details:', { from, to, amount: amount.toString(), tokenAddress });
 
           // Check if this transfer involves the safe address
           const isIncoming = to.toLowerCase() === safeAddress.toLowerCase();
           const isOutgoing = from.toLowerCase() === safeAddress.toLowerCase();
 
           if (isIncoming || isOutgoing) {
-            console.log('✅ Transfer involves Safe address, fetching token info...');
             const tokenInfo = await this.tokenService.getTokenInfo(tokenAddress);
             if (!tokenInfo) {
-              console.log('❌ Failed to get token info for:', tokenAddress);
+              console.warn('Failed to get token info for:', tokenAddress);
               continue;
             }
-
-            console.log('✅ Token info retrieved:', tokenInfo.symbol, tokenInfo.name);
 
             return {
               tokenAddress: tokenInfo.address,
@@ -216,13 +200,10 @@ export class TokenTransferParser {
               direction: isIncoming ? 'in' : 'out',
               isNative: false
             };
-          } else {
-            console.log('⚠️ Transfer does not involve Safe address');
           }
         }
       }
 
-      console.log('❌ No relevant Transfer events found');
       return null;
     } catch (error) {
       console.error('Error parsing transfer from logs:', error);

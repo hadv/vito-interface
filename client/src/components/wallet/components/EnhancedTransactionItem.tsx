@@ -194,14 +194,7 @@ const EnhancedTransactionItem: React.FC<EnhancedTransactionItemProps> = ({
   network,
   onClick
 }) => {
-  // Debug logging to see transaction data
-  console.log('🎯 EnhancedTransactionItem received transaction:', {
-    id: transaction.id,
-    tokenTransfer: transaction.tokenTransfer,
-    value: transaction.value,
-    data: transaction.data?.slice(0, 20),
-    hasTokenTransfer: !!transaction.tokenTransfer
-  });
+  // Check if transaction has token transfer information
 
   const txInfo = getTransactionType(transaction, safeAddress);
   const timeStr = formatTimestamp(transaction.timestamp);
