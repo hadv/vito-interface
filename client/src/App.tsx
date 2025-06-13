@@ -11,7 +11,7 @@ import { processCommand } from './commands';
 
 // Tailwind classes for app container
 const appContainerClasses = cn(
-  'h-screen text-white overflow-hidden',
+  'h-screen text-white',
   'bg-gradient-to-br from-gray-950 to-gray-900',
   'font-sans flex flex-col',
   'p-0 m-0'
@@ -22,7 +22,7 @@ const headerClasses = cn(
   'flex justify-between items-center',
   'bg-white/5 backdrop-blur-md',
   'px-6 py-4 border-b border-gray-800',
-  'h-16 box-border relative',
+  'h-16 box-border relative overflow-visible',
   'before:absolute before:inset-0',
   'before:bg-gradient-to-r before:from-primary-500/20 before:via-transparent before:to-secondary-500/20',
   'before:pointer-events-none'
@@ -38,7 +38,7 @@ const appNameClasses = cn(
 );
 
 // Tailwind classes for network selector
-const networkSelectorClasses = 'relative h-full flex items-center z-10';
+const networkSelectorClasses = 'relative h-full flex items-center z-20 overflow-visible';
 
 const getArrowClasses = (isOpen: boolean) => cn(
   'ml-2 inline-block w-0 h-0',
@@ -59,8 +59,8 @@ const getCurrentNetworkClasses = (isOpen: boolean) => cn(
 );
 
 const getNetworkOptionsClasses = (isOpen: boolean) => cn(
-  'absolute top-12 right-0 bg-gray-900/95 border border-gray-600',
-  'rounded-xl w-48 z-50 shadow-2xl backdrop-blur-lg overflow-hidden',
+  'fixed top-20 right-6 bg-gray-900/95 border border-gray-600',
+  'rounded-xl w-48 z-[9999] shadow-2xl backdrop-blur-lg overflow-hidden',
   'transition-all duration-200 transform origin-top-right',
   'ring-1 ring-white/10',
   isOpen ? 'block opacity-100 scale-100 translate-y-0' : 'hidden opacity-0 scale-95 -translate-y-2'
@@ -75,7 +75,7 @@ const getNetworkOptionClasses = (isActive: boolean) => cn(
     : 'text-gray-300'
 );
 
-const contentContainerClasses = 'flex-1 overflow-hidden relative p-0 m-0';
+const contentContainerClasses = 'flex-1 overflow-auto relative p-0 m-0';
 
 // Tailwind classes for welcome page
 const welcomeContainerClasses = cn(
