@@ -95,36 +95,29 @@ export class OptimizedTransactionService {
     const limit = this.PAGE_SIZE;
 
     try {
-      // Fetch executed transactions
-      const executedTxs = await this.onChainService.getSafeTransactionHistory(
+      // Fetch all transactions (both executed and pending) from the unified API
+      const allTxs = await this.onChainService.getSafeTransactionHistory(
         safeAddress,
         limit + 1, // Fetch one extra to check if there are more
         offset
       );
 
-      // Fetch pending transactions only for first page
-      let pendingTxs: any[] = [];
-      if (page === 0) {
-        pendingTxs = await this.onChainService.getSafePendingTransactions(
-          safeAddress,
-          50, // Reasonable limit for pending transactions
-          0
-        );
-      }
-
-      // Combine and format transactions
-      const allTransactions = [
-        ...pendingTxs.map(tx => this.formatPendingTransaction(tx, safeAddress)),
-        ...executedTxs.slice(0, limit).map(tx => this.formatExecutedTransaction(tx, safeAddress))
-      ];
+      // Format transactions based on their execution status
+      const formattedTransactions = allTxs.slice(0, limit).map(tx => {
+        if (tx.isExecuted && tx.status === 'executed') {
+          return this.formatExecutedTransaction(tx, safeAddress);
+        } else {
+          return this.formatPendingTransaction(tx, safeAddress);
+        }
+      });
 
       // Apply filters if provided
-      const filteredTransactions = filters 
-        ? this.applyFilters(allTransactions, filters)
-        : allTransactions;
+      const filteredTransactions = filters
+        ? this.applyFilters(formattedTransactions, filters)
+        : formattedTransactions;
 
       // Determine if there are more pages
-      const hasMore = executedTxs.length > limit || (page === 0 && pendingTxs.length >= 50);
+      const hasMore = allTxs.length > limit;
 
       return {
         transactions: filteredTransactions,
@@ -157,20 +150,22 @@ export class OptimizedTransactionService {
       operation: tx.operation,
       nonce: tx.nonce,
       submissionDate: tx.submissionDate,
-      confirmations: tx.confirmations?.length || 0,
+      confirmations: Array.isArray(tx.confirmations) ? tx.confirmations.length : 0,
       threshold: tx.confirmationsRequired || 1,
       proposer: tx.proposer,
-      executor: tx.executor,
+      executor: null, // Pending transactions don't have executors yet
       gasToken: tx.gasToken,
       safeTxGas: tx.safeTxGas,
       baseGas: tx.baseGas,
       gasPrice: tx.gasPrice,
       refundReceiver: tx.refundReceiver,
-      signatures: tx.confirmations?.map((c: any) => c.signature) || [],
+      signatures: Array.isArray(tx.confirmations) ? tx.confirmations.map((c: any) => c.signature) : [],
       status: 'pending', // Always pending for this formatter
       isExecuted: false,
-      timestamp: new Date(tx.submissionDate).getTime() / 1000,
+      timestamp: tx.timestamp || new Date(tx.submissionDate).getTime() / 1000,
       type: this.determineTransactionType(tx),
+      blockNumber: null, // Pending transactions don't have block numbers
+      transactionHash: null, // Pending transactions don't have execution hashes
       _isStable: true // Flag to indicate this is a stable status
     };
   }
@@ -182,7 +177,7 @@ export class OptimizedTransactionService {
     return {
       id: tx.safeTxHash || tx.transactionHash,
       safeTxHash: tx.safeTxHash,
-      executionTxHash: tx.transactionHash,
+      executionTxHash: tx.transactionHash || undefined,
       from: safeAddress,
       to: tx.to,
       value: tx.value || '0',
@@ -198,9 +193,10 @@ export class OptimizedTransactionService {
       timestamp: tx.timestamp,
       status: 'executed', // Always executed for this formatter
       isExecuted: true,
-      confirmations: 999, // Executed transactions are fully confirmed
-      threshold: 1,
+      confirmations: Array.isArray(tx.confirmations) ? tx.confirmations.length : tx.confirmationsRequired || 1,
+      threshold: tx.confirmationsRequired || 1,
       type: this.determineTransactionType(tx),
+      submissionDate: tx.submissionDate,
       _isStable: true // Flag to indicate this is a stable status
     };
   }

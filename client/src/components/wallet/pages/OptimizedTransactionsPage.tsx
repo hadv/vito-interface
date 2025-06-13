@@ -4,7 +4,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { ethers } from 'ethers';
-import { formatWalletAddress } from '@utils';
+import { formatWalletAddress, getEtherscanTransactionUrl, getSafeTransactionUrl } from '@utils';
 import { Transaction } from '../types';
 import { useInfiniteTransactionHistory } from '../../../hooks/useOptimizedTransactionHistory';
 import { TransactionFilters } from '../../../services/OptimizedTransactionService';
@@ -27,10 +27,12 @@ const cacheStatsClasses = "text-xs text-gray-500 ml-auto";
 
 interface OptimizedTransactionsPageProps {
   safeAddress: string;
+  network?: string;
 }
 
 const OptimizedTransactionsPage: React.FC<OptimizedTransactionsPageProps> = ({
-  safeAddress
+  safeAddress,
+  network = 'ethereum'
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'executed' | 'pending' | 'failed'>('all');
@@ -75,6 +77,24 @@ const OptimizedTransactionsPage: React.FC<OptimizedTransactionsPageProps> = ({
     applyFilters({ status: newStatus === 'all' ? undefined : newStatus });
   }, [applyFilters]);
 
+  // Handle transaction click to open in block explorer
+  const handleTransactionClick = useCallback((tx: Transaction) => {
+    let url: string;
+
+    if (tx.isExecuted && tx.executionTxHash) {
+      // For executed transactions, open the execution transaction in block explorer
+      url = getEtherscanTransactionUrl(tx.executionTxHash, network);
+    } else if (tx.safeTxHash) {
+      // For pending transactions, open in Safe app
+      url = getSafeTransactionUrl(safeAddress, tx.safeTxHash, network);
+    } else {
+      // Fallback: open Safe address in block explorer
+      url = `https://app.safe.global/home?safe=${network}:${safeAddress}`;
+    }
+
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }, [safeAddress, network]);
+
   // Format transaction for display
   const formatTransaction = useCallback((tx: any): Transaction => ({
     id: tx.id,
@@ -101,13 +121,23 @@ const OptimizedTransactionsPage: React.FC<OptimizedTransactionsPageProps> = ({
     signatures: tx.signatures
   }), []);
 
-  // Render transaction item with proper Tailwind styling
+  // Render transaction item with proper Tailwind styling and click handler
   const renderTransactionItem = useCallback((tx: Transaction) => (
-    <div key={tx.id} className="p-4 border-b border-gray-700 cursor-pointer hover:bg-gray-800/50 transition-colors">
+    <div
+      key={tx.id}
+      className="p-4 border-b border-gray-700 cursor-pointer hover:bg-gray-800/50 transition-colors"
+      onClick={() => handleTransactionClick(tx)}
+      title={tx.isExecuted ? "Click to view on block explorer" : "Click to view in Safe app"}
+    >
       <div className="flex justify-between items-center">
         <div className="flex-1">
-          <div className="font-medium text-white">
+          <div className="font-medium text-white flex items-center gap-2">
             {tx.type ? (tx.type.charAt(0).toUpperCase() + tx.type.slice(1)) : 'Transaction'}
+            {/* Status indicator */}
+            <span className={`inline-block w-2 h-2 rounded-full ${
+              tx.status === 'executed' ? 'bg-green-400' :
+              tx.status === 'pending' ? 'bg-yellow-400' : 'bg-red-400'
+            }`} />
           </div>
           <div className="text-sm text-gray-400 mt-1">
             To: {formatWalletAddress(tx.to)}
@@ -117,12 +147,17 @@ const OptimizedTransactionsPage: React.FC<OptimizedTransactionsPageProps> = ({
               Safe TX: {formatWalletAddress(tx.safeTxHash)}
             </div>
           )}
+          {tx.isExecuted && tx.executionTxHash && (
+            <div className="text-xs text-gray-500 mt-0.5">
+              Execution TX: {formatWalletAddress(tx.executionTxHash)}
+            </div>
+          )}
         </div>
         <div className="text-right">
           <div className="font-medium text-white">
             {ethers.utils.formatEther(tx.amount || '0')} ETH
           </div>
-          <div className={`text-xs mt-1 ${
+          <div className={`text-xs mt-1 font-medium ${
             tx.status === 'executed' ? 'text-green-400' :
             tx.status === 'pending' ? 'text-yellow-400' : 'text-red-400'
           }`}>
@@ -133,10 +168,15 @@ const OptimizedTransactionsPage: React.FC<OptimizedTransactionsPageProps> = ({
               {tx.confirmations}/{tx.threshold} confirmations
             </div>
           )}
+          {tx.isExecuted && tx.blockNumber && (
+            <div className="text-xs text-gray-500 mt-0.5">
+              Block: {tx.blockNumber}
+            </div>
+          )}
         </div>
       </div>
     </div>
-  ), []);
+  ), [handleTransactionClick]);
 
   return (
     <div className={containerClasses}>

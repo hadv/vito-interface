@@ -447,7 +447,7 @@ export class SafeWalletService {
         ...executedTxs.map(tx => ({
           id: tx.safeTxHash || tx.transactionHash,
           safeTxHash: tx.safeTxHash,
-          executionTxHash: tx.transactionHash,
+          executionTxHash: tx.transactionHash || undefined,
           from: this.config!.safeAddress,
           to: tx.to,
           value: tx.value,
@@ -571,7 +571,7 @@ export class SafeWalletService {
           blockNumber: executedTx.blockNumber,
           gasUsed: executedTx.gasUsed,
           gasPrice: executedTx.gasPrice,
-          executionTxHash: executedTx.transactionHash,
+          executionTxHash: executedTx.transactionHash || undefined,
           timestamp: executedTx.timestamp
         };
       }

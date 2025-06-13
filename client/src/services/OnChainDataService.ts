@@ -23,10 +23,16 @@ export interface SafeTransactionEvent {
   gasPrice: string;
   gasUsed: string;
   nonce: number;
-  executor: string;
+  executor: string | null;
   blockNumber: number;
-  transactionHash: string;
+  transactionHash: string | null;
   timestamp: number;
+  isExecuted: boolean;
+  status: 'executed' | 'pending' | 'failed';
+  confirmations?: any[];
+  confirmationsRequired?: number;
+  submissionDate?: string;
+  proposer?: string;
 }
 
 export interface OnChainTransactionStatus {
@@ -103,7 +109,7 @@ export class OnChainDataService {
     offset: number = 0
   ): Promise<SafeTransactionEvent[]> {
     try {
-      const url = `${this.safeServiceUrl}/api/v1/safes/${safeAddress}/multisig-transactions/?limit=${limit}&offset=${offset}&executed=true&ordering=-executionDate`;
+      const url = `${this.safeServiceUrl}/api/v1/safes/${safeAddress}/multisig-transactions/?limit=${limit}&offset=${offset}&ordering=-submissionDate`;
 
       // Add timeout for faster failure
       const controller = new AbortController();
@@ -136,8 +142,9 @@ export class OnChainDataService {
 
       for (const batch of txBatches) {
         const batchPromises = batch.map(async (tx: any) => {
+          // Handle both executed and pending transactions
           if (tx.isExecuted && tx.transactionHash) {
-            // Only fetch receipt for recent transactions to save time
+            // Executed transaction
             let receipt = null;
             const isRecent = new Date(tx.executionDate).getTime() > Date.now() - (7 * 24 * 60 * 60 * 1000); // Last 7 days
 
@@ -162,7 +169,34 @@ export class OnChainDataService {
               executor: tx.executor || '',
               blockNumber: receipt?.blockNumber || 0,
               transactionHash: tx.transactionHash,
-              timestamp: new Date(tx.executionDate || tx.submissionDate).getTime() / 1000
+              timestamp: new Date(tx.executionDate || tx.submissionDate).getTime() / 1000,
+              isExecuted: true,
+              status: 'executed',
+              confirmations: tx.confirmations || [],
+              confirmationsRequired: tx.confirmationsRequired || 1
+            };
+          } else if (!tx.isExecuted) {
+            // Pending transaction
+            return {
+              safeTxHash: tx.safeTxHash || '',
+              to: tx.to || '',
+              value: tx.value || '0',
+              data: tx.data || '0x',
+              operation: tx.operation || 0,
+              gasToken: tx.gasToken || ethers.constants.AddressZero,
+              gasPrice: tx.gasPrice || '0',
+              gasUsed: '0',
+              nonce: tx.nonce || 0,
+              executor: null,
+              blockNumber: 0,
+              transactionHash: null,
+              timestamp: new Date(tx.submissionDate).getTime() / 1000,
+              isExecuted: false,
+              status: 'pending',
+              confirmations: tx.confirmations || [],
+              confirmationsRequired: tx.confirmationsRequired || 1,
+              submissionDate: tx.submissionDate,
+              proposer: tx.proposer
             };
           }
           return null;
@@ -278,7 +312,9 @@ export class OnChainDataService {
             executor: transaction.from || '',
             blockNumber: event.blockNumber,
             transactionHash: event.transactionHash,
-            timestamp: block.timestamp
+            timestamp: block.timestamp,
+            isExecuted: true,
+            status: 'executed' as const
           });
         }
       }
@@ -306,7 +342,9 @@ export class OnChainDataService {
             executor: transaction.from || '',
             blockNumber: event.blockNumber,
             transactionHash: event.transactionHash,
-            timestamp: block.timestamp
+            timestamp: block.timestamp,
+            isExecuted: true,
+            status: 'failed' as const
           });
         }
       }
@@ -389,7 +427,7 @@ export class OnChainDataService {
         blockNumber: receipt.blockNumber,
         gasUsed: receipt.gasUsed,
         gasPrice: receipt.gasPrice,
-        executionTxHash: receipt.transactionHash,
+        executionTxHash: receipt.transactionHash || undefined,
         timestamp: receipt.timestamp
       };
     } catch (error) {

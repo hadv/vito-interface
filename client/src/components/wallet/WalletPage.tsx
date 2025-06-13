@@ -198,6 +198,7 @@ const WalletPage: React.FC<WalletPageProps> = ({
         return (
           <OptimizedTransactionsPage
             safeAddress={walletAddress}
+            network={network}
           />
         );
       case 'settings':
