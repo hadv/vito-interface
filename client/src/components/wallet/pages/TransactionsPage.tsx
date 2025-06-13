@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import { VitoList } from '@components/vitoUI';
 import { formatWalletAddress } from '@utils';
 import OptimizedTransactionsPage from './OptimizedTransactionsPage';
+import EnhancedTransactionsPage from './EnhancedTransactionsPage';
 import { SafeTxPoolService, SafeTxPoolTransaction } from '../../../services/SafeTxPoolService';
 
 
@@ -27,7 +28,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
   safeAddress,
   network = 'ethereum'
 }) => {
-  const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'history'>('history'); // Default to history tab
+  const [useEnhancedView, setUseEnhancedView] = useState(true); // Toggle for enhanced view
   const [pendingTxs, setPendingTxs] = useState<SafeTxPoolTransaction[]>([]);
   const [pendingLoading, setPendingLoading] = useState(false);
   const [pendingError, setPendingError] = useState<string | null>(null);
@@ -221,16 +223,40 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
             )}
           </>
         ) : (
-          // History tab - successful executed on-chain transactions only
+          // History tab - transaction history with enhanced human-friendly view
           <>
-            <div className="text-sm text-gray-400 mb-4">
-              Showing only successful executed on-chain transactions
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-sm text-gray-400">
+                Transaction history with state changes and flow indicators
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setUseEnhancedView(!useEnhancedView)}
+                  className={`
+                    px-3 py-1 text-xs rounded-lg transition-colors
+                    ${useEnhancedView
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }
+                  `}
+                >
+                  {useEnhancedView ? '📊 Enhanced View' : '📋 Simple View'}
+                </button>
+              </div>
             </div>
+
             {safeAddress ? (
-              <OptimizedTransactionsPage
-                safeAddress={safeAddress}
-                network={network}
-              />
+              useEnhancedView ? (
+                <EnhancedTransactionsPage
+                  safeAddress={safeAddress}
+                  network={network}
+                />
+              ) : (
+                <OptimizedTransactionsPage
+                  safeAddress={safeAddress}
+                  network={network}
+                />
+              )
             ) : (
               <div className="text-gray-400 text-center py-10">
                 Safe address not available

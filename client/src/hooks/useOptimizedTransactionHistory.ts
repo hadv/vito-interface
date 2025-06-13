@@ -118,14 +118,14 @@ export const useOptimizedTransactionHistory = (
    */
   const refresh = useCallback(async () => {
     if (!safeAddress) return;
-    
+
     // Invalidate cache for this Safe
     transactionService.invalidateCache(safeAddress);
-    
+
     setCurrentPage(0);
     setHasMore(true);
     await loadPage(0, false);
-  }, [safeAddress, loadPage]);
+  }, [safeAddress, transactionService, loadPage]);
 
   /**
    * Search transactions
@@ -171,7 +171,7 @@ export const useOptimizedTransactionHistory = (
     setCurrentPage(0);
     setHasMore(true);
     // loadPage will be called by useEffect when filters change
-  }, [transactionService]);
+  }, []);
 
   /**
    * Get cache statistics
