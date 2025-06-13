@@ -48,26 +48,31 @@ const getArrowClasses = (isOpen: boolean) => cn(
   isOpen ? 'rotate-180' : 'rotate-0'
 );
 
-const currentNetworkClasses = cn(
-  'bg-white/10 text-white border border-gray-700',
+const getCurrentNetworkClasses = (isOpen: boolean) => cn(
+  'bg-white/10 text-white border-2 border-gray-700',
   'rounded-lg px-4 py-2 h-10 cursor-pointer',
   'font-medium text-sm flex items-center capitalize',
-  'transition-all duration-250 backdrop-blur-md',
-  'hover:bg-white/15 hover:border-gray-600 hover:-translate-y-0.5'
+  'transition-all duration-200 backdrop-blur-md',
+  'hover:bg-white/20 hover:border-gray-500 hover:shadow-lg',
+  'active:scale-95',
+  isOpen ? 'bg-white/20 border-gray-500 shadow-lg ring-2 ring-primary-500/30' : ''
 );
 
 const getNetworkOptionsClasses = (isOpen: boolean) => cn(
-  'absolute top-12 right-0 bg-dark-900 border border-dark-600',
-  'rounded-xl w-45 z-20 shadow-xl backdrop-blur-lg overflow-hidden',
-  isOpen ? 'block' : 'hidden'
+  'absolute top-12 right-0 bg-gray-900/95 border border-gray-600',
+  'rounded-xl w-48 z-50 shadow-2xl backdrop-blur-lg overflow-hidden',
+  'transition-all duration-200 transform origin-top-right',
+  'ring-1 ring-white/10',
+  isOpen ? 'block opacity-100 scale-100 translate-y-0' : 'hidden opacity-0 scale-95 -translate-y-2'
 );
 
 const getNetworkOptionClasses = (isActive: boolean) => cn(
   'px-4 py-3 cursor-pointer text-sm font-medium capitalize',
-  'transition-all duration-250 flex items-center gap-2',
+  'transition-all duration-200 flex items-center gap-2',
+  'hover:bg-gray-800 hover:text-white',
   isActive
-    ? 'bg-primary-500/20 text-primary-400'
-    : 'text-gray-300 hover:bg-dark-800 hover:text-white'
+    ? 'bg-primary-500/20 text-primary-400 border-l-2 border-primary-500'
+    : 'text-gray-300'
 );
 
 const contentContainerClasses = 'flex-1 overflow-hidden relative p-0 m-0';
@@ -118,8 +123,9 @@ const commandDescriptionClasses = 'text-gray-300';
 
 // Tailwind classes for overlay
 const getOverlayClasses = (isVisible: boolean) => cn(
-  'fixed inset-0 bg-black/50 z-[5]',
-  isVisible ? 'block' : 'hidden'
+  'fixed inset-0 bg-black/30 z-40',
+  'transition-opacity duration-200',
+  isVisible ? 'block opacity-100' : 'hidden opacity-0'
 );
 
 const NoWalletPage = ({ walletAddress, setWalletAddress, onConnect }: {
@@ -300,6 +306,7 @@ function App() {
 
   // Toggle network selector
   const toggleNetworkSelector = () => {
+    console.log('Toggle network selector clicked, isNetworkSwitching:', isNetworkSwitching, 'current state:', networkSelectorOpen);
     if (!isNetworkSwitching) {
       setNetworkSelectorOpen(!networkSelectorOpen);
     }
@@ -307,6 +314,7 @@ function App() {
 
   // Handle network selection
   const selectNetwork = async (selectedNetwork: string) => {
+    console.log(`Network selection clicked: ${selectedNetwork}, current: ${network}`);
     const previousNetwork = network;
     setNetwork(selectedNetwork);
     setNetworkSelectorOpen(false);
@@ -328,6 +336,8 @@ function App() {
       } finally {
         setIsNetworkSwitching(false);
       }
+    } else {
+      console.log(`Network changed to ${selectedNetwork} (no wallet connected)`);
     }
   };
 
@@ -374,21 +384,32 @@ function App() {
 
   return (
     <div className={appContainerClasses}>
+      {/* Debug Panel - Remove in production */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed top-4 left-4 bg-black/80 text-white p-2 rounded text-xs z-[100] font-mono">
+          Network: {network} | Selector Open: {networkSelectorOpen ? 'Yes' : 'No'} | Switching: {isNetworkSwitching ? 'Yes' : 'No'}
+        </div>
+      )}
+
       <header className={headerClasses}>
         <div className={logoContainerClasses}>
           <img src={logo} alt="Vito Logo" className={logoClasses} />
           <h1 className={appNameClasses}>Vito</h1>
         </div>
         <div className={cn(networkSelectorClasses, "network-selector")}>
-          <div className={currentNetworkClasses} onClick={toggleNetworkSelector}>
+          <div
+            className={getCurrentNetworkClasses(networkSelectorOpen)}
+            onClick={toggleNetworkSelector}
+            title="Click to switch network"
+          >
             {isNetworkSwitching ? (
               <>
                 <span className="animate-pulse">{network}</span>
-                <div className="w-3 h-3 border border-gray-400 border-t-white rounded-full animate-spin" />
+                <div className="w-3 h-3 border border-gray-400 border-t-white rounded-full animate-spin ml-2" />
               </>
             ) : (
               <>
-                {network}
+                <span className="mr-2">{network}</span>
                 <div className={getArrowClasses(networkSelectorOpen)} />
               </>
             )}
