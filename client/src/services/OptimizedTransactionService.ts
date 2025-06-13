@@ -41,10 +41,15 @@ export class OptimizedTransactionService {
 
     const provider = this.onChainService.getProvider();
     if (!provider) {
-      throw new Error(`Failed to initialize provider for network: ${network}`);
+      console.warn(`Failed to initialize provider for network: ${network}, token enhancement will be disabled`);
+      // Create a mock enhancement service that doesn't enhance transactions
+      this.enhancementService = {
+        enhanceTransaction: async (tx: any) => tx,
+        enhanceTransactions: async (txs: any[]) => txs
+      } as any;
+    } else {
+      this.enhancementService = new TransactionEnhancementService(provider, network);
     }
-
-    this.enhancementService = new TransactionEnhancementService(provider, network);
   }
 
   /**
@@ -214,6 +219,7 @@ export class OptimizedTransactionService {
       threshold: tx.confirmationsRequired || 1,
       type: this.determineTransactionType(tx),
       submissionDate: tx.submissionDate,
+      logs: tx.logs || [], // Add logs for token transfer detection
       _isStable: true // Flag to indicate this is a stable status
     };
   }
