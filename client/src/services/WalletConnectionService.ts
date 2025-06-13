@@ -127,60 +127,61 @@ export class WalletConnectionService {
    * Connect signer wallet to an already connected Safe wallet
    */
   async connectSignerWallet(): Promise<WalletConnectionState> {
-    if (!this.state.isConnected || !this.state.safeAddress) {
-      throw new Error('Safe wallet must be connected first');
-    }
+    throw new Error('Signer connection temporarily disabled to prevent MetaMask popup');
+    // if (!this.state.isConnected || !this.state.safeAddress) {
+    //   throw new Error('Safe wallet must be connected first');
+    // }
 
-    try {
-      // Check if MetaMask or other wallet is available
-      if (typeof window.ethereum === 'undefined') {
-        throw new Error('No wallet detected. Please install MetaMask or another Web3 wallet.');
-      }
+    // try {
+    //   // Check if MetaMask or other wallet is available
+    //   if (typeof window.ethereum === 'undefined') {
+    //     throw new Error('No wallet detected. Please install MetaMask or another Web3 wallet.');
+    //   }
 
-      // Request account access
-      await window.ethereum.request({ method: 'eth_requestAccounts' });
+    //   // Request account access
+    //   await window.ethereum.request({ method: 'eth_requestAccounts' });
 
-      // Create provider and signer
-      this.provider = new ethers.providers.Web3Provider(window.ethereum);
-      this.signer = this.provider.getSigner();
+    //   // Create provider and signer
+    //   this.provider = new ethers.providers.Web3Provider(window.ethereum);
+    //   this.signer = this.provider.getSigner();
 
-      // Get user address
-      const userAddress = await this.signer.getAddress();
+    //   // Get user address
+    //   const userAddress = await this.signer.getAddress();
 
-      // Update Safe Wallet Service with signer
-      await safeWalletService.setSigner(this.signer);
+    //   // Update Safe Wallet Service with signer
+    //   await safeWalletService.setSigner(this.signer);
 
-      // Check if user is owner
-      const isOwner = await safeWalletService.isOwner(userAddress);
+    //   // Check if user is owner
+    //   const isOwner = await safeWalletService.isOwner(userAddress);
 
-      // Update state
-      this.state = {
-        ...this.state,
-        address: userAddress,
-        isOwner,
-        signerConnected: true,
-        signerAddress: userAddress,
-        readOnlyMode: false,
-        error: undefined
-      };
+    //   // Update state
+    //   this.state = {
+    //     ...this.state,
+    //     address: userAddress,
+    //     isOwner,
+    //     signerConnected: true,
+    //     signerAddress: userAddress,
+    //     readOnlyMode: false,
+    //     error: undefined
+    //   };
 
-      // Set up event listeners for account/network changes
-      this.setupEventListeners();
+    //   // Set up event listeners for account/network changes
+    //   this.setupEventListeners();
 
-      // Notify listeners
-      this.notifyListeners();
+    //   // Notify listeners
+    //   this.notifyListeners();
 
-      return this.state;
-    } catch (error: any) {
-      const errorMessage = error.message || 'Failed to connect signer wallet';
-      this.state = {
-        ...this.state,
-        error: errorMessage
-      };
+    //   return this.state;
+    // } catch (error: any) {
+    //   const errorMessage = error.message || 'Failed to connect signer wallet';
+    //   this.state = {
+    //     ...this.state,
+    //     error: errorMessage
+    //   };
 
-      this.notifyListeners();
-      throw new Error(errorMessage);
-    }
+    //   this.notifyListeners();
+    //   throw new Error(errorMessage);
+    // }
   }
 
   /**
