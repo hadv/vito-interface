@@ -17,8 +17,15 @@ export class TransactionEnhancementService {
    */
   async enhanceTransaction(transaction: Transaction, safeAddress: string): Promise<Transaction> {
     try {
+      console.log('🔍 Enhancing transaction:', transaction.id, 'value:', transaction.value, 'data:', transaction.data?.slice(0, 20));
       const tokenTransfer = await this.transferParser.parseTokenTransfer(transaction, safeAddress);
-      
+
+      if (tokenTransfer) {
+        console.log('✅ Token transfer detected:', tokenTransfer.tokenSymbol, tokenTransfer.formattedAmount, tokenTransfer.direction);
+      } else {
+        console.log('❌ No token transfer detected for transaction:', transaction.id);
+      }
+
       return {
         ...transaction,
         tokenTransfer: tokenTransfer || undefined

@@ -270,6 +270,17 @@ export class OnChainDataService {
               }
             }
 
+            // Get transaction logs for token transfer detection
+            let logs: any[] = [];
+            try {
+              if (this.provider && tx.transactionHash) {
+                const txReceipt = await this.provider.getTransactionReceipt(tx.transactionHash);
+                logs = txReceipt?.logs || [];
+              }
+            } catch (error) {
+              console.warn(`Failed to get logs for ${tx.transactionHash}:`, error);
+            }
+
             return {
               safeTxHash: tx.safeTxHash || '',
               to: tx.to || '',
@@ -287,7 +298,8 @@ export class OnChainDataService {
               isExecuted: true,
               status: 'executed' as const,
               confirmations: tx.confirmations || [],
-              confirmationsRequired: tx.confirmationsRequired || 1
+              confirmationsRequired: tx.confirmationsRequired || 1,
+              logs: logs // Add logs for token transfer detection
             };
           }
           return null;

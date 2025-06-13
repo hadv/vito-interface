@@ -25,23 +25,29 @@ export class TokenTransferParser {
     safeAddress: string
   ): Promise<TokenTransferInfo | null> {
     try {
+      console.log('🔍 Parsing token transfer for tx:', transaction.id, 'value:', transaction.value, 'data:', transaction.data?.slice(0, 20));
+
       // Check for native ETH transfer
       const value = ethers.BigNumber.from(transaction.value || transaction.amount || '0');
       if (!value.isZero() && (!transaction.data || transaction.data === '0x')) {
+        console.log('💰 Native ETH transfer detected, value:', value.toString());
         return await this.parseNativeTransfer(transaction, safeAddress, value);
       }
 
       // Check for ERC20 transfer in transaction data
       if (transaction.data && transaction.data.length > 10) {
         const methodId = transaction.data.slice(0, 10);
-        
+        console.log('🔍 Checking method ID:', methodId);
+
         // ERC20 transfer method: 0xa9059cbb
         if (methodId === '0xa9059cbb') {
+          console.log('📤 ERC20 transfer detected');
           return await this.parseERC20Transfer(transaction, safeAddress);
         }
-        
+
         // ERC20 transferFrom method: 0x23b872dd
         if (methodId === '0x23b872dd') {
+          console.log('📤 ERC20 transferFrom detected');
           return await this.parseERC20TransferFrom(transaction, safeAddress);
         }
       }

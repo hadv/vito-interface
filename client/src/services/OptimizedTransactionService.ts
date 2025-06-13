@@ -117,10 +117,12 @@ export class OptimizedTransactionService {
       );
 
       // Enhance transactions with token transfer information
+      console.log('🚀 Starting transaction enhancement for', formattedTransactions.length, 'transactions');
       const enhancedTransactions = await this.enhancementService.enhanceTransactions(
         formattedTransactions,
         safeAddress
       );
+      console.log('✅ Transaction enhancement completed');
 
       // Apply filters if provided
       const filteredTransactions = filters
