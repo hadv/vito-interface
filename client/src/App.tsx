@@ -219,6 +219,7 @@ function App() {
   const [ensName, setEnsName] = useState('');
   const [isLoadingEns, setIsLoadingEns] = useState(false);
   const [networkSelectorOpen, setNetworkSelectorOpen] = useState(false);
+  const [isNetworkSwitching, setIsNetworkSwitching] = useState(false);
 
   // Network change is handled by selectNetwork function in the UI
 
@@ -259,9 +260,11 @@ function App() {
       try {
         console.log(`Connecting to Safe wallet: ${walletAddress} on network: ${network}`);
 
+        // Connect in read-only mode by default - user can connect signer later
         await walletConnectionService.connectWallet({
           safeAddress: walletAddress,
-          network: network
+          network: network,
+          readOnlyMode: true
         });
 
         setWalletConnected(true);
@@ -297,13 +300,35 @@ function App() {
 
   // Toggle network selector
   const toggleNetworkSelector = () => {
-    setNetworkSelectorOpen(!networkSelectorOpen);
+    if (!isNetworkSwitching) {
+      setNetworkSelectorOpen(!networkSelectorOpen);
+    }
   };
 
   // Handle network selection
-  const selectNetwork = (selectedNetwork: string) => {
+  const selectNetwork = async (selectedNetwork: string) => {
+    const previousNetwork = network;
     setNetwork(selectedNetwork);
     setNetworkSelectorOpen(false);
+
+    // If wallet is connected, switch the network for the connected wallet
+    if (walletConnected && walletAddress) {
+      setIsNetworkSwitching(true);
+      try {
+        console.log(`Switching network from ${previousNetwork} to ${selectedNetwork} for wallet: ${walletAddress}`);
+
+        await walletConnectionService.switchNetwork(selectedNetwork);
+
+        console.log(`Successfully switched to ${selectedNetwork}`);
+      } catch (error: any) {
+        console.error('Failed to switch network:', error);
+        // Revert network selection on error
+        setNetwork(previousNetwork);
+        alert(`Failed to switch network: ${error.message}`);
+      } finally {
+        setIsNetworkSwitching(false);
+      }
+    }
   };
 
   // Add click outside handler
@@ -356,27 +381,39 @@ function App() {
         </div>
         <div className={cn(networkSelectorClasses, "network-selector")}>
           <div className={currentNetworkClasses} onClick={toggleNetworkSelector}>
-            {network}
-            <div className={getArrowClasses(networkSelectorOpen)} />
+            {isNetworkSwitching ? (
+              <>
+                <span className="animate-pulse">{network}</span>
+                <div className="w-3 h-3 border border-gray-400 border-t-white rounded-full animate-spin" />
+              </>
+            ) : (
+              <>
+                {network}
+                <div className={getArrowClasses(networkSelectorOpen)} />
+              </>
+            )}
           </div>
           <div className={getNetworkOptionsClasses(networkSelectorOpen)}>
             <div
               className={getNetworkOptionClasses(network === 'ethereum')}
-              onClick={() => selectNetwork('ethereum')}
+              onClick={() => !isNetworkSwitching && selectNetwork('ethereum')}
+              style={{ opacity: isNetworkSwitching ? 0.5 : 1, cursor: isNetworkSwitching ? 'not-allowed' : 'pointer' }}
             >
               <Badge variant="primary" size="sm" dot />
               Ethereum
             </div>
             <div
               className={getNetworkOptionClasses(network === 'sepolia')}
-              onClick={() => selectNetwork('sepolia')}
+              onClick={() => !isNetworkSwitching && selectNetwork('sepolia')}
+              style={{ opacity: isNetworkSwitching ? 0.5 : 1, cursor: isNetworkSwitching ? 'not-allowed' : 'pointer' }}
             >
               <Badge variant="warning" size="sm" dot />
               Sepolia
             </div>
             <div
               className={getNetworkOptionClasses(network === 'arbitrum')}
-              onClick={() => selectNetwork('arbitrum')}
+              onClick={() => !isNetworkSwitching && selectNetwork('arbitrum')}
+              style={{ opacity: isNetworkSwitching ? 0.5 : 1, cursor: isNetworkSwitching ? 'not-allowed' : 'pointer' }}
             >
               <Badge variant="info" size="sm" dot />
               Arbitrum

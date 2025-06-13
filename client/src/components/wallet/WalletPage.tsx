@@ -9,6 +9,9 @@ import MenuItem from './components/MenuItem';
 import NetworkBadge from './components/NetworkBadge';
 import WalletHeader from './components/WalletHeader';
 import QRCodeModal from './components/QRCodeModal';
+import SignerConnectionBanner from './components/SignerConnectionBanner';
+import NetworkSwitchingBanner from './components/NetworkSwitchingBanner';
+import SafeTxPoolWarningBanner from './components/SafeTxPoolWarningBanner';
 
 // Import page components
 import HomePage from './pages/HomePage';
@@ -248,6 +251,12 @@ const WalletPage: React.FC<WalletPageProps> = ({
       </LeftSidebar>
       
       <MainContent>
+        <NetworkSwitchingBanner targetNetwork={currentNetwork} />
+        <SafeTxPoolWarningBanner
+          network={currentNetwork}
+          onOpenSettings={() => setActiveSection('settings')}
+        />
+        <SignerConnectionBanner />
         {renderContent()}
       </MainContent>
       
