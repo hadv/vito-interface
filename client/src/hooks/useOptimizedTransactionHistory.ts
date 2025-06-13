@@ -2,8 +2,8 @@
  * Optimized React hook for transaction history with caching and pagination
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { optimizedTransactionService, TransactionFilters } from '../services/OptimizedTransactionService';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { createOptimizedTransactionService, TransactionFilters } from '../services/OptimizedTransactionService';
 
 export interface UseOptimizedTransactionHistoryResult {
   transactions: any[];
@@ -26,6 +26,7 @@ export interface UseOptimizedTransactionHistoryResult {
 
 export const useOptimizedTransactionHistory = (
   safeAddress: string | null,
+  network: string = 'ethereum',
   initialFilters?: TransactionFilters,
   autoLoad: boolean = true
 ): UseOptimizedTransactionHistoryResult => {
@@ -38,8 +39,14 @@ export const useOptimizedTransactionHistory = (
   const [totalCount, setTotalCount] = useState(0);
   const [filters, setFilters] = useState<TransactionFilters | undefined>(initialFilters);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  
+
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Create service instance for the specific network
+  const transactionService = useMemo(() =>
+    createOptimizedTransactionService(network),
+    [network]
+  );
   const isInitialLoadRef = useRef(true);
 
   /**
@@ -68,7 +75,7 @@ export const useOptimizedTransactionHistory = (
       }
       setError(null);
 
-      const result = await optimizedTransactionService.getTransactionHistory(
+      const result = await transactionService.getTransactionHistory(
         safeAddress,
         page,
         filters
@@ -96,7 +103,7 @@ export const useOptimizedTransactionHistory = (
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [safeAddress, filters]);
+  }, [safeAddress, filters, transactionService]);
 
   /**
    * Load more transactions (next page)
@@ -113,7 +120,7 @@ export const useOptimizedTransactionHistory = (
     if (!safeAddress) return;
     
     // Invalidate cache for this Safe
-    optimizedTransactionService.invalidateCache(safeAddress);
+    transactionService.invalidateCache(safeAddress);
     
     setCurrentPage(0);
     setHasMore(true);
@@ -138,7 +145,7 @@ export const useOptimizedTransactionHistory = (
       setIsLoading(true);
       setError(null);
 
-      const results = await optimizedTransactionService.searchTransactions(
+      const results = await transactionService.searchTransactions(
         safeAddress,
         query,
         100
@@ -154,7 +161,7 @@ export const useOptimizedTransactionHistory = (
     } finally {
       setIsLoading(false);
     }
-  }, [safeAddress, loadPage]);
+  }, [safeAddress, transactionService, loadPage]);
 
   /**
    * Apply filters and reload
@@ -164,14 +171,14 @@ export const useOptimizedTransactionHistory = (
     setCurrentPage(0);
     setHasMore(true);
     // loadPage will be called by useEffect when filters change
-  }, []);
+  }, [transactionService]);
 
   /**
    * Get cache statistics
    */
   const getCacheStats = useCallback(() => {
-    return optimizedTransactionService.getCacheStats();
-  }, []);
+    return transactionService.getCacheStats();
+  }, [transactionService]);
 
   // Initial load and filter changes
   useEffect(() => {
@@ -235,9 +242,10 @@ export const useOptimizedTransactionHistory = (
  */
 export const useInfiniteTransactionHistory = (
   safeAddress: string | null,
+  network: string = 'ethereum',
   filters?: TransactionFilters
 ) => {
-  const result = useOptimizedTransactionHistory(safeAddress, filters);
+  const result = useOptimizedTransactionHistory(safeAddress, network, filters);
   
   // Intersection Observer for infinite scroll with debouncing
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -289,10 +297,11 @@ export const useInfiniteTransactionHistory = (
  */
 export const useVirtualizedTransactionHistory = (
   safeAddress: string | null,
+  network: string = 'ethereum',
   itemHeight: number = 80,
   containerHeight: number = 600
 ) => {
-  const result = useOptimizedTransactionHistory(safeAddress);
+  const result = useOptimizedTransactionHistory(safeAddress, network);
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 0 });
   
   const visibleCount = Math.ceil(containerHeight / itemHeight);

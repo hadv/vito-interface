@@ -323,5 +323,9 @@ export class OptimizedTransactionService {
   }
 }
 
-// Create singleton instance
-export const optimizedTransactionService = new OptimizedTransactionService();
+// Create factory function instead of singleton to support multiple networks
+export const createOptimizedTransactionService = (network: string = 'ethereum') =>
+  new OptimizedTransactionService(network);
+
+// Default instance for backward compatibility (will be deprecated)
+export const optimizedTransactionService = new OptimizedTransactionService('ethereum');

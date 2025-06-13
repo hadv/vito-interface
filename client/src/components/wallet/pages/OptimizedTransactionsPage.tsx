@@ -59,7 +59,7 @@ const OptimizedTransactionsPage: React.FC<OptimizedTransactionsPageProps> = ({
     applyFilters,
     cacheStats,
     loadMoreRef
-  } = useInfiniteTransactionHistory(safeAddress, filters);
+  } = useInfiniteTransactionHistory(safeAddress, network, filters);
 
   // Handle search
   const handleSearch = useCallback(async (query: string) => {
