@@ -95,16 +95,29 @@ export class OnChainDataService {
   }
 
   /**
-   * Get Safe transaction history from Safe Transaction Service API
+   * Get Safe transaction history from Safe Transaction Service API (optimized)
    */
   async getSafeTransactionHistory(
     safeAddress: string,
-    limit: number = 100,
+    limit: number = 20,
     offset: number = 0
   ): Promise<SafeTransactionEvent[]> {
     try {
-      const url = `${this.safeServiceUrl}/api/v1/safes/${safeAddress}/multisig-transactions/?limit=${limit}&offset=${offset}&executed=true`;
-      const response = await fetch(url);
+      const url = `${this.safeServiceUrl}/api/v1/safes/${safeAddress}/multisig-transactions/?limit=${limit}&offset=${offset}&executed=true&ordering=-executionDate`;
+
+      // Add timeout for faster failure
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         console.warn(`Safe Transaction Service API error: ${response.status}`);
@@ -114,48 +127,91 @@ export class OnChainDataService {
       const data = await response.json();
       const transactions: SafeTransactionEvent[] = [];
 
-      for (const tx of data.results || []) {
-        if (tx.isExecuted && tx.transactionHash) {
-          // Get additional on-chain data
-          const receipt = await this.getTransactionReceipt(tx.transactionHash);
-
-          transactions.push({
-            safeTxHash: tx.safeTxHash || '',
-            to: tx.to || '',
-            value: tx.value || '0',
-            data: tx.data || '0x',
-            operation: tx.operation || 0,
-            gasToken: tx.gasToken || ethers.constants.AddressZero,
-            gasPrice: receipt?.gasPrice || '0',
-            gasUsed: receipt?.gasUsed || '0',
-            nonce: tx.nonce || 0,
-            executor: tx.executor || '',
-            blockNumber: receipt?.blockNumber || 0,
-            transactionHash: tx.transactionHash,
-            timestamp: new Date(tx.executionDate || tx.submissionDate).getTime() / 1000
-          });
-        }
+      // Process transactions in batches to avoid blocking
+      const batchSize = 5;
+      const txBatches = [];
+      for (let i = 0; i < (data.results || []).length; i += batchSize) {
+        txBatches.push((data.results || []).slice(i, i + batchSize));
       }
 
-      return transactions.sort((a, b) => b.timestamp - a.timestamp);
+      for (const batch of txBatches) {
+        const batchPromises = batch.map(async (tx: any) => {
+          if (tx.isExecuted && tx.transactionHash) {
+            // Only fetch receipt for recent transactions to save time
+            let receipt = null;
+            const isRecent = new Date(tx.executionDate).getTime() > Date.now() - (7 * 24 * 60 * 60 * 1000); // Last 7 days
+
+            if (isRecent) {
+              try {
+                receipt = await this.getTransactionReceipt(tx.transactionHash);
+              } catch (error) {
+                console.warn(`Failed to get receipt for ${tx.transactionHash}:`, error);
+              }
+            }
+
+            return {
+              safeTxHash: tx.safeTxHash || '',
+              to: tx.to || '',
+              value: tx.value || '0',
+              data: tx.data || '0x',
+              operation: tx.operation || 0,
+              gasToken: tx.gasToken || ethers.constants.AddressZero,
+              gasPrice: receipt?.gasPrice || tx.gasPrice || '0',
+              gasUsed: receipt?.gasUsed || tx.gasUsed || '0',
+              nonce: tx.nonce || 0,
+              executor: tx.executor || '',
+              blockNumber: receipt?.blockNumber || 0,
+              transactionHash: tx.transactionHash,
+              timestamp: new Date(tx.executionDate || tx.submissionDate).getTime() / 1000
+            };
+          }
+          return null;
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+        transactions.push(...batchResults.filter(Boolean) as SafeTransactionEvent[]);
+      }
+
+      return transactions;
     } catch (error) {
-      console.error('Error fetching from Safe Transaction Service:', error);
-      // Fallback to on-chain events
-      return this.getSafeTransactionEventsFromChain(safeAddress);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn('Safe Transaction Service request timed out');
+      } else {
+        console.error('Error fetching from Safe Transaction Service:', error);
+      }
+
+      // Fallback to on-chain events only for small ranges
+      if (limit <= 50) {
+        return this.getSafeTransactionEventsFromChain(safeAddress, -1000); // Last 1000 blocks
+      }
+      return [];
     }
   }
 
   /**
-   * Get pending Safe transactions from Safe Transaction Service API
+   * Get pending Safe transactions from Safe Transaction Service API (optimized)
    */
   async getSafePendingTransactions(
     safeAddress: string,
-    limit: number = 100,
+    limit: number = 50,
     offset: number = 0
   ): Promise<any[]> {
     try {
-      const url = `${this.safeServiceUrl}/api/v1/safes/${safeAddress}/multisig-transactions/?limit=${limit}&offset=${offset}&executed=false`;
-      const response = await fetch(url);
+      const url = `${this.safeServiceUrl}/api/v1/safes/${safeAddress}/multisig-transactions/?limit=${limit}&offset=${offset}&executed=false&ordering=-submissionDate`;
+
+      // Add timeout for faster failure
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout for pending txs
+
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         console.warn(`Safe Transaction Service API error: ${response.status}`);
@@ -165,7 +221,11 @@ export class OnChainDataService {
       const data = await response.json();
       return data.results || [];
     } catch (error) {
-      console.error('Error fetching pending transactions from Safe Transaction Service:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn('Safe Transaction Service request for pending transactions timed out');
+      } else {
+        console.error('Error fetching pending transactions from Safe Transaction Service:', error);
+      }
       return [];
     }
   }
