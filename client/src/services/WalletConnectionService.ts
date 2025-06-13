@@ -98,6 +98,9 @@ export class WalletConnectionService {
         error: undefined
       };
 
+      // Always remove existing event listeners first
+      this.removeEventListeners();
+
       // Don't set up event listeners in read-only mode to prevent MetaMask interactions
       // Set up event listeners for account/network changes (only if signer is connected)
       if (this.signer && !readOnlyMode) {
