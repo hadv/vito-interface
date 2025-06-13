@@ -95,21 +95,17 @@ export class OptimizedTransactionService {
     const limit = this.PAGE_SIZE;
 
     try {
-      // Fetch all transactions (both executed and pending) from the unified API
-      const allTxs = await this.onChainService.getSafeTransactionHistory(
+      // Fetch only executed transactions
+      const executedTxs = await this.onChainService.getSafeTransactionHistory(
         safeAddress,
         limit + 1, // Fetch one extra to check if there are more
         offset
       );
 
-      // Format transactions based on their execution status
-      const formattedTransactions = allTxs.slice(0, limit).map(tx => {
-        if (tx.isExecuted && tx.status === 'executed') {
-          return this.formatExecutedTransaction(tx, safeAddress);
-        } else {
-          return this.formatPendingTransaction(tx, safeAddress);
-        }
-      });
+      // Format executed transactions
+      const formattedTransactions = executedTxs.slice(0, limit).map(tx =>
+        this.formatExecutedTransaction(tx, safeAddress)
+      );
 
       // Apply filters if provided
       const filteredTransactions = filters
@@ -117,7 +113,7 @@ export class OptimizedTransactionService {
         : formattedTransactions;
 
       // Determine if there are more pages
-      const hasMore = allTxs.length > limit;
+      const hasMore = executedTxs.length > limit;
 
       return {
         transactions: filteredTransactions,

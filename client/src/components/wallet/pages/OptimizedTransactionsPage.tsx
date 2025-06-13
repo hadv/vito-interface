@@ -35,7 +35,7 @@ const OptimizedTransactionsPage: React.FC<OptimizedTransactionsPageProps> = ({
   network = 'ethereum'
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'executed' | 'pending' | 'failed'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'executed'>('all');
   const [showCacheStats, setShowCacheStats] = useState(false);
 
   // Create filters object
@@ -81,14 +81,14 @@ const OptimizedTransactionsPage: React.FC<OptimizedTransactionsPageProps> = ({
   const handleTransactionClick = useCallback((tx: Transaction) => {
     let url: string;
 
-    if (tx.isExecuted && tx.executionTxHash) {
+    if (tx.executionTxHash) {
       // For executed transactions, open the execution transaction in block explorer
       url = getEtherscanTransactionUrl(tx.executionTxHash, network);
     } else if (tx.safeTxHash) {
-      // For pending transactions, open in Safe app
+      // Fallback: open in Safe app
       url = getSafeTransactionUrl(safeAddress, tx.safeTxHash, network);
     } else {
-      // Fallback: open Safe address in block explorer
+      // Last fallback: open Safe address page
       url = `https://app.safe.global/home?safe=${network}:${safeAddress}`;
     }
 
@@ -127,17 +127,14 @@ const OptimizedTransactionsPage: React.FC<OptimizedTransactionsPageProps> = ({
       key={tx.id}
       className="p-4 border-b border-gray-700 cursor-pointer hover:bg-gray-800/50 transition-colors"
       onClick={() => handleTransactionClick(tx)}
-      title={tx.isExecuted ? "Click to view on block explorer" : "Click to view in Safe app"}
+      title="Click to view on block explorer"
     >
       <div className="flex justify-between items-center">
         <div className="flex-1">
           <div className="font-medium text-white flex items-center gap-2">
             {tx.type ? (tx.type.charAt(0).toUpperCase() + tx.type.slice(1)) : 'Transaction'}
-            {/* Status indicator */}
-            <span className={`inline-block w-2 h-2 rounded-full ${
-              tx.status === 'executed' ? 'bg-green-400' :
-              tx.status === 'pending' ? 'bg-yellow-400' : 'bg-red-400'
-            }`} />
+            {/* Status indicator - all transactions are executed */}
+            <span className="inline-block w-2 h-2 rounded-full bg-green-400" />
           </div>
           <div className="text-sm text-gray-400 mt-1">
             To: {formatWalletAddress(tx.to)}
@@ -147,7 +144,7 @@ const OptimizedTransactionsPage: React.FC<OptimizedTransactionsPageProps> = ({
               Safe TX: {formatWalletAddress(tx.safeTxHash)}
             </div>
           )}
-          {tx.isExecuted && tx.executionTxHash && (
+          {tx.executionTxHash && (
             <div className="text-xs text-gray-500 mt-0.5">
               Execution TX: {formatWalletAddress(tx.executionTxHash)}
             </div>
@@ -157,18 +154,10 @@ const OptimizedTransactionsPage: React.FC<OptimizedTransactionsPageProps> = ({
           <div className="font-medium text-white">
             {ethers.utils.formatEther(tx.amount || '0')} ETH
           </div>
-          <div className={`text-xs mt-1 font-medium ${
-            tx.status === 'executed' ? 'text-green-400' :
-            tx.status === 'pending' ? 'text-yellow-400' : 'text-red-400'
-          }`}>
-            {tx.status ? (tx.status.charAt(0).toUpperCase() + tx.status.slice(1)) : 'Unknown'}
+          <div className="text-xs mt-1 font-medium text-green-400">
+            Executed
           </div>
-          {tx.confirmations !== undefined && tx.threshold && (
-            <div className="text-xs text-gray-500 mt-0.5">
-              {tx.confirmations}/{tx.threshold} confirmations
-            </div>
-          )}
-          {tx.isExecuted && tx.blockNumber && (
+          {tx.blockNumber && (
             <div className="text-xs text-gray-500 mt-0.5">
               Block: {tx.blockNumber}
             </div>
@@ -195,10 +184,8 @@ const OptimizedTransactionsPage: React.FC<OptimizedTransactionsPageProps> = ({
             onChange={(e) => handleFilterChange(e.target.value as typeof statusFilter)}
             className={filterSelectClasses}
           >
-            <option value="all">All Status</option>
-            <option value="executed">Executed</option>
-            <option value="pending">Pending</option>
-            <option value="failed">Failed</option>
+            <option value="all">All Transactions</option>
+            <option value="executed">Executed Only</option>
           </select>
           <button onClick={refresh} disabled={isLoading} className={refreshButtonClasses}>
             {isLoading ? 'Refreshing...' : 'Refresh'}

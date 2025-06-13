@@ -109,7 +109,7 @@ export class OnChainDataService {
     offset: number = 0
   ): Promise<SafeTransactionEvent[]> {
     try {
-      const url = `${this.safeServiceUrl}/api/v1/safes/${safeAddress}/multisig-transactions/?limit=${limit}&offset=${offset}&ordering=-submissionDate`;
+      const url = `${this.safeServiceUrl}/api/v1/safes/${safeAddress}/multisig-transactions/?limit=${limit}&offset=${offset}&executed=true&ordering=-executionDate`;
 
       // Add timeout for faster failure
       const controller = new AbortController();
@@ -142,9 +142,8 @@ export class OnChainDataService {
 
       for (const batch of txBatches) {
         const batchPromises = batch.map(async (tx: any) => {
-          // Handle both executed and pending transactions
+          // Only handle executed transactions
           if (tx.isExecuted && tx.transactionHash) {
-            // Executed transaction
             let receipt = null;
             const isRecent = new Date(tx.executionDate).getTime() > Date.now() - (7 * 24 * 60 * 60 * 1000); // Last 7 days
 
@@ -171,32 +170,9 @@ export class OnChainDataService {
               transactionHash: tx.transactionHash,
               timestamp: new Date(tx.executionDate || tx.submissionDate).getTime() / 1000,
               isExecuted: true,
-              status: 'executed',
+              status: 'executed' as const,
               confirmations: tx.confirmations || [],
               confirmationsRequired: tx.confirmationsRequired || 1
-            };
-          } else if (!tx.isExecuted) {
-            // Pending transaction
-            return {
-              safeTxHash: tx.safeTxHash || '',
-              to: tx.to || '',
-              value: tx.value || '0',
-              data: tx.data || '0x',
-              operation: tx.operation || 0,
-              gasToken: tx.gasToken || ethers.constants.AddressZero,
-              gasPrice: tx.gasPrice || '0',
-              gasUsed: '0',
-              nonce: tx.nonce || 0,
-              executor: null,
-              blockNumber: 0,
-              transactionHash: null,
-              timestamp: new Date(tx.submissionDate).getTime() / 1000,
-              isExecuted: false,
-              status: 'pending',
-              confirmations: tx.confirmations || [],
-              confirmationsRequired: tx.confirmationsRequired || 1,
-              submissionDate: tx.submissionDate,
-              proposer: tx.proposer
             };
           }
           return null;
