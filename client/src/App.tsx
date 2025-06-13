@@ -37,9 +37,11 @@ const appNameClasses = cn(
   'bg-clip-text text-transparent'
 );
 
-// Tailwind classes for network selector
+// These utility functions are kept for potential future use
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const networkSelectorClasses = 'relative h-full flex items-center z-20 overflow-visible';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getArrowClasses = (isOpen: boolean) => cn(
   'ml-2 inline-block w-0 h-0',
   'border-l-[4px] border-r-[4px] border-t-[4px]',
@@ -48,6 +50,7 @@ const getArrowClasses = (isOpen: boolean) => cn(
   isOpen ? 'rotate-180' : 'rotate-0'
 );
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getCurrentNetworkClasses = (isOpen: boolean) => cn(
   'bg-white/10 text-white border-2 border-gray-700',
   'rounded-lg px-4 py-2 h-10 cursor-pointer',
@@ -58,6 +61,7 @@ const getCurrentNetworkClasses = (isOpen: boolean) => cn(
   isOpen ? 'bg-white/20 border-gray-500 shadow-lg ring-2 ring-primary-500/30' : ''
 );
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getNetworkOptionsClasses = (isOpen: boolean) => cn(
   'fixed top-20 right-6 bg-gray-900 border-2 border-white',
   'rounded-xl w-48 z-[9999] shadow-2xl',
@@ -65,6 +69,7 @@ const getNetworkOptionsClasses = (isOpen: boolean) => cn(
   isOpen ? 'block' : 'hidden'
 );
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getNetworkOptionClasses = (isActive: boolean) => cn(
   'px-4 py-3 cursor-pointer text-sm font-medium capitalize',
   'transition-all duration-200 flex items-center gap-2',
