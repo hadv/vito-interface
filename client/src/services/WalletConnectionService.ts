@@ -42,7 +42,20 @@ export class WalletConnectionService {
       let userAddress: string | undefined;
       let isOwner = false;
 
-      // If not in read-only mode, try to connect signer wallet
+      // Initialize Safe Wallet Service first to validate the Safe wallet
+      const config: SafeWalletConfig = {
+        safeAddress: params.safeAddress,
+        network: params.network,
+        rpcUrl: params.rpcUrl
+      };
+
+      // Initialize without signer first to validate Safe wallet
+      await safeWalletService.initialize(config, undefined);
+
+      // Get Safe info to validate the Safe wallet exists
+      const safeInfo = await safeWalletService.getSafeInfo();
+
+      // Only try to connect signer after Safe wallet is validated
       if (!readOnlyMode) {
         try {
           // Check if MetaMask or other wallet is available
@@ -56,24 +69,15 @@ export class WalletConnectionService {
 
             // Get user address
             userAddress = await this.signer.getAddress();
+
+            // Update Safe Wallet Service with signer
+            await safeWalletService.setSigner(this.signer);
           }
         } catch (signerError) {
-          console.warn('Failed to connect signer wallet, falling back to read-only mode:', signerError);
+          console.warn('Failed to connect signer wallet, continuing in read-only mode:', signerError);
           // Continue in read-only mode if signer connection fails
         }
       }
-
-      // Initialize Safe Wallet Service
-      const config: SafeWalletConfig = {
-        safeAddress: params.safeAddress,
-        network: params.network,
-        rpcUrl: params.rpcUrl
-      };
-
-      await safeWalletService.initialize(config, this.signer || undefined);
-
-      // Get Safe info
-      const safeInfo = await safeWalletService.getSafeInfo();
 
       // Check if user is owner (only if we have a signer)
       if (userAddress) {
@@ -228,10 +232,11 @@ export class WalletConnectionService {
 
     try {
       // Reconnect to the same Safe wallet on the new network
+      // Always use read-only mode for network switching to avoid MetaMask popup
       return await this.connectWallet({
         safeAddress: this.state.safeAddress,
         network: newNetwork,
-        readOnlyMode: !this.state.signerConnected
+        readOnlyMode: true
       });
     } catch (error: any) {
       const errorMessage = error.message || 'Failed to switch network';
