@@ -413,31 +413,35 @@ function App() {
               </>
             )}
           </div>
-          <div className="fixed top-20 right-6 bg-red-500 border-2 border-white rounded-xl w-48 z-[9999] min-h-[120px] block p-4">
-            <div
-              className={getNetworkOptionClasses(network === 'ethereum')}
-              onClick={() => !isNetworkSwitching && selectNetwork('ethereum')}
-              style={{ opacity: isNetworkSwitching ? 0.5 : 1, cursor: isNetworkSwitching ? 'not-allowed' : 'pointer' }}
-            >
-              <Badge variant="primary" size="sm" dot />
-              Ethereum
+          {networkSelectorOpen && (
+            <div className="fixed top-20 right-6 bg-gray-900 border border-gray-600 rounded-xl w-48 z-[9999] shadow-2xl">
+              <div
+                className="px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white text-gray-300"
+                onClick={() => !isNetworkSwitching && selectNetwork('ethereum')}
+                style={{ opacity: isNetworkSwitching ? 0.5 : 1, cursor: isNetworkSwitching ? 'not-allowed' : 'pointer' }}
+              >
+                <Badge variant="primary" size="sm" dot />
+                Ethereum
+              </div>
+              <div
+                className="px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white text-gray-300"
+                onClick={() => !isNetworkSwitching && selectNetwork('sepolia')}
+                style={{ opacity: isNetworkSwitching ? 0.5 : 1, cursor: isNetworkSwitching ? 'not-allowed' : 'pointer' }}
+              >
+                <Badge variant="warning" size="sm" dot />
+                Sepolia
+              </div>
+              <div
+                className="px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white text-gray-300"
+                onClick={() => !isNetworkSwitching && selectNetwork('arbitrum')}
+                style={{ opacity: isNetworkSwitching ? 0.5 : 1, cursor: isNetworkSwitching ? 'not-allowed' : 'pointer' }}
+              >
+                <Badge variant="info" size="sm" dot />
+                Arbitrum
+              </div>
             </div>
-            <div
-              className={getNetworkOptionClasses(network === 'sepolia')}
-              onClick={() => !isNetworkSwitching && selectNetwork('sepolia')}
-              style={{ opacity: isNetworkSwitching ? 0.5 : 1, cursor: isNetworkSwitching ? 'not-allowed' : 'pointer' }}
-            >
-              <Badge variant="warning" size="sm" dot />
-              Sepolia
-            </div>
-            <div
-              className={getNetworkOptionClasses(network === 'arbitrum')}
-              onClick={() => !isNetworkSwitching && selectNetwork('arbitrum')}
-              style={{ opacity: isNetworkSwitching ? 0.5 : 1, cursor: isNetworkSwitching ? 'not-allowed' : 'pointer' }}
-            >
-              <Badge variant="info" size="sm" dot />
-              Arbitrum
-            </div>
+          )}
+
           </div>
         </div>
       </header>
