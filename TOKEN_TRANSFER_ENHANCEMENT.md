@@ -116,15 +116,7 @@ Token: USD Coin (USDC)
 - **Invalid tokens**: Skips enhancement, shows original data
 - **Network issues**: Cached data used when available
 
-## Demo Component
 
-**File:** `client/src/components/demo/TokenTransferDemo.tsx`
-
-Created a demonstration component showing:
-- ETH transfers (in/out)
-- USDC transfers with 6 decimals
-- DAI transfers with 18 decimals
-- Proper formatting and direction indicators
 
 ## Integration Points
 
@@ -154,22 +146,7 @@ The implementation includes:
 - Error handling for edge cases
 - Performance considerations for large transaction lists
 
-## Testing and Demo
-
-### Demo Component
-Access the interactive demo by typing `:demo` in the application:
-
-1. **Start the application**: `npm start` in the client directory
-2. **Open demo**: Type `:demo` in the command input
-3. **View examples**: See different token transfers with proper formatting
-
-### Test Suite
-Run comprehensive tests with the included test file:
-
-```javascript
-// In browser console
-runTokenTransferTests()
-```
+## Testing
 
 ### Manual Testing
 1. **Connect a Safe wallet** with token transaction history
@@ -183,10 +160,9 @@ runTokenTransferTests()
 ## Usage Instructions
 
 ### For Users
-1. **View Demo**: Type `:demo` to see examples
-2. **Connect Wallet**: Enter Safe wallet address
-3. **Browse Transactions**: Enhanced display automatically applied
-4. **Token Information**: Hover/click for additional details
+1. **Connect Wallet**: Enter Safe wallet address
+2. **Browse Transactions**: Enhanced display automatically applied
+3. **Token Information**: Hover/click for additional details
 
 ### For Developers
 1. **Integration**: Services auto-integrate with existing transaction flow
