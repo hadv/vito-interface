@@ -130,7 +130,16 @@ export class OnChainDataService {
         return paginatedEvents;
       }
 
-      console.log('No Safe events found, trying Etherscan API...');
+      console.log('No Safe events found, trying Safe API first...');
+
+      // Try Safe API before Etherscan since it might have the data
+      const apiTxs = await this.getSafeTransactionHistoryFromAPI(safeAddress, limit, offset);
+      if (apiTxs.length > 0) {
+        console.log(`Found ${apiTxs.length} transactions from Safe API`);
+        return apiTxs;
+      }
+
+      console.log('No Safe API transactions found, trying Etherscan API...');
 
       // Fallback to blockchain transaction scanning
       const blockchainTxs = await this.blockchainService.getTransactionsFromBlockchain(
@@ -142,8 +151,8 @@ export class OnChainDataService {
       console.log(`Received ${blockchainTxs.length} transactions from blockchain scan`);
 
       if (blockchainTxs.length === 0) {
-        console.log('No blockchain transactions found, falling back to Safe API...');
-        return this.getSafeTransactionHistoryFromAPI(safeAddress, limit, offset);
+        console.log('No blockchain transactions found, all methods exhausted');
+        return [];
       }
 
       // Apply offset and limit

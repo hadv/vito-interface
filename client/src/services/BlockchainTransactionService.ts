@@ -31,7 +31,7 @@ export class BlockchainTransactionService {
   }
 
   /**
-   * Test function to verify Etherscan API connectivity
+   * Test function to verify Etherscan API connectivity with API key
    */
   async testEtherscanAPI(address: string): Promise<void> {
     const etherscanUrls = {
@@ -41,17 +41,25 @@ export class BlockchainTransactionService {
     };
 
     const baseUrl = etherscanUrls[this.network as keyof typeof etherscanUrls];
-    const testUrl = `${baseUrl}?module=account&action=txlist&address=${address}&page=1&offset=10&sort=desc`;
+    const apiKey = process.env.REACT_APP_ETHERSCAN_API_KEY || 'YourApiKeyToken';
+    const testUrl = `${baseUrl}?module=account&action=txlist&address=${address}&page=1&offset=5&sort=desc&apikey=${apiKey}`;
 
     console.log(`Testing Etherscan API for ${this.network}:`);
     console.log(`URL: ${testUrl}`);
+    console.log(`API Key: ${apiKey.substring(0, 10)}...`);
 
     try {
       const response = await fetch(testUrl);
       const data = await response.json();
-      console.log(`API Response:`, data);
+      console.log(`API Test Response:`, data);
+
+      if (data.status === '1' && data.result && Array.isArray(data.result)) {
+        console.log(`✅ API working! Found ${data.result.length} transactions`);
+      } else {
+        console.log(`❌ API issue:`, data.message || 'Unknown error');
+      }
     } catch (error) {
-      console.error(`API Test failed:`, error);
+      console.error(`❌ API Test failed:`, error);
     }
   }
 
@@ -65,6 +73,9 @@ export class BlockchainTransactionService {
   ): Promise<BlockchainTransaction[]> {
     try {
       console.log(`Fetching blockchain transactions for Safe: ${safeAddress} on ${this.network} using Etherscan API`);
+
+      // Test the API first to debug any issues
+      await this.testEtherscanAPI(safeAddress);
 
       // Use Etherscan API directly - it's fast and reliable
       const transactions = await this.getTransactionsFromEtherscanAPI(safeAddress, 0, 99999999);
@@ -322,12 +333,16 @@ export class BlockchainTransactionService {
 
     // Get API key from environment or use demo key
     const apiKey = process.env.REACT_APP_ETHERSCAN_API_KEY || 'YourApiKeyToken';
+    console.log(`Environment API key: ${process.env.REACT_APP_ETHERSCAN_API_KEY ? 'Found' : 'Not found'}`);
+    console.log(`Using API key: ${apiKey}`);
 
-    // Build URLs with API key
-    const normalTxUrl = `${baseUrl}?module=account&action=txlist&address=${address}&startblock=${startBlock}&endblock=${endBlock}&page=1&offset=100&sort=desc&apikey=${apiKey}`;
-    const internalTxUrl = `${baseUrl}?module=account&action=txlistinternal&address=${address}&startblock=${startBlock}&endblock=${endBlock}&page=1&offset=100&sort=desc&apikey=${apiKey}`;
+    // Build URLs with API key - use 0 to latest for full history
+    const normalTxUrl = `${baseUrl}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${apiKey}`;
+    const internalTxUrl = `${baseUrl}?module=account&action=txlistinternal&address=${address}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${apiKey}`;
 
-    console.log(`Using API key: ${apiKey.substring(0, 10)}...`);
+    console.log(`Full API key for debugging: ${apiKey}`);
+    console.log(`Normal TX URL: ${normalTxUrl}`);
+    console.log(`Internal TX URL: ${internalTxUrl}`);
 
     console.log(`Fetching transactions from Etherscan for ${this.network}`);
 
@@ -352,9 +367,17 @@ export class BlockchainTransactionService {
               transactions.push(await this.formatBlockchainTransaction(tx, 'normal'));
             }
           }
+        } else {
+          console.warn('Normal transactions API response indicates error or no data:', normalData);
+          if (normalData.message) {
+            console.warn('API Error message:', normalData.message);
+          }
         }
       } else {
-        console.warn('Failed to fetch normal transactions');
+        console.warn('Failed to fetch normal transactions - network or HTTP error');
+        if (responses[0].status === 'rejected') {
+          console.error('Normal transactions request rejected:', responses[0].reason);
+        }
       }
 
       // Process internal transactions
@@ -369,9 +392,17 @@ export class BlockchainTransactionService {
               transactions.push(await this.formatBlockchainTransaction(tx, 'internal'));
             }
           }
+        } else {
+          console.warn('Internal transactions API response indicates error or no data:', internalData);
+          if (internalData.message) {
+            console.warn('API Error message:', internalData.message);
+          }
         }
       } else {
-        console.warn('Failed to fetch internal transactions');
+        console.warn('Failed to fetch internal transactions - network or HTTP error');
+        if (responses[1].status === 'rejected') {
+          console.error('Internal transactions request rejected:', responses[1].reason);
+        }
       }
 
       // Remove duplicates based on transaction hash
