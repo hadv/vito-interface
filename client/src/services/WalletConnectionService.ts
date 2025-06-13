@@ -287,13 +287,15 @@ export class WalletConnectionService {
    * Setup event listeners for wallet events
    */
   private setupEventListeners(): void {
-    if (!window.ethereum) return;
+    // DISABLED TO PREVENT METAMASK POPUP
+    console.log('Event listeners disabled to prevent MetaMask popup');
+    // if (!window.ethereum) return;
 
-    // Account changed
-    window.ethereum.on('accountsChanged', this.handleAccountsChanged.bind(this));
-    
-    // Network changed
-    window.ethereum.on('chainChanged', this.handleChainChanged.bind(this));
+    // // Account changed
+    // window.ethereum.on('accountsChanged', this.handleAccountsChanged.bind(this));
+
+    // // Network changed
+    // window.ethereum.on('chainChanged', this.handleChainChanged.bind(this));
   }
 
   /**
@@ -302,8 +304,12 @@ export class WalletConnectionService {
   private removeEventListeners(): void {
     if (!window.ethereum) return;
 
-    window.ethereum.removeListener('accountsChanged', this.handleAccountsChanged.bind(this));
-    window.ethereum.removeListener('chainChanged', this.handleChainChanged.bind(this));
+    try {
+      window.ethereum.removeAllListeners('accountsChanged');
+      window.ethereum.removeAllListeners('chainChanged');
+    } catch (error) {
+      console.warn('Error removing MetaMask listeners:', error);
+    }
   }
 
   /**
