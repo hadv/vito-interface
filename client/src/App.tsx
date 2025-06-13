@@ -395,54 +395,41 @@ function App() {
           <img src={logo} alt="Vito Logo" className={logoClasses} />
           <h1 className={appNameClasses}>Vito</h1>
         </div>
-        <div className={cn(networkSelectorClasses, "network-selector")}>
-          <div
-            className={getCurrentNetworkClasses(networkSelectorOpen)}
+        <div className="relative">
+          <button
+            className="bg-white/10 text-white border-2 border-gray-700 rounded-lg px-4 py-2 h-10 cursor-pointer font-medium text-sm flex items-center capitalize"
             onClick={toggleNetworkSelector}
-            title="Click to switch network"
           >
-            {isNetworkSwitching ? (
-              <>
-                <span className="animate-pulse">{network}</span>
-                <div className="w-3 h-3 border border-gray-400 border-t-white rounded-full animate-spin ml-2" />
-              </>
-            ) : (
-              <>
-                <span className="mr-2">{network}</span>
-                <div className={getArrowClasses(networkSelectorOpen)} />
-              </>
-            )}
-          </div>
-          {networkSelectorOpen && (
-            <div className="fixed top-20 right-6 bg-gray-900 border border-gray-600 rounded-xl w-48 z-[9999] shadow-2xl">
-              <div
-                className="px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white text-gray-300"
-                onClick={() => !isNetworkSwitching && selectNetwork('ethereum')}
-                style={{ opacity: isNetworkSwitching ? 0.5 : 1, cursor: isNetworkSwitching ? 'not-allowed' : 'pointer' }}
-              >
-                <Badge variant="primary" size="sm" dot />
-                Ethereum
-              </div>
-              <div
-                className="px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white text-gray-300"
-                onClick={() => !isNetworkSwitching && selectNetwork('sepolia')}
-                style={{ opacity: isNetworkSwitching ? 0.5 : 1, cursor: isNetworkSwitching ? 'not-allowed' : 'pointer' }}
-              >
-                <Badge variant="warning" size="sm" dot />
-                Sepolia
-              </div>
-              <div
-                className="px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white text-gray-300"
-                onClick={() => !isNetworkSwitching && selectNetwork('arbitrum')}
-                style={{ opacity: isNetworkSwitching ? 0.5 : 1, cursor: isNetworkSwitching ? 'not-allowed' : 'pointer' }}
-              >
-                <Badge variant="info" size="sm" dot />
-                Arbitrum
-              </div>
-            </div>
-          )}
+            <span className="mr-2">{network}</span>
+            <span>▼</span>
+          </button>
         </div>
       </header>
+
+      {networkSelectorOpen && (
+        <div className="fixed top-20 right-6 bg-white border-2 border-black rounded-lg w-48 z-[9999] shadow-2xl">
+          <div className="p-2 text-black font-bold">NETWORK SELECTOR</div>
+          <div
+            className="px-4 py-3 cursor-pointer text-black hover:bg-gray-200"
+            onClick={() => selectNetwork('ethereum')}
+          >
+            Ethereum
+          </div>
+          <div
+            className="px-4 py-3 cursor-pointer text-black hover:bg-gray-200"
+            onClick={() => selectNetwork('sepolia')}
+          >
+            Sepolia
+          </div>
+          <div
+            className="px-4 py-3 cursor-pointer text-black hover:bg-gray-200"
+            onClick={() => selectNetwork('arbitrum')}
+          >
+            Arbitrum
+          </div>
+        </div>
+      )}
+
       <div className={getOverlayClasses(networkSelectorOpen)} />
       <div className={contentContainerClasses}>
         {walletConnected ? (
