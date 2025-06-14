@@ -46,8 +46,8 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['Roboto', 'system-ui', 'sans-serif'],
-        mono: ['Roboto Mono', 'Menlo', 'Monaco', 'monospace'],
+        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        mono: ['SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', 'monospace'],
       },
       fontWeight: {
         light: '300',

@@ -95,8 +95,8 @@ export const theme = {
   // Typography - Enhanced for better readability
   typography: {
     fontFamily: {
-      sans: ['Roboto', 'system-ui', '-apple-system', 'sans-serif'],
-      mono: ['Roboto Mono', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+      sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+      mono: ['SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', 'monospace'],
     },
     fontSize: {
       xs: '0.8125rem',  // 13px - increased from 12px for better readability
