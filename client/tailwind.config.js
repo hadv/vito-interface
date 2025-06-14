@@ -46,17 +46,17 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        sans: ['Space Grotesk', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
         mono: ['JetBrains Mono', 'SF Mono', 'Monaco', 'Consolas', 'monospace'],
       },
       fontWeight: {
-        light: '600',
-        normal: '700',
-        medium: '800',
-        semibold: '800',
-        bold: '900',
-        extrabold: '900',
-        black: '900',
+        light: '400',
+        normal: '500',
+        medium: '600',
+        semibold: '600',
+        bold: '700',
+        extrabold: '700',
+        black: '700',
       },
       fontSize: {
         'xs': ['0.875rem', { lineHeight: '1.5', fontWeight: '700' }],

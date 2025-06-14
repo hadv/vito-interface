@@ -45,29 +45,29 @@ export const theme = {
       950: '#0a0a0a',
     },
     
-    // SIMPLE DARK BACKGROUNDS
+    // DARK VIBRANT BACKGROUNDS
     background: {
-      primary: '#0F172A',     // Simple dark blue-gray
-      secondary: '#1E293B',   // Slightly lighter
-      tertiary: '#334155',    // Card backgrounds
-      card: '#1E293B',        // Same as secondary
-      elevated: '#334155',    // Same as tertiary
-      glass: '#1E293B',       // No glass effects - keep simple
-      overlay: 'rgba(0, 0, 0, 0.8)', // Modal overlays
+      primary: '#000000',     // Pure black base
+      secondary: '#1a1a1a',   // Dark gray
+      tertiary: '#2a2a2a',    // Lighter gray
+      card: 'rgba(0, 0, 0, 0.7)', // Semi-transparent black
+      elevated: 'rgba(0, 0, 0, 0.8)', // Darker semi-transparent
+      glass: 'rgba(255, 255, 255, 0.05)', // Glass effect
+      overlay: 'rgba(0, 0, 0, 0.9)', // Modal overlays
     },
     
-    // SIMPLE BLUE COLOR SCHEME - Bold and Clear
+    // VIBRANT CREATIVE COLOR SCHEME
     text: {
-      primary: '#FFFFFF',     // Pure white - maximum contrast
-      secondary: '#FFFFFF',   // Also white - keep it simple
-      tertiary: '#FFFFFF',    // All white text
-      muted: '#94A3B8',       // Light blue-gray for less important text
-      disabled: '#64748B',    // Darker blue-gray for disabled
+      primary: '#FFFFFF',     // Pure white for main text
+      secondary: '#4ECDC4',   // Vibrant teal
+      tertiary: '#45B7D1',    // Bright blue
+      muted: '#CBD5E1',       // Light gray
+      disabled: '#64748B',    // Muted gray
       inverse: '#000000',     // Pure black
-      accent: '#3B82F6',      // MAIN BLUE - only accent color
-      success: '#3B82F6',     // Use blue for success too
-      warning: '#3B82F6',     // Use blue for warning too
-      danger: '#EF4444',      // Only red for real errors
+      accent: '#FF6B6B',      // Vibrant coral
+      success: '#96CEB4',     // Mint green
+      warning: '#FFEAA7',     // Warm yellow
+      danger: '#FF6B6B',      // Vibrant coral for errors
     },
     
     // Status Colors
@@ -101,7 +101,7 @@ export const theme = {
   // Typography - Enhanced for better readability
   typography: {
     fontFamily: {
-      sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+      sans: ['Space Grotesk', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
       mono: ['JetBrains Mono', 'SF Mono', 'Monaco', 'Consolas', 'monospace'],
     },
     fontSize: {

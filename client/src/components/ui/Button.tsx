@@ -41,39 +41,42 @@ const getButtonClasses = (
     xl: 'px-12 py-6 text-2xl h-18'
   };
 
-  // MODERN ATTRACTIVE BUTTONS
+  // VIBRANT CREATIVE BUTTONS
   const variantClasses = {
     primary: [
-      'bg-gradient-to-r from-blue-500 to-blue-600 text-white',
-      'hover:from-blue-600 hover:to-blue-700',
-      'shadow-lg hover:shadow-xl',
-      'hover:shadow-blue-500/25',
-      'border border-blue-400/30'
+      'bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white',
+      'hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600',
+      'shadow-lg hover:shadow-2xl',
+      'hover:shadow-pink-500/30',
+      'border-2 border-transparent',
+      'bg-size-200 hover:bg-pos-100',
+      'relative overflow-hidden'
     ],
     secondary: [
-      'bg-gradient-to-r from-slate-600 to-slate-700 text-white',
-      'hover:from-slate-700 hover:to-slate-800',
-      'shadow-lg hover:shadow-xl',
-      'border border-slate-500/30'
+      'bg-gradient-to-r from-teal-400 to-blue-500 text-white',
+      'hover:from-teal-500 hover:to-blue-600',
+      'shadow-lg hover:shadow-2xl',
+      'hover:shadow-teal-400/30',
+      'border-2 border-transparent'
     ],
     outline: [
-      'bg-transparent text-blue-400 border-2 border-blue-500',
-      'hover:bg-blue-500 hover:text-white',
-      'hover:shadow-lg hover:shadow-blue-500/25',
-      'active:bg-blue-600'
+      'bg-transparent text-teal-400 border-2 border-teal-400',
+      'hover:bg-gradient-to-r hover:from-teal-400 hover:to-blue-500 hover:text-white',
+      'hover:shadow-lg hover:shadow-teal-400/25',
+      'hover:border-transparent'
     ],
     ghost: [
-      'bg-white/10 text-white backdrop-blur-sm',
-      'hover:bg-white/20',
+      'bg-white/5 text-white backdrop-blur-md',
+      'hover:bg-gradient-to-r hover:from-white/10 hover:to-white/20',
       'border border-white/20',
-      'hover:shadow-lg'
+      'hover:shadow-lg hover:shadow-white/10'
     ],
     danger: [
-      'bg-gradient-to-r from-red-500 to-red-600 text-white',
-      'hover:from-red-600 hover:to-red-700',
-      'shadow-lg hover:shadow-xl',
-      'hover:shadow-red-500/25',
-      'border border-red-400/30'
+      'bg-gradient-to-r from-red-400 via-pink-500 to-red-500 text-white',
+      'hover:from-red-500 hover:via-pink-600 hover:to-red-600',
+      'shadow-lg hover:shadow-2xl',
+      'hover:shadow-red-500/30',
+      'border-2 border-transparent'
     ]
   };
 
