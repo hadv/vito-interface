@@ -45,29 +45,29 @@ export const theme = {
       950: '#0a0a0a',
     },
     
-    // Premium Background Colors - Sophisticated Dark Theme
+    // SIMPLE DARK BACKGROUNDS
     background: {
-      primary: '#0A0A0B',     // Deep sophisticated black
-      secondary: '#18181B',   // Rich charcoal - premium feel
-      tertiary: '#27272A',    // Elevated surface - subtle depth
-      card: '#1F1F23',        // Card background - refined
-      elevated: '#2A2A2E',    // Elevated elements - hierarchy
-      glass: 'rgba(255, 255, 255, 0.05)', // Glass morphism
+      primary: '#0F172A',     // Simple dark blue-gray
+      secondary: '#1E293B',   // Slightly lighter
+      tertiary: '#334155',    // Card backgrounds
+      card: '#1E293B',        // Same as secondary
+      elevated: '#334155',    // Same as tertiary
+      glass: '#1E293B',       // No glass effects - keep simple
       overlay: 'rgba(0, 0, 0, 0.8)', // Modal overlays
     },
     
-    // Premium Text Colors - Sophisticated and Safe
+    // SIMPLE BLUE COLOR SCHEME - Bold and Clear
     text: {
-      primary: '#FAFAFA',     // Soft white - elegant and easy on eyes
-      secondary: '#E4E4E7',   // Refined silver - professional
-      tertiary: '#A1A1AA',    // Sophisticated gray - subtle but readable
-      muted: '#71717A',       // Muted but visible - perfect balance
-      disabled: '#52525B',    // Disabled but not invisible
-      inverse: '#09090B',     // Deep black for contrast
-      accent: '#3B82F6',      // Trust blue - financial security
-      success: '#10B981',     // Success green - confidence
-      warning: '#F59E0B',     // Warning amber - attention
-      danger: '#EF4444',      // Error red - clear alerts
+      primary: '#FFFFFF',     // Pure white - maximum contrast
+      secondary: '#FFFFFF',   // Also white - keep it simple
+      tertiary: '#FFFFFF',    // All white text
+      muted: '#94A3B8',       // Light blue-gray for less important text
+      disabled: '#64748B',    // Darker blue-gray for disabled
+      inverse: '#000000',     // Pure black
+      accent: '#3B82F6',      // MAIN BLUE - only accent color
+      success: '#3B82F6',     // Use blue for success too
+      warning: '#3B82F6',     // Use blue for warning too
+      danger: '#EF4444',      // Only red for real errors
     },
     
     // Status Colors
@@ -101,7 +101,7 @@ export const theme = {
   // Typography - Enhanced for better readability
   typography: {
     fontFamily: {
-      sans: ['Outfit', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+      sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
       mono: ['JetBrains Mono', 'SF Mono', 'Monaco', 'Consolas', 'monospace'],
     },
     fontSize: {
@@ -116,13 +116,13 @@ export const theme = {
       '5xl': '3rem',    // 48px - display headings
     },
     fontWeight: {
-      light: '300',     // Elegant light text
-      normal: '400',    // Standard body text
-      medium: '500',    // Refined medium weight
-      semibold: '600',  // Professional emphasis
-      bold: '700',      // Strong headings
-      extrabold: '800', // Premium bold
-      black: '900',     // Maximum impact
+      light: '500',     // No thin fonts - minimum 500
+      normal: '600',    // Bold normal text
+      medium: '700',    // Very bold medium
+      semibold: '800',  // Extra bold
+      bold: '900',      // Maximum bold
+      extrabold: '900', // Maximum bold
+      black: '900',     // Maximum bold
     },
     lineHeight: {
       tight: '1.25',

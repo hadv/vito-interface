@@ -24,57 +24,47 @@ const getButtonClasses = (
 ) => {
   const baseClasses = [
     'inline-flex items-center justify-center gap-2',
-    'border-0 rounded-xl font-semibold cursor-pointer',
-    'transition-all duration-300 ease-out',
-    'relative overflow-hidden',
-    'tracking-tight',
-    'focus-visible:outline-2 focus-visible:outline-blue-400 focus-visible:outline-offset-2',
-    'hover:scale-[1.02] active:scale-[0.98]',
+    'border-0 rounded-lg font-black cursor-pointer',
+    'transition-all duration-200',
+    'focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2',
     fullWidth && 'w-full',
-    (disabled || loading) && 'opacity-50 cursor-not-allowed pointer-events-none scale-100'
+    (disabled || loading) && 'opacity-50 cursor-not-allowed pointer-events-none'
   ];
 
-  // Premium size classes with elegant proportions
+  // Bold and readable sizes
   const sizeClasses = {
-    sm: 'px-4 py-2.5 text-sm h-9',
-    md: 'px-6 py-3 text-base h-11',
-    lg: 'px-8 py-4 text-lg h-13',
-    xl: 'px-10 py-5 text-xl h-15'
+    sm: 'px-4 py-3 text-sm h-10',
+    md: 'px-6 py-4 text-base h-12',
+    lg: 'px-8 py-5 text-lg h-14',
+    xl: 'px-10 py-6 text-xl h-16'
   };
 
-  // Premium variant classes with sophisticated styling
+  // SIMPLE BLUE ONLY - Bold and Clear
   const variantClasses = {
     primary: [
-      'bg-gradient-to-r from-blue-500 to-blue-600 text-white',
-      'hover:from-blue-600 hover:to-blue-700',
-      'shadow-lg hover:shadow-xl',
-      'border border-blue-400/20'
+      'bg-blue-600 text-white',
+      'hover:bg-blue-700',
+      'active:bg-blue-800'
     ],
     secondary: [
-      'bg-white/5 text-white border border-white/10',
-      'hover:bg-white/10 hover:border-white/20',
-      'backdrop-blur-sm'
+      'bg-slate-700 text-white',
+      'hover:bg-slate-600',
+      'active:bg-slate-800'
     ],
     outline: [
-      'bg-transparent text-blue-400 border border-blue-400/50',
-      'hover:bg-blue-400/10 hover:border-blue-400',
-      'hover:text-blue-300'
+      'bg-transparent text-blue-500 border-2 border-blue-500',
+      'hover:bg-blue-500 hover:text-white',
+      'active:bg-blue-600'
     ],
     ghost: [
-      'bg-transparent text-gray-300',
-      'hover:bg-white/5 hover:text-white'
+      'bg-transparent text-white',
+      'hover:bg-slate-700',
+      'active:bg-slate-800'
     ],
     danger: [
-      'bg-gradient-to-r from-red-500 to-red-600 text-white',
-      'hover:from-red-600 hover:to-red-700',
-      'shadow-lg hover:shadow-xl',
-      'border border-red-400/20'
-    ],
-    success: [
-      'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white',
-      'hover:from-emerald-600 hover:to-emerald-700',
-      'shadow-lg hover:shadow-xl',
-      'border border-emerald-400/20'
+      'bg-red-600 text-white',
+      'hover:bg-red-700',
+      'active:bg-red-800'
     ]
   };
 

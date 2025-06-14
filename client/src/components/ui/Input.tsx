@@ -40,35 +40,35 @@ const getInputWrapperClasses = (
     lg: 'h-13'
   };
 
-  // Premium variant classes with sophisticated styling
+  // SIMPLE BLUE ONLY - Bold and Clear
   const variantClasses = {
     default: [
-      'bg-white/5 border-white/10 backdrop-blur-sm rounded-xl',
-      'focus-within:border-blue-400/50 focus-within:bg-blue-500/5 focus-within:shadow-lg',
-      'hover:border-white/20 hover:bg-white/10',
-      'transition-all duration-300 ease-out',
-      hasError ? 'border-red-400/50 focus-within:border-red-400 focus-within:bg-red-500/5' : ''
+      'bg-slate-800 border-slate-600 rounded-lg',
+      'focus-within:border-blue-500 focus-within:bg-slate-700',
+      'hover:border-slate-500',
+      'transition-all duration-200',
+      hasError ? 'border-red-500 focus-within:border-red-500' : ''
     ],
     filled: [
-      'bg-white/10 border-transparent rounded-xl backdrop-blur-sm',
-      'focus-within:border-blue-400/50 focus-within:bg-blue-500/10',
-      'hover:bg-white/15',
-      'transition-all duration-300 ease-out',
-      hasError ? 'border-red-400/50 focus-within:border-red-400 bg-red-500/10' : ''
+      'bg-slate-700 border-transparent rounded-lg',
+      'focus-within:border-blue-500 focus-within:bg-slate-600',
+      'hover:bg-slate-600',
+      'transition-all duration-200',
+      hasError ? 'border-red-500 focus-within:border-red-500' : ''
     ],
     outlined: [
-      'bg-transparent border-white/20 rounded-xl',
-      'focus-within:border-blue-400 focus-within:bg-blue-500/5',
-      'hover:border-white/30',
-      'transition-all duration-300 ease-out',
-      hasError ? 'border-red-400 focus-within:border-red-400' : ''
+      'bg-transparent border-slate-500 rounded-lg',
+      'focus-within:border-blue-500',
+      'hover:border-slate-400',
+      'transition-all duration-200',
+      hasError ? 'border-red-500 focus-within:border-red-500' : ''
     ]
   };
 
-  // Premium focus ring with enhanced glow
+  // Simple focus ring
   const focusClasses = hasError
-    ? 'focus-within:ring-2 focus-within:ring-red-400/30'
-    : 'focus-within:ring-2 focus-within:ring-blue-400/30';
+    ? 'focus-within:ring-2 focus-within:ring-red-500'
+    : 'focus-within:ring-2 focus-within:ring-blue-500';
 
   return cn(
     baseClasses,
@@ -80,9 +80,8 @@ const getInputWrapperClasses = (
 
 const getInputClasses = () => cn(
   'flex-1 bg-transparent border-0 outline-none',
-  'text-white text-base font-medium font-sans',
-  'placeholder:text-gray-400 placeholder:font-normal',
-  'tracking-tight',
+  'text-white text-lg font-bold font-sans',
+  'placeholder:text-slate-400 placeholder:font-bold',
   'disabled:opacity-50 disabled:cursor-not-allowed',
   'px-4'
 );
