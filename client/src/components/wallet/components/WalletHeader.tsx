@@ -62,10 +62,10 @@ const WalletInfoContainer = styled.div`
 `;
 
 const ENSName = styled.div`
-  font-size: ${theme.typography.fontSize['2xl']};
-  font-weight: ${theme.typography.fontWeight.bold};
-  margin-bottom: ${theme.spacing[2]};
-  color: #ffffff;
+  font-size: ${theme.typography.fontSize.xl};
+  font-weight: ${theme.typography.fontWeight.semibold};
+  margin-bottom: ${theme.spacing[1]};
+  color: ${theme.colors.text.primary};
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -97,14 +97,14 @@ const ENSLoadingIndicator = styled.div`
 `;
 
 const WalletAddressValue = styled.div`
-  font-size: ${theme.typography.fontSize.lg};
-  font-weight: ${theme.typography.fontWeight.semibold};
-  color: #f0f0f0;
+  font-size: ${theme.typography.fontSize.base};
+  font-weight: ${theme.typography.fontWeight.medium};
+  color: ${theme.colors.text.secondary};
   margin-bottom: ${theme.spacing[3]};
   text-align: left;
   font-family: ${theme.typography.fontFamily.mono.join(', ')};
   background: ${theme.colors.background.elevated};
-  padding: ${theme.spacing[3]} ${theme.spacing[4]};
+  padding: ${theme.spacing[2]} ${theme.spacing[3]};
   border-radius: ${theme.borderRadius.md};
   border: 1px solid ${theme.colors.border.tertiary};
 `;

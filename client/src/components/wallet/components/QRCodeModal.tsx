@@ -70,14 +70,15 @@ const ModalBody = styled.div`
 
 const ModalTitle = styled.h3`
   margin: 0;
-  font-size: 20px;
+  font-size: 24px;
   color: #fff;
-  font-weight: 600;
+  font-weight: 700;
 `;
 
 const DescriptionText = styled.p`
-  color: #9ca3af;
-  font-size: 14px;
+  color: #d0d0d0;
+  font-size: 16px;
+  font-weight: 500;
   text-align: left;
   margin-bottom: 36px;
   line-height: 1.6;
@@ -145,9 +146,10 @@ const AddressGroup = styled.div`
 
 const AddressText = styled.div`
   font-family: monospace;
-  font-size: 14px;
-  color: #9ca3af;
-  padding: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #e0e0e0;
+  padding: 12px;
   overflow-x: auto;
   white-space: nowrap;
   flex: 1;
@@ -163,15 +165,16 @@ const ActionButton = styled.button`
   background: transparent;
   border: none;
   border-left: 1px solid #333;
-  color: #9ca3af;
+  color: #d0d0d0;
   cursor: pointer;
-  padding: 8px 10px;
+  padding: 12px 14px;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  
+  font-weight: 500;
+
   &:hover {
     background-color: #333;
     color: #fff;
@@ -180,16 +183,17 @@ const ActionButton = styled.button`
 
 const CopyFeedback = styled.div`
   position: absolute;
-  bottom: -24px;
+  bottom: -28px;
   left: 50%;
   transform: translateX(-50%);
   background-color: #333;
   color: white;
-  padding: 4px 8px;
+  padding: 6px 12px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 600;
   animation: fadeOut 1.5s ease-in-out;
-  
+
   @keyframes fadeOut {
     0% { opacity: 1; }
     70% { opacity: 1; }

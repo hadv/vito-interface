@@ -79,14 +79,15 @@ const SigningInfo = styled.div`
 
 const InfoTitle = styled.h3`
   color: #10b981;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   margin: 0 0 8px 0;
 `;
 
 const InfoText = styled.p`
-  color: #e5e7eb;
-  font-size: 14px;
+  color: #f0f0f0;
+  font-size: 16px;
+  font-weight: 500;
   margin: 0;
   line-height: 1.5;
 `;
@@ -101,8 +102,8 @@ const TransactionDetails = styled.div`
 
 const SectionTitle = styled.h4`
   color: #fff;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   margin: 0 0 12px 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -120,15 +121,16 @@ const DetailRow = styled.div`
 `;
 
 const DetailLabel = styled.span`
-  color: #9ca3af;
-  font-size: 14px;
+  color: #d0d0d0;
+  font-size: 15px;
+  font-weight: 500;
   min-width: 120px;
 `;
 
 const DetailValue = styled.span`
   color: #fff;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
   word-break: break-all;
   text-align: right;
   flex: 1;
@@ -141,10 +143,10 @@ const EIP712Badge = styled.div`
   gap: 4px;
   background: rgba(99, 102, 241, 0.2);
   color: #818cf8;
-  padding: 4px 8px;
+  padding: 6px 12px;
   border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   margin-bottom: 16px;
 `;
 

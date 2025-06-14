@@ -14,9 +14,9 @@ const StyledMenuItem = styled.div<{ active: boolean }>`
   margin: ${theme.spacing[1]} ${theme.spacing[4]};
   cursor: pointer;
   user-select: none;
-  font-size: ${theme.typography.fontSize.lg};
-  font-weight: ${props => props.active ? theme.typography.fontWeight.bold : theme.typography.fontWeight.semibold};
-  color: ${props => props.active ? theme.colors.text.primary : '#e0e0e0'};
+  font-size: ${theme.typography.fontSize.base};
+  font-weight: ${props => props.active ? theme.typography.fontWeight.semibold : theme.typography.fontWeight.medium};
+  color: ${props => props.active ? theme.colors.text.primary : theme.colors.text.secondary};
   background: ${props => props.active ?
     `${theme.colors.primary[500]}15` :
     'transparent'};

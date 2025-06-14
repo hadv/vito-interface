@@ -99,22 +99,22 @@ export const theme = {
       mono: ['SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', 'monospace'],
     },
     fontSize: {
-      xs: '1rem',       // 16px - much larger minimum size
-      sm: '1.125rem',   // 18px - increased significantly
-      base: '1.25rem',  // 20px - larger base size
-      lg: '1.5rem',     // 24px - much more readable
-      xl: '1.75rem',    // 28px - significantly larger
-      '2xl': '2rem',    // 32px - very readable
-      '3xl': '2.5rem',  // 40px - large headings
-      '4xl': '3rem',    // 48px - very large headings
+      xs: '0.875rem',   // 14px - reasonable small size
+      sm: '1rem',       // 16px - good readable size
+      base: '1.125rem', // 18px - slightly larger base
+      lg: '1.25rem',    // 20px - good for important text
+      xl: '1.375rem',   // 22px - larger but not too big
+      '2xl': '1.5rem',  // 24px - headings
+      '3xl': '1.875rem', // 30px - large headings
+      '4xl': '2.25rem', // 36px - very large headings
     },
     fontWeight: {
-      light: '400',     // Minimum weight - no thin text
-      normal: '500',    // Heavier normal weight
-      medium: '600',    // Bold medium weight
-      semibold: '700',  // Very bold for UI text
-      bold: '800',      // Extra bold for headings
-      extrabold: '900', // Maximum boldness
+      light: '300',     // Light weight for specific cases
+      normal: '400',    // Normal weight
+      medium: '500',    // Medium weight - good for UI
+      semibold: '600',  // Semibold - good for emphasis
+      bold: '700',      // Bold for headings
+      extrabold: '800', // Extra bold for strong emphasis
     },
     lineHeight: {
       tight: '1.25',
