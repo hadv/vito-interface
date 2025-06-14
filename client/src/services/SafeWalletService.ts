@@ -166,6 +166,33 @@ export class SafeWalletService {
   }
 
   /**
+   * Reinitialize provider with working RPC URL
+   */
+  private async reinitializeProvider(): Promise<void> {
+    if (!this.config) {
+      throw new Error('No configuration available for provider reinitialization');
+    }
+
+    console.log(`🔄 Reinitializing provider for network: ${this.config.network}`);
+
+    // Use the same RPC URL logic as static validation
+    const workingRpcUrl = getRpcUrl(this.config.network);
+    console.log(`🌐 Using working RPC URL: ${workingRpcUrl}`);
+
+    // Create new provider
+    this.provider = new ethers.providers.JsonRpcProvider(workingRpcUrl);
+
+    // Recreate Safe contract with new provider
+    this.safeContract = new ethers.Contract(
+      this.config.safeAddress,
+      SAFE_ABI,
+      this.signer || this.provider
+    );
+
+    console.log(`✅ Provider reinitialized successfully`);
+  }
+
+  /**
    * Validate that the Safe contract exists and is valid
    */
   private async validateSafeContract(): Promise<void> {
@@ -176,6 +203,10 @@ export class SafeWalletService {
     try {
       console.log(`🔍 Validating Safe contract at ${this.config.safeAddress} on ${this.config.network}`);
 
+      // Get the actual RPC URL being used
+      const providerUrl = (this.provider as any).connection?.url || 'unknown';
+      console.log(`🌐 Using provider URL: ${providerUrl}`);
+
       // Check if the address has code (is a contract)
       const code = await this.provider.getCode(this.config.safeAddress);
       console.log(`📄 Contract code length: ${code.length} characters`);
@@ -185,11 +216,19 @@ export class SafeWalletService {
       }
 
       // Try to call a simple view function to verify it's a Safe contract
-      console.log(`🔧 Testing Safe contract interface...`);
-      const threshold = await this.safeContract.getThreshold();
+      console.log(`🔧 Testing Safe contract interface with provider...`);
+
+      // Create a fresh contract instance with the current provider to ensure consistency
+      const testContract = new ethers.Contract(this.config.safeAddress, SAFE_ABI, this.provider);
+      const threshold = await testContract.getThreshold();
       console.log(`✅ Safe validation successful! Threshold: ${threshold.toString()}`);
     } catch (error: any) {
       console.error(`❌ Safe validation failed:`, error);
+      console.error(`❌ Provider details:`, {
+        providerUrl: (this.provider as any).connection?.url,
+        network: this.config.network,
+        safeAddress: this.config.safeAddress
+      });
 
       if (error.message.includes('No contract found')) {
         throw error;
@@ -197,6 +236,21 @@ export class SafeWalletService {
 
       // More specific error messages based on the error type
       if (error.code === 'CALL_EXCEPTION') {
+        // Try to use the static validation method as a fallback to compare results
+        console.log(`🔄 Trying static validation as fallback...`);
+        try {
+          const rpcUrl = getRpcUrl(this.config.network);
+          const staticValidation = await SafeWalletService.validateSafeAddress(this.config.safeAddress, rpcUrl);
+          if (staticValidation.isValid) {
+            console.log(`✅ Static validation passed, but instance validation failed. Provider mismatch detected.`);
+            throw new Error(`Provider configuration mismatch. Static validation works but instance validation fails. Please reconnect your wallet.`);
+          } else {
+            console.log(`❌ Static validation also failed: ${staticValidation.error}`);
+          }
+        } catch (staticError) {
+          console.error(`❌ Static validation error:`, staticError);
+        }
+
         throw new Error(`Invalid Safe contract at ${this.config.safeAddress}. The contract may not be a Safe wallet or may not be deployed on the ${this.config.network} network.`);
       }
 
@@ -619,8 +673,6 @@ export class SafeWalletService {
     }
 
     try {
-      // Skip validation during nonce call since it was already validated during connection
-      // This prevents double validation which can cause issues with provider inconsistencies
       console.log('🔢 Getting Safe nonce...');
       const nonce = await this.safeContract.nonce();
       console.log(`✅ Safe nonce: ${nonce.toString()}`);
@@ -629,14 +681,31 @@ export class SafeWalletService {
       console.error('Error getting nonce:', error);
 
       if (error.code === 'CALL_EXCEPTION') {
-        // Try to validate the contract to provide better error message
+        console.log('🔄 CALL_EXCEPTION detected, attempting provider reinitialization...');
+
         try {
-          await this.validateSafeContract();
-          // If validation passes but nonce() still fails, it's a different issue
-          throw new Error(`Safe contract is valid but nonce() call failed. This might be a temporary network issue.`);
-        } catch (validationError: any) {
-          // Validation failed, use the validation error message
-          throw validationError;
+          // Try to reinitialize the provider with working RPC
+          await this.reinitializeProvider();
+
+          // Retry nonce call with new provider
+          console.log('🔢 Retrying nonce call with reinitialized provider...');
+          const nonce = await this.safeContract!.nonce();
+          console.log(`✅ Safe nonce (after reinit): ${nonce.toString()}`);
+          return nonce.toNumber();
+        } catch (reinitError: any) {
+          console.error('❌ Provider reinitialization failed:', reinitError);
+
+          // Try validation to provide better error message
+          try {
+            await this.validateSafeContract();
+            throw new Error(`Safe contract is valid but nonce() call failed. This might be a temporary network issue.`);
+          } catch (validationError: any) {
+            // If validation also fails, it's likely a real contract issue
+            if (validationError.message.includes('Provider configuration mismatch')) {
+              throw new Error(`Provider configuration issue detected. Please disconnect and reconnect your wallet.`);
+            }
+            throw validationError;
+          }
         }
       }
 
