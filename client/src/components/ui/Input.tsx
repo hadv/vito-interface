@@ -40,29 +40,35 @@ const getInputWrapperClasses = (
     lg: 'h-13'
   };
 
-  // Variant classes using standard Tailwind colors
+  // Premium variant classes with sophisticated styling
   const variantClasses = {
     default: [
-      'bg-gray-900 border-gray-600',
-      'focus-within:border-blue-500 focus-within:bg-gray-800',
-      hasError ? 'border-red-500' : 'border-gray-600'
+      'bg-white/5 border-white/10 backdrop-blur-sm rounded-xl',
+      'focus-within:border-blue-400/50 focus-within:bg-blue-500/5 focus-within:shadow-lg',
+      'hover:border-white/20 hover:bg-white/10',
+      'transition-all duration-300 ease-out',
+      hasError ? 'border-red-400/50 focus-within:border-red-400 focus-within:bg-red-500/5' : ''
     ],
     filled: [
-      'bg-gray-800 border-transparent',
-      'focus-within:border-blue-500',
-      hasError ? 'border-red-500' : 'border-transparent'
+      'bg-white/10 border-transparent rounded-xl backdrop-blur-sm',
+      'focus-within:border-blue-400/50 focus-within:bg-blue-500/10',
+      'hover:bg-white/15',
+      'transition-all duration-300 ease-out',
+      hasError ? 'border-red-400/50 focus-within:border-red-400 bg-red-500/10' : ''
     ],
     outlined: [
-      'bg-transparent',
-      'focus-within:border-blue-500',
-      hasError ? 'border-red-500' : 'border-gray-600'
+      'bg-transparent border-white/20 rounded-xl',
+      'focus-within:border-blue-400 focus-within:bg-blue-500/5',
+      'hover:border-white/30',
+      'transition-all duration-300 ease-out',
+      hasError ? 'border-red-400 focus-within:border-red-400' : ''
     ]
   };
 
-  // Focus ring using standard Tailwind colors
+  // Premium focus ring with enhanced glow
   const focusClasses = hasError
-    ? 'focus-within:ring-2 focus-within:ring-red-500/20'
-    : 'focus-within:ring-2 focus-within:ring-blue-500/20';
+    ? 'focus-within:ring-2 focus-within:ring-red-400/30'
+    : 'focus-within:ring-2 focus-within:ring-blue-400/30';
 
   return cn(
     baseClasses,
@@ -75,9 +81,10 @@ const getInputWrapperClasses = (
 const getInputClasses = () => cn(
   'flex-1 bg-transparent border-0 outline-none',
   'text-white text-base font-medium font-sans',
-  'placeholder:text-gray-400',
+  'placeholder:text-gray-400 placeholder:font-normal',
+  'tracking-tight',
   'disabled:opacity-50 disabled:cursor-not-allowed',
-  'px-3'
+  'px-4'
 );
 
 const getIconClasses = (position: 'left' | 'right') => cn(

@@ -45,23 +45,29 @@ export const theme = {
       950: '#0a0a0a',
     },
     
-    // Background Colors
+    // Premium Background Colors - Sophisticated Dark Theme
     background: {
-      primary: '#0f0f0f',
-      secondary: '#1a1a1a',
-      tertiary: '#262626',
-      card: '#1f1f1f',
-      elevated: '#2a2a2a',
+      primary: '#0A0A0B',     // Deep sophisticated black
+      secondary: '#18181B',   // Rich charcoal - premium feel
+      tertiary: '#27272A',    // Elevated surface - subtle depth
+      card: '#1F1F23',        // Card background - refined
+      elevated: '#2A2A2E',    // Elevated elements - hierarchy
+      glass: 'rgba(255, 255, 255, 0.05)', // Glass morphism
+      overlay: 'rgba(0, 0, 0, 0.8)', // Modal overlays
     },
     
-    // Text Colors - Much brighter for maximum readability
+    // Premium Text Colors - Sophisticated and Safe
     text: {
-      primary: '#ffffff',     // Pure white for main content
-      secondary: '#f0f0f0',   // Very bright secondary text
-      tertiary: '#e0e0e0',    // Bright tertiary text
-      muted: '#d0d0d0',       // Much brighter muted text
-      disabled: '#a0a0a0',    // Brighter disabled states
-      inverse: '#0a0a0a',     // For light backgrounds
+      primary: '#FAFAFA',     // Soft white - elegant and easy on eyes
+      secondary: '#E4E4E7',   // Refined silver - professional
+      tertiary: '#A1A1AA',    // Sophisticated gray - subtle but readable
+      muted: '#71717A',       // Muted but visible - perfect balance
+      disabled: '#52525B',    // Disabled but not invisible
+      inverse: '#09090B',     // Deep black for contrast
+      accent: '#3B82F6',      // Trust blue - financial security
+      success: '#10B981',     // Success green - confidence
+      warning: '#F59E0B',     // Warning amber - attention
+      danger: '#EF4444',      // Error red - clear alerts
     },
     
     // Status Colors
@@ -95,26 +101,28 @@ export const theme = {
   // Typography - Enhanced for better readability
   typography: {
     fontFamily: {
-      sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
-      mono: ['SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', 'monospace'],
+      sans: ['Outfit', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+      mono: ['JetBrains Mono', 'SF Mono', 'Monaco', 'Consolas', 'monospace'],
     },
     fontSize: {
-      xs: '0.875rem',   // 14px - reasonable small size
-      sm: '1rem',       // 16px - good readable size
-      base: '1.125rem', // 18px - slightly larger base
-      lg: '1.25rem',    // 20px - good for important text
-      xl: '1.375rem',   // 22px - larger but not too big
-      '2xl': '1.5rem',  // 24px - headings
-      '3xl': '1.875rem', // 30px - large headings
-      '4xl': '2.25rem', // 36px - very large headings
+      xs: '0.8125rem',  // 13px - elegant small text
+      sm: '0.9375rem',  // 15px - refined secondary text
+      base: '1rem',     // 16px - perfect base size
+      lg: '1.125rem',   // 18px - prominent text
+      xl: '1.25rem',    // 20px - important headings
+      '2xl': '1.5rem',  // 24px - section headings
+      '3xl': '1.875rem', // 30px - page headings
+      '4xl': '2.25rem', // 36px - hero headings
+      '5xl': '3rem',    // 48px - display headings
     },
     fontWeight: {
-      light: '300',     // Light weight for specific cases
-      normal: '400',    // Normal weight
-      medium: '500',    // Medium weight - good for UI
-      semibold: '600',  // Semibold - good for emphasis
-      bold: '700',      // Bold for headings
-      extrabold: '800', // Extra bold for strong emphasis
+      light: '300',     // Elegant light text
+      normal: '400',    // Standard body text
+      medium: '500',    // Refined medium weight
+      semibold: '600',  // Professional emphasis
+      bold: '700',      // Strong headings
+      extrabold: '800', // Premium bold
+      black: '900',     // Maximum impact
     },
     lineHeight: {
       tight: '1.25',

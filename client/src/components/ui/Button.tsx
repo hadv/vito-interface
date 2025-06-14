@@ -24,51 +24,57 @@ const getButtonClasses = (
 ) => {
   const baseClasses = [
     'inline-flex items-center justify-center gap-2',
-    'border-0 rounded-lg font-semibold cursor-pointer',
-    'transition-all duration-250 ease-in-out',
+    'border-0 rounded-xl font-semibold cursor-pointer',
+    'transition-all duration-300 ease-out',
     'relative overflow-hidden',
-    'focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2',
+    'tracking-tight',
+    'focus-visible:outline-2 focus-visible:outline-blue-400 focus-visible:outline-offset-2',
+    'hover:scale-[1.02] active:scale-[0.98]',
     fullWidth && 'w-full',
-    (disabled || loading) && 'opacity-50 cursor-not-allowed pointer-events-none'
+    (disabled || loading) && 'opacity-50 cursor-not-allowed pointer-events-none scale-100'
   ];
 
-  // Size classes with improved readability
+  // Premium size classes with elegant proportions
   const sizeClasses = {
-    sm: 'px-3 py-2 text-sm h-8',
-    md: 'px-4 py-3 text-base h-10',
-    lg: 'px-6 py-4 text-lg h-12',
-    xl: 'px-8 py-5 text-xl h-14'
+    sm: 'px-4 py-2.5 text-sm h-9',
+    md: 'px-6 py-3 text-base h-11',
+    lg: 'px-8 py-4 text-lg h-13',
+    xl: 'px-10 py-5 text-xl h-15'
   };
 
-  // Variant classes using flat design principles
+  // Premium variant classes with sophisticated styling
   const variantClasses = {
     primary: [
-      'bg-blue-500 text-white',
-      'hover:bg-blue-600',
-      'active:bg-blue-700',
-      'shadow-sm hover:shadow-md',
-      'transition-all duration-200'
+      'bg-gradient-to-r from-blue-500 to-blue-600 text-white',
+      'hover:from-blue-600 hover:to-blue-700',
+      'shadow-lg hover:shadow-xl',
+      'border border-blue-400/20'
     ],
     secondary: [
-      'bg-gray-800 text-white border border-gray-600',
-      'hover:bg-gray-700 hover:border-gray-500',
-      'active:bg-gray-900'
+      'bg-white/5 text-white border border-white/10',
+      'hover:bg-white/10 hover:border-white/20',
+      'backdrop-blur-sm'
     ],
     outline: [
-      'bg-transparent text-blue-500 border border-blue-500',
-      'hover:bg-blue-500 hover:text-white',
-      'active:bg-blue-600'
+      'bg-transparent text-blue-400 border border-blue-400/50',
+      'hover:bg-blue-400/10 hover:border-blue-400',
+      'hover:text-blue-300'
     ],
     ghost: [
       'bg-transparent text-gray-300',
-      'hover:bg-gray-800 hover:text-white',
-      'active:bg-gray-900'
+      'hover:bg-white/5 hover:text-white'
     ],
     danger: [
-      'bg-red-500 text-white',
-      'hover:bg-red-600',
-      'active:bg-red-700',
-      'shadow-sm hover:shadow-md'
+      'bg-gradient-to-r from-red-500 to-red-600 text-white',
+      'hover:from-red-600 hover:to-red-700',
+      'shadow-lg hover:shadow-xl',
+      'border border-red-400/20'
+    ],
+    success: [
+      'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white',
+      'hover:from-emerald-600 hover:to-emerald-700',
+      'shadow-lg hover:shadow-xl',
+      'border border-emerald-400/20'
     ]
   };
 

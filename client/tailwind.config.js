@@ -46,8 +46,8 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
-        mono: ['SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', 'monospace'],
+        sans: ['Outfit', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        mono: ['JetBrains Mono', 'SF Mono', 'Monaco', 'Consolas', 'monospace'],
       },
       fontWeight: {
         light: '300',
@@ -56,16 +56,18 @@ module.exports = {
         semibold: '600',
         bold: '700',
         extrabold: '800',
+        black: '900',
       },
       fontSize: {
-        'xs': ['0.875rem', { lineHeight: '1.4', fontWeight: '500' }],
-        'sm': ['1rem', { lineHeight: '1.5', fontWeight: '500' }],
-        'base': ['1.125rem', { lineHeight: '1.5', fontWeight: '500' }],
-        'lg': ['1.25rem', { lineHeight: '1.6', fontWeight: '500' }],
-        'xl': ['1.375rem', { lineHeight: '1.6', fontWeight: '600' }],
-        '2xl': ['1.5rem', { lineHeight: '1.4', fontWeight: '600' }],
-        '3xl': ['1.875rem', { lineHeight: '1.3', fontWeight: '700' }],
-        '4xl': ['2.25rem', { lineHeight: '1.25', fontWeight: '700' }],
+        'xs': ['0.8125rem', { lineHeight: '1.5', fontWeight: '400', letterSpacing: '-0.01em' }],
+        'sm': ['0.9375rem', { lineHeight: '1.5', fontWeight: '400', letterSpacing: '-0.01em' }],
+        'base': ['1rem', { lineHeight: '1.6', fontWeight: '400', letterSpacing: '-0.01em' }],
+        'lg': ['1.125rem', { lineHeight: '1.6', fontWeight: '500', letterSpacing: '-0.01em' }],
+        'xl': ['1.25rem', { lineHeight: '1.5', fontWeight: '600', letterSpacing: '-0.02em' }],
+        '2xl': ['1.5rem', { lineHeight: '1.4', fontWeight: '600', letterSpacing: '-0.02em' }],
+        '3xl': ['1.875rem', { lineHeight: '1.3', fontWeight: '700', letterSpacing: '-0.02em' }],
+        '4xl': ['2.25rem', { lineHeight: '1.2', fontWeight: '700', letterSpacing: '-0.02em' }],
+        '5xl': ['3rem', { lineHeight: '1.1', fontWeight: '800', letterSpacing: '-0.03em' }],
       },
       animation: {
         'spin': 'spin 1s linear infinite',
