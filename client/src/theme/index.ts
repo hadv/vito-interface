@@ -45,29 +45,29 @@ export const theme = {
       950: '#0a0a0a',
     },
     
-    // CLEAN LIGHT BACKGROUNDS
+    // DARK THEME BACKGROUNDS
     background: {
-      primary: '#ffffff',     // Pure white
-      secondary: '#f9fafb',   // Very light gray
-      tertiary: '#f3f4f6',    // Light gray
-      card: '#ffffff',        // White cards
-      elevated: '#ffffff',    // White elevated elements
-      glass: '#ffffff',       // No glass effects
-      overlay: 'rgba(0, 0, 0, 0.5)', // Simple overlay
+      primary: '#0f172a',     // Dark blue-gray
+      secondary: '#1e293b',   // Lighter dark
+      tertiary: '#334155',    // Card backgrounds
+      card: '#1e293b',        // Dark cards
+      elevated: '#334155',    // Elevated elements
+      glass: '#1e293b',       // Dark glass
+      overlay: 'rgba(0, 0, 0, 0.8)', // Dark overlay
     },
     
-    // CLEAN MINIMALIST COLOR SCHEME
+    // DARK THEME HIGH CONTRAST
     text: {
-      primary: '#111827',     // Dark gray for main text
-      secondary: '#374151',   // Medium gray
-      tertiary: '#6b7280',    // Light gray
-      muted: '#9ca3af',       // Very light gray
-      disabled: '#d1d5db',    // Disabled gray
-      inverse: '#ffffff',     // White for dark backgrounds
-      accent: '#2563eb',      // Clean blue
-      success: '#059669',     // Clean green
-      warning: '#d97706',     // Clean orange
-      danger: '#dc2626',      // Clean red
+      primary: '#ffffff',     // Pure white for maximum contrast
+      secondary: '#e5e7eb',   // Very light gray
+      tertiary: '#d1d5db',    // Light gray
+      muted: '#9ca3af',       // Medium gray
+      disabled: '#6b7280',    // Disabled gray
+      inverse: '#000000',     // Black for light backgrounds
+      accent: '#60a5fa',      // Bright blue
+      success: '#34d399',     // Bright green
+      warning: '#fbbf24',     // Bright yellow
+      danger: '#f87171',      // Bright red
     },
     
     // Status Colors

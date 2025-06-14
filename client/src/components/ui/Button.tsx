@@ -24,9 +24,9 @@ const getButtonClasses = (
 ) => {
   const baseClasses = [
     'inline-flex items-center justify-center gap-2',
-    'border rounded-lg font-medium cursor-pointer',
+    'border rounded-lg font-semibold cursor-pointer',
     'transition-all duration-200 ease-out',
-    'focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2',
+    'focus-visible:outline-2 focus-visible:outline-blue-400 focus-visible:outline-offset-2',
     fullWidth && 'w-full',
     (disabled || loading) && 'opacity-50 cursor-not-allowed pointer-events-none'
   ];
@@ -39,35 +39,35 @@ const getButtonClasses = (
     xl: 'px-8 py-4 text-xl h-14'
   };
 
-  // CLEAN MINIMALIST BUTTONS
+  // DARK THEME HIGH CONTRAST BUTTONS
   const variantClasses = {
     primary: [
       'bg-blue-600 text-white border-blue-600',
       'hover:bg-blue-700 hover:border-blue-700',
       'active:bg-blue-800',
-      'shadow-sm hover:shadow-md'
+      'shadow-lg hover:shadow-xl'
     ],
     secondary: [
-      'bg-white text-gray-700 border-gray-300',
-      'hover:bg-gray-50 hover:border-gray-400',
-      'active:bg-gray-100',
-      'shadow-sm hover:shadow-md'
+      'bg-slate-700 text-white border-slate-600',
+      'hover:bg-slate-600 hover:border-slate-500',
+      'active:bg-slate-800',
+      'shadow-lg hover:shadow-xl'
     ],
     outline: [
-      'bg-transparent text-blue-600 border-blue-600',
-      'hover:bg-blue-50 hover:border-blue-700',
-      'active:bg-blue-100'
+      'bg-transparent text-blue-400 border-blue-500',
+      'hover:bg-blue-600 hover:text-white hover:border-blue-600',
+      'active:bg-blue-700'
     ],
     ghost: [
-      'bg-transparent text-gray-600 border-transparent',
-      'hover:bg-gray-100 hover:text-gray-900',
-      'active:bg-gray-200'
+      'bg-transparent text-white border-transparent',
+      'hover:bg-slate-700 hover:text-white',
+      'active:bg-slate-800'
     ],
     danger: [
       'bg-red-600 text-white border-red-600',
       'hover:bg-red-700 hover:border-red-700',
       'active:bg-red-800',
-      'shadow-sm hover:shadow-md'
+      'shadow-lg hover:shadow-xl'
     ]
   };
 

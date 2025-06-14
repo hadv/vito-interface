@@ -23,15 +23,15 @@ const ModalOverlay = styled.div<{ isOpen: boolean }>`
 `;
 
 const ModalContainer = styled.div`
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: #1e293b;
+  border: 1px solid #334155;
   border-radius: 16px;
   padding: 32px;
   width: 95%;
   max-width: 800px;
   max-height: 95vh;
   overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
 `;
 
 const ModalHeader = styled.div`
@@ -42,9 +42,9 @@ const ModalHeader = styled.div`
 `;
 
 const ModalTitle = styled.h2`
-  color: #111827;
-  font-size: 24px;
-  font-weight: 600;
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 700;
   margin: 0;
 `;
 
@@ -54,9 +54,9 @@ const StepIndicator = styled.div`
   gap: 16px;
   margin-bottom: 24px;
   padding: 20px;
-  background: #f9fafb;
+  background: #334155;
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #475569;
   flex-wrap: nowrap;
   overflow-x: auto;
 `;
@@ -65,29 +65,27 @@ const StepBadge = styled.div<{ active: boolean; completed: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   background: ${props =>
-    props.completed ? '#059669' :
-    props.active ? '#2563eb' :
-    '#e5e7eb'
+    props.completed ? '#10b981' :
+    props.active ? '#3b82f6' :
+    '#64748b'
   };
-  color: ${props =>
-    props.completed || props.active ? '#ffffff' : '#6b7280'
-  };
+  color: #ffffff;
   flex-shrink: 0;
 `;
 
 const StepText = styled.span<{ active: boolean; completed: boolean }>`
-  font-size: 16px;
+  font-size: 18px;
   color: ${props =>
-    props.completed ? '#059669' :
-    props.active ? '#2563eb' : '#6b7280'
+    props.completed ? '#34d399' :
+    props.active ? '#60a5fa' : '#e5e7eb'
   };
-  font-weight: ${props => props.active ? '600' : '500'};
+  font-weight: ${props => props.active ? '700' : '600'};
   white-space: nowrap;
   flex-shrink: 0;
 `;

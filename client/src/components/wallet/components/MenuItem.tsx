@@ -10,30 +10,30 @@ interface MenuItemProps {
 }
 
 const StyledMenuItem = styled.div<{ active: boolean }>`
-  padding: 16px 20px;
-  margin: 4px 16px;
+  padding: 18px 24px;
+  margin: 6px 16px;
   cursor: pointer;
   user-select: none;
-  font-size: 16px;
-  font-weight: ${props => props.active ? '600' : '500'};
-  color: ${props => props.active ? '#2563eb' : '#374151'};
-  background: ${props => props.active ? '#eff6ff' : 'transparent'};
-  border: 1px solid ${props => props.active ? '#dbeafe' : 'transparent'};
-  border-radius: 8px;
+  font-size: 18px;
+  font-weight: ${props => props.active ? '700' : '600'};
+  color: ${props => props.active ? '#ffffff' : '#ffffff'};
+  background: ${props => props.active ? '#3b82f6' : 'transparent'};
+  border: 1px solid ${props => props.active ? '#3b82f6' : 'transparent'};
+  border-radius: 12px;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 48px;
+  gap:16px;
+  min-height: 56px;
 
   &:hover {
-    background: ${props => props.active ? '#dbeafe' : '#f9fafb'};
-    color: ${props => props.active ? '#1d4ed8' : '#111827'};
-    border-color: ${props => props.active ? '#bfdbfe' : '#e5e7eb'};
+    background: ${props => props.active ? '#2563eb' : '#334155'};
+    color: #ffffff;
+    border-color: ${props => props.active ? '#2563eb' : '#475569'};
   }
 
   &:active {
-    background: ${props => props.active ? '#bfdbfe' : '#f3f4f6'};
+    background: ${props => props.active ? '#1d4ed8' : '#475569'};
   }
 `;
 
@@ -41,11 +41,11 @@ const IconWrapper = styled.div<{ active: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  color: ${props => props.active ? '#2563eb' : '#6b7280'};
+  width: 24px;
+  height: 24px;
+  color: ${props => props.active ? '#ffffff' : '#ffffff'};
   transition: all 0.2s ease;
-  font-size: 20px;
+  font-size: 24px;
 `;
 
 const MenuItem: React.FC<MenuItemProps> = ({ active, onClick, children, icon }) => {
