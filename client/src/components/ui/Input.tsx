@@ -40,29 +40,38 @@ const getInputWrapperClasses = (
     lg: 'h-13'
   };
 
-  // Variant classes using standard Tailwind colors
+  // MODERN ATTRACTIVE INPUTS
   const variantClasses = {
     default: [
-      'bg-gray-900 border-gray-600',
-      'focus-within:border-blue-500 focus-within:bg-gray-800',
-      hasError ? 'border-red-500' : 'border-gray-600'
+      'bg-white/10 border-white/20 rounded-2xl backdrop-blur-sm',
+      'focus-within:border-blue-400 focus-within:bg-blue-500/10',
+      'focus-within:shadow-lg focus-within:shadow-blue-500/20',
+      'hover:border-white/30 hover:bg-white/15',
+      'transition-all duration-300 ease-out',
+      hasError ? 'border-red-400 focus-within:border-red-400 focus-within:shadow-red-500/20' : ''
     ],
     filled: [
-      'bg-gray-800 border-transparent',
-      'focus-within:border-blue-500',
-      hasError ? 'border-red-500' : 'border-transparent'
+      'bg-white/15 border-transparent rounded-2xl backdrop-blur-sm',
+      'focus-within:border-blue-400 focus-within:bg-blue-500/15',
+      'focus-within:shadow-lg focus-within:shadow-blue-500/20',
+      'hover:bg-white/20',
+      'transition-all duration-300 ease-out',
+      hasError ? 'border-red-400 focus-within:border-red-400 bg-red-500/15' : ''
     ],
     outlined: [
-      'bg-transparent',
-      'focus-within:border-blue-500',
-      hasError ? 'border-red-500' : 'border-gray-600'
+      'bg-transparent border-white/30 rounded-2xl',
+      'focus-within:border-blue-400 focus-within:bg-blue-500/5',
+      'focus-within:shadow-lg focus-within:shadow-blue-500/20',
+      'hover:border-white/40',
+      'transition-all duration-300 ease-out',
+      hasError ? 'border-red-400 focus-within:border-red-400' : ''
     ]
   };
 
-  // Focus ring using standard Tailwind colors
+  // Modern glowing focus ring
   const focusClasses = hasError
-    ? 'focus-within:ring-2 focus-within:ring-red-500/20'
-    : 'focus-within:ring-2 focus-within:ring-blue-500/20';
+    ? 'focus-within:ring-4 focus-within:ring-red-400/30'
+    : 'focus-within:ring-4 focus-within:ring-blue-400/30';
 
   return cn(
     baseClasses,
@@ -74,10 +83,10 @@ const getInputWrapperClasses = (
 
 const getInputClasses = () => cn(
   'flex-1 bg-transparent border-0 outline-none',
-  'text-white text-base font-sans',
-  'placeholder:text-gray-500',
+  'text-white text-xl font-bold font-sans',
+  'placeholder:text-slate-300 placeholder:font-semibold',
   'disabled:opacity-50 disabled:cursor-not-allowed',
-  'px-3'
+  'px-6 py-1'
 );
 
 const getIconClasses = (position: 'left' | 'right') => cn(
@@ -88,8 +97,8 @@ const getIconClasses = (position: 'left' | 'right') => cn(
 );
 
 const getHelperTextClasses = (isError: boolean) => cn(
-  'text-xs mt-1',
-  isError ? 'text-red-400' : 'text-gray-500'
+  'text-sm mt-1 font-medium',
+  isError ? 'text-red-400' : 'text-gray-400'
 );
 
 // Styled components replaced with Tailwind classes above

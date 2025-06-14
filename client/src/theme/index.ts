@@ -45,22 +45,29 @@ export const theme = {
       950: '#0a0a0a',
     },
     
-    // Background Colors
+    // DARK THEME BACKGROUNDS
     background: {
-      primary: '#0f0f0f',
-      secondary: '#1a1a1a',
-      tertiary: '#262626',
-      card: '#1f1f1f',
-      elevated: '#2a2a2a',
+      primary: '#0f172a',     // Dark blue-gray
+      secondary: '#1e293b',   // Lighter dark
+      tertiary: '#334155',    // Card backgrounds
+      card: '#1e293b',        // Dark cards
+      elevated: '#334155',    // Elevated elements
+      glass: '#1e293b',       // Dark glass
+      overlay: 'rgba(0, 0, 0, 0.8)', // Dark overlay
     },
     
-    // Text Colors
+    // DARK THEME HIGH CONTRAST
     text: {
-      primary: '#ffffff',
-      secondary: '#d4d4d4',
-      tertiary: '#a3a3a3',
-      muted: '#737373',
-      inverse: '#0a0a0a',
+      primary: '#ffffff',     // Pure white for maximum contrast
+      secondary: '#e5e7eb',   // Very light gray
+      tertiary: '#d1d5db',    // Light gray
+      muted: '#9ca3af',       // Medium gray
+      disabled: '#6b7280',    // Disabled gray
+      inverse: '#000000',     // Black for light backgrounds
+      accent: '#60a5fa',      // Bright blue
+      success: '#34d399',     // Bright green
+      warning: '#fbbf24',     // Bright yellow
+      danger: '#f87171',      // Bright red
     },
     
     // Status Colors
@@ -91,27 +98,31 @@ export const theme = {
     },
   },
   
-  // Typography
+  // Typography - Enhanced for better readability
   typography: {
     fontFamily: {
-      sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-      mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+      sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+      mono: ['JetBrains Mono', 'SF Mono', 'Monaco', 'Consolas', 'monospace'],
     },
     fontSize: {
-      xs: '0.75rem',    // 12px
-      sm: '0.875rem',   // 14px
-      base: '1rem',     // 16px
-      lg: '1.125rem',   // 18px
-      xl: '1.25rem',    // 20px
-      '2xl': '1.5rem',  // 24px
-      '3xl': '1.875rem', // 30px
-      '4xl': '2.25rem', // 36px
+      xs: '0.8125rem',  // 13px - elegant small text
+      sm: '0.9375rem',  // 15px - refined secondary text
+      base: '1rem',     // 16px - perfect base size
+      lg: '1.125rem',   // 18px - prominent text
+      xl: '1.25rem',    // 20px - important headings
+      '2xl': '1.5rem',  // 24px - section headings
+      '3xl': '1.875rem', // 30px - page headings
+      '4xl': '2.25rem', // 36px - hero headings
+      '5xl': '3rem',    // 48px - display headings
     },
     fontWeight: {
-      normal: '400',
-      medium: '500',
-      semibold: '600',
-      bold: '700',
+      light: '300',     // Light text
+      normal: '400',    // Normal text
+      medium: '500',    // Medium weight
+      semibold: '600',  // Semibold
+      bold: '700',      // Bold
+      extrabold: '800', // Extra bold
+      black: '900',     // Black
     },
     lineHeight: {
       tight: '1.25',
@@ -165,6 +176,49 @@ export const theme = {
     fast: '150ms ease-in-out',
     normal: '250ms ease-in-out',
     slow: '350ms ease-in-out',
+  },
+
+  // Flat Design Utilities
+  flat: {
+    // Subtle elevation without gradients
+    elevation: {
+      none: 'box-shadow: none;',
+      low: 'box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);',
+      medium: 'box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);',
+      high: 'box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);',
+    },
+    // Flat color overlays
+    overlay: {
+      light: 'rgba(255, 255, 255, 0.05)',
+      medium: 'rgba(255, 255, 255, 0.1)',
+      dark: 'rgba(0, 0, 0, 0.1)',
+    }
+  },
+
+  // Enhanced Typography Utilities for better readability
+  textStyles: {
+    // Headings with improved readability
+    heading: {
+      h1: `font-size: 2.25rem; font-weight: 700; line-height: 1.25; color: #ffffff;`,
+      h2: `font-size: 1.875rem; font-weight: 700; line-height: 1.25; color: #ffffff;`,
+      h3: `font-size: 1.5rem; font-weight: 600; line-height: 1.3; color: #ffffff;`,
+      h4: `font-size: 1.25rem; font-weight: 600; line-height: 1.3; color: #e5e5e5;`,
+      h5: `font-size: 1.125rem; font-weight: 600; line-height: 1.4; color: #e5e5e5;`,
+      h6: `font-size: 1rem; font-weight: 600; line-height: 1.4; color: #e5e5e5;`,
+    },
+    // Body text with enhanced readability (optimized for Roboto)
+    body: {
+      large: `font-size: 1.125rem; font-weight: 400; line-height: 1.6; color: #e5e5e5;`,
+      base: `font-size: 1rem; font-weight: 400; line-height: 1.5; color: #e5e5e5;`,
+      small: `font-size: 0.9375rem; font-weight: 400; line-height: 1.5; color: #c4c4c4;`,
+    },
+    // UI text with better contrast (optimized for Roboto)
+    ui: {
+      label: `font-size: 0.9375rem; font-weight: 500; line-height: 1.4; color: #e5e5e5;`,
+      button: `font-size: 1rem; font-weight: 500; line-height: 1.2; color: inherit;`,
+      caption: `font-size: 0.8125rem; font-weight: 400; line-height: 1.4; color: #c4c4c4;`,
+      helper: `font-size: 0.8125rem; font-weight: 400; line-height: 1.3; color: #9ca3af;`,
+    }
   },
   
   // Z-Index

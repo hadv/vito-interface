@@ -23,14 +23,15 @@ const ModalOverlay = styled.div<{ isOpen: boolean }>`
 `;
 
 const ModalContainer = styled.div`
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-  border: 1px solid #404040;
+  background: #1e293b;
+  border: 1px solid #334155;
   border-radius: 16px;
-  padding: 24px;
-  width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
+  padding: 32px;
+  width: 95%;
+  max-width: 800px;
+  max-height: 95vh;
   overflow-y: auto;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
 `;
 
 const ModalHeader = styled.div`
@@ -41,132 +42,169 @@ const ModalHeader = styled.div`
 `;
 
 const ModalTitle = styled.h2`
-  color: #fff;
-  font-size: 20px;
-  font-weight: 600;
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 700;
   margin: 0;
 `;
 
 const StepIndicator = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding: 12px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: #334155;
+  border-radius: 12px;
+  border: 1px solid #475569;
+  flex-wrap: nowrap;
+  overflow-x: auto;
 `;
 
 const StepBadge = styled.div<{ active: boolean; completed: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   background: ${props =>
     props.completed ? '#10b981' :
-    props.active ? '#3b82f6' : '#374151'
+    props.active ? '#3b82f6' :
+    '#64748b'
   };
-  color: ${props => props.active || props.completed ? '#fff' : '#9ca3af'};
+  color: #ffffff;
+  flex-shrink: 0;
 `;
 
 const StepText = styled.span<{ active: boolean; completed: boolean }>`
-  font-size: 14px;
+  font-size: 18px;
   color: ${props =>
-    props.completed ? '#10b981' :
-    props.active ? '#3b82f6' : '#9ca3af'
+    props.completed ? '#34d399' :
+    props.active ? '#60a5fa' : '#e5e7eb'
   };
-  font-weight: ${props => props.active ? '600' : '400'};
+  font-weight: ${props => props.active ? '700' : '600'};
+  white-space: nowrap;
+  flex-shrink: 0;
 `;
 
 const StepSeparator = styled.div`
-  width: 20px;
-  height: 2px;
-  background: #374151;
-  margin: 0 4px;
+  width: 40px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 0 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
 `;
 
 const CloseButton = styled.button`
   background: none;
   border: none;
-  color: #9ca3af;
-  font-size: 24px;
+  color: #CBD5E1;
+  font-size: 32px;
   cursor: pointer;
   padding: 0;
-  width: 32px;
-  height: 32px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  
+  border-radius: 12px;
+  transition: all 0.3s ease;
+
   &:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
     color: #fff;
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(255, 107, 107, 0.4);
   }
 `;
 
 const FormGroup = styled.div`
-  margin-bottom: 20px;
+  margin-bottom: 32px;
 `;
 
 const Label = styled.label`
   display: block;
-  color: #e5e7eb;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 8px;
+  color: #4ECDC4;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  text-shadow: 0 0 10px rgba(78, 205, 196, 0.3);
 `;
 
 const ErrorMessage = styled.div`
-  color: #ef4444;
-  font-size: 12px;
-  margin-top: 4px;
+  color: #FF6B6B;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 8px;
+  padding: 16px;
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  border-radius: 12px;
+  text-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
 `;
 
 const SuccessMessage = styled.div`
-  color: #10b981;
-  font-size: 12px;
-  margin-top: 4px;
+  color: #96CEB4;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 8px;
+  padding: 16px;
+  background: rgba(150, 206, 180, 0.1);
+  border: 1px solid rgba(150, 206, 180, 0.3);
+  border-radius: 12px;
+  text-shadow: 0 0 10px rgba(150, 206, 180, 0.3);
 `;
 
 const ButtonGroup = styled.div`
   display: flex;
-  gap: 12px;
+  gap: 20px;
   justify-content: flex-end;
-  margin-top: 24px;
+  margin-top: 40px;
+  flex-wrap: wrap;
 `;
 
 const TransactionDetails = styled.div`
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #404040;
-  border-radius: 8px;
-  padding: 16px;
-  margin: 16px 0;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(78, 205, 196, 0.3);
+  border-radius: 16px;
+  padding: 24px;
+  margin: 24px 0;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 `;
 
 const DetailRow = styled.div`
   display: flex;
   justify-content: space-between;
-  margin-bottom: 8px;
-  
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
   &:last-child {
     margin-bottom: 0;
+    border-bottom: none;
   }
 `;
 
 const DetailLabel = styled.span`
-  color: #9ca3af;
-  font-size: 14px;
+  color: #4ECDC4;
+  font-size: 16px;
+  font-weight: 600;
+  text-shadow: 0 0 8px rgba(78, 205, 196, 0.3);
 `;
 
 const DetailValue = styled.span`
   color: #fff;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
+  word-break: break-all;
+  text-align: right;
+  max-width: 60%;
 `;
 
 interface TransactionModalProps {

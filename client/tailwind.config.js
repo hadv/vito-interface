@@ -46,8 +46,28 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'monospace'],
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        mono: ['JetBrains Mono', 'SF Mono', 'Monaco', 'Consolas', 'monospace'],
+      },
+      fontWeight: {
+        light: '300',
+        normal: '400',
+        medium: '500',
+        semibold: '600',
+        bold: '700',
+        extrabold: '800',
+        black: '900',
+      },
+      fontSize: {
+        'xs': ['0.875rem', { lineHeight: '1.5', fontWeight: '700' }],
+        'sm': ['1rem', { lineHeight: '1.5', fontWeight: '700' }],
+        'base': ['1.125rem', { lineHeight: '1.5', fontWeight: '700' }],
+        'lg': ['1.25rem', { lineHeight: '1.5', fontWeight: '800' }],
+        'xl': ['1.375rem', { lineHeight: '1.4', fontWeight: '800' }],
+        '2xl': ['1.5rem', { lineHeight: '1.4', fontWeight: '800' }],
+        '3xl': ['1.875rem', { lineHeight: '1.3', fontWeight: '900' }],
+        '4xl': ['2.25rem', { lineHeight: '1.2', fontWeight: '900' }],
+        '5xl': ['3rem', { lineHeight: '1.1', fontWeight: '900' }],
       },
       animation: {
         'spin': 'spin 1s linear infinite',

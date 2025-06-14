@@ -60,11 +60,11 @@ const AssetIcon = styled.div<{ assetType: string }>`
   background: ${props => {
     switch (props.assetType) {
       case 'native':
-        return `linear-gradient(135deg, ${theme.colors.network.ethereum} 0%, ${theme.colors.network.ethereum}CC 100%)`;
+        return theme.colors.network.ethereum;
       case 'erc20':
-        return `linear-gradient(135deg, ${theme.colors.primary[500]} 0%, ${theme.colors.secondary[500]} 100%)`;
+        return theme.colors.primary[500];
       default:
-        return `linear-gradient(135deg, ${theme.colors.neutral[600]} 0%, ${theme.colors.neutral[700]} 100%)`;
+        return theme.colors.neutral[600];
     }
   }};
   display: flex;

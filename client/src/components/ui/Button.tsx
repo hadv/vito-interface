@@ -24,48 +24,50 @@ const getButtonClasses = (
 ) => {
   const baseClasses = [
     'inline-flex items-center justify-center gap-2',
-    'border-0 rounded-lg font-medium cursor-pointer',
-    'transition-all duration-250 ease-in-out',
-    'relative overflow-hidden',
-    'focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2',
+    'border rounded-lg font-semibold cursor-pointer',
+    'transition-all duration-200 ease-out',
+    'focus-visible:outline-2 focus-visible:outline-blue-400 focus-visible:outline-offset-2',
     fullWidth && 'w-full',
     (disabled || loading) && 'opacity-50 cursor-not-allowed pointer-events-none'
   ];
 
-  // Size classes
+  // Clean, proportional sizes
   const sizeClasses = {
     sm: 'px-3 py-2 text-sm h-8',
-    md: 'px-4 py-3 text-base h-10',
-    lg: 'px-6 py-4 text-lg h-12',
-    xl: 'px-8 py-5 text-xl h-14'
+    md: 'px-4 py-2.5 text-base h-10',
+    lg: 'px-6 py-3 text-lg h-12',
+    xl: 'px-8 py-4 text-xl h-14'
   };
 
-  // Variant classes using standard Tailwind colors
+  // DARK THEME HIGH CONTRAST BUTTONS
   const variantClasses = {
     primary: [
-      'bg-gradient-to-br from-blue-500 to-blue-600',
-      'text-white shadow-md',
-      'hover:from-blue-600 hover:to-blue-700',
-      'hover:shadow-lg hover:-translate-y-0.5',
-      'active:translate-y-0 active:shadow-sm'
+      'bg-blue-600 text-white border-blue-600',
+      'hover:bg-blue-700 hover:border-blue-700',
+      'active:bg-blue-800',
+      'shadow-lg hover:shadow-xl'
     ],
     secondary: [
-      'bg-gray-800 text-white border border-gray-600',
-      'hover:bg-gray-700 hover:border-gray-500'
+      'bg-slate-700 text-white border-slate-600',
+      'hover:bg-slate-600 hover:border-slate-500',
+      'active:bg-slate-800',
+      'shadow-lg hover:shadow-xl'
     ],
     outline: [
-      'bg-transparent text-blue-500 border border-blue-500',
-      'hover:bg-blue-500 hover:text-white'
+      'bg-transparent text-blue-400 border-blue-500',
+      'hover:bg-blue-600 hover:text-white hover:border-blue-600',
+      'active:bg-blue-700'
     ],
     ghost: [
-      'bg-transparent text-gray-300',
-      'hover:bg-gray-800 hover:text-white'
+      'bg-transparent text-white border-transparent',
+      'hover:bg-slate-700 hover:text-white',
+      'active:bg-slate-800'
     ],
     danger: [
-      'bg-gradient-to-br from-red-500 to-red-600',
-      'text-white',
-      'hover:from-red-600 hover:to-red-700',
-      'hover:-translate-y-0.5'
+      'bg-red-600 text-white border-red-600',
+      'hover:bg-red-700 hover:border-red-700',
+      'active:bg-red-800',
+      'shadow-lg hover:shadow-xl'
     ]
   };
 

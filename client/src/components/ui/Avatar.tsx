@@ -14,7 +14,7 @@ const getAvatarClasses = (size: AvatarProps['size'] = 'md') => {
   const baseClasses = [
     'relative inline-flex items-center justify-center',
     'rounded-full overflow-hidden',
-    'bg-gradient-to-br from-primary-500 to-secondary-500',
+    'bg-gray-600',
     'text-white font-medium flex-shrink-0',
     'border-2 border-white/10 shadow-md'
   ];
@@ -39,16 +39,17 @@ const getFallbackClasses = () => cn(
   'w-full h-full uppercase'
 );
 
-// Generate a consistent color based on address
-const generateAvatarGradient = (address: string): React.CSSProperties => {
+// Generate a consistent flat color based on address
+const generateAvatarColor = (address: string): React.CSSProperties => {
   if (!address) return {};
 
   const hash = address.slice(2, 8); // Use first 6 chars after 0x
-  const hue1 = parseInt(hash.slice(0, 2), 16) % 360;
-  const hue2 = (hue1 + 60) % 360;
+  const hue = parseInt(hash.slice(0, 2), 16) % 360;
 
+  // Use flat, solid colors with good contrast
   return {
-    background: `linear-gradient(135deg, hsl(${hue1}, 70%, 50%) 0%, hsl(${hue2}, 70%, 60%) 100%)`
+    backgroundColor: `hsl(${hue}, 65%, 55%)`,
+    color: '#ffffff'
   };
 };
 
@@ -84,13 +85,13 @@ const Avatar: React.FC<AvatarProps> = ({
   };
 
   const avatarSrc = getAvatarSrc();
-  const gradientStyle = address ? generateAvatarGradient(address) : {};
+  const colorStyle = address ? generateAvatarColor(address) : {};
   const avatarClasses = getAvatarClasses(size);
 
   return (
     <div
       className={cn(avatarClasses, className)}
-      style={gradientStyle}
+      style={colorStyle}
       {...props}
     >
       {avatarSrc ? (

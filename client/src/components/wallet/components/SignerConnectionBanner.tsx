@@ -4,7 +4,7 @@ import { walletConnectionService, WalletConnectionState } from '../../../service
 import { theme } from '../../../theme';
 
 const BannerContainer = styled.div`
-  background: linear-gradient(135deg, ${theme.colors.primary[500]}15, ${theme.colors.secondary[500]}15);
+  background: ${theme.colors.primary[500]}15;
   border: 1px solid ${theme.colors.primary[500]}30;
   border-radius: ${theme.borderRadius.md};
   padding: ${theme.spacing[4]};
