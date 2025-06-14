@@ -52,10 +52,11 @@ export class WalletConnectionService {
       }
 
       // Initialize Safe Wallet Service first to validate the Safe wallet
+      // Use the same RPC URL that was validated
       const config: SafeWalletConfig = {
         safeAddress: params.safeAddress,
         network: params.network,
-        rpcUrl: params.rpcUrl
+        rpcUrl: rpcUrl  // Use the validated RPC URL
       };
 
       // Initialize without signer first to validate Safe wallet

@@ -1,8 +1,7 @@
 import { ethers } from 'ethers';
 import { SafeTxPoolService } from './SafeTxPoolService';
 import { OnChainDataService, OnChainTransactionStatus } from './OnChainDataService';
-import { SAFE_ABI } from '../contracts/abis';
-import { getProviderForNetwork } from '../utils/ens';
+import { SAFE_ABI, getRpcUrl } from '../contracts/abis';
 import {
   signSafeTransaction,
   createSafeContractTransactionHash,
@@ -101,10 +100,18 @@ export class SafeWalletService {
   async initialize(config: SafeWalletConfig, signer?: ethers.Signer): Promise<void> {
     this.config = config;
 
-    // Set up provider based on network
-    this.provider = config.rpcUrl
-      ? new ethers.providers.JsonRpcProvider(config.rpcUrl)
-      : getProviderForNetwork(config.network);
+    // Set up provider based on network - always use working RPC configuration
+    let actualRpcUrl: string;
+    if (config.rpcUrl) {
+      actualRpcUrl = config.rpcUrl;
+      this.provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
+    } else {
+      // Use the same RPC URL logic as validation for consistency
+      actualRpcUrl = getRpcUrl(config.network);
+      this.provider = new ethers.providers.JsonRpcProvider(actualRpcUrl);
+    }
+
+    console.log(`🌐 SafeWalletService initialized with RPC: ${actualRpcUrl} for network: ${config.network}`);
 
     // Use provided signer or create a read-only provider
     if (signer) {
@@ -167,15 +174,23 @@ export class SafeWalletService {
     }
 
     try {
+      console.log(`🔍 Validating Safe contract at ${this.config.safeAddress} on ${this.config.network}`);
+
       // Check if the address has code (is a contract)
       const code = await this.provider.getCode(this.config.safeAddress);
+      console.log(`📄 Contract code length: ${code.length} characters`);
+
       if (code === '0x') {
         throw new Error(`No contract found at address ${this.config.safeAddress}. Please verify the Safe address and network.`);
       }
 
       // Try to call a simple view function to verify it's a Safe contract
-      await this.safeContract.getThreshold();
+      console.log(`🔧 Testing Safe contract interface...`);
+      const threshold = await this.safeContract.getThreshold();
+      console.log(`✅ Safe validation successful! Threshold: ${threshold.toString()}`);
     } catch (error: any) {
+      console.error(`❌ Safe validation failed:`, error);
+
       if (error.message.includes('No contract found')) {
         throw error;
       }
@@ -604,21 +619,25 @@ export class SafeWalletService {
     }
 
     try {
-      // First validate the Safe contract
-      await this.validateSafeContract();
-
+      // Skip validation during nonce call since it was already validated during connection
+      // This prevents double validation which can cause issues with provider inconsistencies
+      console.log('🔢 Getting Safe nonce...');
       const nonce = await this.safeContract.nonce();
+      console.log(`✅ Safe nonce: ${nonce.toString()}`);
       return nonce.toNumber();
     } catch (error: any) {
       console.error('Error getting nonce:', error);
 
-      // Provide more specific error messages
-      if (error.message.includes('No contract found') || error.message.includes('Invalid Safe contract')) {
-        throw error;
-      }
-
       if (error.code === 'CALL_EXCEPTION') {
-        throw new Error(`Cannot get nonce from Safe contract at ${this.config!.safeAddress}. Please verify this is a valid Safe wallet address on the ${this.config!.network} network.`);
+        // Try to validate the contract to provide better error message
+        try {
+          await this.validateSafeContract();
+          // If validation passes but nonce() still fails, it's a different issue
+          throw new Error(`Safe contract is valid but nonce() call failed. This might be a temporary network issue.`);
+        } catch (validationError: any) {
+          // Validation failed, use the validation error message
+          throw validationError;
+        }
       }
 
       if (error.message.includes('network')) {
