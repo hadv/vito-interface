@@ -78,9 +78,10 @@ const ToastContainer = styled.div<{ type: ToastType; isExiting: boolean }>`
         `;
       case 'info':
         return css`
-          background: rgba(59, 130, 246, 0.1);
-          border-color: rgba(59, 130, 246, 0.3);
-          color: #3b82f6;
+          background: rgba(59, 130, 246, 0.15);
+          border-color: rgba(59, 130, 246, 0.4);
+          color: #60a5fa;
+          box-shadow: 0 8px 32px rgba(59, 130, 246, 0.2);
         `;
       default:
         return css`

@@ -96,14 +96,16 @@ export const getSafeTransactionUrl = (safeAddress: string, safeTxHash: string, n
 };
 
 /**
- * Generates a QR code URL for a wallet address
+ * Generates a QR code URL for a wallet address with blue theme
  * Using QR Server which is more reliable than Google Charts API
  * @param address The wallet address
  * @param size Size of the QR code image
- * @returns URL for a QR code image of the address
+ * @returns URL for a QR code image of the address with blue styling
  */
 export const getQRCodeUrl = (address: string, size: number = 200): string => {
-  return `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(address)}&size=${size}x${size}&margin=10`;
+  const foregroundColor = '3b82f6'; // Blue color (without #)
+  const backgroundColor = 'ffffff'; // White background
+  return `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(address)}&size=${size}x${size}&color=${foregroundColor}&bgcolor=${backgroundColor}&margin=10`;
 };
 
 /**

@@ -2,32 +2,32 @@
 export const theme = {
   // Color Palette - Professional & Secure
   colors: {
-    // Primary Colors - Safe Green Theme
+    // Primary Colors - Professional Blue Theme
     primary: {
-      50: '#f0fdf4',
-      100: '#dcfce7',
-      200: '#bbf7d0',
-      300: '#86efac',
-      400: '#4ade80',
-      500: '#22c55e', // Main Safe Green
-      600: '#16a34a',
-      700: '#15803d',
-      800: '#166534',
-      900: '#14532d',
-    },
-    
-    // Secondary Colors - Professional Blue
-    secondary: {
       50: '#eff6ff',
       100: '#dbeafe',
       200: '#bfdbfe',
       300: '#93c5fd',
       400: '#60a5fa',
-      500: '#3b82f6',
+      500: '#3b82f6', // Main Blue
       600: '#2563eb',
       700: '#1d4ed8',
       800: '#1e40af',
       900: '#1e3a8a',
+    },
+
+    // Secondary Colors - Safe Green
+    secondary: {
+      50: '#f0fdf4',
+      100: '#dcfce7',
+      200: '#bbf7d0',
+      300: '#86efac',
+      400: '#4ade80',
+      500: '#22c55e',
+      600: '#16a34a',
+      700: '#15803d',
+      800: '#166534',
+      900: '#14532d',
     },
     
     // Neutral Colors - Modern Grays
@@ -94,7 +94,7 @@ export const theme = {
       primary: '#404040',
       secondary: '#525252',
       tertiary: '#262626',
-      focus: '#22c55e',
+      focus: '#3b82f6', // Blue focus color
     },
   },
   

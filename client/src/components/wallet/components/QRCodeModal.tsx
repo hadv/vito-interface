@@ -3,24 +3,26 @@ import styled from 'styled-components';
 import { generateWalletAvatar } from '@utils';
 // import { formatWalletAddress } from '@utils';
 
-// Helper function to get QR code URL
+// Helper function to get QR code URL with blue theme
 const getQRCodeUrl = (address: string): string => {
-  // Using QR code API to generate QR code for the address
-  return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${address}`;
+  // Using QR code API with blue color scheme
+  const foregroundColor = '3b82f6'; // Blue color (without #)
+  const backgroundColor = 'ffffff'; // White background
+  return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(address)}&color=${foregroundColor}&bgcolor=${backgroundColor}&margin=10`;
 };
 
-// Icons
+// Icons with Blue Theme
 const CopyIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="2"/>
-    <path d="M5 15H4C2.89543 15 2 14.1046 2 13V4C2 2.89543 2.89543 2 4 2H13C14.1046 2 15 2.89543 15 4V5" stroke="currentColor" strokeWidth="2"/>
+    <rect x="9" y="9" width="12" height="12" rx="2" stroke="#3b82f6" strokeWidth="2" fill="#eff6ff"/>
+    <path d="M5 15H4C2.89543 15 2 14.1046 2 13V4C2 2.89543 2.89543 2 4 2H13C14.1046 2 15 2.89543 15 4V5" stroke="#3b82f6" strokeWidth="2"/>
   </svg>
 );
 
 const EtherscanIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M12 12L20 4M20 4H15M20 4V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M19 12V19C19 20.1046 18.1046 21 17 21H5C3.89543 21 3 20.1046 3 19V7C3 5.89543 3.89543 5 5 5H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M12 12L20 4M20 4H15M20 4V9" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M19 12V19C19 20.1046 18.1046 21 17 21H5C3.89543 21 3 20.1046 3 19V7C3 5.89543 3.89543 5 5 5H12" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round"/>
   </svg>
 );
 
@@ -176,8 +178,16 @@ const ActionButton = styled.button`
   font-weight: 500;
 
   &:hover {
-    background-color: #333;
-    color: #fff;
+    background-color: #3b82f620; /* Blue with 20% opacity */
+    border-left-color: #3b82f6;
+    color: #60a5fa;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px #3b82f630;
+  }
+
+  &:active {
+    transform: translateY(0px);
+    box-shadow: 0 2px 6px #3b82f620;
   }
 `;
 

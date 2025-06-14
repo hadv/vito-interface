@@ -4,27 +4,31 @@ import { formatWalletAddress, generateWalletAvatar } from '@utils';
 import { theme } from '../../../theme';
 import { Avatar } from '../../ui';
 
-// Icons
+// Icons with Blue Theme
 const QRCodeIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M3 3H9V9H3V3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    <path d="M15 3H21V9H15V3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    <path d="M3 15H9V21H3V15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    <path d="M15 15H21V21H15V15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M3 3H9V9H3V3Z" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" fill="#dbeafe"/>
+    <path d="M15 3H21V9H15V3Z" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" fill="#dbeafe"/>
+    <path d="M3 15H9V21H3V15Z" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" fill="#dbeafe"/>
+    <path d="M15 15H21V21H15V15Z" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" fill="#dbeafe"/>
+    <circle cx="6" cy="6" r="1" fill="#3b82f6"/>
+    <circle cx="18" cy="6" r="1" fill="#3b82f6"/>
+    <circle cx="6" cy="18" r="1" fill="#3b82f6"/>
+    <circle cx="18" cy="18" r="1" fill="#3b82f6"/>
   </svg>
 );
 
 const CopyIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="2"/>
-    <path d="M5 15H4C2.89543 15 2 14.1046 2 13V4C2 2.89543 2.89543 2 4 2H13C14.1046 2 15 2.89543 15 4V5" stroke="currentColor" strokeWidth="2"/>
+    <rect x="9" y="9" width="12" height="12" rx="2" stroke="#3b82f6" strokeWidth="2" fill="#eff6ff"/>
+    <path d="M5 15H4C2.89543 15 2 14.1046 2 13V4C2 2.89543 2.89543 2 4 2H13C14.1046 2 15 2.89543 15 4V5" stroke="#3b82f6" strokeWidth="2"/>
   </svg>
 );
 
 const EtherscanIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M12 12L20 4M20 4H15M20 4V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M19 12V19C19 20.1046 18.1046 21 17 21H5C3.89543 21 3 20.1046 3 19V7C3 5.89543 3.89543 5 5 5H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M12 12L20 4M20 4H15M20 4V9" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M19 12V19C19 20.1046 18.1046 21 17 21H5C3.89543 21 3 20.1046 3 19V7C3 5.89543 3.89543 5 5 5H12" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round"/>
   </svg>
 );
 
