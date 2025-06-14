@@ -24,7 +24,7 @@ const getButtonClasses = (
 ) => {
   const baseClasses = [
     'inline-flex items-center justify-center gap-2',
-    'border-0 rounded-lg font-semibold cursor-pointer',
+    'border-0 rounded-lg font-medium cursor-pointer',
     'transition-all duration-250 ease-in-out',
     'relative overflow-hidden',
     'focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2',

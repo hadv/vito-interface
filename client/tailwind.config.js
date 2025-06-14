@@ -46,8 +46,8 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'monospace'],
+        sans: ['Roboto', 'system-ui', 'sans-serif'],
+        mono: ['Roboto Mono', 'Menlo', 'Monaco', 'monospace'],
       },
       fontWeight: {
         light: '300',
@@ -58,13 +58,13 @@ module.exports = {
         extrabold: '800',
       },
       fontSize: {
-        'xs': ['0.8125rem', { lineHeight: '1.4', fontWeight: '500' }],
-        'sm': ['0.9375rem', { lineHeight: '1.5', fontWeight: '500' }],
-        'base': ['1rem', { lineHeight: '1.5', fontWeight: '500' }],
-        'lg': ['1.125rem', { lineHeight: '1.6', fontWeight: '500' }],
-        'xl': ['1.25rem', { lineHeight: '1.6', fontWeight: '600' }],
-        '2xl': ['1.5rem', { lineHeight: '1.4', fontWeight: '600' }],
-        '3xl': ['1.875rem', { lineHeight: '1.3', fontWeight: '700' }],
+        'xs': ['0.8125rem', { lineHeight: '1.4', fontWeight: '400' }],
+        'sm': ['0.9375rem', { lineHeight: '1.5', fontWeight: '400' }],
+        'base': ['1rem', { lineHeight: '1.5', fontWeight: '400' }],
+        'lg': ['1.125rem', { lineHeight: '1.6', fontWeight: '400' }],
+        'xl': ['1.25rem', { lineHeight: '1.6', fontWeight: '500' }],
+        '2xl': ['1.5rem', { lineHeight: '1.4', fontWeight: '500' }],
+        '3xl': ['1.875rem', { lineHeight: '1.3', fontWeight: '600' }],
         '4xl': ['2.25rem', { lineHeight: '1.25', fontWeight: '700' }],
       },
       animation: {

@@ -80,7 +80,7 @@ const StepText = styled.span<{ active: boolean; completed: boolean }>`
     props.completed ? '#10b981' :
     props.active ? '#3b82f6' : '#c4c4c4'
   };
-  font-weight: ${props => props.active ? '600' : '500'};
+  font-weight: ${props => props.active ? '500' : '400'};
 `;
 
 const StepSeparator = styled.div`

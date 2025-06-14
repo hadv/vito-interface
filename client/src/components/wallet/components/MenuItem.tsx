@@ -15,7 +15,7 @@ const StyledMenuItem = styled.div<{ active: boolean }>`
   cursor: pointer;
   user-select: none;
   font-size: ${theme.typography.fontSize.base};
-  font-weight: ${props => props.active ? theme.typography.fontWeight.bold : theme.typography.fontWeight.semibold};
+  font-weight: ${props => props.active ? theme.typography.fontWeight.semibold : theme.typography.fontWeight.medium};
   color: ${props => props.active ? theme.colors.text.primary : theme.colors.text.secondary};
   background: ${props => props.active ?
     `${theme.colors.primary[500]}15` :

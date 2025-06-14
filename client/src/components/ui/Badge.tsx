@@ -16,7 +16,7 @@ const getBadgeClasses = (
 ) => {
   const baseClasses = [
     'inline-flex items-center justify-center',
-    'font-semibold rounded-full whitespace-nowrap'
+    'font-medium rounded-full whitespace-nowrap'
   ];
 
   // Size classes with improved readability

@@ -95,8 +95,8 @@ export const theme = {
   // Typography - Enhanced for better readability
   typography: {
     fontFamily: {
-      sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-      mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+      sans: ['Roboto', 'system-ui', '-apple-system', 'sans-serif'],
+      mono: ['Roboto Mono', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
     },
     fontSize: {
       xs: '0.8125rem',  // 13px - increased from 12px for better readability
@@ -198,18 +198,18 @@ export const theme = {
       h5: `font-size: 1.125rem; font-weight: 600; line-height: 1.4; color: #e5e5e5;`,
       h6: `font-size: 1rem; font-weight: 600; line-height: 1.4; color: #e5e5e5;`,
     },
-    // Body text with enhanced readability
+    // Body text with enhanced readability (optimized for Roboto)
     body: {
-      large: `font-size: 1.125rem; font-weight: 500; line-height: 1.6; color: #e5e5e5;`,
-      base: `font-size: 1rem; font-weight: 500; line-height: 1.5; color: #e5e5e5;`,
-      small: `font-size: 0.9375rem; font-weight: 500; line-height: 1.5; color: #c4c4c4;`,
+      large: `font-size: 1.125rem; font-weight: 400; line-height: 1.6; color: #e5e5e5;`,
+      base: `font-size: 1rem; font-weight: 400; line-height: 1.5; color: #e5e5e5;`,
+      small: `font-size: 0.9375rem; font-weight: 400; line-height: 1.5; color: #c4c4c4;`,
     },
-    // UI text with better contrast
+    // UI text with better contrast (optimized for Roboto)
     ui: {
-      label: `font-size: 0.9375rem; font-weight: 600; line-height: 1.4; color: #e5e5e5;`,
-      button: `font-size: 1rem; font-weight: 600; line-height: 1.2; color: inherit;`,
-      caption: `font-size: 0.8125rem; font-weight: 500; line-height: 1.4; color: #c4c4c4;`,
-      helper: `font-size: 0.8125rem; font-weight: 500; line-height: 1.3; color: #9ca3af;`,
+      label: `font-size: 0.9375rem; font-weight: 500; line-height: 1.4; color: #e5e5e5;`,
+      button: `font-size: 1rem; font-weight: 500; line-height: 1.2; color: inherit;`,
+      caption: `font-size: 0.8125rem; font-weight: 400; line-height: 1.4; color: #c4c4c4;`,
+      helper: `font-size: 0.8125rem; font-weight: 400; line-height: 1.3; color: #9ca3af;`,
     }
   },
   
