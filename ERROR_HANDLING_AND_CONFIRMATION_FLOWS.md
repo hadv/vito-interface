@@ -43,6 +43,7 @@ This document describes the comprehensive error handling and transaction confirm
 - **Action Buttons**: Interactive buttons for retry, view details, etc.
 - **Auto-Dismiss**: Configurable auto-dismiss timers
 - **Progress Indicators**: Visual progress bars for timed notifications
+- **Single Source of Truth**: Replaces redundant error notifications to prevent spam
 
 #### Toast Categories
 - **Transaction Pending**: Shows when transaction is submitted
@@ -193,6 +194,22 @@ const TransactionConfirmationFlow = ({
 - **Performance Metrics**: Error impact on user experience
 - **A/B Testing**: Optimize error messages and recovery flows
 - **User Feedback**: Collect user feedback on error experiences
+
+## 🎯 Error Notification Strategy
+
+To prevent overwhelming users with multiple error notifications for the same issue, the system follows a clear hierarchy:
+
+### Notification Hierarchy
+1. **Toast Notifications**: Primary method for all operational errors (network, transaction, wallet)
+2. **In-Component Messages**: Only for immediate validation feedback (form errors)
+3. **Error Boundaries**: Only for critical React component failures
+
+### When to Use Each
+- **Toast**: Network errors, transaction failures, wallet connection issues
+- **Component Error**: Form validation, immediate input feedback
+- **Error Boundary**: Unhandled React errors, critical system failures
+
+This prevents the "triple notification" problem where users would see the same error in multiple places.
 
 ## 📝 Usage Examples
 

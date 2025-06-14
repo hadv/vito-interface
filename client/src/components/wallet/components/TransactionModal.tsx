@@ -226,8 +226,8 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   const [toAddress, setToAddress] = useState('');
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState(''); // Keep for critical validation errors only
+  const [success, setSuccess] = useState(''); // Keep for success messages
   const [currentStep, setCurrentStep] = useState<'form' | 'signing' | 'proposing'>('form');
   const [showEIP712Modal, setShowEIP712Modal] = useState(false);
   const [connectionState, setConnectionState] = useState<WalletConnectionState>({ isConnected: false });
@@ -260,7 +260,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       });
     } catch (error: any) {
       const errorDetails = ErrorHandler.classifyError(error);
-      setError(errorDetails.userMessage);
+      // Only show toast for wallet connection errors, not duplicate in modal
       toast.walletError(errorDetails.userMessage, handleConnectSigner);
     }
   };
@@ -270,7 +270,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     setError('');
     setSuccess('');
 
-    // Validation
+    // Validation - show these in modal only (immediate feedback)
     if (!toAddress.trim()) {
       setError('Recipient address is required');
       return;
@@ -333,7 +333,10 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
     } catch (error: any) {
       const errorDetails = ErrorHandler.classifyError(error);
-      setError(errorDetails.userMessage);
+      // Show error in modal for critical validation issues, toast for others
+      if (errorDetails.category === 'validation') {
+        setError(errorDetails.userMessage);
+      }
       setIsLoading(false);
 
       toast.transactionError(errorDetails.userMessage, errorDetails.message);
@@ -408,7 +411,10 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
     } catch (error: any) {
       const errorDetails = ErrorHandler.classifyError(error);
-      setError(errorDetails.userMessage);
+      // Only show in modal for critical errors, use toast for others
+      if (errorDetails.severity === 'critical' || errorDetails.category === 'validation') {
+        setError(errorDetails.userMessage);
+      }
       setShowEIP712Modal(false);
       setCurrentStep('form');
 
