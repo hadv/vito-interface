@@ -9,39 +9,17 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-weight: 500;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 400;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: radial-gradient(circle at 20% 80%, #FF6B6B 0%, transparent 50%),
-              radial-gradient(circle at 80% 20%, #4ECDC4 0%, transparent 50%),
-              radial-gradient(circle at 40% 40%, #45B7D1 0%, transparent 50%),
-              linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
-  color: #FFFFFF;
+  background: #ffffff;
+  color: #1f2937;
 }
 
 #root {
   height: 100%;
-  background: radial-gradient(circle at 20% 80%, #FF6B6B 0%, transparent 50%),
-              radial-gradient(circle at 80% 20%, #4ECDC4 0%, transparent 50%),
-              radial-gradient(circle at 40% 40%, #45B7D1 0%, transparent 50%),
-              linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
-  animation: backgroundShift 20s ease-in-out infinite;
-}
-
-@keyframes backgroundShift {
-  0%, 100% {
-    background: radial-gradient(circle at 20% 80%, #FF6B6B 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, #4ECDC4 0%, transparent 50%),
-                radial-gradient(circle at 40% 40%, #45B7D1 0%, transparent 50%),
-                linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
-  }
-  50% {
-    background: radial-gradient(circle at 80% 20%, #FF6B6B 0%, transparent 50%),
-                radial-gradient(circle at 20% 80%, #4ECDC4 0%, transparent 50%),
-                radial-gradient(circle at 60% 60%, #45B7D1 0%, transparent 50%),
-                linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
-  }
+  background: #ffffff;
 }
 
 /* Remove default React styles */
@@ -132,122 +110,70 @@ input, textarea, select, button {
   background-color: transparent;
 }
 
-/* CREATIVE VIBRANT DESIGN */
+/* CLEAN MINIMALIST DESIGN */
 h1, h2, h3, h4, h5, h6 {
-  color: #FFFFFF;
-  font-weight: 700;
-  line-height: 1.1;
-  margin: 0;
-  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
-  letter-spacing: -0.02em;
-}
-
-h1 {
-  font-size: 4rem;
-  font-weight: 700;
-  background: linear-gradient(45deg, #FF6B6B, #4ECDC4, #45B7D1, #96CEB4);
-  background-size: 400% 400%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: gradientShift 3s ease-in-out infinite;
-}
-
-h2 {
-  font-size: 2.5rem;
-  font-weight: 700;
-  background: linear-gradient(45deg, #4ECDC4, #45B7D1);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-h3 { font-size: 2rem; font-weight: 600; color: #4ECDC4; }
-h4 { font-size: 1.75rem; font-weight: 600; color: #45B7D1; }
-h5 { font-size: 1.5rem; font-weight: 600; color: #96CEB4; }
-h6 { font-size: 1.25rem; font-weight: 600; color: #FFEAA7; }
-
-@keyframes gradientShift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-
-/* VIBRANT TEXT */
-p, span, div, label {
-  color: #FFFFFF;
-  font-weight: 500;
-  line-height: 1.6;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-/* Colorful utilities */
-.text-primary {
-  color: #4ECDC4;
+  color: #111827;
   font-weight: 600;
-  text-shadow: 0 0 15px rgba(78, 205, 196, 0.4);
+  line-height: 1.2;
+  margin: 0;
+  letter-spacing: -0.025em;
+}
+
+h1 { font-size: 2.5rem; font-weight: 700; }
+h2 { font-size: 2rem; font-weight: 600; }
+h3 { font-size: 1.75rem; font-weight: 600; }
+h4 { font-size: 1.5rem; font-weight: 600; }
+h5 { font-size: 1.25rem; font-weight: 600; }
+h6 { font-size: 1.125rem; font-weight: 600; }
+
+/* CLEAN TEXT */
+p, span, div, label {
+  color: #374151;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+/* Simple utilities */
+.text-primary {
+  color: #2563eb;
+  font-weight: 500;
 }
 
 .text-secondary {
-  color: #45B7D1;
-  font-weight: 600;
-  text-shadow: 0 0 15px rgba(69, 183, 209, 0.4);
+  color: #6b7280;
+  font-weight: 400;
 }
 
-.text-accent {
-  color: #FF6B6B;
-  font-weight: 600;
-  text-shadow: 0 0 15px rgba(255, 107, 107, 0.4);
+.text-muted {
+  color: #9ca3af;
+  font-weight: 400;
 }
 
 .text-success {
-  color: #96CEB4;
-  font-weight: 600;
-  text-shadow: 0 0 15px rgba(150, 206, 180, 0.4);
+  color: #059669;
+  font-weight: 500;
 }
 
 .text-warning {
-  color: #FFEAA7;
-  font-weight: 600;
-  text-shadow: 0 0 15px rgba(255, 234, 167, 0.4);
+  color: #d97706;
+  font-weight: 500;
 }
 
-/* Neon card effects */
-.neon-card {
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(20px);
-  border: 2px solid transparent;
-  border-radius: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  position: relative;
-  overflow: hidden;
+.text-danger {
+  color: #dc2626;
+  font-weight: 500;
 }
 
-.neon-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  padding: 2px;
-  background: linear-gradient(45deg, #FF6B6B, #4ECDC4, #45B7D1, #96CEB4);
-  border-radius: inherit;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  animation: borderRotate 3s linear infinite;
-}
-
-@keyframes borderRotate {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Glowing hover effects */
-.glow-hover:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 20px 40px rgba(78, 205, 196, 0.3);
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+/* Clean card */
+.clean-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 body {
   font-size: 16px;
-  font-weight: 500;
-  color: #FFFFFF;
+  font-weight: 400;
+  color: #374151;
 }

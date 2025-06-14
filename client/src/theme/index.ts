@@ -45,29 +45,29 @@ export const theme = {
       950: '#0a0a0a',
     },
     
-    // DARK VIBRANT BACKGROUNDS
+    // CLEAN LIGHT BACKGROUNDS
     background: {
-      primary: '#000000',     // Pure black base
-      secondary: '#1a1a1a',   // Dark gray
-      tertiary: '#2a2a2a',    // Lighter gray
-      card: 'rgba(0, 0, 0, 0.7)', // Semi-transparent black
-      elevated: 'rgba(0, 0, 0, 0.8)', // Darker semi-transparent
-      glass: 'rgba(255, 255, 255, 0.05)', // Glass effect
-      overlay: 'rgba(0, 0, 0, 0.9)', // Modal overlays
+      primary: '#ffffff',     // Pure white
+      secondary: '#f9fafb',   // Very light gray
+      tertiary: '#f3f4f6',    // Light gray
+      card: '#ffffff',        // White cards
+      elevated: '#ffffff',    // White elevated elements
+      glass: '#ffffff',       // No glass effects
+      overlay: 'rgba(0, 0, 0, 0.5)', // Simple overlay
     },
     
-    // VIBRANT CREATIVE COLOR SCHEME
+    // CLEAN MINIMALIST COLOR SCHEME
     text: {
-      primary: '#FFFFFF',     // Pure white for main text
-      secondary: '#4ECDC4',   // Vibrant teal
-      tertiary: '#45B7D1',    // Bright blue
-      muted: '#CBD5E1',       // Light gray
-      disabled: '#64748B',    // Muted gray
-      inverse: '#000000',     // Pure black
-      accent: '#FF6B6B',      // Vibrant coral
-      success: '#96CEB4',     // Mint green
-      warning: '#FFEAA7',     // Warm yellow
-      danger: '#FF6B6B',      // Vibrant coral for errors
+      primary: '#111827',     // Dark gray for main text
+      secondary: '#374151',   // Medium gray
+      tertiary: '#6b7280',    // Light gray
+      muted: '#9ca3af',       // Very light gray
+      disabled: '#d1d5db',    // Disabled gray
+      inverse: '#ffffff',     // White for dark backgrounds
+      accent: '#2563eb',      // Clean blue
+      success: '#059669',     // Clean green
+      warning: '#d97706',     // Clean orange
+      danger: '#dc2626',      // Clean red
     },
     
     // Status Colors
@@ -101,7 +101,7 @@ export const theme = {
   // Typography - Enhanced for better readability
   typography: {
     fontFamily: {
-      sans: ['Space Grotesk', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+      sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
       mono: ['JetBrains Mono', 'SF Mono', 'Monaco', 'Consolas', 'monospace'],
     },
     fontSize: {
@@ -116,13 +116,13 @@ export const theme = {
       '5xl': '3rem',    // 48px - display headings
     },
     fontWeight: {
-      light: '500',     // No thin fonts - minimum 500
-      normal: '600',    // Bold normal text
-      medium: '700',    // Very bold medium
-      semibold: '800',  // Extra bold
-      bold: '900',      // Maximum bold
-      extrabold: '900', // Maximum bold
-      black: '900',     // Maximum bold
+      light: '300',     // Light text
+      normal: '400',    // Normal text
+      medium: '500',    // Medium weight
+      semibold: '600',  // Semibold
+      bold: '700',      // Bold
+      extrabold: '800', // Extra bold
+      black: '900',     // Black
     },
     lineHeight: {
       tight: '1.25',

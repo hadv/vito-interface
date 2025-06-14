@@ -23,60 +23,51 @@ const getButtonClasses = (
   loading: boolean = false
 ) => {
   const baseClasses = [
-    'inline-flex items-center justify-center gap-3',
-    'border-0 rounded-2xl font-black cursor-pointer',
-    'transition-all duration-300 ease-out',
-    'text-shadow-sm',
-    'hover:scale-105 active:scale-95',
-    'focus-visible:outline-2 focus-visible:outline-blue-400 focus-visible:outline-offset-2',
+    'inline-flex items-center justify-center gap-2',
+    'border rounded-lg font-medium cursor-pointer',
+    'transition-all duration-200 ease-out',
+    'focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2',
     fullWidth && 'w-full',
-    (disabled || loading) && 'opacity-50 cursor-not-allowed pointer-events-none scale-100'
+    (disabled || loading) && 'opacity-50 cursor-not-allowed pointer-events-none'
   ];
 
-  // Modern, bold sizes with better proportions
+  // Clean, proportional sizes
   const sizeClasses = {
-    sm: 'px-6 py-3 text-base h-12',
-    md: 'px-8 py-4 text-lg h-14',
-    lg: 'px-10 py-5 text-xl h-16',
-    xl: 'px-12 py-6 text-2xl h-18'
+    sm: 'px-3 py-2 text-sm h-8',
+    md: 'px-4 py-2.5 text-base h-10',
+    lg: 'px-6 py-3 text-lg h-12',
+    xl: 'px-8 py-4 text-xl h-14'
   };
 
-  // VIBRANT CREATIVE BUTTONS
+  // CLEAN MINIMALIST BUTTONS
   const variantClasses = {
     primary: [
-      'bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white',
-      'hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600',
-      'shadow-lg hover:shadow-2xl',
-      'hover:shadow-pink-500/30',
-      'border-2 border-transparent',
-      'bg-size-200 hover:bg-pos-100',
-      'relative overflow-hidden'
+      'bg-blue-600 text-white border-blue-600',
+      'hover:bg-blue-700 hover:border-blue-700',
+      'active:bg-blue-800',
+      'shadow-sm hover:shadow-md'
     ],
     secondary: [
-      'bg-gradient-to-r from-teal-400 to-blue-500 text-white',
-      'hover:from-teal-500 hover:to-blue-600',
-      'shadow-lg hover:shadow-2xl',
-      'hover:shadow-teal-400/30',
-      'border-2 border-transparent'
+      'bg-white text-gray-700 border-gray-300',
+      'hover:bg-gray-50 hover:border-gray-400',
+      'active:bg-gray-100',
+      'shadow-sm hover:shadow-md'
     ],
     outline: [
-      'bg-transparent text-teal-400 border-2 border-teal-400',
-      'hover:bg-gradient-to-r hover:from-teal-400 hover:to-blue-500 hover:text-white',
-      'hover:shadow-lg hover:shadow-teal-400/25',
-      'hover:border-transparent'
+      'bg-transparent text-blue-600 border-blue-600',
+      'hover:bg-blue-50 hover:border-blue-700',
+      'active:bg-blue-100'
     ],
     ghost: [
-      'bg-white/5 text-white backdrop-blur-md',
-      'hover:bg-gradient-to-r hover:from-white/10 hover:to-white/20',
-      'border border-white/20',
-      'hover:shadow-lg hover:shadow-white/10'
+      'bg-transparent text-gray-600 border-transparent',
+      'hover:bg-gray-100 hover:text-gray-900',
+      'active:bg-gray-200'
     ],
     danger: [
-      'bg-gradient-to-r from-red-400 via-pink-500 to-red-500 text-white',
-      'hover:from-red-500 hover:via-pink-600 hover:to-red-600',
-      'shadow-lg hover:shadow-2xl',
-      'hover:shadow-red-500/30',
-      'border-2 border-transparent'
+      'bg-red-600 text-white border-red-600',
+      'hover:bg-red-700 hover:border-red-700',
+      'active:bg-red-800',
+      'shadow-sm hover:shadow-md'
     ]
   };
 

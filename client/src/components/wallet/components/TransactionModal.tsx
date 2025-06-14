@@ -23,34 +23,15 @@ const ModalOverlay = styled.div<{ isOpen: boolean }>`
 `;
 
 const ModalContainer = styled.div`
-  background: rgba(0, 0, 0, 0.9);
-  backdrop-filter: blur(20px);
-  border: 2px solid transparent;
-  border-radius: 24px;
-  padding: 40px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 32px;
   width: 95%;
   max-width: 800px;
   max-height: 95vh;
   overflow-y: auto;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
-  position: relative;
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    padding: 2px;
-    background: linear-gradient(45deg, #FF6B6B, #4ECDC4, #45B7D1, #96CEB4);
-    border-radius: inherit;
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: exclude;
-    animation: borderRotate 4s linear infinite;
-  }
-
-  @keyframes borderRotate {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 `;
 
 const ModalHeader = styled.div`
@@ -61,27 +42,21 @@ const ModalHeader = styled.div`
 `;
 
 const ModalTitle = styled.h2`
-  color: #fff;
-  font-size: 32px;
-  font-weight: 700;
+  color: #111827;
+  font-size: 24px;
+  font-weight: 600;
   margin: 0;
-  background: linear-gradient(45deg, #FF6B6B, #4ECDC4, #45B7D1);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
 `;
 
 const StepIndicator = styled.div`
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 32px;
-  padding: 24px;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 24px;
+  padding: 20px;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
   flex-wrap: nowrap;
   overflow-x: auto;
 `;
@@ -90,36 +65,30 @@ const StepBadge = styled.div<{ active: boolean; completed: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   background: ${props =>
-    props.completed ? 'linear-gradient(45deg, #96CEB4, #4ECDC4)' :
-    props.active ? 'linear-gradient(45deg, #FF6B6B, #45B7D1)' :
-    'rgba(255, 255, 255, 0.1)'
+    props.completed ? '#059669' :
+    props.active ? '#2563eb' :
+    '#e5e7eb'
   };
-  color: #fff;
-  box-shadow: ${props =>
-    props.completed ? '0 0 20px rgba(150, 206, 180, 0.4)' :
-    props.active ? '0 0 20px rgba(255, 107, 107, 0.4)' : 'none'
+  color: ${props =>
+    props.completed || props.active ? '#ffffff' : '#6b7280'
   };
   flex-shrink: 0;
 `;
 
 const StepText = styled.span<{ active: boolean; completed: boolean }>`
-  font-size: 18px;
+  font-size: 16px;
   color: ${props =>
-    props.completed ? '#96CEB4' :
-    props.active ? '#FF6B6B' : '#CBD5E1'
+    props.completed ? '#059669' :
+    props.active ? '#2563eb' : '#6b7280'
   };
-  font-weight: ${props => props.active ? '700' : '600'};
+  font-weight: ${props => props.active ? '600' : '500'};
   white-space: nowrap;
-  text-shadow: ${props =>
-    props.completed ? '0 0 10px rgba(150, 206, 180, 0.3)' :
-    props.active ? '0 0 10px rgba(255, 107, 107, 0.3)' : 'none'
-  };
   flex-shrink: 0;
 `;
 
