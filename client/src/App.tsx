@@ -8,6 +8,10 @@ import { cn } from './utils/cn';
 import './App.css';
 import logo from './logo.svg';
 import { processCommand } from './commands';
+import ErrorBoundary from './components/ui/ErrorBoundary';
+import { ToastNotificationContainer } from './components/ui/Toast';
+import { useToast } from './hooks/useToast';
+import { ErrorHandler } from './utils/errorHandling';
 
 // Tailwind classes for app container
 const appContainerClasses = cn(
@@ -228,6 +232,9 @@ function App() {
   const [isNetworkSwitching, setIsNetworkSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Initialize toast system
+  const toast = useToast();
+
   // Network change is handled by selectNetwork function in the UI
 
   // Resolve ENS name when wallet address changes
@@ -285,12 +292,25 @@ function App() {
         });
 
         setWalletConnected(true);
+        toast.success('Wallet Connected', {
+          message: `Successfully connected to Safe wallet on ${network}`
+        });
       } catch (error: any) {
         console.error('Failed to connect to Safe wallet:', error);
-        setError(`Failed to connect to Safe wallet: ${error.message.includes('Safe information') ? 'Invalid Safe wallet address or network' : 'Connection failed'}`);
+        const errorDetails = ErrorHandler.classifyError(error);
+        setError(errorDetails.userMessage);
+        toast.error('Connection Failed', {
+          message: errorDetails.userMessage,
+          action: {
+            label: 'Retry',
+            onClick: connectWallet
+          }
+        });
       }
     } else {
-      setError('Please enter a valid Safe wallet address');
+      const errorMsg = 'Please enter a valid Safe wallet address';
+      setError(errorMsg);
+      toast.error('Invalid Address', { message: errorMsg });
     }
   };
   
@@ -343,7 +363,9 @@ function App() {
         console.error('Failed to switch network:', error);
         // Revert network selection on error
         setNetwork(previousNetwork);
-        setError(`Failed to switch to ${selectedNetwork}: ${error.message.includes('Safe information') ? 'Safe wallet not found on this network' : 'Network connection failed'}`);
+        const errorDetails = ErrorHandler.classifyError(error);
+        setError(errorDetails.userMessage);
+        toast.networkError(selectedNetwork, () => selectNetwork(selectedNetwork));
       } finally {
         setIsNetworkSwitching(false);
       }
@@ -394,13 +416,25 @@ function App() {
   }, []);
 
   return (
-    <div className={appContainerClasses}>
-      {/* Debug Panel - Remove in production */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="fixed top-4 left-4 bg-black/80 text-white p-2 rounded text-xs z-[100] font-mono">
-          Network: {network} | Selector Open: {networkSelectorOpen ? 'Yes' : 'No'} | Switching: {isNetworkSwitching ? 'Yes' : 'No'}
-        </div>
-      )}
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error('App Error Boundary caught error:', error, errorInfo);
+        toast.error('Application Error', {
+          message: 'An unexpected error occurred. The page will reload automatically.',
+          duration: 8000
+        });
+      }}
+    >
+      <div className={appContainerClasses}>
+        {/* Toast Notifications */}
+        <ToastNotificationContainer toasts={toast.toasts} onClose={toast.removeToast} />
+
+        {/* Debug Panel - Remove in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="fixed top-4 left-4 bg-black/80 text-white p-2 rounded text-xs z-[100] font-mono">
+            Network: {network} | Selector Open: {networkSelectorOpen ? 'Yes' : 'No'} | Switching: {isNetworkSwitching ? 'Yes' : 'No'}
+          </div>
+        )}
 
       {/* Error Notification */}
       {error && (
@@ -499,7 +533,8 @@ function App() {
           </VitoContainer>
         )}
       </div>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }
 

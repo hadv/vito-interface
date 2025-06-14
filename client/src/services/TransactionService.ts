@@ -1,5 +1,7 @@
 import { ethers } from 'ethers';
 import { safeWalletService, TransactionRequest, SafeTransactionResult, SafeTransactionData } from './SafeWalletService';
+import { errorRecoveryService } from './ErrorRecoveryService';
+import { ErrorHandler } from '../utils/errorHandling';
 
 export interface SendTransactionParams {
   to: string;
@@ -16,10 +18,10 @@ export interface TransactionError {
 
 export class TransactionService {
   /**
-   * Send ETH or ERC20 tokens
+   * Send ETH or ERC20 tokens with enhanced error handling and retry logic
    */
   async sendTransaction(params: SendTransactionParams): Promise<SafeTransactionResult> {
-    try {
+    return errorRecoveryService.retry(async () => {
       let transactionRequest: TransactionRequest;
 
       if (params.token) {
@@ -40,16 +42,16 @@ export class TransactionService {
 
       // Create Safe transaction
       const safeTransaction = await safeWalletService.createTransaction(transactionRequest);
-      
+
       // Get transaction hash
       const safeTxHash = safeWalletService.getTransactionHash(safeTransaction);
-      
+
       // Sign the transaction
       const signedTransaction = await safeWalletService.signTransaction(safeTransaction);
-      
+
       // Get Safe info for threshold
       const safeInfo = await safeWalletService.getSafeInfo();
-      
+
       return {
         safeTxHash,
         transaction: signedTransaction,
@@ -57,9 +59,13 @@ export class TransactionService {
         confirmations: 1, // Current signer's confirmation
         threshold: safeInfo.threshold
       };
-    } catch (error) {
-      throw this.handleTransactionError(error);
-    }
+    }, {
+      maxAttempts: 3,
+      retryCondition: (error) => {
+        const errorDetails = ErrorHandler.classifyError(error);
+        return ErrorHandler.shouldAutoRetry(errorDetails);
+      }
+    });
   }
 
   /**
@@ -193,39 +199,78 @@ export class TransactionService {
   }
 
   /**
-   * Handle and format transaction errors
+   * Handle and format transaction errors with enhanced classification
    */
   private handleTransactionError(error: any): TransactionError {
     console.error('Transaction error:', error);
-    
-    if (error.code) {
-      return {
-        code: error.code,
-        message: error.message || 'Transaction failed',
-        details: error
-      };
-    }
-    
-    if (error.message?.includes('insufficient funds')) {
-      return {
-        code: 'INSUFFICIENT_FUNDS',
-        message: 'Insufficient funds for transaction',
-        details: error
-      };
-    }
-    
-    if (error.message?.includes('user rejected')) {
-      return {
-        code: 'USER_REJECTED',
-        message: 'Transaction was rejected by user',
-        details: error
-      };
-    }
-    
+
+    // Use the enhanced error handler for classification
+    const errorDetails = ErrorHandler.classifyError(error);
+
     return {
-      code: 'UNKNOWN_ERROR',
-      message: error.message || 'An unknown error occurred',
+      code: errorDetails.code,
+      message: errorDetails.userMessage,
       details: error
+    };
+  }
+
+  /**
+   * Enhanced transaction monitoring with error recovery
+   */
+  async monitorTransactionStatusWithRecovery(
+    safeTxHash: string,
+    onStatusUpdate: (status: any) => void,
+    onError?: (error: any) => void,
+    pollInterval: number = 5000
+  ): Promise<() => void> {
+    let isMonitoring = true;
+    let consecutiveErrors = 0;
+    const maxConsecutiveErrors = 3;
+
+    const poll = async () => {
+      if (!isMonitoring) return;
+
+      try {
+        const status = await errorRecoveryService.retryNetworkOperation(
+          () => this.getTransactionStatus(safeTxHash)
+        );
+
+        onStatusUpdate(status);
+        consecutiveErrors = 0; // Reset error counter on success
+
+        // Continue polling if transaction is still pending
+        if (status.status === 'pending' && isMonitoring) {
+          setTimeout(poll, pollInterval);
+        }
+      } catch (error) {
+        consecutiveErrors++;
+        console.error(`Error monitoring transaction status (attempt ${consecutiveErrors}):`, error);
+
+        if (onError) {
+          onError(error);
+        }
+
+        // Stop monitoring after too many consecutive errors
+        if (consecutiveErrors >= maxConsecutiveErrors) {
+          console.error('Too many consecutive errors, stopping transaction monitoring');
+          isMonitoring = false;
+          return;
+        }
+
+        // Continue polling with exponential backoff
+        if (isMonitoring) {
+          const backoffDelay = pollInterval * Math.pow(2, consecutiveErrors - 1);
+          setTimeout(poll, Math.min(backoffDelay, 30000)); // Cap at 30 seconds
+        }
+      }
+    };
+
+    // Start polling
+    poll();
+
+    // Return cleanup function
+    return () => {
+      isMonitoring = false;
     };
   }
 }

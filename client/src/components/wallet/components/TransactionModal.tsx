@@ -8,6 +8,9 @@ import { SafeTransactionData, SafeDomain } from '../../../utils/eip712';
 import { safeWalletService } from '../../../services/SafeWalletService';
 import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
 import { isSafeTxPoolConfigured } from '../../../contracts/abis';
+import { useToast } from '../../../hooks/useToast';
+import { ErrorHandler } from '../../../utils/errorHandling';
+import { errorRecoveryService } from '../../../services/ErrorRecoveryService';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -233,6 +236,10 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     domain: SafeDomain;
     txHash: string;
   } | null>(null);
+  // const [retryCount, setRetryCount] = useState(0); // Reserved for future retry functionality
+
+  // Initialize toast system
+  const toast = useToast();
 
   // Subscribe to wallet connection state changes
   useEffect(() => {
@@ -248,8 +255,13 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   const handleConnectSigner = async () => {
     try {
       await walletConnectionService.connectSignerWallet();
+      toast.success('Wallet Connected', {
+        message: 'Signer wallet connected successfully'
+      });
     } catch (error: any) {
-      setError(`Failed to connect signer wallet: ${error.message}`);
+      const errorDetails = ErrorHandler.classifyError(error);
+      setError(errorDetails.userMessage);
+      toast.walletError(errorDetails.userMessage, handleConnectSigner);
     }
   };
 
@@ -290,26 +302,41 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     setCurrentStep('form');
 
     try {
-      // Step 1: Create domain type EIP-712 transaction
-      const { safeTransactionData, domain, txHash } = await safeWalletService.createEIP712Transaction({
-        to: toAddress,
-        value: ethers.utils.parseEther(amount).toString(),
-        data: '0x',
-        operation: 0
+      // Step 1: Create domain type EIP-712 transaction with retry logic
+      const result = await errorRecoveryService.retry(async () => {
+        return await safeWalletService.createEIP712Transaction({
+          to: toAddress,
+          value: ethers.utils.parseEther(amount).toString(),
+          data: '0x',
+          operation: 0
+        });
+      }, {
+        maxAttempts: 3,
+        retryCondition: (error) => {
+          const errorDetails = ErrorHandler.classifyError(error);
+          return ErrorHandler.shouldAutoRetry(errorDetails);
+        }
       });
 
       // Set up for Step 2: Request user to sign
       setPendingTransaction({
-        data: safeTransactionData,
-        domain,
-        txHash
+        data: result.safeTransactionData,
+        domain: result.domain,
+        txHash: result.txHash
       });
       setCurrentStep('signing');
       setShowEIP712Modal(true);
 
+      toast.info('Transaction Created', {
+        message: 'Please sign the transaction in your wallet'
+      });
+
     } catch (error: any) {
-      setError(error.message || 'Failed to create EIP-712 transaction');
+      const errorDetails = ErrorHandler.classifyError(error);
+      setError(errorDetails.userMessage);
       setIsLoading(false);
+
+      toast.transactionError(errorDetails.userMessage, errorDetails.message);
     }
   };
 
@@ -319,23 +346,46 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     setCurrentStep('signing');
 
     try {
-      // Step 2: Request user to sign
-      const signature = await safeWalletService.signEIP712Transaction(
-        pendingTransaction.data,
-        pendingTransaction.domain
-      );
+      // Step 2: Request user to sign with retry logic
+      const signature = await errorRecoveryService.retry(async () => {
+        return await safeWalletService.signEIP712Transaction(
+          pendingTransaction.data,
+          pendingTransaction.domain
+        );
+      }, {
+        maxAttempts: 2, // Fewer retries for user actions
+        retryCondition: (error) => {
+          const errorDetails = ErrorHandler.classifyError(error);
+          // Don't retry user rejections
+          return errorDetails.code !== 'USER_REJECTED' && ErrorHandler.shouldAutoRetry(errorDetails);
+        }
+      });
 
       setShowEIP712Modal(false);
       setCurrentStep('proposing');
 
+      toast.info('Transaction Signed', {
+        message: 'Submitting to Safe TX Pool...'
+      });
+
       // Step 3: Use signed transaction data to propose transaction on SafeTxPool contract
-      await safeWalletService.proposeSignedTransaction(
-        pendingTransaction.data,
-        pendingTransaction.txHash,
-        signature
-      );
+      await errorRecoveryService.retry(async () => {
+        return await safeWalletService.proposeSignedTransaction(
+          pendingTransaction.data,
+          pendingTransaction.txHash,
+          signature
+        );
+      }, {
+        maxAttempts: 3,
+        retryCondition: (error) => {
+          const errorDetails = ErrorHandler.classifyError(error);
+          return ErrorHandler.shouldAutoRetry(errorDetails);
+        }
+      });
 
       setSuccess(`Transaction flow completed! Hash: ${pendingTransaction.txHash}`);
+
+      toast.transactionSuccess(pendingTransaction.txHash, 'Transaction submitted successfully');
 
       if (onTransactionCreated) {
         onTransactionCreated({
@@ -352,13 +402,24 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         setSuccess('');
         setCurrentStep('form');
         setPendingTransaction(null);
+        // setRetryCount(0); // Reset retry count when transaction completes
         onClose();
       }, 2000);
 
     } catch (error: any) {
-      setError(error.message || 'Failed to complete transaction flow');
+      const errorDetails = ErrorHandler.classifyError(error);
+      setError(errorDetails.userMessage);
       setShowEIP712Modal(false);
       setCurrentStep('form');
+
+      // Show appropriate toast based on error type
+      if (errorDetails.code === 'USER_REJECTED') {
+        toast.warning('Transaction Cancelled', {
+          message: 'Transaction was cancelled by user'
+        });
+      } else {
+        toast.transactionError(errorDetails.userMessage, errorDetails.message);
+      }
     } finally {
       setIsLoading(false);
     }
