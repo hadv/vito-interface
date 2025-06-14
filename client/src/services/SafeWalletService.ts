@@ -53,7 +53,50 @@ export class SafeWalletService {
   private onChainDataService: OnChainDataService | null = null;
 
   /**
-   * Initialize the Safe Wallet Service
+   * Check if a Safe address is valid on the given network
+   */
+  static async validateSafeAddress(safeAddress: string, rpcUrl: string): Promise<{ isValid: boolean; error?: string }> {
+    try {
+      if (!rpcUrl) {
+        return {
+          isValid: false,
+          error: 'RPC URL is required for Safe address validation'
+        };
+      }
+
+      const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+
+      // Check if the address has code (is a contract)
+      const code = await provider.getCode(safeAddress);
+      if (code === '0x') {
+        return {
+          isValid: false,
+          error: `No contract found at address ${safeAddress}. Please verify the Safe address and network.`
+        };
+      }
+
+      // Try to create a Safe contract and call a simple view function
+      const safeContract = new ethers.Contract(safeAddress, SAFE_ABI, provider);
+      await safeContract.getThreshold();
+
+      return { isValid: true };
+    } catch (error: any) {
+      if (error.code === 'CALL_EXCEPTION') {
+        return {
+          isValid: false,
+          error: `Invalid Safe contract at ${safeAddress}. The contract may not be a Safe wallet or may not be deployed on this network.`
+        };
+      }
+
+      return {
+        isValid: false,
+        error: `Failed to validate Safe address: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * Initialize the Safe Wallet Service with validation
    */
   async initialize(config: SafeWalletConfig, signer?: ethers.Signer): Promise<void> {
     this.config = config;
@@ -116,7 +159,38 @@ export class SafeWalletService {
   }
 
   /**
-   * Get Safe information
+   * Validate that the Safe contract exists and is valid
+   */
+  private async validateSafeContract(): Promise<void> {
+    if (!this.safeContract || !this.provider || !this.config) {
+      throw new Error('Safe contract or provider not available');
+    }
+
+    try {
+      // Check if the address has code (is a contract)
+      const code = await this.provider.getCode(this.config.safeAddress);
+      if (code === '0x') {
+        throw new Error(`No contract found at address ${this.config.safeAddress}. Please verify the Safe address and network.`);
+      }
+
+      // Try to call a simple view function to verify it's a Safe contract
+      await this.safeContract.getThreshold();
+    } catch (error: any) {
+      if (error.message.includes('No contract found')) {
+        throw error;
+      }
+
+      // More specific error messages based on the error type
+      if (error.code === 'CALL_EXCEPTION') {
+        throw new Error(`Invalid Safe contract at ${this.config.safeAddress}. The contract may not be a Safe wallet or may not be deployed on the ${this.config.network} network.`);
+      }
+
+      throw new Error(`Failed to validate Safe contract: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get Safe information with enhanced error handling
    */
   async getSafeInfo() {
     this.ensureInitialized();
@@ -126,6 +200,9 @@ export class SafeWalletService {
     }
 
     try {
+      // First validate the Safe contract
+      await this.validateSafeContract();
+
       const [owners, threshold, balance, network] = await Promise.all([
         this.safeContract.getOwners(),
         this.safeContract.getThreshold(),
@@ -140,9 +217,15 @@ export class SafeWalletService {
         balance: ethers.utils.formatEther(balance),
         chainId: network.chainId
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting Safe info:', error);
-      throw new Error(`Failed to get Safe information: ${error}`);
+
+      // Provide more helpful error messages
+      if (error.message.includes('No contract found') || error.message.includes('Invalid Safe contract')) {
+        throw error;
+      }
+
+      throw new Error(`Failed to get Safe information: ${error.message || error}`);
     }
   }
 
@@ -193,9 +276,19 @@ export class SafeWalletService {
         domain,
         txHash
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating EIP-712 transaction:', error);
-      throw error;
+
+      // Provide more helpful error messages
+      if (error.message.includes('No contract found') || error.message.includes('Invalid Safe contract')) {
+        throw error;
+      }
+
+      if (error.message.includes('Cannot get nonce')) {
+        throw error;
+      }
+
+      throw new Error(`Failed to create EIP-712 transaction: ${error.message || error}`);
     }
   }
 
@@ -501,7 +594,7 @@ export class SafeWalletService {
   }
 
   /**
-   * Get the current nonce for the Safe
+   * Get the current nonce for the Safe with enhanced error handling
    */
   async getNonce(): Promise<number> {
     this.ensureInitialized();
@@ -511,11 +604,28 @@ export class SafeWalletService {
     }
 
     try {
+      // First validate the Safe contract
+      await this.validateSafeContract();
+
       const nonce = await this.safeContract.nonce();
       return nonce.toNumber();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting nonce:', error);
-      throw new Error(`Failed to get Safe nonce: ${error}`);
+
+      // Provide more specific error messages
+      if (error.message.includes('No contract found') || error.message.includes('Invalid Safe contract')) {
+        throw error;
+      }
+
+      if (error.code === 'CALL_EXCEPTION') {
+        throw new Error(`Cannot get nonce from Safe contract at ${this.config!.safeAddress}. Please verify this is a valid Safe wallet address on the ${this.config!.network} network.`);
+      }
+
+      if (error.message.includes('network')) {
+        throw new Error(`Network error while getting Safe nonce. Please check your internet connection and try again.`);
+      }
+
+      throw new Error(`Failed to get Safe nonce: ${error.message || error}`);
     }
   }
 

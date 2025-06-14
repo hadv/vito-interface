@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
-import { safeWalletService, SafeWalletConfig } from './SafeWalletService';
+import { safeWalletService, SafeWalletService, SafeWalletConfig } from './SafeWalletService';
+import { getRpcUrl } from '../contracts/abis';
 
 export interface WalletConnectionState {
   isConnected: boolean;
@@ -41,6 +42,14 @@ export class WalletConnectionService {
       const readOnlyMode = params.readOnlyMode || false;
       let userAddress: string | undefined;
       let isOwner = false;
+
+      // Validate Safe address before attempting to connect
+      // Use provided rpcUrl or get default for network
+      const rpcUrl = params.rpcUrl || getRpcUrl(params.network);
+      const validation = await SafeWalletService.validateSafeAddress(params.safeAddress, rpcUrl);
+      if (!validation.isValid) {
+        throw new Error(validation.error);
+      }
 
       // Initialize Safe Wallet Service first to validate the Safe wallet
       const config: SafeWalletConfig = {

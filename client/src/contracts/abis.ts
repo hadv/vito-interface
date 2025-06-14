@@ -379,3 +379,17 @@ export const NETWORK_CONFIGS = {
     isTestnet: false
   }
 };
+
+/**
+ * Get RPC URL for a specific network
+ * @param network The network name (ethereum, sepolia, arbitrum)
+ * @returns RPC URL for the network
+ */
+export const getRpcUrl = (network: string): string => {
+  const config = NETWORK_CONFIGS[network as keyof typeof NETWORK_CONFIGS];
+  if (!config) {
+    console.warn(`Network configuration not found for: ${network}, defaulting to ethereum`);
+    return NETWORK_CONFIGS.ethereum.rpcUrl;
+  }
+  return config.rpcUrl;
+};
