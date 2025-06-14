@@ -62,8 +62,8 @@ const WalletInfoContainer = styled.div`
 `;
 
 const ENSName = styled.div`
-  font-size: ${theme.typography.fontSize.lg};
-  font-weight: ${theme.typography.fontWeight.semibold};
+  font-size: ${theme.typography.fontSize.xl};
+  font-weight: ${theme.typography.fontWeight.bold};
   margin-bottom: ${theme.spacing[1]};
   color: ${theme.colors.primary[400]};
   text-align: left;
@@ -97,8 +97,9 @@ const ENSLoadingIndicator = styled.div`
 `;
 
 const WalletAddressValue = styled.div`
-  font-size: ${theme.typography.fontSize.sm};
-  color: ${theme.colors.text.tertiary};
+  font-size: ${theme.typography.fontSize.base};
+  font-weight: ${theme.typography.fontWeight.medium};
+  color: ${theme.colors.text.secondary};
   margin-bottom: ${theme.spacing[3]};
   text-align: left;
   font-family: ${theme.typography.fontFamily.mono.join(', ')};

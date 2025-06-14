@@ -75,12 +75,12 @@ const StepBadge = styled.div<{ active: boolean; completed: boolean }>`
 `;
 
 const StepText = styled.span<{ active: boolean; completed: boolean }>`
-  font-size: 14px;
+  font-size: 15px;
   color: ${props =>
     props.completed ? '#10b981' :
-    props.active ? '#3b82f6' : '#9ca3af'
+    props.active ? '#3b82f6' : '#c4c4c4'
   };
-  font-weight: ${props => props.active ? '600' : '400'};
+  font-weight: ${props => props.active ? '600' : '500'};
 `;
 
 const StepSeparator = styled.div`

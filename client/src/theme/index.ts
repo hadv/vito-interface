@@ -54,13 +54,14 @@ export const theme = {
       elevated: '#2a2a2a',
     },
     
-    // Text Colors
+    // Text Colors - Enhanced for better readability
     text: {
-      primary: '#ffffff',
-      secondary: '#d4d4d4',
-      tertiary: '#a3a3a3',
-      muted: '#737373',
-      inverse: '#0a0a0a',
+      primary: '#ffffff',     // Pure white for main content
+      secondary: '#e5e5e5',   // Brighter secondary text (was #d4d4d4)
+      tertiary: '#c4c4c4',    // Improved tertiary text (was #a3a3a3)
+      muted: '#9ca3af',       // Better muted text (was #737373)
+      disabled: '#6b7280',    // For disabled states
+      inverse: '#0a0a0a',     // For light backgrounds
     },
     
     // Status Colors
@@ -91,15 +92,15 @@ export const theme = {
     },
   },
   
-  // Typography
+  // Typography - Enhanced for better readability
   typography: {
     fontFamily: {
       sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
     },
     fontSize: {
-      xs: '0.75rem',    // 12px
-      sm: '0.875rem',   // 14px
+      xs: '0.8125rem',  // 13px - increased from 12px for better readability
+      sm: '0.9375rem',  // 15px - increased from 14px
       base: '1rem',     // 16px
       lg: '1.125rem',   // 18px
       xl: '1.25rem',    // 20px
@@ -108,10 +109,12 @@ export const theme = {
       '4xl': '2.25rem', // 36px
     },
     fontWeight: {
+      light: '300',     // Added for specific use cases
       normal: '400',
       medium: '500',
-      semibold: '600',
-      bold: '700',
+      semibold: '600',  // Default for most UI text
+      bold: '700',      // For headings and emphasis
+      extrabold: '800', // For strong emphasis
     },
     lineHeight: {
       tight: '1.25',
@@ -181,6 +184,32 @@ export const theme = {
       light: 'rgba(255, 255, 255, 0.05)',
       medium: 'rgba(255, 255, 255, 0.1)',
       dark: 'rgba(0, 0, 0, 0.1)',
+    }
+  },
+
+  // Enhanced Typography Utilities for better readability
+  textStyles: {
+    // Headings with improved readability
+    heading: {
+      h1: `font-size: 2.25rem; font-weight: 700; line-height: 1.25; color: #ffffff;`,
+      h2: `font-size: 1.875rem; font-weight: 700; line-height: 1.25; color: #ffffff;`,
+      h3: `font-size: 1.5rem; font-weight: 600; line-height: 1.3; color: #ffffff;`,
+      h4: `font-size: 1.25rem; font-weight: 600; line-height: 1.3; color: #e5e5e5;`,
+      h5: `font-size: 1.125rem; font-weight: 600; line-height: 1.4; color: #e5e5e5;`,
+      h6: `font-size: 1rem; font-weight: 600; line-height: 1.4; color: #e5e5e5;`,
+    },
+    // Body text with enhanced readability
+    body: {
+      large: `font-size: 1.125rem; font-weight: 500; line-height: 1.6; color: #e5e5e5;`,
+      base: `font-size: 1rem; font-weight: 500; line-height: 1.5; color: #e5e5e5;`,
+      small: `font-size: 0.9375rem; font-weight: 500; line-height: 1.5; color: #c4c4c4;`,
+    },
+    // UI text with better contrast
+    ui: {
+      label: `font-size: 0.9375rem; font-weight: 600; line-height: 1.4; color: #e5e5e5;`,
+      button: `font-size: 1rem; font-weight: 600; line-height: 1.2; color: inherit;`,
+      caption: `font-size: 0.8125rem; font-weight: 500; line-height: 1.4; color: #c4c4c4;`,
+      helper: `font-size: 0.8125rem; font-weight: 500; line-height: 1.3; color: #9ca3af;`,
     }
   },
   
