@@ -54,13 +54,13 @@ export const theme = {
       elevated: '#2a2a2a',
     },
     
-    // Text Colors - Enhanced for better readability
+    // Text Colors - Much brighter for maximum readability
     text: {
       primary: '#ffffff',     // Pure white for main content
-      secondary: '#e5e5e5',   // Brighter secondary text (was #d4d4d4)
-      tertiary: '#c4c4c4',    // Improved tertiary text (was #a3a3a3)
-      muted: '#9ca3af',       // Better muted text (was #737373)
-      disabled: '#6b7280',    // For disabled states
+      secondary: '#f0f0f0',   // Very bright secondary text
+      tertiary: '#e0e0e0',    // Bright tertiary text
+      muted: '#d0d0d0',       // Much brighter muted text
+      disabled: '#a0a0a0',    // Brighter disabled states
       inverse: '#0a0a0a',     // For light backgrounds
     },
     
@@ -99,22 +99,22 @@ export const theme = {
       mono: ['SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', 'monospace'],
     },
     fontSize: {
-      xs: '0.8125rem',  // 13px - increased from 12px for better readability
-      sm: '0.9375rem',  // 15px - increased from 14px
-      base: '1rem',     // 16px
-      lg: '1.125rem',   // 18px
-      xl: '1.25rem',    // 20px
-      '2xl': '1.5rem',  // 24px
-      '3xl': '1.875rem', // 30px
-      '4xl': '2.25rem', // 36px
+      xs: '1rem',       // 16px - much larger minimum size
+      sm: '1.125rem',   // 18px - increased significantly
+      base: '1.25rem',  // 20px - larger base size
+      lg: '1.5rem',     // 24px - much more readable
+      xl: '1.75rem',    // 28px - significantly larger
+      '2xl': '2rem',    // 32px - very readable
+      '3xl': '2.5rem',  // 40px - large headings
+      '4xl': '3rem',    // 48px - very large headings
     },
     fontWeight: {
-      light: '300',     // Added for specific use cases
-      normal: '400',
-      medium: '500',
-      semibold: '600',  // Default for most UI text
-      bold: '700',      // For headings and emphasis
-      extrabold: '800', // For strong emphasis
+      light: '400',     // Minimum weight - no thin text
+      normal: '500',    // Heavier normal weight
+      medium: '600',    // Bold medium weight
+      semibold: '700',  // Very bold for UI text
+      bold: '800',      // Extra bold for headings
+      extrabold: '900', // Maximum boldness
     },
     lineHeight: {
       tight: '1.25',

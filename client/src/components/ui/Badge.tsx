@@ -16,16 +16,16 @@ const getBadgeClasses = (
 ) => {
   const baseClasses = [
     'inline-flex items-center justify-center',
-    'font-medium rounded-full whitespace-nowrap'
+    'font-bold rounded-full whitespace-nowrap'
   ];
 
-  // Size classes with improved readability
+  // Size classes with much larger, more readable text
   const sizeClasses = dot
-    ? 'w-2 h-2 p-0'
+    ? 'w-3 h-3 p-0'
     : {
-        sm: 'px-2 py-1 text-sm h-5',
-        md: 'px-3 py-1 text-sm h-6',
-        lg: 'px-4 py-2 text-base h-8'
+        sm: 'px-3 py-2 text-base h-7',
+        md: 'px-4 py-2 text-lg h-8',
+        lg: 'px-5 py-3 text-xl h-10'
       }[size];
 
   // Variant classes using standard Tailwind colors

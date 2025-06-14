@@ -74,10 +74,10 @@ const getInputWrapperClasses = (
 
 const getInputClasses = () => cn(
   'flex-1 bg-transparent border-0 outline-none',
-  'text-white text-base font-normal font-sans',
-  'placeholder:text-gray-400',
+  'text-white text-lg font-semibold font-sans',
+  'placeholder:text-gray-300',
   'disabled:opacity-50 disabled:cursor-not-allowed',
-  'px-3'
+  'px-4'
 );
 
 const getIconClasses = (position: 'left' | 'right') => cn(
@@ -88,8 +88,8 @@ const getIconClasses = (position: 'left' | 'right') => cn(
 );
 
 const getHelperTextClasses = (isError: boolean) => cn(
-  'text-sm mt-1 font-normal',
-  isError ? 'text-red-400' : 'text-gray-400'
+  'text-base mt-2 font-medium',
+  isError ? 'text-red-300' : 'text-gray-200'
 );
 
 // Styled components replaced with Tailwind classes above

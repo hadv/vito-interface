@@ -109,37 +109,54 @@ input, textarea, select, button {
   background-color: transparent;
 }
 
-/* Enhanced text styling for better readability */
+/* Enhanced text styling for much better readability */
 h1, h2, h3, h4, h5, h6 {
-  color: inherit;
-  font-weight: 700;
-  line-height: 1.25;
+  color: #ffffff;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
-h1 { font-size: 2.25rem; }
-h2 { font-size: 1.875rem; }
-h3 { font-size: 1.5rem; font-weight: 600; }
-h4 { font-size: 1.25rem; font-weight: 600; }
-h5 { font-size: 1.125rem; font-weight: 600; }
-h6 { font-size: 1rem; font-weight: 600; }
+h1 { font-size: 3rem; }
+h2 { font-size: 2.5rem; }
+h3 { font-size: 2rem; font-weight: 700; }
+h4 { font-size: 1.75rem; font-weight: 700; }
+h5 { font-size: 1.5rem; font-weight: 700; }
+h6 { font-size: 1.25rem; font-weight: 700; }
 
 p, span, div, label {
-  color: inherit;
-  font-weight: 500;
+  color: #f0f0f0;
+  font-weight: 600;
+  font-size: 1.1rem;
+  line-height: 1.5;
 }
 
-/* Improved text utilities */
+/* Much more readable text utilities */
 .text-readable {
-  font-weight: 500;
-  color: #e5e5e5;
+  font-weight: 600;
+  color: #f0f0f0;
+  font-size: 1.1rem;
 }
 
 .text-emphasis {
-  font-weight: 600;
+  font-weight: 700;
   color: #ffffff;
+  font-size: 1.2rem;
 }
 
 .text-strong {
-  font-weight: 700;
+  font-weight: 800;
   color: #ffffff;
+  font-size: 1.3rem;
+}
+
+/* Make all text larger and bolder by default */
+* {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+body {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f0f0f0;
 }
