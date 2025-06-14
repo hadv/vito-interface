@@ -20,7 +20,7 @@ html, body {
 
 #root {
   height: 100%;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); /* gray-900 to gray-800 */
+  background: #0f172a; /* solid gray-900 for flat design */
 }
 
 /* Remove default React styles */
@@ -89,12 +89,13 @@ code {
   animation: logo-spin infinite 20s linear;
 }
 
-/* Gradient text utilities */
-.gradient-text {
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); /* blue-500 to purple-500 */
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+/* Flat accent text utilities */
+.accent-text {
+  color: #3b82f6; /* solid blue-500 for flat design */
+}
+
+.accent-text-secondary {
+  color: #8b5cf6; /* solid purple-500 for flat design */
 }
 
 /* Glass effect utilities */

@@ -12,7 +12,7 @@ import { processCommand } from './commands';
 // Tailwind classes for app container
 const appContainerClasses = cn(
   'h-screen text-white',
-  'bg-gradient-to-br from-gray-950 to-gray-900',
+  'bg-gray-950',
   'font-sans flex flex-col',
   'p-0 m-0'
 );
@@ -22,10 +22,7 @@ const headerClasses = cn(
   'flex justify-between items-center',
   'bg-white/5 backdrop-blur-md',
   'px-6 py-4 border-b border-gray-800',
-  'h-16 box-border relative overflow-visible',
-  'before:absolute before:inset-0',
-  'before:bg-gradient-to-r before:from-blue-500/20 before:via-transparent before:to-purple-500/20',
-  'before:pointer-events-none'
+  'h-16 box-border relative overflow-visible'
 );
 
 // Tailwind classes for logo section
@@ -33,8 +30,7 @@ const logoContainerClasses = 'flex items-center h-full relative z-10';
 const logoClasses = 'h-8 mr-3 drop-shadow-md';
 const appNameClasses = cn(
   'm-0 text-2xl font-bold leading-none',
-  'bg-gradient-to-br from-blue-400 to-purple-400',
-  'bg-clip-text text-transparent'
+  'text-blue-400'
 );
 
 // These utility functions are kept for potential future use

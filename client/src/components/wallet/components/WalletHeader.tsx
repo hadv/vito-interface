@@ -36,7 +36,7 @@ const Container = styled.div`
   align-items: flex-start;
   border-bottom: 1px solid ${theme.colors.border.tertiary};
   margin-bottom: ${theme.spacing[2]};
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+  background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(10px);
   position: relative;
 
@@ -44,10 +44,12 @@ const Container = styled.div`
     content: '';
     position: absolute;
     bottom: 0;
-    left: ${theme.spacing[6]};
-    right: ${theme.spacing[6]};
-    height: 1px;
-    background: linear-gradient(90deg, transparent 0%, ${theme.colors.primary[500]}40 50%, transparent 100%);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 2px;
+    background: ${theme.colors.primary[500]};
+    border-radius: 1px;
   }
 `;
 
@@ -63,14 +65,10 @@ const ENSName = styled.div`
   font-size: ${theme.typography.fontSize.lg};
   font-weight: ${theme.typography.fontWeight.semibold};
   margin-bottom: ${theme.spacing[1]};
-  color: ${theme.colors.text.primary};
+  color: ${theme.colors.primary[400]};
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
-  background: linear-gradient(135deg, ${theme.colors.primary[400]} 0%, ${theme.colors.secondary[400]} 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 `;
 
 const ENSLoadingIndicator = styled.div`

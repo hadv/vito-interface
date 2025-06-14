@@ -40,32 +40,35 @@ const getButtonClasses = (
     xl: 'px-8 py-5 text-xl h-14'
   };
 
-  // Variant classes using standard Tailwind colors
+  // Variant classes using flat design principles
   const variantClasses = {
     primary: [
-      'bg-gradient-to-br from-blue-500 to-blue-600',
-      'text-white shadow-md',
-      'hover:from-blue-600 hover:to-blue-700',
-      'hover:shadow-lg hover:-translate-y-0.5',
-      'active:translate-y-0 active:shadow-sm'
+      'bg-blue-500 text-white',
+      'hover:bg-blue-600',
+      'active:bg-blue-700',
+      'shadow-sm hover:shadow-md',
+      'transition-all duration-200'
     ],
     secondary: [
       'bg-gray-800 text-white border border-gray-600',
-      'hover:bg-gray-700 hover:border-gray-500'
+      'hover:bg-gray-700 hover:border-gray-500',
+      'active:bg-gray-900'
     ],
     outline: [
       'bg-transparent text-blue-500 border border-blue-500',
-      'hover:bg-blue-500 hover:text-white'
+      'hover:bg-blue-500 hover:text-white',
+      'active:bg-blue-600'
     ],
     ghost: [
       'bg-transparent text-gray-300',
-      'hover:bg-gray-800 hover:text-white'
+      'hover:bg-gray-800 hover:text-white',
+      'active:bg-gray-900'
     ],
     danger: [
-      'bg-gradient-to-br from-red-500 to-red-600',
-      'text-white',
-      'hover:from-red-600 hover:to-red-700',
-      'hover:-translate-y-0.5'
+      'bg-red-500 text-white',
+      'hover:bg-red-600',
+      'active:bg-red-700',
+      'shadow-sm hover:shadow-md'
     ]
   };
 

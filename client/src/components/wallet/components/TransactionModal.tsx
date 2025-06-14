@@ -23,7 +23,7 @@ const ModalOverlay = styled.div<{ isOpen: boolean }>`
 `;
 
 const ModalContainer = styled.div`
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  background: #1a1a1a;
   border: 1px solid #404040;
   border-radius: 16px;
   padding: 24px;
@@ -31,6 +31,7 @@ const ModalContainer = styled.div`
   max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
 `;
 
 const ModalHeader = styled.div`

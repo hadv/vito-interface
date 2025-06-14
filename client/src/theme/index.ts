@@ -166,6 +166,23 @@ export const theme = {
     normal: '250ms ease-in-out',
     slow: '350ms ease-in-out',
   },
+
+  // Flat Design Utilities
+  flat: {
+    // Subtle elevation without gradients
+    elevation: {
+      none: 'box-shadow: none;',
+      low: 'box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);',
+      medium: 'box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);',
+      high: 'box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);',
+    },
+    // Flat color overlays
+    overlay: {
+      light: 'rgba(255, 255, 255, 0.05)',
+      medium: 'rgba(255, 255, 255, 0.1)',
+      dark: 'rgba(0, 0, 0, 0.1)',
+    }
+  },
   
   // Z-Index
   zIndex: {

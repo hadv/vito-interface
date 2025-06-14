@@ -18,7 +18,7 @@ const StyledMenuItem = styled.div<{ active: boolean }>`
   font-weight: ${props => props.active ? theme.typography.fontWeight.semibold : theme.typography.fontWeight.medium};
   color: ${props => props.active ? theme.colors.text.primary : theme.colors.text.tertiary};
   background: ${props => props.active ?
-    `linear-gradient(135deg, ${theme.colors.primary[500]}20 0%, ${theme.colors.primary[600]}10 100%)` :
+    `${theme.colors.primary[500]}15` :
     'transparent'};
   border: 1px solid ${props => props.active ? theme.colors.primary[500] + '40' : 'transparent'};
   border-radius: ${theme.borderRadius.xl};
@@ -37,7 +37,7 @@ const StyledMenuItem = styled.div<{ active: boolean }>`
     bottom: 0;
     width: 3px;
     background: ${props => props.active ?
-      `linear-gradient(180deg, ${theme.colors.primary[400]} 0%, ${theme.colors.primary[600]} 100%)` :
+      theme.colors.primary[500] :
       'transparent'};
     border-radius: 0 2px 2px 0;
     transition: ${theme.transitions.normal};
@@ -45,7 +45,7 @@ const StyledMenuItem = styled.div<{ active: boolean }>`
 
   &:hover {
     background: ${props => props.active ?
-      `linear-gradient(135deg, ${theme.colors.primary[500]}30 0%, ${theme.colors.primary[600]}20 100%)` :
+      `${theme.colors.primary[500]}25` :
       `rgba(255, 255, 255, 0.05)`};
     color: ${theme.colors.text.primary};
     transform: translateX(2px);

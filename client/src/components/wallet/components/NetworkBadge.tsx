@@ -33,7 +33,7 @@ const NetworkBadgeContainer = styled.div<{ networkColor: string }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, ${props => props.networkColor} 0%, ${props => props.networkColor}CC 100%);
+  background: ${props => props.networkColor};
   color: ${theme.colors.text.inverse};
   padding: ${theme.spacing[3]} ${theme.spacing[5]};
   margin: ${theme.spacing[4]};
@@ -42,28 +42,15 @@ const NetworkBadgeContainer = styled.div<{ networkColor: string }>`
   font-weight: ${theme.typography.fontWeight.bold};
   text-transform: uppercase;
   letter-spacing: 1px;
-  box-shadow: ${theme.shadows.md};
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
-  position: relative;
-  overflow: hidden;
+  box-shadow: ${theme.shadows.sm};
+  border: 1px solid rgba(255, 255, 255, 0.1);
   width: calc(100% - ${theme.spacing[8]});
   box-sizing: border-box;
+  transition: ${theme.transitions.fast};
 
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    animation: shimmer 3s infinite;
-  }
-
-  @keyframes shimmer {
-    0% { left: -100%; }
-    100% { left: 100%; }
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: ${theme.shadows.md};
   }
 `;
 
