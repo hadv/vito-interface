@@ -40,35 +40,38 @@ const getInputWrapperClasses = (
     lg: 'h-13'
   };
 
-  // SIMPLE BLUE ONLY - Bold and Clear
+  // MODERN ATTRACTIVE INPUTS
   const variantClasses = {
     default: [
-      'bg-slate-800 border-slate-600 rounded-lg',
-      'focus-within:border-blue-500 focus-within:bg-slate-700',
-      'hover:border-slate-500',
-      'transition-all duration-200',
-      hasError ? 'border-red-500 focus-within:border-red-500' : ''
+      'bg-white/10 border-white/20 rounded-2xl backdrop-blur-sm',
+      'focus-within:border-blue-400 focus-within:bg-blue-500/10',
+      'focus-within:shadow-lg focus-within:shadow-blue-500/20',
+      'hover:border-white/30 hover:bg-white/15',
+      'transition-all duration-300 ease-out',
+      hasError ? 'border-red-400 focus-within:border-red-400 focus-within:shadow-red-500/20' : ''
     ],
     filled: [
-      'bg-slate-700 border-transparent rounded-lg',
-      'focus-within:border-blue-500 focus-within:bg-slate-600',
-      'hover:bg-slate-600',
-      'transition-all duration-200',
-      hasError ? 'border-red-500 focus-within:border-red-500' : ''
+      'bg-white/15 border-transparent rounded-2xl backdrop-blur-sm',
+      'focus-within:border-blue-400 focus-within:bg-blue-500/15',
+      'focus-within:shadow-lg focus-within:shadow-blue-500/20',
+      'hover:bg-white/20',
+      'transition-all duration-300 ease-out',
+      hasError ? 'border-red-400 focus-within:border-red-400 bg-red-500/15' : ''
     ],
     outlined: [
-      'bg-transparent border-slate-500 rounded-lg',
-      'focus-within:border-blue-500',
-      'hover:border-slate-400',
-      'transition-all duration-200',
-      hasError ? 'border-red-500 focus-within:border-red-500' : ''
+      'bg-transparent border-white/30 rounded-2xl',
+      'focus-within:border-blue-400 focus-within:bg-blue-500/5',
+      'focus-within:shadow-lg focus-within:shadow-blue-500/20',
+      'hover:border-white/40',
+      'transition-all duration-300 ease-out',
+      hasError ? 'border-red-400 focus-within:border-red-400' : ''
     ]
   };
 
-  // Simple focus ring
+  // Modern glowing focus ring
   const focusClasses = hasError
-    ? 'focus-within:ring-2 focus-within:ring-red-500'
-    : 'focus-within:ring-2 focus-within:ring-blue-500';
+    ? 'focus-within:ring-4 focus-within:ring-red-400/30'
+    : 'focus-within:ring-4 focus-within:ring-blue-400/30';
 
   return cn(
     baseClasses,
@@ -80,10 +83,10 @@ const getInputWrapperClasses = (
 
 const getInputClasses = () => cn(
   'flex-1 bg-transparent border-0 outline-none',
-  'text-white text-lg font-bold font-sans',
-  'placeholder:text-slate-400 placeholder:font-bold',
+  'text-white text-xl font-bold font-sans',
+  'placeholder:text-slate-300 placeholder:font-semibold',
   'disabled:opacity-50 disabled:cursor-not-allowed',
-  'px-4'
+  'px-6 py-1'
 );
 
 const getIconClasses = (position: 'left' | 'right') => cn(
