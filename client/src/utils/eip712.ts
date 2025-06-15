@@ -44,113 +44,211 @@ export function createDomainSeparator(domain: SafeDomain): string {
 }
 
 /**
- * Create Safe transaction hash for EIP-712 signing
+ * Validate and normalize address with proper checksum
+ */
+function normalizeAddress(address: string): string {
+  try {
+    return ethers.utils.getAddress(address);
+  } catch (error) {
+    throw new Error(`Invalid address format: ${address}`);
+  }
+}
+
+/**
+ * Create Safe transaction hash for EIP-712 signing with address validation
  */
 export function createSafeTransactionHash(
   domain: SafeDomain,
   txData: SafeTransactionData
 ): string {
-  const domainSeparator = createDomainSeparator(domain);
-  
-  const safeTxHash = ethers.utils.keccak256(
-    ethers.utils.defaultAbiCoder.encode(
-      ['bytes32', 'address', 'uint256', 'bytes32', 'uint8', 'uint256', 'uint256', 'uint256', 'address', 'address', 'uint256'],
-      [
-        SAFE_TX_TYPEHASH,
-        txData.to,
-        txData.value,
-        ethers.utils.keccak256(txData.data),
-        txData.operation,
-        txData.safeTxGas,
-        txData.baseGas,
-        txData.gasPrice,
-        txData.gasToken,
-        txData.refundReceiver,
-        txData.nonce
-      ]
-    )
-  );
+  try {
+    // Validate and normalize addresses
+    const normalizedDomain = {
+      chainId: domain.chainId,
+      verifyingContract: normalizeAddress(domain.verifyingContract)
+    };
 
-  return ethers.utils.keccak256(
-    ethers.utils.solidityPack(
-      ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
-      ['0x19', '0x01', domainSeparator, safeTxHash]
-    )
-  );
+    const normalizedTxData = {
+      ...txData,
+      to: normalizeAddress(txData.to),
+      gasToken: normalizeAddress(txData.gasToken),
+      refundReceiver: normalizeAddress(txData.refundReceiver)
+    };
+
+    const domainSeparator = createDomainSeparator(normalizedDomain);
+
+    const safeTxHash = ethers.utils.keccak256(
+      ethers.utils.defaultAbiCoder.encode(
+        ['bytes32', 'address', 'uint256', 'bytes32', 'uint8', 'uint256', 'uint256', 'uint256', 'address', 'address', 'uint256'],
+        [
+          SAFE_TX_TYPEHASH,
+          normalizedTxData.to,
+          normalizedTxData.value,
+          ethers.utils.keccak256(normalizedTxData.data),
+          normalizedTxData.operation,
+          normalizedTxData.safeTxGas,
+          normalizedTxData.baseGas,
+          normalizedTxData.gasPrice,
+          normalizedTxData.gasToken,
+          normalizedTxData.refundReceiver,
+          normalizedTxData.nonce
+        ]
+      )
+    );
+
+    return ethers.utils.keccak256(
+      ethers.utils.solidityPack(
+        ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
+        ['0x19', '0x01', domainSeparator, safeTxHash]
+      )
+    );
+  } catch (error: any) {
+    console.error('❌ Error creating Safe transaction hash:', error);
+    throw new Error(`Failed to create Safe transaction hash: ${error.message}`);
+  }
 }
 
 /**
- * Create EIP-712 typed data structure for Safe transaction
+ * Create EIP-712 typed data structure for Safe transaction with address validation
  */
 export function createSafeTransactionTypedData(
   domain: SafeDomain,
   txData: SafeTransactionData
 ) {
-  return {
-    types: {
-      EIP712Domain: [
-        { name: 'chainId', type: 'uint256' },
-        { name: 'verifyingContract', type: 'address' }
-      ],
-      SafeTx: [
-        { name: 'to', type: 'address' },
-        { name: 'value', type: 'uint256' },
-        { name: 'data', type: 'bytes' },
-        { name: 'operation', type: 'uint8' },
-        { name: 'safeTxGas', type: 'uint256' },
-        { name: 'baseGas', type: 'uint256' },
-        { name: 'gasPrice', type: 'uint256' },
-        { name: 'gasToken', type: 'address' },
-        { name: 'refundReceiver', type: 'address' },
-        { name: 'nonce', type: 'uint256' }
-      ]
-    },
-    primaryType: 'SafeTx',
-    domain: {
+  try {
+    // Validate and normalize addresses
+    const normalizedDomain = {
       chainId: domain.chainId,
-      verifyingContract: domain.verifyingContract
-    },
-    message: {
-      to: txData.to,
-      value: txData.value,
-      data: txData.data,
-      operation: txData.operation,
-      safeTxGas: txData.safeTxGas,
-      baseGas: txData.baseGas,
-      gasPrice: txData.gasPrice,
-      gasToken: txData.gasToken,
-      refundReceiver: txData.refundReceiver,
-      nonce: txData.nonce
-    }
-  };
+      verifyingContract: normalizeAddress(domain.verifyingContract)
+    };
+
+    const normalizedTxData = {
+      ...txData,
+      to: normalizeAddress(txData.to),
+      gasToken: normalizeAddress(txData.gasToken),
+      refundReceiver: normalizeAddress(txData.refundReceiver)
+    };
+
+    return {
+      types: {
+        EIP712Domain: [
+          { name: 'chainId', type: 'uint256' },
+          { name: 'verifyingContract', type: 'address' }
+        ],
+        SafeTx: [
+          { name: 'to', type: 'address' },
+          { name: 'value', type: 'uint256' },
+          { name: 'data', type: 'bytes' },
+          { name: 'operation', type: 'uint8' },
+          { name: 'safeTxGas', type: 'uint256' },
+          { name: 'baseGas', type: 'uint256' },
+          { name: 'gasPrice', type: 'uint256' },
+          { name: 'gasToken', type: 'address' },
+          { name: 'refundReceiver', type: 'address' },
+          { name: 'nonce', type: 'uint256' }
+        ]
+      },
+      primaryType: 'SafeTx',
+      domain: normalizedDomain,
+      message: normalizedTxData
+    };
+  } catch (error: any) {
+    console.error('❌ Error creating EIP-712 typed data:', error);
+    throw new Error(`Failed to create EIP-712 typed data: ${error.message}`);
+  }
 }
 
 /**
- * Sign Safe transaction using EIP-712
+ * Sign Safe transaction using EIP-712 with enhanced error handling
  */
 export async function signSafeTransaction(
   signer: ethers.Signer,
   domain: SafeDomain,
   txData: SafeTransactionData
 ): Promise<string> {
-  const typedData = createSafeTransactionTypedData(domain, txData);
-  
+  console.log('🔐 Starting EIP-712 Safe transaction signing...');
+  console.log('📋 Domain:', domain);
+  console.log('📋 Transaction data:', txData);
+
   try {
-    // Try to use _signTypedData if available (MetaMask, etc.)
+    const typedData = createSafeTransactionTypedData(domain, txData);
+    console.log('📋 Typed data created:', typedData);
+
+    // Method 1: Try to use _signTypedData if available (MetaMask, etc.)
     if ('_signTypedData' in signer) {
-      return await (signer as any)._signTypedData(
-        typedData.domain,
-        { SafeTx: typedData.types.SafeTx },
-        typedData.message
-      );
+      console.log('🔐 Method 1: Using _signTypedData (MetaMask style)...');
+      try {
+        const signature = await (signer as any)._signTypedData(
+          typedData.domain,
+          { SafeTx: typedData.types.SafeTx },
+          typedData.message
+        );
+        console.log('✅ EIP-712 signing successful (method 1)');
+        return signature;
+      } catch (method1Error: any) {
+        console.log('❌ Method 1 failed:', method1Error.message || method1Error);
+        // Continue to method 2
+      }
     }
-    
-    // Fallback to manual hash signing
-    const hash = createSafeTransactionHash(domain, txData);
-    return await signer.signMessage(ethers.utils.arrayify(hash));
-  } catch (error) {
-    console.error('Error signing Safe transaction:', error);
-    throw new Error(`Failed to sign Safe transaction: ${error}`);
+
+    // Method 2: Try eth_signTypedData_v4 if available
+    if (signer.provider && 'send' in signer.provider) {
+      console.log('🔐 Method 2: Using eth_signTypedData_v4...');
+      try {
+        const signerAddress = await signer.getAddress();
+        const signature = await (signer.provider as any).send('eth_signTypedData_v4', [
+          signerAddress,
+          JSON.stringify(typedData)
+        ]);
+        console.log('✅ EIP-712 signing successful (method 2)');
+        return signature;
+      } catch (method2Error: any) {
+        console.log('❌ Method 2 failed:', method2Error.message || method2Error);
+        // Continue to method 3
+      }
+    }
+
+    // Method 3: Fallback to manual hash signing
+    console.log('🔐 Method 3: Using manual hash signing...');
+    try {
+      const hash = createSafeTransactionHash(domain, txData);
+      console.log('📋 Transaction hash:', hash);
+
+      const signature = await signer.signMessage(ethers.utils.arrayify(hash));
+      console.log('✅ EIP-712 signing successful (method 3)');
+      return signature;
+    } catch (method3Error: any) {
+      console.log('❌ Method 3 failed:', method3Error.message || method3Error);
+      throw method3Error;
+    }
+
+  } catch (error: any) {
+    console.error('❌ All EIP-712 signing methods failed:', error);
+
+    // Provide detailed error information
+    const errorMessage = error?.message || error?.reason || error?.data?.message || 'Unknown signing error';
+    const errorCode = error?.code || 'UNKNOWN_ERROR';
+
+    console.error('Error details:', {
+      message: errorMessage,
+      code: errorCode,
+      error: error
+    });
+
+    // User-friendly error messages based on common error types
+    if (errorCode === 'ACTION_REJECTED' || errorMessage.includes('rejected') || errorMessage.includes('denied')) {
+      throw new Error('Transaction signing was rejected by user');
+    }
+
+    if (errorCode === 'UNSUPPORTED_OPERATION' || errorMessage.includes('unsupported')) {
+      throw new Error('EIP-712 signing not supported by wallet. Please try a different wallet.');
+    }
+
+    if (errorMessage.includes('network') || errorMessage.includes('connection')) {
+      throw new Error('Network error during signing. Please check your connection and try again.');
+    }
+
+    throw new Error(`Failed to sign Safe transaction: ${errorMessage}`);
   }
 }
 

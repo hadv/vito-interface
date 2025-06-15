@@ -429,7 +429,7 @@ export class SafeWalletService {
   }
 
   /**
-   * Step 2: Request user to sign EIP-712 transaction
+   * Step 2: Request user to sign EIP-712 transaction with enhanced error handling
    */
   async signEIP712Transaction(
     safeTransactionData: SafeTransactionData,
@@ -438,16 +438,55 @@ export class SafeWalletService {
     this.ensureInitialized();
 
     if (!this.signer) {
-      throw new Error('No signer available.');
+      throw new Error('No signer available. Please connect your wallet first.');
     }
 
     try {
+      console.log('🔐 Starting EIP-712 transaction signing...');
+      console.log('📋 Signer address:', await this.signer.getAddress());
+      console.log('📋 Domain:', domain);
+      console.log('📋 Transaction data:', safeTransactionData);
+
+      // Check if signer is on the correct network
+      if (this.signer.provider) {
+        const signerNetwork = await this.signer.provider.getNetwork();
+        if (signerNetwork.chainId !== domain.chainId) {
+          throw new Error(`Network mismatch: Wallet is on chainId ${signerNetwork.chainId} but Safe contract is on chainId ${domain.chainId}. Please switch your wallet to the correct network.`);
+        }
+        console.log(`✅ Network validation passed: chainId ${signerNetwork.chainId}`);
+      }
+
       // Sign using EIP-712 typed data
       const signature = await signSafeTransaction(this.signer, domain, safeTransactionData);
+
+      console.log('✅ EIP-712 transaction signed successfully');
+      console.log('📋 Signature:', signature);
+
       return signature;
-    } catch (error) {
-      console.error('Error signing EIP-712 transaction:', error);
-      throw new Error(`Failed to sign transaction: ${error}`);
+    } catch (error: any) {
+      console.error('❌ Error signing EIP-712 transaction:', error);
+
+      // Extract meaningful error message
+      const errorMessage = error?.message || error?.reason || error?.data?.message || 'Unknown signing error';
+
+      // Provide user-friendly error messages
+      if (errorMessage.includes('rejected') || errorMessage.includes('denied')) {
+        throw new Error('Transaction signing was rejected by user');
+      }
+
+      if (errorMessage.includes('unsupported')) {
+        throw new Error('EIP-712 signing not supported by your wallet. Please try a different wallet or update your current wallet.');
+      }
+
+      if (errorMessage.includes('network') || errorMessage.includes('connection')) {
+        throw new Error('Network error during signing. Please check your connection and try again.');
+      }
+
+      if (errorMessage.includes('No signer available')) {
+        throw new Error('Wallet not connected. Please connect your wallet and try again.');
+      }
+
+      throw new Error(`Failed to sign transaction: ${errorMessage}`);
     }
   }
 
