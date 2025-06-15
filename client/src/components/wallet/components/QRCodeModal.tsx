@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { generateWalletAvatar } from '@utils';
+import { generateWalletAvatar, getEtherscanAddressUrl } from '@utils';
 // import { formatWalletAddress } from '@utils';
 
 // Helper function to get QR code URL with blue theme
@@ -241,9 +241,8 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({
   };
   
   const openEtherscan = () => {
-    const baseUrl = network === 'ethereum' ? 'https://etherscan.io' : 
-                    `https://${network}.etherscan.io`;
-    window.open(`${baseUrl}/address/${walletAddress}`, '_blank');
+    const url = getEtherscanAddressUrl(walletAddress, network);
+    window.open(url, '_blank');
   };
   
   return (

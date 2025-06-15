@@ -264,6 +264,7 @@ const WalletPage: React.FC<WalletPageProps> = ({
       <QRCodeModal
         isOpen={showQRCode}
         walletAddress={walletAddress}
+        network={currentNetwork}
         onClose={toggleQRCode}
       />
     </WalletPageLayout>

@@ -111,10 +111,6 @@ const WalletAddressValue = styled.div`
   margin-bottom: ${theme.spacing[3]};
   text-align: left;
   font-family: ${theme.typography.fontFamily.mono.join(', ')};
-  background: ${theme.colors.background.elevated};
-  padding: ${theme.spacing[2]} ${theme.spacing[3]};
-  border-radius: ${theme.borderRadius.md};
-  border: 1px solid ${theme.colors.border.tertiary};
 `;
 
 const WalletAddressActions = styled.div`
