@@ -193,6 +193,57 @@ export class SafeWalletService {
   }
 
   /**
+   * Check Safe contract interface compatibility
+   */
+  private async checkSafeInterface(): Promise<{ version?: string; hasNonce: boolean; hasGetThreshold: boolean }> {
+    if (!this.provider || !this.config) {
+      throw new Error('Provider or config not available');
+    }
+
+    const result = {
+      version: undefined as string | undefined,
+      hasNonce: false,
+      hasGetThreshold: false
+    };
+
+    try {
+      const contract = new ethers.Contract(this.config.safeAddress, SAFE_ABI, this.provider);
+
+      // Check if getThreshold exists
+      try {
+        await contract.getThreshold();
+        result.hasGetThreshold = true;
+        console.log('✅ getThreshold() method available');
+      } catch (error) {
+        console.log('❌ getThreshold() method not available');
+      }
+
+      // Check if nonce exists
+      try {
+        await contract.nonce();
+        result.hasNonce = true;
+        console.log('✅ nonce() method available');
+      } catch (error) {
+        console.log('❌ nonce() method not available');
+      }
+
+      // Try to get version if available
+      try {
+        const version = await contract.VERSION();
+        result.version = version;
+        console.log(`✅ Safe version: ${version}`);
+      } catch (error) {
+        console.log('❌ VERSION() method not available');
+      }
+
+    } catch (error) {
+      console.error('Error checking Safe interface:', error);
+    }
+
+    return result;
+  }
+
+  /**
    * Validate that the Safe contract exists and is valid
    */
   private async validateSafeContract(): Promise<void> {
@@ -218,10 +269,22 @@ export class SafeWalletService {
       // Try to call a simple view function to verify it's a Safe contract
       console.log(`🔧 Testing Safe contract interface with provider...`);
 
+      // Check interface compatibility first
+      const interfaceCheck = await this.checkSafeInterface();
+      console.log(`🔍 Interface check results:`, interfaceCheck);
+
+      if (!interfaceCheck.hasGetThreshold) {
+        throw new Error(`Contract at ${this.config.safeAddress} does not implement Safe interface (missing getThreshold method)`);
+      }
+
       // Create a fresh contract instance with the current provider to ensure consistency
       const testContract = new ethers.Contract(this.config.safeAddress, SAFE_ABI, this.provider);
       const threshold = await testContract.getThreshold();
       console.log(`✅ Safe validation successful! Threshold: ${threshold.toString()}`);
+
+      if (!interfaceCheck.hasNonce) {
+        console.warn(`⚠️ Warning: Safe contract does not have nonce() method. This may cause transaction issues.`);
+      }
     } catch (error: any) {
       console.error(`❌ Safe validation failed:`, error);
       console.error(`❌ Provider details:`, {
@@ -231,6 +294,10 @@ export class SafeWalletService {
       });
 
       if (error.message.includes('No contract found')) {
+        throw error;
+      }
+
+      if (error.message.includes('does not implement Safe interface')) {
         throw error;
       }
 
@@ -663,57 +730,98 @@ export class SafeWalletService {
   }
 
   /**
-   * Get the current nonce for the Safe with enhanced error handling
+   * Get the current nonce for the Safe with multiple fallback methods
    */
   async getNonce(): Promise<number> {
     this.ensureInitialized();
 
-    if (!this.safeContract) {
+    if (!this.safeContract || !this.provider || !this.config) {
       throw new Error('Safe contract not initialized');
     }
 
+    // Method 1: Try direct nonce() call
     try {
-      console.log('🔢 Getting Safe nonce...');
+      console.log('🔢 Method 1: Getting Safe nonce via contract.nonce()...');
       const nonce = await this.safeContract.nonce();
-      console.log(`✅ Safe nonce: ${nonce.toString()}`);
+      console.log(`✅ Safe nonce (method 1): ${nonce.toString()}`);
       return nonce.toNumber();
     } catch (error: any) {
-      console.error('Error getting nonce:', error);
+      console.log(`❌ Method 1 failed: ${error.message}`);
+    }
 
-      if (error.code === 'CALL_EXCEPTION') {
-        console.log('🔄 CALL_EXCEPTION detected, attempting provider reinitialization...');
+    // Method 2: Try with fresh contract instance
+    try {
+      console.log('🔢 Method 2: Creating fresh contract instance...');
+      const freshContract = new ethers.Contract(this.config.safeAddress, SAFE_ABI, this.provider);
+      const nonce = await freshContract.nonce();
+      console.log(`✅ Safe nonce (method 2): ${nonce.toString()}`);
+      return nonce.toNumber();
+    } catch (error: any) {
+      console.log(`❌ Method 2 failed: ${error.message}`);
+    }
 
-        try {
-          // Try to reinitialize the provider with working RPC
-          await this.reinitializeProvider();
+    // Method 3: Try with reinitialized provider
+    try {
+      console.log('🔢 Method 3: Reinitializing provider and retrying...');
+      await this.reinitializeProvider();
 
-          // Retry nonce call with new provider
-          console.log('🔢 Retrying nonce call with reinitialized provider...');
-          const nonce = await this.safeContract!.nonce();
-          console.log(`✅ Safe nonce (after reinit): ${nonce.toString()}`);
-          return nonce.toNumber();
-        } catch (reinitError: any) {
-          console.error('❌ Provider reinitialization failed:', reinitError);
+      const nonce = await this.safeContract!.nonce();
+      console.log(`✅ Safe nonce (method 3): ${nonce.toString()}`);
+      return nonce.toNumber();
+    } catch (error: any) {
+      console.log(`❌ Method 3 failed: ${error.message}`);
+    }
 
-          // Try validation to provide better error message
-          try {
-            await this.validateSafeContract();
-            throw new Error(`Safe contract is valid but nonce() call failed. This might be a temporary network issue.`);
-          } catch (validationError: any) {
-            // If validation also fails, it's likely a real contract issue
-            if (validationError.message.includes('Provider configuration mismatch')) {
-              throw new Error(`Provider configuration issue detected. Please disconnect and reconnect your wallet.`);
-            }
-            throw validationError;
-          }
-        }
+    // Method 4: Try with static provider (same as validation)
+    try {
+      console.log('🔢 Method 4: Using static provider (validation method)...');
+      const staticRpcUrl = getRpcUrl(this.config.network);
+      const staticProvider = new ethers.providers.JsonRpcProvider(staticRpcUrl);
+      const staticContract = new ethers.Contract(this.config.safeAddress, SAFE_ABI, staticProvider);
+
+      const nonce = await staticContract.nonce();
+      console.log(`✅ Safe nonce (method 4): ${nonce.toString()}`);
+
+      // Update our provider to use the working one
+      this.provider = staticProvider;
+      this.safeContract = new ethers.Contract(
+        this.config.safeAddress,
+        SAFE_ABI,
+        this.signer || this.provider
+      );
+
+      return nonce.toNumber();
+    } catch (error: any) {
+      console.log(`❌ Method 4 failed: ${error.message}`);
+    }
+
+    // Method 5: Try low-level call
+    try {
+      console.log('🔢 Method 5: Using low-level call...');
+      const nonceSelector = '0xaffed0e0'; // keccak256("nonce()").slice(0, 10)
+      const result = await this.provider.call({
+        to: this.config.safeAddress,
+        data: nonceSelector
+      });
+
+      if (result && result !== '0x') {
+        const nonce = ethers.BigNumber.from(result).toNumber();
+        console.log(`✅ Safe nonce (method 5): ${nonce.toString()}`);
+        return nonce;
       }
+    } catch (error: any) {
+      console.log(`❌ Method 5 failed: ${error.message}`);
+    }
 
-      if (error.message.includes('network')) {
-        throw new Error(`Network error while getting Safe nonce. Please check your internet connection and try again.`);
-      }
+    // All methods failed
+    console.error('❌ All nonce retrieval methods failed');
 
-      throw new Error(`Failed to get Safe nonce: ${error.message || error}`);
+    // Try validation to see if the contract is actually valid
+    try {
+      await this.validateSafeContract();
+      throw new Error(`Safe contract validation passes but all nonce() methods failed. This indicates a contract interface mismatch or network issue.`);
+    } catch (validationError: any) {
+      throw new Error(`Safe contract validation failed: ${validationError.message}`);
     }
   }
 
