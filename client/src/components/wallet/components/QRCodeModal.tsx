@@ -14,7 +14,7 @@ const getQRCodeUrl = (address: string): string => {
 // Icons with Blue Theme
 const CopyIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="9" y="9" width="12" height="12" rx="2" stroke="#3b82f6" strokeWidth="2" fill="#eff6ff"/>
+    <rect x="9" y="9" width="12" height="12" rx="2" stroke="#3b82f6" strokeWidth="2" fill="none"/>
     <path d="M5 15H4C2.89543 15 2 14.1046 2 13V4C2 2.89543 2.89543 2 4 2H13C14.1046 2 15 2.89543 15 4V5" stroke="#3b82f6" strokeWidth="2"/>
   </svg>
 );
