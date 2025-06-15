@@ -8,6 +8,10 @@ import { cn } from './utils/cn';
 import './App.css';
 import logo from './logo.svg';
 import { processCommand } from './commands';
+import ErrorBoundary from './components/ui/ErrorBoundary';
+import { ToastNotificationContainer } from './components/ui/Toast';
+import { useToast } from './hooks/useToast';
+import { ErrorHandler } from './utils/errorHandling';
 
 // Tailwind classes for app container
 const appContainerClasses = cn(
@@ -226,7 +230,11 @@ function App() {
   const [isLoadingEns, setIsLoadingEns] = useState(false);
   const [networkSelectorOpen, setNetworkSelectorOpen] = useState(false);
   const [isNetworkSwitching, setIsNetworkSwitching] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Remove redundant error state - using toast system instead
+  // const [error, setError] = useState<string | null>(null);
+
+  // Initialize toast system
+  const toast = useToast();
 
   // Network change is handled by selectNetwork function in the UI
 
@@ -262,15 +270,7 @@ function App() {
     };
   }, [walletAddress, network, walletConnected]);
 
-  // Auto-dismiss error after 5 seconds
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => {
-        setError(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
+  // Auto-dismiss error logic removed - using toast system instead
 
   const connectWallet = async () => {
     if (walletAddress.trim() && isValidEthereumAddress(walletAddress)) {
@@ -285,12 +285,23 @@ function App() {
         });
 
         setWalletConnected(true);
+        toast.success('Wallet Connected', {
+          message: `Successfully connected to Safe wallet on ${network}`
+        });
       } catch (error: any) {
         console.error('Failed to connect to Safe wallet:', error);
-        setError(`Failed to connect to Safe wallet: ${error.message.includes('Safe information') ? 'Invalid Safe wallet address or network' : 'Connection failed'}`);
+        const errorDetails = ErrorHandler.classifyError(error);
+        toast.error('Connection Failed', {
+          message: errorDetails.userMessage,
+          action: {
+            label: 'Retry',
+            onClick: connectWallet
+          }
+        });
       }
     } else {
-      setError('Please enter a valid Safe wallet address');
+      const errorMsg = 'Please enter a valid Safe wallet address';
+      toast.error('Invalid Address', { message: errorMsg });
     }
   };
   
@@ -343,7 +354,7 @@ function App() {
         console.error('Failed to switch network:', error);
         // Revert network selection on error
         setNetwork(previousNetwork);
-        setError(`Failed to switch to ${selectedNetwork}: ${error.message.includes('Safe information') ? 'Safe wallet not found on this network' : 'Network connection failed'}`);
+        toast.networkError(selectedNetwork, () => selectNetwork(selectedNetwork));
       } finally {
         setIsNetworkSwitching(false);
       }
@@ -394,37 +405,27 @@ function App() {
   }, []);
 
   return (
-    <div className={appContainerClasses}>
-      {/* Debug Panel - Remove in production */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="fixed top-4 left-4 bg-black/80 text-white p-2 rounded text-xs z-[100] font-mono">
-          Network: {network} | Selector Open: {networkSelectorOpen ? 'Yes' : 'No'} | Switching: {isNetworkSwitching ? 'Yes' : 'No'}
-        </div>
-      )}
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error('App Error Boundary caught error:', error, errorInfo);
+        toast.error('Application Error', {
+          message: 'An unexpected error occurred. The page will reload automatically.',
+          duration: 8000
+        });
+      }}
+    >
+      <div className={appContainerClasses}>
+        {/* Toast Notifications */}
+        <ToastNotificationContainer toasts={toast.toasts} onClose={toast.removeToast} />
 
-      {/* Error Notification */}
-      {error && (
-        <div className="fixed top-4 right-4 bg-red-500/90 text-white p-4 rounded-lg shadow-lg z-[9999] max-w-md backdrop-blur-sm border border-red-400">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0">
-              <svg className="w-5 h-5 text-red-200" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium">{error}</p>
-            </div>
-            <button
-              onClick={() => setError(null)}
-              className="flex-shrink-0 text-red-200 hover:text-white transition-colors"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
+        {/* Debug Panel - Remove in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="fixed top-4 left-4 bg-black/80 text-white p-2 rounded text-xs z-[100] font-mono">
+            Network: {network} | Selector Open: {networkSelectorOpen ? 'Yes' : 'No'} | Switching: {isNetworkSwitching ? 'Yes' : 'No'}
           </div>
-        </div>
-      )}
+        )}
+
+      {/* Old error notification removed - using toast system instead */}
 
       <header className={headerClasses}>
         <div className={logoContainerClasses}>
@@ -499,7 +500,8 @@ function App() {
           </VitoContainer>
         )}
       </div>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }
 

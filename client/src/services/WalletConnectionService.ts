@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
-import { safeWalletService, SafeWalletConfig } from './SafeWalletService';
+import { safeWalletService, SafeWalletService, SafeWalletConfig } from './SafeWalletService';
+import { getRpcUrl, NETWORK_CONFIGS } from '../contracts/abis';
 
 export interface WalletConnectionState {
   isConnected: boolean;
@@ -42,11 +43,20 @@ export class WalletConnectionService {
       let userAddress: string | undefined;
       let isOwner = false;
 
+      // Validate Safe address before attempting to connect
+      // Use provided rpcUrl or get default for network
+      const rpcUrl = params.rpcUrl || getRpcUrl(params.network);
+      const validation = await SafeWalletService.validateSafeAddress(params.safeAddress, rpcUrl);
+      if (!validation.isValid) {
+        throw new Error(validation.error);
+      }
+
       // Initialize Safe Wallet Service first to validate the Safe wallet
+      // Use the same RPC URL that was validated
       const config: SafeWalletConfig = {
         safeAddress: params.safeAddress,
         network: params.network,
-        rpcUrl: params.rpcUrl
+        rpcUrl: rpcUrl  // Use the validated RPC URL
       };
 
       // Initialize without signer first to validate Safe wallet
@@ -126,7 +136,79 @@ export class WalletConnectionService {
   }
 
   /**
-   * Connect signer wallet to an already connected Safe wallet
+   * Check if wallet network matches Safe network and prompt switching if needed
+   */
+  async checkAndSwitchNetwork(targetNetwork: string): Promise<{ switched: boolean; error?: string }> {
+    if (typeof window.ethereum === 'undefined') {
+      return { switched: false, error: 'No wallet detected' };
+    }
+
+    try {
+      // Get current wallet network
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const network = await provider.getNetwork();
+      const currentChainId = network.chainId;
+
+      // Get target network chain ID
+      const targetConfig = NETWORK_CONFIGS[targetNetwork as keyof typeof NETWORK_CONFIGS];
+      if (!targetConfig) {
+        return { switched: false, error: `Unknown network: ${targetNetwork}` };
+      }
+
+      const targetChainId = targetConfig.chainId;
+
+      // If networks match, no switching needed
+      if (currentChainId === targetChainId) {
+        return { switched: true };
+      }
+
+      console.log(`🔄 Network mismatch detected: wallet=${currentChainId}, target=${targetChainId} (${targetNetwork})`);
+
+      // Try to switch network in MetaMask
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: `0x${targetChainId.toString(16)}` }],
+        });
+
+        console.log(`✅ Successfully switched to ${targetNetwork} (chainId: ${targetChainId})`);
+        return { switched: true };
+      } catch (switchError: any) {
+        // If the network is not added to MetaMask, try to add it
+        if (switchError.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: `0x${targetChainId.toString(16)}`,
+                chainName: targetConfig.name,
+                rpcUrls: [targetConfig.rpcUrl],
+                blockExplorerUrls: [targetConfig.blockExplorer],
+              }],
+            });
+
+            console.log(`✅ Successfully added and switched to ${targetNetwork}`);
+            return { switched: true };
+          } catch (addError: any) {
+            console.error('Failed to add network:', addError);
+            return { switched: false, error: `Failed to add ${targetNetwork} to wallet: ${addError.message}` };
+          }
+        } else if (switchError.code === 4001) {
+          // User rejected the request
+          return { switched: false, error: `User rejected network switch to ${targetNetwork}` };
+        } else {
+          console.error('Failed to switch network:', switchError);
+          return { switched: false, error: `Failed to switch to ${targetNetwork}: ${switchError.message}` };
+        }
+      }
+    } catch (error: any) {
+      console.error('Error checking network:', error);
+      return { switched: false, error: `Network check failed: ${error.message}` };
+    }
+  }
+
+  /**
+   * Connect signer wallet to an already connected Safe wallet with network validation
    */
   async connectSignerWallet(): Promise<WalletConnectionState> {
     if (!this.state.isConnected || !this.state.safeAddress) {
@@ -137,6 +219,12 @@ export class WalletConnectionService {
       // Check if MetaMask or other wallet is available
       if (typeof window.ethereum === 'undefined') {
         throw new Error('No wallet detected. Please install MetaMask or another Web3 wallet.');
+      }
+
+      // Check and switch network if needed
+      const networkResult = await this.checkAndSwitchNetwork(this.state.network!);
+      if (!networkResult.switched) {
+        throw new Error(networkResult.error || `Please switch your wallet to ${this.state.network} network`);
       }
 
       // Request account access

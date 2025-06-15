@@ -1,8 +1,7 @@
 import { ethers } from 'ethers';
 import { SafeTxPoolService } from './SafeTxPoolService';
 import { OnChainDataService, OnChainTransactionStatus } from './OnChainDataService';
-import { SAFE_ABI } from '../contracts/abis';
-import { getProviderForNetwork } from '../utils/ens';
+import { SAFE_ABI, getRpcUrl } from '../contracts/abis';
 import {
   signSafeTransaction,
   createSafeContractTransactionHash,
@@ -53,15 +52,66 @@ export class SafeWalletService {
   private onChainDataService: OnChainDataService | null = null;
 
   /**
-   * Initialize the Safe Wallet Service
+   * Check if a Safe address is valid on the given network
+   */
+  static async validateSafeAddress(safeAddress: string, rpcUrl: string): Promise<{ isValid: boolean; error?: string }> {
+    try {
+      if (!rpcUrl) {
+        return {
+          isValid: false,
+          error: 'RPC URL is required for Safe address validation'
+        };
+      }
+
+      const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+
+      // Check if the address has code (is a contract)
+      const code = await provider.getCode(safeAddress);
+      if (code === '0x') {
+        return {
+          isValid: false,
+          error: `No contract found at address ${safeAddress}. Please verify the Safe address and network.`
+        };
+      }
+
+      // Try to create a Safe contract and call a simple view function
+      const safeContract = new ethers.Contract(safeAddress, SAFE_ABI, provider);
+      await safeContract.getThreshold();
+
+      return { isValid: true };
+    } catch (error: any) {
+      if (error.code === 'CALL_EXCEPTION') {
+        return {
+          isValid: false,
+          error: `Invalid Safe contract at ${safeAddress}. The contract may not be a Safe wallet or may not be deployed on this network.`
+        };
+      }
+
+      return {
+        isValid: false,
+        error: `Failed to validate Safe address: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * Initialize the Safe Wallet Service with validation
    */
   async initialize(config: SafeWalletConfig, signer?: ethers.Signer): Promise<void> {
     this.config = config;
 
-    // Set up provider based on network
-    this.provider = config.rpcUrl
-      ? new ethers.providers.JsonRpcProvider(config.rpcUrl)
-      : getProviderForNetwork(config.network);
+    // Set up provider based on network - always use working RPC configuration
+    let actualRpcUrl: string;
+    if (config.rpcUrl) {
+      actualRpcUrl = config.rpcUrl;
+      this.provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
+    } else {
+      // Use the same RPC URL logic as validation for consistency
+      actualRpcUrl = getRpcUrl(config.network);
+      this.provider = new ethers.providers.JsonRpcProvider(actualRpcUrl);
+    }
+
+    console.log(`🌐 SafeWalletService initialized with RPC: ${actualRpcUrl} for network: ${config.network}`);
 
     // Use provided signer or create a read-only provider
     if (signer) {
@@ -116,7 +166,167 @@ export class SafeWalletService {
   }
 
   /**
-   * Get Safe information
+   * Reinitialize provider with working RPC URL
+   */
+  private async reinitializeProvider(): Promise<void> {
+    if (!this.config) {
+      throw new Error('No configuration available for provider reinitialization');
+    }
+
+    console.log(`🔄 Reinitializing provider for network: ${this.config.network}`);
+
+    // Use the same RPC URL logic as static validation
+    const workingRpcUrl = getRpcUrl(this.config.network);
+    console.log(`🌐 Using working RPC URL: ${workingRpcUrl}`);
+
+    // Create new provider
+    this.provider = new ethers.providers.JsonRpcProvider(workingRpcUrl);
+
+    // Recreate Safe contract with new provider
+    this.safeContract = new ethers.Contract(
+      this.config.safeAddress,
+      SAFE_ABI,
+      this.signer || this.provider
+    );
+
+    console.log(`✅ Provider reinitialized successfully`);
+  }
+
+  /**
+   * Check Safe contract interface compatibility
+   */
+  private async checkSafeInterface(): Promise<{ version?: string; hasNonce: boolean; hasGetThreshold: boolean }> {
+    if (!this.provider || !this.config) {
+      throw new Error('Provider or config not available');
+    }
+
+    const result = {
+      version: undefined as string | undefined,
+      hasNonce: false,
+      hasGetThreshold: false
+    };
+
+    try {
+      const contract = new ethers.Contract(this.config.safeAddress, SAFE_ABI, this.provider);
+
+      // Check if getThreshold exists
+      try {
+        await contract.getThreshold();
+        result.hasGetThreshold = true;
+        console.log('✅ getThreshold() method available');
+      } catch (error) {
+        console.log('❌ getThreshold() method not available');
+      }
+
+      // Check if nonce exists
+      try {
+        await contract.nonce();
+        result.hasNonce = true;
+        console.log('✅ nonce() method available');
+      } catch (error) {
+        console.log('❌ nonce() method not available');
+      }
+
+      // Try to get version if available
+      try {
+        const version = await contract.VERSION();
+        result.version = version;
+        console.log(`✅ Safe version: ${version}`);
+      } catch (error) {
+        console.log('❌ VERSION() method not available');
+      }
+
+    } catch (error) {
+      console.error('Error checking Safe interface:', error);
+    }
+
+    return result;
+  }
+
+  /**
+   * Validate that the Safe contract exists and is valid
+   */
+  private async validateSafeContract(): Promise<void> {
+    if (!this.safeContract || !this.provider || !this.config) {
+      throw new Error('Safe contract or provider not available');
+    }
+
+    try {
+      console.log(`🔍 Validating Safe contract at ${this.config.safeAddress} on ${this.config.network}`);
+
+      // Get the actual RPC URL being used
+      const providerUrl = (this.provider as any).connection?.url || 'unknown';
+      console.log(`🌐 Using provider URL: ${providerUrl}`);
+
+      // Check if the address has code (is a contract)
+      const code = await this.provider.getCode(this.config.safeAddress);
+      console.log(`📄 Contract code length: ${code.length} characters`);
+
+      if (code === '0x') {
+        throw new Error(`No contract found at address ${this.config.safeAddress}. Please verify the Safe address and network.`);
+      }
+
+      // Try to call a simple view function to verify it's a Safe contract
+      console.log(`🔧 Testing Safe contract interface with provider...`);
+
+      // Check interface compatibility first
+      const interfaceCheck = await this.checkSafeInterface();
+      console.log(`🔍 Interface check results:`, interfaceCheck);
+
+      if (!interfaceCheck.hasGetThreshold) {
+        throw new Error(`Contract at ${this.config.safeAddress} does not implement Safe interface (missing getThreshold method)`);
+      }
+
+      // Create a fresh contract instance with the current provider to ensure consistency
+      const testContract = new ethers.Contract(this.config.safeAddress, SAFE_ABI, this.provider);
+      const threshold = await testContract.getThreshold();
+      console.log(`✅ Safe validation successful! Threshold: ${threshold.toString()}`);
+
+      if (!interfaceCheck.hasNonce) {
+        console.warn(`⚠️ Warning: Safe contract does not have nonce() method. This may cause transaction issues.`);
+      }
+    } catch (error: any) {
+      console.error(`❌ Safe validation failed:`, error);
+      console.error(`❌ Provider details:`, {
+        providerUrl: (this.provider as any).connection?.url,
+        network: this.config.network,
+        safeAddress: this.config.safeAddress
+      });
+
+      if (error.message.includes('No contract found')) {
+        throw error;
+      }
+
+      if (error.message.includes('does not implement Safe interface')) {
+        throw error;
+      }
+
+      // More specific error messages based on the error type
+      if (error.code === 'CALL_EXCEPTION') {
+        // Try to use the static validation method as a fallback to compare results
+        console.log(`🔄 Trying static validation as fallback...`);
+        try {
+          const rpcUrl = getRpcUrl(this.config.network);
+          const staticValidation = await SafeWalletService.validateSafeAddress(this.config.safeAddress, rpcUrl);
+          if (staticValidation.isValid) {
+            console.log(`✅ Static validation passed, but instance validation failed. Provider mismatch detected.`);
+            throw new Error(`Provider configuration mismatch. Static validation works but instance validation fails. Please reconnect your wallet.`);
+          } else {
+            console.log(`❌ Static validation also failed: ${staticValidation.error}`);
+          }
+        } catch (staticError) {
+          console.error(`❌ Static validation error:`, staticError);
+        }
+
+        throw new Error(`Invalid Safe contract at ${this.config.safeAddress}. The contract may not be a Safe wallet or may not be deployed on the ${this.config.network} network.`);
+      }
+
+      throw new Error(`Failed to validate Safe contract: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get Safe information with enhanced error handling
    */
   async getSafeInfo() {
     this.ensureInitialized();
@@ -126,6 +336,9 @@ export class SafeWalletService {
     }
 
     try {
+      // First validate the Safe contract
+      await this.validateSafeContract();
+
       const [owners, threshold, balance, network] = await Promise.all([
         this.safeContract.getOwners(),
         this.safeContract.getThreshold(),
@@ -140,9 +353,15 @@ export class SafeWalletService {
         balance: ethers.utils.formatEther(balance),
         chainId: network.chainId
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting Safe info:', error);
-      throw new Error(`Failed to get Safe information: ${error}`);
+
+      // Provide more helpful error messages
+      if (error.message.includes('No contract found') || error.message.includes('Invalid Safe contract')) {
+        throw error;
+      }
+
+      throw new Error(`Failed to get Safe information: ${error.message || error}`);
     }
   }
 
@@ -193,14 +412,24 @@ export class SafeWalletService {
         domain,
         txHash
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating EIP-712 transaction:', error);
-      throw error;
+
+      // Provide more helpful error messages
+      if (error.message.includes('No contract found') || error.message.includes('Invalid Safe contract')) {
+        throw error;
+      }
+
+      if (error.message.includes('Cannot get nonce')) {
+        throw error;
+      }
+
+      throw new Error(`Failed to create EIP-712 transaction: ${error.message || error}`);
     }
   }
 
   /**
-   * Step 2: Request user to sign EIP-712 transaction
+   * Step 2: Request user to sign EIP-712 transaction with enhanced error handling
    */
   async signEIP712Transaction(
     safeTransactionData: SafeTransactionData,
@@ -209,16 +438,55 @@ export class SafeWalletService {
     this.ensureInitialized();
 
     if (!this.signer) {
-      throw new Error('No signer available.');
+      throw new Error('No signer available. Please connect your wallet first.');
     }
 
     try {
+      console.log('🔐 Starting EIP-712 transaction signing...');
+      console.log('📋 Signer address:', await this.signer.getAddress());
+      console.log('📋 Domain:', domain);
+      console.log('📋 Transaction data:', safeTransactionData);
+
+      // Check if signer is on the correct network
+      if (this.signer.provider) {
+        const signerNetwork = await this.signer.provider.getNetwork();
+        if (signerNetwork.chainId !== domain.chainId) {
+          throw new Error(`Network mismatch: Wallet is on chainId ${signerNetwork.chainId} but Safe contract is on chainId ${domain.chainId}. Please switch your wallet to the correct network.`);
+        }
+        console.log(`✅ Network validation passed: chainId ${signerNetwork.chainId}`);
+      }
+
       // Sign using EIP-712 typed data
       const signature = await signSafeTransaction(this.signer, domain, safeTransactionData);
+
+      console.log('✅ EIP-712 transaction signed successfully');
+      console.log('📋 Signature:', signature);
+
       return signature;
-    } catch (error) {
-      console.error('Error signing EIP-712 transaction:', error);
-      throw new Error(`Failed to sign transaction: ${error}`);
+    } catch (error: any) {
+      console.error('❌ Error signing EIP-712 transaction:', error);
+
+      // Extract meaningful error message
+      const errorMessage = error?.message || error?.reason || error?.data?.message || 'Unknown signing error';
+
+      // Provide user-friendly error messages
+      if (errorMessage.includes('rejected') || errorMessage.includes('denied')) {
+        throw new Error('Transaction signing was rejected by user');
+      }
+
+      if (errorMessage.includes('unsupported')) {
+        throw new Error('EIP-712 signing not supported by your wallet. Please try a different wallet or update your current wallet.');
+      }
+
+      if (errorMessage.includes('network') || errorMessage.includes('connection')) {
+        throw new Error('Network error during signing. Please check your connection and try again.');
+      }
+
+      if (errorMessage.includes('No signer available')) {
+        throw new Error('Wallet not connected. Please connect your wallet and try again.');
+      }
+
+      throw new Error(`Failed to sign transaction: ${errorMessage}`);
     }
   }
 
@@ -501,21 +769,98 @@ export class SafeWalletService {
   }
 
   /**
-   * Get the current nonce for the Safe
+   * Get the current nonce for the Safe with multiple fallback methods
    */
   async getNonce(): Promise<number> {
     this.ensureInitialized();
 
-    if (!this.safeContract) {
+    if (!this.safeContract || !this.provider || !this.config) {
       throw new Error('Safe contract not initialized');
     }
 
+    // Method 1: Try direct nonce() call
     try {
+      console.log('🔢 Method 1: Getting Safe nonce via contract.nonce()...');
       const nonce = await this.safeContract.nonce();
+      console.log(`✅ Safe nonce (method 1): ${nonce.toString()}`);
       return nonce.toNumber();
-    } catch (error) {
-      console.error('Error getting nonce:', error);
-      throw new Error(`Failed to get Safe nonce: ${error}`);
+    } catch (error: any) {
+      console.log(`❌ Method 1 failed: ${error.message}`);
+    }
+
+    // Method 2: Try with fresh contract instance
+    try {
+      console.log('🔢 Method 2: Creating fresh contract instance...');
+      const freshContract = new ethers.Contract(this.config.safeAddress, SAFE_ABI, this.provider);
+      const nonce = await freshContract.nonce();
+      console.log(`✅ Safe nonce (method 2): ${nonce.toString()}`);
+      return nonce.toNumber();
+    } catch (error: any) {
+      console.log(`❌ Method 2 failed: ${error.message}`);
+    }
+
+    // Method 3: Try with reinitialized provider
+    try {
+      console.log('🔢 Method 3: Reinitializing provider and retrying...');
+      await this.reinitializeProvider();
+
+      const nonce = await this.safeContract!.nonce();
+      console.log(`✅ Safe nonce (method 3): ${nonce.toString()}`);
+      return nonce.toNumber();
+    } catch (error: any) {
+      console.log(`❌ Method 3 failed: ${error.message}`);
+    }
+
+    // Method 4: Try with static provider (same as validation)
+    try {
+      console.log('🔢 Method 4: Using static provider (validation method)...');
+      const staticRpcUrl = getRpcUrl(this.config.network);
+      const staticProvider = new ethers.providers.JsonRpcProvider(staticRpcUrl);
+      const staticContract = new ethers.Contract(this.config.safeAddress, SAFE_ABI, staticProvider);
+
+      const nonce = await staticContract.nonce();
+      console.log(`✅ Safe nonce (method 4): ${nonce.toString()}`);
+
+      // Update our provider to use the working one
+      this.provider = staticProvider;
+      this.safeContract = new ethers.Contract(
+        this.config.safeAddress,
+        SAFE_ABI,
+        this.signer || this.provider
+      );
+
+      return nonce.toNumber();
+    } catch (error: any) {
+      console.log(`❌ Method 4 failed: ${error.message}`);
+    }
+
+    // Method 5: Try low-level call
+    try {
+      console.log('🔢 Method 5: Using low-level call...');
+      const nonceSelector = '0xaffed0e0'; // keccak256("nonce()").slice(0, 10)
+      const result = await this.provider.call({
+        to: this.config.safeAddress,
+        data: nonceSelector
+      });
+
+      if (result && result !== '0x') {
+        const nonce = ethers.BigNumber.from(result).toNumber();
+        console.log(`✅ Safe nonce (method 5): ${nonce.toString()}`);
+        return nonce;
+      }
+    } catch (error: any) {
+      console.log(`❌ Method 5 failed: ${error.message}`);
+    }
+
+    // All methods failed
+    console.error('❌ All nonce retrieval methods failed');
+
+    // Try validation to see if the contract is actually valid
+    try {
+      await this.validateSafeContract();
+      throw new Error(`Safe contract validation passes but all nonce() methods failed. This indicates a contract interface mismatch or network issue.`);
+    } catch (validationError: any) {
+      throw new Error(`Safe contract validation failed: ${validationError.message}`);
     }
   }
 

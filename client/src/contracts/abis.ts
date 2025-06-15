@@ -365,7 +365,7 @@ export const NETWORK_CONFIGS = {
   sepolia: {
     chainId: 11155111,
     name: 'Sepolia Testnet',
-    rpcUrl: 'https://sepolia.infura.io/v3/',
+    rpcUrl: 'https://ethereum-sepolia-rpc.publicnode.com',
     blockExplorer: 'https://sepolia.etherscan.io',
     safeTxPoolAddress: SAFE_TX_POOL_ADDRESSES.sepolia,
     isTestnet: true
@@ -377,5 +377,30 @@ export const NETWORK_CONFIGS = {
     blockExplorer: 'https://arbiscan.io',
     safeTxPoolAddress: SAFE_TX_POOL_ADDRESSES.arbitrum,
     isTestnet: false
+  }
+};
+
+/**
+ * Get RPC URL for a specific network with environment variable support
+ * @param network The network name (ethereum, sepolia, arbitrum)
+ * @returns RPC URL for the network
+ */
+export const getRpcUrl = (network: string): string => {
+  const ALCHEMY_KEY = process.env.REACT_APP_ALCHEMY_KEY || 'YOUR_ALCHEMY_KEY';
+
+  switch(network.toLowerCase()) {
+    case 'arbitrum':
+      return 'https://arb1.arbitrum.io/rpc';
+    case 'sepolia':
+      // Use Alchemy if available, otherwise use public RPC
+      return ALCHEMY_KEY !== 'YOUR_ALCHEMY_KEY'
+        ? `https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_KEY}`
+        : 'https://ethereum-sepolia-rpc.publicnode.com';
+    case 'ethereum':
+    default:
+      // Use Alchemy if available, otherwise use public RPC
+      return ALCHEMY_KEY !== 'YOUR_ALCHEMY_KEY'
+        ? `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`
+        : 'https://ethereum-rpc.publicnode.com';
   }
 };
