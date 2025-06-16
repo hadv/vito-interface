@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { SAFE_TX_POOL_ABI, NETWORK_CONFIGS, isSafeTxPoolConfigured, getSafeTxPoolAddress } from '../contracts/abis';
+import { SAFE_TX_POOL_ABI, SAFE_ABI, NETWORK_CONFIGS, isSafeTxPoolConfigured, getSafeTxPoolAddress } from '../contracts/abis';
 import { getProviderForNetwork } from '../utils/ens';
 import { createSafeContractTransactionHash, SafeTransactionData } from '../utils/eip712';
 
@@ -13,7 +13,7 @@ export interface SafeTxPoolTransaction {
   proposer: string;
   nonce: number;
   txId: number;
-  signatures: string[];
+  signatures: Array<{ signature: string; signer: string }>;
 }
 
 export interface ProposeTransactionParams {
@@ -222,6 +222,44 @@ export class SafeTxPoolService {
   }
 
   /**
+   * Get signers for a transaction by checking Safe owners
+   */
+  async getTransactionSigners(txHash: string, safeAddress: string): Promise<Array<{ signature: string; signer: string }>> {
+    if (!this.contract || !this.provider) {
+      throw new Error('Contract or provider not initialized');
+    }
+
+    try {
+      // Get signatures from contract
+      const signatures = await this.contract.getSignatures(txHash);
+
+      // Get Safe owners to check who has signed
+      const safeContract = new ethers.Contract(safeAddress, SAFE_ABI, this.provider);
+
+      const owners = await safeContract.getOwners();
+      const signersWithAddresses: Array<{ signature: string; signer: string }> = [];
+
+      // Check each owner to see if they have signed
+      let signatureIndex = 0;
+      for (const owner of owners) {
+        const hasSigned = await this.hasSignedTx(txHash, owner);
+        if (hasSigned && signatureIndex < signatures.length) {
+          signersWithAddresses.push({
+            signature: signatures[signatureIndex],
+            signer: owner
+          });
+          signatureIndex++;
+        }
+      }
+
+      return signersWithAddresses;
+    } catch (error) {
+      console.error('Error getting transaction signers:', error);
+      return [];
+    }
+  }
+
+  /**
    * Get transaction details from the pool
    */
   async getTxDetails(txHash: string): Promise<SafeTxPoolTransaction | null> {
@@ -231,7 +269,7 @@ export class SafeTxPoolService {
 
     try {
       const result = await this.contract.getTxDetails(txHash);
-      const signatures = await this.contract.getSignatures(txHash);
+      const signaturesWithSigners = await this.getTransactionSigners(txHash, result.safe);
 
       return {
         txHash,
@@ -243,7 +281,7 @@ export class SafeTxPoolService {
         proposer: result.proposer,
         nonce: result.nonce.toNumber(),
         txId: result.txId.toNumber(),
-        signatures
+        signatures: signaturesWithSigners
       };
     } catch (error) {
       console.error('Error getting transaction details:', error);

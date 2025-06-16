@@ -587,6 +587,56 @@ export class SafeWalletService {
   }
 
   /**
+   * Sign an existing pending transaction from SafeTxPool
+   */
+  async signExistingTransaction(transactionData: {
+    txHash: string;
+    to: string;
+    value: string;
+    data: string;
+    operation: number;
+    nonce: number;
+  }): Promise<void> {
+    this.ensureInitialized();
+
+    if (!this.signer || !this.provider || !this.safeTxPoolService) {
+      throw new Error('Signer, provider, or SafeTxPool service not available');
+    }
+
+    try {
+      // Get network info for EIP-712 domain
+      const network = await this.provider.getNetwork();
+      const domain: SafeDomain = {
+        chainId: network.chainId,
+        verifyingContract: this.config!.safeAddress
+      };
+
+      // Create Safe transaction data structure for signing
+      const safeTransactionData: SafeTransactionData = {
+        to: transactionData.to,
+        value: transactionData.value,
+        data: transactionData.data,
+        operation: transactionData.operation,
+        safeTxGas: '0',
+        baseGas: '0',
+        gasPrice: '0',
+        gasToken: ethers.constants.AddressZero,
+        refundReceiver: ethers.constants.AddressZero,
+        nonce: transactionData.nonce
+      };
+
+      // Sign using EIP-712 typed data
+      const signature = await signSafeTransaction(this.signer, domain, safeTransactionData);
+
+      // Submit signature to SafeTxPool contract using the provided txHash
+      await this.safeTxPoolService.signTx(transactionData.txHash, signature);
+    } catch (error) {
+      console.error('Error signing existing transaction:', error);
+      throw new Error(`Failed to sign transaction: ${error}`);
+    }
+  }
+
+  /**
    * Execute a Safe transaction when threshold is met
    */
   async executeTransaction(

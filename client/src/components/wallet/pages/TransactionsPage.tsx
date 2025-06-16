@@ -5,6 +5,7 @@ import { formatWalletAddress } from '@utils';
 import OptimizedTransactionsPage from './OptimizedTransactionsPage';
 import EnhancedTransactionsPage from './EnhancedTransactionsPage';
 import { SafeTxPoolService, SafeTxPoolTransaction } from '../../../services/SafeTxPoolService';
+import PendingTransactionConfirmationModal from '../components/PendingTransactionConfirmationModal';
 
 
 
@@ -36,6 +37,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
   // Initialize SafeTxPoolService for the current network
   const [safeTxPoolService] = useState(() => new SafeTxPoolService(network));
+  const [selectedPendingTx, setSelectedPendingTx] = useState<SafeTxPoolTransaction | null>(null);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
 
   // Load pending transactions from Safe TX pool smart contract
   const loadPendingTransactions = useCallback(async () => {
@@ -93,7 +96,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
   // Render pending transaction from Safe TX pool smart contract
   const renderPendingTxItem = (tx: SafeTxPoolTransaction, isSelected: boolean, isFocused: boolean) => {
-    const confirmationProgress = `${tx.signatures.length}/${tx.signatures.length + 1}`; // Assuming threshold is signatures + 1
+    // We'll show the actual threshold in the confirmation modal, for now show signatures count
+    const confirmationProgress = `${tx.signatures.length} signatures`;
 
     return (
       <div className="flex flex-col p-4 border-b border-gray-700 last:border-b-0">
@@ -121,13 +125,41 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         </div>
 
         {/* Status and Confirmations */}
-        <div className="flex justify-between mb-2">
+        <div className="flex justify-between items-center mb-3">
           <div className="inline-block text-xs px-2 py-1 rounded-full text-yellow-400 bg-yellow-400/20">
             Pending in Pool
           </div>
           <div className="text-sm text-gray-400">
             Signatures: {confirmationProgress}
           </div>
+        </div>
+
+        {/* Signers List */}
+        {tx.signatures.length > 0 && (
+          <div className="mb-3">
+            <div className="text-xs text-gray-400 mb-1">Signed by:</div>
+            <div className="flex flex-wrap gap-1">
+              {tx.signatures.map((sig, index) => (
+                <span key={index} className="text-xs px-2 py-1 bg-green-400/20 text-green-400 rounded">
+                  {formatWalletAddress(sig.signer)}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Action Button */}
+        <div className="flex justify-end">
+          <button
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedPendingTx(tx);
+              setShowConfirmationModal(true);
+            }}
+          >
+            Review & Sign
+          </button>
         </div>
 
         {/* Transaction metadata */}
@@ -265,6 +297,26 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
           </>
         )}
       </div>
+
+      {/* Pending Transaction Confirmation Modal */}
+      {selectedPendingTx && (
+        <PendingTransactionConfirmationModal
+          isOpen={showConfirmationModal}
+          onClose={() => {
+            setShowConfirmationModal(false);
+            setSelectedPendingTx(null);
+          }}
+          onConfirm={async () => {
+            // Refresh pending transactions after confirmation
+            await loadPendingTransactions();
+            setShowConfirmationModal(false);
+            setSelectedPendingTx(null);
+          }}
+          transaction={selectedPendingTx}
+          safeAddress={safeAddress!}
+          network={network}
+        />
+      )}
     </div>
   );
 };
