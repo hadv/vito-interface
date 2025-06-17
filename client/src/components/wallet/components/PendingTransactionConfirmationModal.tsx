@@ -238,6 +238,19 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
     }
   }, [isOpen, safeAddress]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Update user permissions when safeInfo or currentUserAddress changes
+  useEffect(() => {
+    if (currentUserAddress && safeInfo) {
+      const isOwner = safeInfo.owners.includes(currentUserAddress.toLowerCase());
+      const alreadySigned = transaction.signatures.some(sig =>
+        sig.signer.toLowerCase() === currentUserAddress.toLowerCase()
+      );
+
+      setCanUserSign(isOwner && !alreadySigned);
+      setHasUserSigned(alreadySigned);
+    }
+  }, [currentUserAddress, safeInfo, transaction.signatures]);
+
   const loadSafeInfo = async () => {
     try {
       const walletService = new SafeWalletService();
@@ -255,16 +268,6 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
       const state = walletConnection.getState();
       const address = state.address;
       setCurrentUserAddress(address || null);
-
-      if (address && safeInfo) {
-        const isOwner = safeInfo.owners.includes(address.toLowerCase());
-        const alreadySigned = transaction.signatures.some(sig =>
-          sig.signer.toLowerCase() === address.toLowerCase()
-        );
-
-        setCanUserSign(isOwner && !alreadySigned);
-        setHasUserSigned(alreadySigned);
-      }
     } catch (error) {
       console.error('Error getting current user address:', error);
     }
@@ -365,6 +368,17 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
   const progress = safeInfo ? (transaction.signatures.length / safeInfo.threshold) * 100 : 0;
   const isFullySigned = safeInfo ? transaction.signatures.length >= safeInfo.threshold : false;
+
+  // Debug logging
+  console.log('Modal Debug:', {
+    isFullySigned,
+    currentUserAddress,
+    safeInfo,
+    signatures: transaction.signatures.length,
+    threshold: safeInfo?.threshold,
+    canUserSign,
+    hasUserSigned
+  });
 
   return (
     <ModalOverlay isOpen={isOpen} onClick={(e) => e.target === e.currentTarget && onClose()}>
