@@ -54,14 +54,26 @@ const ModalTitle = styled.h2`
 const StepIndicator = styled.div`
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
   margin-bottom: 24px;
-  padding: 20px;
+  padding: 16px;
   background: #334155;
   border-radius: 12px;
   border: 1px solid #475569;
-  flex-wrap: nowrap;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  overflow-x: visible;
+  min-height: 80px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  @media (min-width: 769px) {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+  }
 `;
 
 const StepBadge = styled.div<{ active: boolean; completed: boolean }>`
@@ -83,23 +95,62 @@ const StepBadge = styled.div<{ active: boolean; completed: boolean }>`
 `;
 
 const StepText = styled.span<{ active: boolean; completed: boolean }>`
-  font-size: 18px;
+  font-size: 16px;
   color: ${props =>
     props.completed ? '#34d399' :
     props.active ? '#60a5fa' : '#e5e7eb'
   };
   font-weight: ${props => props.active ? '700' : '600'};
   white-space: nowrap;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  text-align: center;
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    font-size: 14px;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  @media (min-width: 769px) {
+    font-size: 16px;
+  }
+`;
+
+const StepContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    flex-direction: row;
+    gap: 12px;
+    justify-content: center;
+    width: 100%;
+  }
 `;
 
 const StepSeparator = styled.div`
-  width: 40px;
-  height: 4px;
+  width: 30px;
+  height: 3px;
   background: rgba(255, 255, 255, 0.2);
-  margin: 0 8px;
+  margin: 0 4px;
   border-radius: 2px;
   flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+
+  @media (min-width: 769px) {
+    width: 40px;
+    height: 4px;
+    margin: 0 8px;
+  }
 `;
 
 const CloseButton = styled.button`
@@ -449,30 +500,36 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         </ModalHeader>
 
         <StepIndicator>
-          <StepBadge active={currentStep === 'form'} completed={currentStep !== 'form'}>
-            1
-          </StepBadge>
-          <StepText active={currentStep === 'form'} completed={currentStep !== 'form'}>
-            Create EIP-712 Transaction
-          </StepText>
+          <StepContainer>
+            <StepBadge active={currentStep === 'form'} completed={currentStep !== 'form'}>
+              1
+            </StepBadge>
+            <StepText active={currentStep === 'form'} completed={currentStep !== 'form'}>
+              Create EIP-712 Transaction
+            </StepText>
+          </StepContainer>
 
           <StepSeparator />
 
-          <StepBadge active={currentStep === 'signing'} completed={currentStep === 'proposing'}>
-            2
-          </StepBadge>
-          <StepText active={currentStep === 'signing'} completed={currentStep === 'proposing'}>
-            Sign Transaction
-          </StepText>
+          <StepContainer>
+            <StepBadge active={currentStep === 'signing'} completed={currentStep === 'proposing'}>
+              2
+            </StepBadge>
+            <StepText active={currentStep === 'signing'} completed={currentStep === 'proposing'}>
+              Sign Transaction
+            </StepText>
+          </StepContainer>
 
           <StepSeparator />
 
-          <StepBadge active={currentStep === 'proposing'} completed={false}>
-            3
-          </StepBadge>
-          <StepText active={currentStep === 'proposing'} completed={false}>
-            Propose to SafeTxPool
-          </StepText>
+          <StepContainer>
+            <StepBadge active={currentStep === 'proposing'} completed={false}>
+              3
+            </StepBadge>
+            <StepText active={currentStep === 'proposing'} completed={false}>
+              Propose to SafeTxPool
+            </StepText>
+          </StepContainer>
         </StepIndicator>
 
         <form onSubmit={handleSubmit}>
