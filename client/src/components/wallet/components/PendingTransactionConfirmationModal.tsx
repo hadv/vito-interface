@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { ethers } from 'ethers';
-import { SafeTxPoolTransaction } from '../../../services/SafeTxPoolService';
+import { SafeTxPoolTransaction, SafeTxPoolService } from '../../../services/SafeTxPoolService';
 import { SafeWalletService } from '../../../services/SafeWalletService';
 import { WalletConnectionService } from '../../../services/WalletConnectionService';
 import { formatWalletAddress } from '../../../utils';
@@ -277,7 +277,7 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
     try {
       const walletService = new SafeWalletService();
       await walletService.initialize({ safeAddress, network });
-      
+
       // Sign the transaction using the existing txHash and EIP-712 signature
       await walletService.signExistingTransaction({
         txHash: transaction.txHash,
@@ -293,6 +293,61 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
     } catch (error) {
       console.error('Error signing transaction:', error);
       toast.error('Failed to sign transaction', {
+        message: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExecute = async () => {
+    if (!currentUserAddress || !isFullySigned) return;
+
+    setIsLoading(true);
+    try {
+      const walletService = new SafeWalletService();
+      await walletService.initialize({ safeAddress, network });
+
+      // Prepare Safe transaction data for execution
+      const safeTransactionData = {
+        to: transaction.to,
+        value: transaction.value,
+        data: transaction.data,
+        operation: transaction.operation,
+        safeTxGas: '0',
+        baseGas: '0',
+        gasPrice: '0',
+        gasToken: '0x0000000000000000000000000000000000000000',
+        refundReceiver: '0x0000000000000000000000000000000000000000',
+        nonce: transaction.nonce
+      };
+
+      // Execute the transaction with collected signatures
+      const executionTx = await walletService.executeTransaction(
+        safeTransactionData,
+        transaction.signatures
+      );
+
+      // Wait for transaction confirmation
+      await executionTx.wait();
+
+      // Mark transaction as executed in SafeTxPool
+      try {
+        const safeTxPoolService = new SafeTxPoolService(network);
+        await safeTxPoolService.markAsExecuted(transaction.txHash);
+      } catch (markError) {
+        console.warn('Failed to mark transaction as executed in SafeTxPool:', markError);
+        // Don't fail the whole operation if marking fails
+      }
+
+      toast.success('Transaction executed successfully!', {
+        message: `Transaction hash: ${executionTx.hash}`
+      });
+
+      await onConfirm();
+    } catch (error) {
+      console.error('Error executing transaction:', error);
+      toast.error('Failed to execute transaction', {
         message: error instanceof Error ? error.message : 'Unknown error occurred'
       });
     } finally {
@@ -393,13 +448,23 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
               Close
             </Button>
             {canUserSign && !isFullySigned && (
-              <Button 
-                variant="primary" 
+              <Button
+                variant="primary"
                 onClick={handleSign}
                 disabled={isLoading}
               >
                 {isLoading && <LoadingSpinner />}
                 {isLoading ? 'Signing...' : 'Sign Transaction'}
+              </Button>
+            )}
+            {isFullySigned && currentUserAddress && (
+              <Button
+                variant="primary"
+                onClick={handleExecute}
+                disabled={isLoading}
+              >
+                {isLoading && <LoadingSpinner />}
+                {isLoading ? 'Executing...' : 'Execute Transaction'}
               </Button>
             )}
           </ButtonGroup>

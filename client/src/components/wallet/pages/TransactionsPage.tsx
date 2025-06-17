@@ -5,6 +5,7 @@ import { formatWalletAddress } from '@utils';
 import OptimizedTransactionsPage from './OptimizedTransactionsPage';
 import EnhancedTransactionsPage from './EnhancedTransactionsPage';
 import { SafeTxPoolService, SafeTxPoolTransaction } from '../../../services/SafeTxPoolService';
+import { SafeWalletService } from '../../../services/SafeWalletService';
 import PendingTransactionConfirmationModal from '../components/PendingTransactionConfirmationModal';
 
 
@@ -34,11 +35,26 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
   const [pendingTxs, setPendingTxs] = useState<SafeTxPoolTransaction[]>([]);
   const [pendingLoading, setPendingLoading] = useState(false);
   const [pendingError, setPendingError] = useState<string | null>(null);
+  const [safeInfo, setSafeInfo] = useState<{ threshold: number; owners: string[] } | null>(null);
 
   // Initialize SafeTxPoolService for the current network
   const [safeTxPoolService] = useState(() => new SafeTxPoolService(network));
   const [selectedPendingTx, setSelectedPendingTx] = useState<SafeTxPoolTransaction | null>(null);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+
+  // Load Safe info to get threshold
+  const loadSafeInfo = useCallback(async () => {
+    if (!safeAddress) return;
+
+    try {
+      const walletService = new SafeWalletService();
+      await walletService.initialize({ safeAddress, network });
+      const info = await walletService.getSafeInfo();
+      setSafeInfo(info);
+    } catch (error) {
+      console.error('Error loading Safe info:', error);
+    }
+  }, [safeAddress, network]);
 
   // Load pending transactions from Safe TX pool smart contract
   const loadPendingTransactions = useCallback(async () => {
@@ -65,12 +81,15 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     }
   }, [safeAddress, network, safeTxPoolService]);
 
-  // Load pending transactions when component mounts or dependencies change
+  // Load Safe info and pending transactions when component mounts or dependencies change
   useEffect(() => {
+    if (safeAddress) {
+      loadSafeInfo();
+    }
     if (activeTab === 'pending') {
       loadPendingTransactions();
     }
-  }, [activeTab, safeAddress, network, loadPendingTransactions]);
+  }, [activeTab, safeAddress, network, loadPendingTransactions, loadSafeInfo]);
 
   // Auto-refresh pending transactions every 30 seconds
   useEffect(() => {
@@ -96,16 +115,20 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
   // Render pending transaction from Safe TX pool smart contract
   const renderPendingTxItem = (tx: SafeTxPoolTransaction, isSelected: boolean, isFocused: boolean) => {
-    // We'll show the actual threshold in the confirmation modal, for now show signatures count
-    const confirmationProgress = `${tx.signatures.length} signatures`;
+    // Use actual threshold from Safe info, fallback to 2 if not loaded yet
+    const threshold = safeInfo?.threshold || 2;
+    const confirmationProgress = `${tx.signatures.length} of ${threshold} signatures`;
+    const hasEnoughSignatures = tx.signatures.length >= threshold;
 
     return (
       <div className="flex flex-col p-4 border-b border-gray-700 last:border-b-0">
         {/* Transaction Header */}
         <div className="flex justify-between items-center mb-2">
           <div className="text-base font-medium flex items-center text-yellow-400">
-            <span className="inline-block w-2 h-2 rounded-full mr-2 bg-yellow-400" />
-            Pending Transaction
+            <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
+              hasEnoughSignatures ? 'bg-green-400' : 'bg-yellow-400'
+            }`} />
+            {hasEnoughSignatures ? 'Ready to Execute' : 'Pending Transaction'}
           </div>
           <div className="text-base font-medium text-yellow-400">
             {formatAmount(tx.value)} ETH
@@ -126,8 +149,12 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
         {/* Status and Confirmations */}
         <div className="flex justify-between items-center mb-3">
-          <div className="inline-block text-xs px-2 py-1 rounded-full text-yellow-400 bg-yellow-400/20">
-            Pending in Pool
+          <div className={`inline-block text-xs px-2 py-1 rounded-full ${
+            hasEnoughSignatures
+              ? 'text-green-400 bg-green-400/20'
+              : 'text-yellow-400 bg-yellow-400/20'
+          }`}>
+            {hasEnoughSignatures ? 'Ready to Execute' : 'Pending in Pool'}
           </div>
           <div className="text-sm text-gray-400">
             Signatures: {confirmationProgress}
@@ -151,14 +178,18 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         {/* Action Button */}
         <div className="flex justify-end">
           <button
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              hasEnoughSignatures
+                ? 'bg-green-600 hover:bg-green-700 text-white'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
             onClick={(e) => {
               e.stopPropagation();
               setSelectedPendingTx(tx);
               setShowConfirmationModal(true);
             }}
           >
-            Review & Sign
+            {hasEnoughSignatures ? 'Execute' : 'Review & Sign'}
           </button>
         </div>
 
