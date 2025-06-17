@@ -72,9 +72,10 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
       // Get all pending transactions from SafeTxPool
       const allPending = await safeTxPoolService.getPendingTransactions(safeAddress);
+      console.log(`Found ${allPending.length} pending transactions in SafeTxPool`);
 
       // Get current Safe nonce to filter out stale transactions
-      let currentNonce = 0;
+      let currentNonce = -1; // Start with -1 to show all transactions if nonce fetch fails
       try {
         const walletService = new SafeWalletService();
         await walletService.initialize({ safeAddress, network });
@@ -84,16 +85,20 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         console.warn('Failed to get current Safe nonce, showing all pending transactions:', nonceError);
       }
 
-      // Filter out transactions with nonce <= current nonce (already executed or invalid)
+      // Log all transaction nonces for debugging
+      console.log('Transaction nonces:', allPending.map(tx => ({ txHash: tx.txHash.slice(0, 10), nonce: tx.nonce })));
+
+      // Filter out transactions with nonce < current nonce (already executed)
+      // Keep transactions with nonce >= current nonce (current and future transactions)
       const validPending = allPending.filter(tx => {
-        const isValid = tx.nonce > currentNonce;
+        const isValid = currentNonce === -1 || tx.nonce >= currentNonce;
         if (!isValid) {
-          console.log(`Filtering out transaction with nonce ${tx.nonce} (current nonce: ${currentNonce})`);
+          console.log(`Filtering out transaction ${tx.txHash.slice(0, 10)} with nonce ${tx.nonce} (current nonce: ${currentNonce})`);
         }
         return isValid;
       });
 
-      console.log(`Filtered ${allPending.length - validPending.length} stale transactions out of ${allPending.length} total`);
+      console.log(`Showing ${validPending.length} valid transactions (filtered out ${allPending.length - validPending.length})`);
       setPendingTxs(validPending);
     } catch (error) {
       console.error('Error loading pending transactions:', error);
@@ -268,7 +273,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 Showing actionable transactions from Safe TX pool smart contract
                 <br />
                 <span className="text-xs text-gray-500">
-                  Transactions with nonce ≤ current Safe nonce are automatically filtered out
+                  Transactions with nonce &lt; current Safe nonce are automatically filtered out
                 </span>
               </div>
               <button
