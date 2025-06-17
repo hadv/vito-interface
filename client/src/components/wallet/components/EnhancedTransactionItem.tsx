@@ -262,7 +262,7 @@ const EnhancedTransactionItem: React.FC<EnhancedTransactionItemProps> = ({
             {/* Additional context */}
             <div className="flex items-center space-x-4 mt-1 text-xs text-gray-500">
               <span>{timeStr}</span>
-              {transaction.blockNumber && (
+              {transaction.blockNumber != null && (
                 <span>Block {transaction.blockNumber.toLocaleString()}</span>
               )}
               {transaction.executor && transaction.executor !== transaction.from && (
@@ -277,7 +277,7 @@ const EnhancedTransactionItem: React.FC<EnhancedTransactionItemProps> = ({
           {renderTransactionAmount(transaction, txInfo)}
 
           {/* Gas information */}
-          {transaction.gasUsed && (
+          {transaction.gasUsed != null && transaction.gasUsed !== '0' && (
             <div className="text-xs text-gray-500 mt-0.5">
               Gas: {parseInt(transaction.gasUsed).toLocaleString()}
             </div>

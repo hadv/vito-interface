@@ -54,7 +54,7 @@ const ModalTitle = styled.h2`
 const StepIndicator = styled.div`
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   margin-bottom: 24px;
   padding: 20px;
   background: #334155;
@@ -62,6 +62,8 @@ const StepIndicator = styled.div`
   border: 1px solid #475569;
   flex-wrap: nowrap;
   overflow-x: auto;
+  justify-content: space-between;
+  min-width: 100%;
 `;
 
 const StepBadge = styled.div<{ active: boolean; completed: boolean }>`
@@ -83,21 +85,23 @@ const StepBadge = styled.div<{ active: boolean; completed: boolean }>`
 `;
 
 const StepText = styled.span<{ active: boolean; completed: boolean }>`
-  font-size: 18px;
+  font-size: 14px;
   color: ${props =>
     props.completed ? '#34d399' :
     props.active ? '#60a5fa' : '#e5e7eb'
   };
   font-weight: ${props => props.active ? '700' : '600'};
   white-space: nowrap;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  text-align: center;
+  min-width: 0;
 `;
 
 const StepSeparator = styled.div`
-  width: 40px;
-  height: 4px;
+  width: 24px;
+  height: 3px;
   background: rgba(255, 255, 255, 0.2);
-  margin: 0 8px;
+  margin: 0 4px;
   border-radius: 2px;
   flex-shrink: 0;
 `;
@@ -453,7 +457,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             1
           </StepBadge>
           <StepText active={currentStep === 'form'} completed={currentStep !== 'form'}>
-            Create EIP-712 Transaction
+            Create EIP-712
           </StepText>
 
           <StepSeparator />
@@ -471,7 +475,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             3
           </StepBadge>
           <StepText active={currentStep === 'proposing'} completed={false}>
-            Propose to SafeTxPool
+            Propose to Pool
           </StepText>
         </StepIndicator>
 

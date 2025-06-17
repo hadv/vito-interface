@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { ethers } from 'ethers';
 import { SafeTxPoolTransaction } from '../../../services/SafeTxPoolService';
 import { SafeWalletService } from '../../../services/SafeWalletService';
-import { WalletConnectionService } from '../../../services/WalletConnectionService';
+import { walletConnectionService } from '../../../services/WalletConnectionService';
 import { formatWalletAddress } from '../../../utils';
 import { useToast } from '../../../hooks/useToast';
 
@@ -238,6 +238,39 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
     }
   }, [isOpen, safeAddress]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Update user permissions when safeInfo or currentUserAddress changes
+  useEffect(() => {
+    if (currentUserAddress && safeInfo) {
+      const isOwner = safeInfo.owners.includes(currentUserAddress.toLowerCase());
+      const alreadySigned = transaction.signatures.some(sig =>
+        sig.signer.toLowerCase() === currentUserAddress.toLowerCase()
+      );
+
+      setCanUserSign(isOwner && !alreadySigned);
+      setHasUserSigned(alreadySigned);
+    }
+  }, [currentUserAddress, safeInfo, transaction.signatures]);
+
+  // Listen for wallet connection changes while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const checkWalletConnection = () => {
+      getCurrentUserAddress();
+    };
+
+    // Check wallet connection every 2 seconds while modal is open
+    const interval = setInterval(checkWalletConnection, 2000);
+
+    // Also listen for window focus (user might connect wallet in another tab)
+    window.addEventListener('focus', checkWalletConnection);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', checkWalletConnection);
+    };
+  }, [isOpen]);
+
   const loadSafeInfo = async () => {
     try {
       const walletService = new SafeWalletService();
@@ -251,20 +284,9 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
   const getCurrentUserAddress = async () => {
     try {
-      const walletConnection = new WalletConnectionService();
-      const state = walletConnection.getState();
+      const state = walletConnectionService.getState();
       const address = state.address;
       setCurrentUserAddress(address || null);
-
-      if (address && safeInfo) {
-        const isOwner = safeInfo.owners.includes(address.toLowerCase());
-        const alreadySigned = transaction.signatures.some(sig =>
-          sig.signer.toLowerCase() === address.toLowerCase()
-        );
-
-        setCanUserSign(isOwner && !alreadySigned);
-        setHasUserSigned(alreadySigned);
-      }
     } catch (error) {
       console.error('Error getting current user address:', error);
     }
@@ -277,7 +299,7 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
     try {
       const walletService = new SafeWalletService();
       await walletService.initialize({ safeAddress, network });
-      
+
       // Sign the transaction using the existing txHash and EIP-712 signature
       await walletService.signExistingTransaction({
         txHash: transaction.txHash,
@@ -300,6 +322,74 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
     }
   };
 
+  const handleExecute = async () => {
+    if (!currentUserAddress || !isFullySigned) return;
+
+    setIsLoading(true);
+    try {
+      // Check if we have a signer available from the wallet connection
+      if (typeof window.ethereum === 'undefined') {
+        throw new Error('No wallet detected. Please connect your wallet first.');
+      }
+
+      // Create provider and signer
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+
+      // Verify the signer address matches the current user
+      const signerAddress = await signer.getAddress();
+      if (signerAddress.toLowerCase() !== currentUserAddress.toLowerCase()) {
+        throw new Error('Wallet address mismatch. Please ensure you are connected with the correct wallet.');
+      }
+
+      const walletService = new SafeWalletService();
+      await walletService.initialize({ safeAddress, network });
+
+      // Set the signer for transaction execution
+      await walletService.setSigner(signer);
+
+      // Prepare Safe transaction data for execution
+      const safeTransactionData = {
+        to: transaction.to,
+        value: transaction.value,
+        data: transaction.data,
+        operation: transaction.operation,
+        safeTxGas: '0',
+        baseGas: '0',
+        gasPrice: '0',
+        gasToken: '0x0000000000000000000000000000000000000000',
+        refundReceiver: '0x0000000000000000000000000000000000000000',
+        nonce: transaction.nonce
+      };
+
+      // Execute the transaction with collected signatures
+      const executionTx = await walletService.executeTransaction(
+        safeTransactionData,
+        transaction.signatures
+      );
+
+      // Wait for transaction confirmation
+      await executionTx.wait();
+
+      // Note: The SafeTxPool will automatically mark the transaction as executed
+      // through the Guard mechanism (checkAfterExecution) when the Safe executes it.
+      // We don't need to manually call markAsExecuted() here.
+
+      toast.success('Transaction executed successfully!', {
+        message: `Transaction hash: ${executionTx.hash}`
+      });
+
+      await onConfirm();
+    } catch (error) {
+      console.error('Error executing transaction:', error);
+      toast.error('Failed to execute transaction', {
+        message: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const formatAmount = (amount: string): string => {
     try {
       return parseFloat(ethers.utils.formatEther(amount)).toFixed(4);
@@ -310,6 +400,8 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
   const progress = safeInfo ? (transaction.signatures.length / safeInfo.threshold) * 100 : 0;
   const isFullySigned = safeInfo ? transaction.signatures.length >= safeInfo.threshold : false;
+
+
 
   return (
     <ModalOverlay isOpen={isOpen} onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -382,24 +474,43 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
             </WarningBox>
           )}
 
+          {!currentUserAddress && (
+            <WarningBox style={{ background: '#dc2626', color: '#fef2f2' }}>
+              🔌 No wallet connected! Please connect your wallet to sign or execute transactions.
+            </WarningBox>
+          )}
+
           {!canUserSign && !hasUserSigned && currentUserAddress && (
             <WarningBox>
               ⚠️ You are not authorized to sign this transaction or you're not connected to the correct wallet.
             </WarningBox>
           )}
 
+
+
           <ButtonGroup>
             <Button variant="secondary" onClick={onClose}>
               Close
             </Button>
             {canUserSign && !isFullySigned && (
-              <Button 
-                variant="primary" 
+              <Button
+                variant="primary"
                 onClick={handleSign}
                 disabled={isLoading}
               >
                 {isLoading && <LoadingSpinner />}
                 {isLoading ? 'Signing...' : 'Sign Transaction'}
+              </Button>
+            )}
+            {/* Show execute button if transaction is fully signed OR if we have enough signatures (fallback) */}
+            {(isFullySigned || (safeInfo && transaction.signatures.length >= safeInfo.threshold) || transaction.signatures.length >= 2) && (
+              <Button
+                variant="primary"
+                onClick={handleExecute}
+                disabled={isLoading || !currentUserAddress}
+              >
+                {isLoading && <LoadingSpinner />}
+                {isLoading ? 'Executing...' : 'Execute Transaction'}
               </Button>
             )}
           </ButtonGroup>
