@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { ethers } from 'ethers';
 import { SafeTxPoolTransaction, SafeTxPoolService } from '../../../services/SafeTxPoolService';
 import { SafeWalletService } from '../../../services/SafeWalletService';
-import { WalletConnectionService } from '../../../services/WalletConnectionService';
+import { walletConnectionService } from '../../../services/WalletConnectionService';
 import { formatWalletAddress } from '../../../utils';
 import { useToast } from '../../../hooks/useToast';
 
@@ -284,8 +284,7 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
   const getCurrentUserAddress = async () => {
     try {
-      const walletConnection = new WalletConnectionService();
-      const state = walletConnection.getState();
+      const state = walletConnectionService.getState();
       const address = state.address;
       setCurrentUserAddress(address || null);
     } catch (error) {
@@ -389,18 +388,7 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
   const progress = safeInfo ? (transaction.signatures.length / safeInfo.threshold) * 100 : 0;
   const isFullySigned = safeInfo ? transaction.signatures.length >= safeInfo.threshold : false;
 
-  // Debug logging
-  console.log('Modal Debug:', {
-    isFullySigned,
-    currentUserAddress,
-    safeInfo,
-    signatures: transaction.signatures.length,
-    threshold: safeInfo?.threshold,
-    canUserSign,
-    hasUserSigned,
-    showExecuteButton: isFullySigned && currentUserAddress,
-    showSignButton: canUserSign && !isFullySigned
-  });
+
 
   return (
     <ModalOverlay isOpen={isOpen} onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -485,32 +473,7 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
             </WarningBox>
           )}
 
-          {/* Debug info - remove this in production */}
-          <WarningBox style={{ fontSize: '12px', background: '#374151', color: '#9ca3af' }}>
-            🔍 Debug: isFullySigned={isFullySigned ? 'true' : 'false'},
-            currentUserAddress={currentUserAddress ? 'connected' : 'none'},
-            threshold={safeInfo?.threshold || 'loading'},
-            signatures={transaction.signatures.length}
-            <br />
-            <button
-              onClick={() => {
-                getCurrentUserAddress();
-                loadSafeInfo();
-              }}
-              style={{
-                marginTop: '8px',
-                padding: '4px 8px',
-                background: '#4b5563',
-                border: 'none',
-                borderRadius: '4px',
-                color: '#fff',
-                cursor: 'pointer',
-                fontSize: '11px'
-              }}
-            >
-              🔄 Refresh Wallet State
-            </button>
-          </WarningBox>
+
 
           <ButtonGroup>
             <Button variant="secondary" onClick={onClose}>
