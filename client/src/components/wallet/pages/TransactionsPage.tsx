@@ -70,8 +70,31 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         return;
       }
 
-      const pending = await safeTxPoolService.getPendingTransactions(safeAddress);
-      setPendingTxs(pending);
+      // Get all pending transactions from SafeTxPool
+      const allPending = await safeTxPoolService.getPendingTransactions(safeAddress);
+
+      // Get current Safe nonce to filter out stale transactions
+      let currentNonce = 0;
+      try {
+        const walletService = new SafeWalletService();
+        await walletService.initialize({ safeAddress, network });
+        currentNonce = await walletService.getNonce();
+        console.log(`Current Safe nonce: ${currentNonce}`);
+      } catch (nonceError) {
+        console.warn('Failed to get current Safe nonce, showing all pending transactions:', nonceError);
+      }
+
+      // Filter out transactions with nonce <= current nonce (already executed or invalid)
+      const validPending = allPending.filter(tx => {
+        const isValid = tx.nonce > currentNonce;
+        if (!isValid) {
+          console.log(`Filtering out transaction with nonce ${tx.nonce} (current nonce: ${currentNonce})`);
+        }
+        return isValid;
+      });
+
+      console.log(`Filtered ${allPending.length - validPending.length} stale transactions out of ${allPending.length} total`);
+      setPendingTxs(validPending);
     } catch (error) {
       console.error('Error loading pending transactions:', error);
       setPendingError('Failed to load pending transactions from Safe TX pool');
@@ -242,7 +265,11 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
           <>
             <div className="flex justify-between items-center mb-4">
               <div className="text-sm text-gray-400">
-                Showing transactions from Safe TX pool smart contract
+                Showing actionable transactions from Safe TX pool smart contract
+                <br />
+                <span className="text-xs text-gray-500">
+                  Transactions with nonce ≤ current Safe nonce are automatically filtered out
+                </span>
               </div>
               <button
                 className="bg-gray-700 text-white border-none px-4 py-2 rounded-md cursor-pointer text-sm hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
