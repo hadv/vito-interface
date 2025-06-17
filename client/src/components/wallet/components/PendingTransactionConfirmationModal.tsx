@@ -251,6 +251,26 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
     }
   }, [currentUserAddress, safeInfo, transaction.signatures]);
 
+  // Listen for wallet connection changes while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const checkWalletConnection = () => {
+      getCurrentUserAddress();
+    };
+
+    // Check wallet connection every 2 seconds while modal is open
+    const interval = setInterval(checkWalletConnection, 2000);
+
+    // Also listen for window focus (user might connect wallet in another tab)
+    window.addEventListener('focus', checkWalletConnection);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', checkWalletConnection);
+    };
+  }, [isOpen]);
+
   const loadSafeInfo = async () => {
     try {
       const walletService = new SafeWalletService();
@@ -377,7 +397,9 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
     signatures: transaction.signatures.length,
     threshold: safeInfo?.threshold,
     canUserSign,
-    hasUserSigned
+    hasUserSigned,
+    showExecuteButton: isFullySigned && currentUserAddress,
+    showSignButton: canUserSign && !isFullySigned
   });
 
   return (
@@ -451,11 +473,44 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
             </WarningBox>
           )}
 
+          {!currentUserAddress && (
+            <WarningBox style={{ background: '#dc2626', color: '#fef2f2' }}>
+              🔌 No wallet connected! Please connect your wallet to sign or execute transactions.
+            </WarningBox>
+          )}
+
           {!canUserSign && !hasUserSigned && currentUserAddress && (
             <WarningBox>
               ⚠️ You are not authorized to sign this transaction or you're not connected to the correct wallet.
             </WarningBox>
           )}
+
+          {/* Debug info - remove this in production */}
+          <WarningBox style={{ fontSize: '12px', background: '#374151', color: '#9ca3af' }}>
+            🔍 Debug: isFullySigned={isFullySigned ? 'true' : 'false'},
+            currentUserAddress={currentUserAddress ? 'connected' : 'none'},
+            threshold={safeInfo?.threshold || 'loading'},
+            signatures={transaction.signatures.length}
+            <br />
+            <button
+              onClick={() => {
+                getCurrentUserAddress();
+                loadSafeInfo();
+              }}
+              style={{
+                marginTop: '8px',
+                padding: '4px 8px',
+                background: '#4b5563',
+                border: 'none',
+                borderRadius: '4px',
+                color: '#fff',
+                cursor: 'pointer',
+                fontSize: '11px'
+              }}
+            >
+              🔄 Refresh Wallet State
+            </button>
+          </WarningBox>
 
           <ButtonGroup>
             <Button variant="secondary" onClick={onClose}>
@@ -471,11 +526,12 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
                 {isLoading ? 'Signing...' : 'Sign Transaction'}
               </Button>
             )}
-            {isFullySigned && currentUserAddress && (
+            {/* Show execute button if transaction is fully signed OR if we have enough signatures (fallback) */}
+            {(isFullySigned || (safeInfo && transaction.signatures.length >= safeInfo.threshold) || transaction.signatures.length >= 2) && (
               <Button
                 variant="primary"
                 onClick={handleExecute}
-                disabled={isLoading}
+                disabled={isLoading || !currentUserAddress}
               >
                 {isLoading && <LoadingSpinner />}
                 {isLoading ? 'Executing...' : 'Execute Transaction'}
