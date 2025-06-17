@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { ethers } from 'ethers';
-import { SafeTxPoolTransaction, SafeTxPoolService } from '../../../services/SafeTxPoolService';
+import { SafeTxPoolTransaction } from '../../../services/SafeTxPoolService';
 import { SafeWalletService } from '../../../services/SafeWalletService';
 import { walletConnectionService } from '../../../services/WalletConnectionService';
 import { formatWalletAddress } from '../../../utils';
@@ -371,15 +371,9 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
       // Wait for transaction confirmation
       await executionTx.wait();
 
-      // Mark transaction as executed in SafeTxPool
-      try {
-        const safeTxPoolService = new SafeTxPoolService(network);
-        safeTxPoolService.setSigner(signer);
-        await safeTxPoolService.markAsExecuted(transaction.txHash);
-      } catch (markError) {
-        console.warn('Failed to mark transaction as executed in SafeTxPool:', markError);
-        // Don't fail the whole operation if marking fails
-      }
+      // Note: The SafeTxPool will automatically mark the transaction as executed
+      // through the Guard mechanism (checkAfterExecution) when the Safe executes it.
+      // We don't need to manually call markAsExecuted() here.
 
       toast.success('Transaction executed successfully!', {
         message: `Transaction hash: ${executionTx.hash}`
