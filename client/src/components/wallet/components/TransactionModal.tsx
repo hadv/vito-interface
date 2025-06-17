@@ -11,7 +11,9 @@ import {
   ProposeTxData,
   SignTxData,
   SafeTxPoolDomain,
-  createSafeTxPoolDomain
+  createSafeTxPoolDomain,
+  signProposeTx,
+  signSignTx
 } from '../../../utils/eip712';
 import { safeWalletService } from '../../../services/SafeWalletService';
 import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
@@ -419,6 +421,13 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         });
         setSafeTxPoolOperation('propose');
         setShowSafeTxPoolModal(true);
+
+        console.log('🔐 Setting SafeTxPool modal state:', {
+          showSafeTxPoolModal: true,
+          safeTxPoolOperation: 'propose',
+          proposeTxData,
+          domain: safeTxPoolDomain
+        });
       } else {
         // Legacy Mode: Use direct contract calls (shows hex data)
         setCurrentStep('proposing');
@@ -489,25 +498,55 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   };
 
   const handleSafeTxPoolSign = async () => {
-    if (!pendingTransaction || !safeTxPoolData.proposeTxData) return;
+    console.log('🔐 TransactionModal: handleSafeTxPoolSign called', {
+      safeTxPoolOperation,
+      pendingTransaction: !!pendingTransaction,
+      safeTxPoolData
+    });
+
+    if (!pendingTransaction) {
+      console.error('❌ No pending transaction found');
+      return;
+    }
 
     try {
+      setIsLoading(true);
+
       if (safeTxPoolOperation === 'propose') {
-        // Step 3b: Sign and submit SafeTxPool proposal
+        // Step 3b: User signs the SafeTxPool proposal with EIP-712
         setCurrentStep('safetxpool-propose');
 
-        await errorRecoveryService.retry(async () => {
-          return await safeWalletService.safeTxPoolService!.proposeTxWithEIP712(
-            safeTxPoolData.proposeTxData!,
-            (await safeWalletService.provider!.getNetwork()).chainId
+        if (!safeTxPoolData.proposeTxData || !safeTxPoolData.domain) {
+          throw new Error('SafeTxPool proposal data not found');
+        }
+
+        // This will trigger the wallet to show EIP-712 structured data for the proposal
+        const proposalSignature = await errorRecoveryService.retry(async () => {
+          return await signProposeTx(
+            safeWalletService.signer!,
+            safeTxPoolData.domain!,
+            safeTxPoolData.proposeTxData!
           );
         }, {
-          maxAttempts: 3,
+          maxAttempts: 2,
           retryCondition: (error) => {
             const errorDetails = ErrorHandler.classifyError(error);
-            return ErrorHandler.shouldAutoRetry(errorDetails);
+            return errorDetails.code !== 'USER_REJECTED' && ErrorHandler.shouldAutoRetry(errorDetails);
           }
         });
+
+        // Now submit the proposal to the contract
+        await safeWalletService.safeTxPoolService!.contract!.proposeTxWithSignature(
+          safeTxPoolData.proposeTxData!.safe,
+          safeTxPoolData.proposeTxData!.to,
+          safeTxPoolData.proposeTxData!.value,
+          safeTxPoolData.proposeTxData!.data,
+          safeTxPoolData.proposeTxData!.operation,
+          safeTxPoolData.proposeTxData!.nonce,
+          safeTxPoolData.proposeTxData!.proposer,
+          safeTxPoolData.proposeTxData!.deadline,
+          proposalSignature
+        );
 
         setShowSafeTxPoolModal(false);
         setCurrentStep('safetxpool-sign');
@@ -532,26 +571,36 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         setShowSafeTxPoolModal(true);
 
       } else if (safeTxPoolOperation === 'sign') {
-        // Step 4b: Sign and submit SafeTxPool signature
+        // Step 4b: User signs the SafeTxPool signature operation with EIP-712
         setCurrentStep('safetxpool-sign');
 
-        // Use the Safe transaction signature we stored earlier
-        if (!safeTxPoolData.safeTransactionSignature) {
-          throw new Error('Safe transaction signature not found');
+        if (!safeTxPoolData.signTxData || !safeTxPoolData.domain || !safeTxPoolData.safeTransactionSignature) {
+          throw new Error('SafeTxPool signature data not found');
         }
 
-        await errorRecoveryService.retry(async () => {
-          return await safeWalletService.safeTxPoolService!.signTxWithEIP712(
-            safeTxPoolData.signTxData!,
-            safeTxPoolData.safeTransactionSignature!
+        // This will trigger the wallet to show EIP-712 structured data for the signing operation
+        const signingSignature = await errorRecoveryService.retry(async () => {
+          return await signSignTx(
+            safeWalletService.signer!,
+            safeTxPoolData.domain!,
+            safeTxPoolData.signTxData!
           );
         }, {
-          maxAttempts: 3,
+          maxAttempts: 2,
           retryCondition: (error) => {
             const errorDetails = ErrorHandler.classifyError(error);
-            return ErrorHandler.shouldAutoRetry(errorDetails);
+            return errorDetails.code !== 'USER_REJECTED' && ErrorHandler.shouldAutoRetry(errorDetails);
           }
         });
+
+        // Now submit the signature to the contract
+        await safeWalletService.safeTxPoolService!.contract!.signTxWithSignature(
+          safeTxPoolData.signTxData!.txHash,
+          safeTxPoolData.signTxData!.signer,
+          safeTxPoolData.signTxData!.deadline,
+          signingSignature,
+          safeTxPoolData.safeTransactionSignature!
+        );
 
         setShowSafeTxPoolModal(false);
         setSuccess(`Transaction flow completed! Hash: ${pendingTransaction.txHash}`);
@@ -808,7 +857,18 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         )}
 
         {/* SafeTxPool EIP-712 Modal */}
-        {safeTxPoolData.domain && (safeTxPoolData.proposeTxData || safeTxPoolData.signTxData) && (
+        {(() => {
+          const shouldShow = safeTxPoolData.domain && (safeTxPoolData.proposeTxData || safeTxPoolData.signTxData);
+          console.log('🔐 SafeTxPool modal condition check:', {
+            shouldShow,
+            hasDomain: !!safeTxPoolData.domain,
+            hasProposeTxData: !!safeTxPoolData.proposeTxData,
+            hasSignTxData: !!safeTxPoolData.signTxData,
+            showSafeTxPoolModal,
+            safeTxPoolData
+          });
+          return shouldShow;
+        })() && (
           <SafeTxPoolEIP712Modal
             isOpen={showSafeTxPoolModal}
             onClose={() => {
@@ -820,7 +880,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             onSign={handleSafeTxPoolSign}
             operationType={safeTxPoolOperation}
             data={safeTxPoolOperation === 'propose' ? safeTxPoolData.proposeTxData! : safeTxPoolData.signTxData!}
-            domain={safeTxPoolData.domain}
+            domain={safeTxPoolData.domain!}
           />
         )}
       </ModalContainer>

@@ -214,12 +214,15 @@ const SafeTxPoolEIP712Modal: React.FC<SafeTxPoolEIP712ModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSign = async () => {
+    console.log('🔐 SafeTxPool modal: Sign button clicked', { operationType, data, domain });
     setIsLoading(true);
     try {
+      console.log('🔐 SafeTxPool modal: Calling onSign function...');
       await onSign();
+      console.log('✅ SafeTxPool modal: onSign completed successfully');
       onClose();
     } catch (error) {
-      console.error('Error signing:', error);
+      console.error('❌ SafeTxPool modal: Error signing:', error);
     } finally {
       setIsLoading(false);
     }
