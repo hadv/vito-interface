@@ -374,6 +374,7 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
       // Mark transaction as executed in SafeTxPool
       try {
         const safeTxPoolService = new SafeTxPoolService(network);
+        safeTxPoolService.setSigner(signer);
         await safeTxPoolService.markAsExecuted(transaction.txHash);
       } catch (markError) {
         console.warn('Failed to mark transaction as executed in SafeTxPool:', markError);
