@@ -254,7 +254,9 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     proposeTxData?: ProposeTxData;
     signTxData?: SignTxData;
     domain?: SafeTxPoolDomain;
+    safeTransactionSignature?: string;
   }>({});
+  const [useEIP712Mode, setUseEIP712Mode] = useState(true); // Default to EIP-712 mode
   // const [retryCount, setRetryCount] = useState(0); // Reserved for future retry functionality
 
   // Initialize toast system
@@ -384,58 +386,85 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       });
 
       setShowEIP712Modal(false);
-      setCurrentStep('safetxpool-propose');
 
-      toast.info('Transaction Signed', {
-        message: 'Now preparing SafeTxPool proposal...'
-      });
+      if (useEIP712Mode) {
+        // EIP-712 Mode: Show structured data in SafeTxPool modals
+        setCurrentStep('safetxpool-propose');
 
-      // Step 3a: Prepare SafeTxPool proposal with EIP-712
-      const network = await safeWalletService.provider!.getNetwork();
-      const safeTxPoolAddress = safeWalletService.safeTxPoolService!.contract!.address;
-      const proposerAddress = await safeWalletService.signer!.getAddress();
-
-      const safeTxPoolDomain = createSafeTxPoolDomain(network.chainId, safeTxPoolAddress);
-      const proposeTxData: ProposeTxData = {
-        safe: safeWalletService.config!.safeAddress,
-        to: pendingTransaction.data.to,
-        value: pendingTransaction.data.value,
-        data: pendingTransaction.data.data,
-        operation: pendingTransaction.data.operation,
-        nonce: pendingTransaction.data.nonce,
-        proposer: proposerAddress,
-        deadline: Math.floor(Date.now() / 1000) + 3600 // 1 hour from now
-      };
-
-      setSafeTxPoolData({
-        proposeTxData,
-        domain: safeTxPoolDomain
-      });
-      setSafeTxPoolOperation('propose');
-      setShowSafeTxPoolModal(true);
-
-      setSuccess(`Transaction flow completed! Hash: ${pendingTransaction.txHash}`);
-
-      toast.transactionSuccess(pendingTransaction.txHash, 'Transaction submitted successfully');
-
-      if (onTransactionCreated) {
-        onTransactionCreated({
-          ...pendingTransaction.data,
-          txHash: pendingTransaction.txHash,
-          signature
+        toast.info('Transaction Signed', {
+          message: 'Now preparing SafeTxPool proposal...'
         });
-      }
 
-      // Reset form
-      setTimeout(() => {
-        setToAddress('');
-        setAmount('');
-        setSuccess('');
-        setCurrentStep('form');
-        setPendingTransaction(null);
-        // setRetryCount(0); // Reset retry count when transaction completes
-        onClose();
-      }, 2000);
+        // Step 3a: Prepare SafeTxPool proposal with EIP-712
+        const network = await safeWalletService.provider!.getNetwork();
+        const safeTxPoolAddress = safeWalletService.safeTxPoolService!.contract!.address;
+        const proposerAddress = await safeWalletService.signer!.getAddress();
+
+        const safeTxPoolDomain = createSafeTxPoolDomain(network.chainId, safeTxPoolAddress);
+        const proposeTxData: ProposeTxData = {
+          safe: safeWalletService.config!.safeAddress,
+          to: pendingTransaction.data.to,
+          value: pendingTransaction.data.value,
+          data: pendingTransaction.data.data,
+          operation: pendingTransaction.data.operation,
+          nonce: pendingTransaction.data.nonce,
+          proposer: proposerAddress,
+          deadline: Math.floor(Date.now() / 1000) + 3600 // 1 hour from now
+        };
+
+        setSafeTxPoolData({
+          proposeTxData,
+          domain: safeTxPoolDomain,
+          safeTransactionSignature: signature
+        });
+        setSafeTxPoolOperation('propose');
+        setShowSafeTxPoolModal(true);
+      } else {
+        // Legacy Mode: Use direct contract calls (shows hex data)
+        setCurrentStep('proposing');
+
+        toast.info('Transaction Signed', {
+          message: 'Submitting to Safe TX Pool...'
+        });
+
+        // Step 3: Use signed transaction data to propose transaction on SafeTxPool contract (legacy)
+        await errorRecoveryService.retry(async () => {
+          return await safeWalletService.proposeSignedTransaction(
+            pendingTransaction.data,
+            pendingTransaction.txHash,
+            signature
+          );
+        }, {
+          maxAttempts: 3,
+          retryCondition: (error) => {
+            const errorDetails = ErrorHandler.classifyError(error);
+            return ErrorHandler.shouldAutoRetry(errorDetails);
+          }
+        });
+
+        setSuccess(`Transaction flow completed! Hash: ${pendingTransaction.txHash}`);
+
+        toast.transactionSuccess(pendingTransaction.txHash, 'Transaction submitted successfully');
+
+        if (onTransactionCreated) {
+          onTransactionCreated({
+            ...pendingTransaction.data,
+            txHash: pendingTransaction.txHash,
+            signature
+          });
+        }
+
+        // Reset form
+        setTimeout(() => {
+          setToAddress('');
+          setAmount('');
+          setSuccess('');
+          setCurrentStep('form');
+          setPendingTransaction(null);
+          setSafeTxPoolData({});
+          onClose();
+        }, 2000);
+      }
 
     } catch (error: any) {
       const errorDetails = ErrorHandler.classifyError(error);
@@ -506,15 +535,15 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         // Step 4b: Sign and submit SafeTxPool signature
         setCurrentStep('safetxpool-sign');
 
-        const signature = await safeWalletService.signEIP712Transaction(
-          pendingTransaction.data,
-          pendingTransaction.domain
-        );
+        // Use the Safe transaction signature we stored earlier
+        if (!safeTxPoolData.safeTransactionSignature) {
+          throw new Error('Safe transaction signature not found');
+        }
 
         await errorRecoveryService.retry(async () => {
           return await safeWalletService.safeTxPoolService!.signTxWithEIP712(
             safeTxPoolData.signTxData!,
-            signature
+            safeTxPoolData.safeTransactionSignature!
           );
         }, {
           maxAttempts: 3,
@@ -533,7 +562,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
           onTransactionCreated({
             ...pendingTransaction.data,
             txHash: pendingTransaction.txHash,
-            signature
+            signature: safeTxPoolData.safeTransactionSignature!
           });
         }
 
@@ -594,31 +623,89 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
           <StepSeparator />
 
-          <StepBadge active={currentStep === 'signing'} completed={['safetxpool-propose', 'safetxpool-sign'].includes(currentStep)}>
+          <StepBadge active={currentStep === 'signing'} completed={useEIP712Mode ? ['safetxpool-propose', 'safetxpool-sign'].includes(currentStep) : currentStep === 'proposing'}>
             2
           </StepBadge>
-          <StepText active={currentStep === 'signing'} completed={['safetxpool-propose', 'safetxpool-sign'].includes(currentStep)}>
+          <StepText active={currentStep === 'signing'} completed={useEIP712Mode ? ['safetxpool-propose', 'safetxpool-sign'].includes(currentStep) : currentStep === 'proposing'}>
             Sign Transaction
           </StepText>
 
           <StepSeparator />
 
-          <StepBadge active={currentStep === 'safetxpool-propose'} completed={currentStep === 'safetxpool-sign'}>
-            3
-          </StepBadge>
-          <StepText active={currentStep === 'safetxpool-propose'} completed={currentStep === 'safetxpool-sign'}>
-            Propose to Pool
-          </StepText>
+          {useEIP712Mode ? (
+            <>
+              <StepBadge active={currentStep === 'safetxpool-propose'} completed={currentStep === 'safetxpool-sign'}>
+                3
+              </StepBadge>
+              <StepText active={currentStep === 'safetxpool-propose'} completed={currentStep === 'safetxpool-sign'}>
+                Propose to Pool (EIP-712)
+              </StepText>
 
-          <StepSeparator />
+              <StepSeparator />
 
-          <StepBadge active={currentStep === 'safetxpool-sign'} completed={false}>
-            4
-          </StepBadge>
-          <StepText active={currentStep === 'safetxpool-sign'} completed={false}>
-            Sign Pool Entry
-          </StepText>
+              <StepBadge active={currentStep === 'safetxpool-sign'} completed={false}>
+                4
+              </StepBadge>
+              <StepText active={currentStep === 'safetxpool-sign'} completed={false}>
+                Sign Pool Entry (EIP-712)
+              </StepText>
+            </>
+          ) : (
+            <>
+              <StepBadge active={currentStep === 'proposing'} completed={false}>
+                3
+              </StepBadge>
+              <StepText active={currentStep === 'proposing'} completed={false}>
+                Propose to Pool (Legacy)
+              </StepText>
+            </>
+          )}
         </StepIndicator>
+
+        {/* EIP-712 Mode Toggle */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          marginBottom: '20px',
+          padding: '12px',
+          background: useEIP712Mode ? '#f0fff4' : '#fef5e7',
+          borderRadius: '8px',
+          border: `1px solid ${useEIP712Mode ? '#68d391' : '#f6ad55'}`
+        }}>
+          <label style={{
+            fontSize: '14px',
+            fontWeight: '500',
+            color: '#4a5568',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <input
+              type="checkbox"
+              checked={useEIP712Mode}
+              onChange={(e) => setUseEIP712Mode(e.target.checked)}
+              style={{
+                width: '18px',
+                height: '18px',
+                accentColor: '#667eea'
+              }}
+            />
+            {useEIP712Mode ? '🔒 EIP-712 Mode (Structured Data)' : '⚠️ Legacy Mode (Hex Data)'}
+          </label>
+          <p style={{
+            margin: '0',
+            fontSize: '12px',
+            color: '#718096',
+            flex: '1'
+          }}>
+            {useEIP712Mode
+              ? 'Shows readable transaction details in your wallet'
+              : 'Shows raw hex data (legacy mode)'
+            }
+          </p>
+        </div>
 
         <form onSubmit={handleSubmit}>
           <FormGroup>

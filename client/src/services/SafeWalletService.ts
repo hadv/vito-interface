@@ -593,7 +593,7 @@ export class SafeWalletService {
   }
 
   /**
-   * Complete transaction flow: Create EIP-712 → Sign → Propose (legacy)
+   * Complete transaction flow: Create EIP-712 → Sign → Propose (legacy - shows hex data)
    */
   async createTransaction(transactionRequest: TransactionRequest): Promise<SafeTransactionData & { txHash: string; signature: string }> {
     try {
