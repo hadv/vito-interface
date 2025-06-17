@@ -31,6 +31,31 @@ export const EIP712_DOMAIN_TYPEHASH = ethers.utils.keccak256(
   ethers.utils.toUtf8Bytes('EIP712Domain(uint256 chainId,address verifyingContract)')
 );
 
+// SafeTxPool EIP-712 Types
+export interface SafeTxPoolDomain {
+  name: string;
+  version: string;
+  chainId: number;
+  verifyingContract: string;
+}
+
+export interface ProposeTxData {
+  safe: string;
+  to: string;
+  value: string;
+  data: string;
+  operation: number;
+  nonce: number;
+  proposer: string;
+  deadline: number;
+}
+
+export interface SignTxData {
+  txHash: string;
+  signer: string;
+  deadline: number;
+}
+
 /**
  * Create EIP-712 domain separator for Safe
  */
@@ -155,6 +180,222 @@ export function createSafeTransactionTypedData(
   } catch (error: any) {
     console.error('❌ Error creating EIP-712 typed data:', error);
     throw new Error(`Failed to create EIP-712 typed data: ${error.message}`);
+  }
+}
+
+/**
+ * Create SafeTxPool domain separator
+ */
+export function createSafeTxPoolDomain(chainId: number, verifyingContract: string): SafeTxPoolDomain {
+  return {
+    name: 'SafeTxPool',
+    version: '1.0.0',
+    chainId,
+    verifyingContract: normalizeAddress(verifyingContract)
+  };
+}
+
+/**
+ * Create EIP-712 typed data for ProposeTx operation
+ */
+export function createProposeTxTypedData(domain: SafeTxPoolDomain, proposeTxData: ProposeTxData) {
+  try {
+    const normalizedDomain = {
+      name: domain.name,
+      version: domain.version,
+      chainId: domain.chainId,
+      verifyingContract: normalizeAddress(domain.verifyingContract)
+    };
+
+    const normalizedData = {
+      safe: normalizeAddress(proposeTxData.safe),
+      to: normalizeAddress(proposeTxData.to),
+      value: proposeTxData.value,
+      data: proposeTxData.data,
+      operation: proposeTxData.operation,
+      nonce: proposeTxData.nonce,
+      proposer: normalizeAddress(proposeTxData.proposer),
+      deadline: proposeTxData.deadline
+    };
+
+    return {
+      types: {
+        EIP712Domain: [
+          { name: 'name', type: 'string' },
+          { name: 'version', type: 'string' },
+          { name: 'chainId', type: 'uint256' },
+          { name: 'verifyingContract', type: 'address' }
+        ],
+        ProposeTx: [
+          { name: 'safe', type: 'address' },
+          { name: 'to', type: 'address' },
+          { name: 'value', type: 'uint256' },
+          { name: 'data', type: 'bytes' },
+          { name: 'operation', type: 'uint8' },
+          { name: 'nonce', type: 'uint256' },
+          { name: 'proposer', type: 'address' },
+          { name: 'deadline', type: 'uint256' }
+        ]
+      },
+      primaryType: 'ProposeTx',
+      domain: normalizedDomain,
+      message: normalizedData
+    };
+  } catch (error: any) {
+    console.error('❌ Error creating ProposeTx EIP-712 typed data:', error);
+    throw new Error(`Failed to create ProposeTx EIP-712 typed data: ${error.message}`);
+  }
+}
+
+/**
+ * Create EIP-712 typed data for SignTx operation
+ */
+export function createSignTxTypedData(domain: SafeTxPoolDomain, signTxData: SignTxData) {
+  try {
+    const normalizedDomain = {
+      name: domain.name,
+      version: domain.version,
+      chainId: domain.chainId,
+      verifyingContract: normalizeAddress(domain.verifyingContract)
+    };
+
+    const normalizedData = {
+      txHash: signTxData.txHash,
+      signer: normalizeAddress(signTxData.signer),
+      deadline: signTxData.deadline
+    };
+
+    return {
+      types: {
+        EIP712Domain: [
+          { name: 'name', type: 'string' },
+          { name: 'version', type: 'string' },
+          { name: 'chainId', type: 'uint256' },
+          { name: 'verifyingContract', type: 'address' }
+        ],
+        SignTx: [
+          { name: 'txHash', type: 'bytes32' },
+          { name: 'signer', type: 'address' },
+          { name: 'deadline', type: 'uint256' }
+        ]
+      },
+      primaryType: 'SignTx',
+      domain: normalizedDomain,
+      message: normalizedData
+    };
+  } catch (error: any) {
+    console.error('❌ Error creating SignTx EIP-712 typed data:', error);
+    throw new Error(`Failed to create SignTx EIP-712 typed data: ${error.message}`);
+  }
+}
+
+/**
+ * Sign SafeTxPool ProposeTx operation using EIP-712
+ */
+export async function signProposeTx(
+  signer: ethers.Signer,
+  domain: SafeTxPoolDomain,
+  proposeTxData: ProposeTxData
+): Promise<string> {
+  console.log('🔐 Signing ProposeTx with EIP-712...');
+
+  try {
+    const typedData = createProposeTxTypedData(domain, proposeTxData);
+    console.log('📋 ProposeTx typed data created:', typedData);
+
+    // Method 1: Try to use _signTypedData if available (MetaMask, etc.)
+    if ('_signTypedData' in signer) {
+      console.log('🔐 Method 1: Using _signTypedData (MetaMask style)...');
+      try {
+        const signature = await (signer as any)._signTypedData(
+          typedData.domain,
+          { ProposeTx: typedData.types.ProposeTx },
+          typedData.message
+        );
+        console.log('✅ ProposeTx EIP-712 signing successful (method 1)');
+        return signature;
+      } catch (method1Error: any) {
+        console.log('❌ Method 1 failed:', method1Error.message || method1Error);
+        // Continue to method 2
+      }
+    }
+
+    // Method 2: Try eth_signTypedData_v4 if available
+    if (signer.provider && 'send' in signer.provider) {
+      console.log('🔐 Method 2: Using eth_signTypedData_v4...');
+      try {
+        const signerAddress = await signer.getAddress();
+        const signature = await (signer.provider as any).send('eth_signTypedData_v4', [
+          signerAddress,
+          JSON.stringify(typedData)
+        ]);
+        console.log('✅ ProposeTx EIP-712 signing successful (method 2)');
+        return signature;
+      } catch (method2Error: any) {
+        console.log('❌ Method 2 failed:', method2Error.message || method2Error);
+        throw method2Error;
+      }
+    }
+
+    throw new Error('No compatible signing method available');
+  } catch (error: any) {
+    console.error('❌ Error signing ProposeTx:', error);
+    throw new Error(`Failed to sign ProposeTx: ${error.message || error}`);
+  }
+}
+
+/**
+ * Sign SafeTxPool SignTx operation using EIP-712
+ */
+export async function signSignTx(
+  signer: ethers.Signer,
+  domain: SafeTxPoolDomain,
+  signTxData: SignTxData
+): Promise<string> {
+  console.log('🔐 Signing SignTx with EIP-712...');
+
+  try {
+    const typedData = createSignTxTypedData(domain, signTxData);
+    console.log('📋 SignTx typed data created:', typedData);
+
+    // Method 1: Try to use _signTypedData if available (MetaMask, etc.)
+    if ('_signTypedData' in signer) {
+      console.log('🔐 Method 1: Using _signTypedData (MetaMask style)...');
+      try {
+        const signature = await (signer as any)._signTypedData(
+          typedData.domain,
+          { SignTx: typedData.types.SignTx },
+          typedData.message
+        );
+        console.log('✅ SignTx EIP-712 signing successful (method 1)');
+        return signature;
+      } catch (method1Error: any) {
+        console.log('❌ Method 1 failed:', method1Error.message || method1Error);
+        // Continue to method 2
+      }
+    }
+
+    // Method 2: Try eth_signTypedData_v4 if available
+    if (signer.provider && 'send' in signer.provider) {
+      console.log('🔐 Method 2: Using eth_signTypedData_v4...');
+      try {
+        const signerAddress = await signer.getAddress();
+        const signature = await (signer.provider as any).send('eth_signTypedData_v4', [
+          signerAddress,
+          JSON.stringify(typedData)
+        ]);
+        console.log('✅ SignTx EIP-712 signing successful (method 2)');
+        return signature;
+      } catch (method2Error: any) {
+        console.log('❌ Method 2 failed:', method2Error.message || method2Error);
+        throw method2Error;
+      }
+    }
+
+    throw new Error('No compatible signing method available');
+  } catch (error: any) {
+    console.error('❌ Error signing SignTx:', error);
+    throw new Error(`Failed to sign SignTx: ${error.message || error}`);
   }
 }
 

@@ -19,10 +19,40 @@ export const SAFE_TX_POOL_ABI = [
   },
   {
     "type": "function",
+    "name": "proposeTxWithSignature",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "to", "type": "address"},
+      {"name": "value", "type": "uint256"},
+      {"name": "data", "type": "bytes"},
+      {"name": "operation", "type": "uint8"},
+      {"name": "nonce", "type": "uint256"},
+      {"name": "proposer", "type": "address"},
+      {"name": "deadline", "type": "uint256"},
+      {"name": "signature", "type": "bytes"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "signTx",
     "inputs": [
       {"name": "txHash", "type": "bytes32"},
       {"name": "signature", "type": "bytes"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "signTxWithSignature",
+    "inputs": [
+      {"name": "txHash", "type": "bytes32"},
+      {"name": "signer", "type": "address"},
+      {"name": "deadline", "type": "uint256"},
+      {"name": "eip712Signature", "type": "bytes"},
+      {"name": "txSignature", "type": "bytes"}
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
@@ -98,6 +128,15 @@ export const SAFE_TX_POOL_ABI = [
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getDomainSeparator",
+    "inputs": [],
+    "outputs": [
+      {"name": "", "type": "bytes32"}
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "event",

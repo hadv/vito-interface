@@ -45,10 +45,10 @@ export interface SafeTransactionData {
 
 export class SafeWalletService {
   private safeContract: ethers.Contract | null = null;
-  private provider: ethers.providers.Provider | null = null;
-  private signer: ethers.Signer | null = null;
-  private config: SafeWalletConfig | null = null;
-  private safeTxPoolService: SafeTxPoolService | null = null;
+  public provider: ethers.providers.Provider | null = null;
+  public signer: ethers.Signer | null = null;
+  public config: SafeWalletConfig | null = null;
+  public safeTxPoolService: SafeTxPoolService | null = null;
   private onChainDataService: OnChainDataService | null = null;
 
   /**
@@ -491,7 +491,48 @@ export class SafeWalletService {
   }
 
   /**
-   * Step 3: Use signed transaction data to propose transaction on SafeTxPool contract
+   * Step 3: Use signed transaction data to propose transaction on SafeTxPool contract with EIP-712
+   */
+  async proposeSignedTransactionWithEIP712(
+    safeTransactionData: SafeTransactionData,
+    txHash: string,
+    signature: string
+  ): Promise<void> {
+    this.ensureInitialized();
+
+    if (!this.safeTxPoolService || !this.provider || !this.signer) {
+      throw new Error('SafeTxPool service, provider, or signer not initialized');
+    }
+
+    try {
+      // Get network info
+      const network = await this.provider.getNetwork();
+      const proposerAddress = await this.signer.getAddress();
+
+      // Propose transaction to SafeTxPool contract using EIP-712
+      await this.safeTxPoolService.proposeTxWithEIP712({
+        safe: this.config!.safeAddress,
+        to: safeTransactionData.to,
+        value: safeTransactionData.value,
+        data: safeTransactionData.data,
+        operation: safeTransactionData.operation,
+        nonce: safeTransactionData.nonce,
+        proposer: proposerAddress
+      }, network.chainId);
+
+      // Submit the signature to SafeTxPool using EIP-712
+      await this.safeTxPoolService.signTxWithEIP712({
+        txHash,
+        signer: proposerAddress
+      }, signature);
+    } catch (error) {
+      console.error('Error proposing signed transaction with EIP-712:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Step 3: Use signed transaction data to propose transaction on SafeTxPool contract (legacy)
    */
   async proposeSignedTransaction(
     safeTransactionData: SafeTransactionData,
@@ -527,7 +568,32 @@ export class SafeWalletService {
   }
 
   /**
-   * Complete transaction flow: Create EIP-712 → Sign → Propose
+   * Complete transaction flow with EIP-712 for SafeTxPool: Create EIP-712 → Sign → Propose
+   */
+  async createTransactionWithEIP712(transactionRequest: TransactionRequest): Promise<SafeTransactionData & { txHash: string; signature: string }> {
+    try {
+      // Step 1: Create domain type EIP-712 transaction
+      const { safeTransactionData, domain, txHash } = await this.createEIP712Transaction(transactionRequest);
+
+      // Step 2: Request user to sign
+      const signature = await this.signEIP712Transaction(safeTransactionData, domain);
+
+      // Step 3: Use signed transaction data to propose transaction on SafeTxPool contract with EIP-712
+      await this.proposeSignedTransactionWithEIP712(safeTransactionData, txHash, signature);
+
+      return {
+        ...safeTransactionData,
+        txHash,
+        signature
+      };
+    } catch (error) {
+      console.error('Error in complete transaction flow with EIP-712:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Complete transaction flow: Create EIP-712 → Sign → Propose (legacy)
    */
   async createTransaction(transactionRequest: TransactionRequest): Promise<SafeTransactionData & { txHash: string; signature: string }> {
     try {

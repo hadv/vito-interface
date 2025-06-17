@@ -1,7 +1,15 @@
 import { ethers } from 'ethers';
 import { SAFE_TX_POOL_ABI, SAFE_ABI, NETWORK_CONFIGS, isSafeTxPoolConfigured, getSafeTxPoolAddress } from '../contracts/abis';
 import { getProviderForNetwork } from '../utils/ens';
-import { createSafeContractTransactionHash, SafeTransactionData } from '../utils/eip712';
+import {
+  createSafeContractTransactionHash,
+  SafeTransactionData,
+  createSafeTxPoolDomain,
+  signProposeTx,
+  signSignTx,
+  ProposeTxData,
+  SignTxData
+} from '../utils/eip712';
 
 export interface SafeTxPoolTransaction {
   txHash: string;
@@ -25,8 +33,19 @@ export interface ProposeTransactionParams {
   nonce: number;
 }
 
+export interface ProposeTransactionWithEIP712Params extends ProposeTransactionParams {
+  proposer: string;
+  deadline?: number; // Optional, will default to 1 hour from now
+}
+
+export interface SignTransactionWithEIP712Params {
+  txHash: string;
+  signer: string;
+  deadline?: number; // Optional, will default to 1 hour from now
+}
+
 export class SafeTxPoolService {
-  private contract: ethers.Contract | null = null;
+  public contract: ethers.Contract | null = null;
   private provider: ethers.providers.Provider | null = null;
   private signer: ethers.Signer | null = null;
   private network: string = 'ethereum';
@@ -188,7 +207,115 @@ export class SafeTxPoolService {
   }
 
   /**
-   * Sign a proposed transaction
+   * Propose a transaction using EIP-712 signature (user-friendly)
+   */
+  async proposeTxWithEIP712(params: ProposeTransactionWithEIP712Params, chainId?: number): Promise<string> {
+    if (!this.contract || !this.signer) {
+      throw new Error('Contract not initialized or signer not set');
+    }
+
+    try {
+      // Get chainId if not provided
+      let networkChainId = chainId;
+      if (!networkChainId && this.provider) {
+        const network = await this.provider.getNetwork();
+        networkChainId = network.chainId;
+      }
+      if (!networkChainId) {
+        throw new Error('Unable to determine chain ID for EIP-712 signing');
+      }
+
+      // Set deadline (default to 1 hour from now)
+      const deadline = params.deadline || Math.floor(Date.now() / 1000) + 3600;
+
+      // Create SafeTxPool domain
+      const domain = createSafeTxPoolDomain(networkChainId, this.contract.address);
+
+      // Prepare ProposeTx data
+      const proposeTxData: ProposeTxData = {
+        safe: params.safe,
+        to: params.to,
+        value: params.value,
+        data: params.data,
+        operation: params.operation,
+        nonce: params.nonce,
+        proposer: params.proposer,
+        deadline
+      };
+
+      // Sign with EIP-712
+      const signature = await signProposeTx(this.signer, domain, proposeTxData);
+
+      // Call the contract with EIP-712 signature
+      const tx = await this.contract.proposeTxWithSignature(
+        params.safe,
+        params.to,
+        params.value,
+        params.data,
+        params.operation,
+        params.nonce,
+        params.proposer,
+        deadline,
+        signature
+      );
+
+      // Wait for transaction confirmation
+      await tx.wait();
+
+      // Generate transaction hash for Safe
+      return this.generateTxHash(params, networkChainId);
+    } catch (error) {
+      console.error('Error proposing transaction with EIP-712:', error);
+      throw new Error(`Failed to propose transaction with EIP-712: ${error}`);
+    }
+  }
+
+  /**
+   * Sign a proposed transaction using EIP-712 signature (user-friendly)
+   */
+  async signTxWithEIP712(params: SignTransactionWithEIP712Params, txSignature: string): Promise<void> {
+    if (!this.contract || !this.signer) {
+      throw new Error('Contract not initialized or signer not set');
+    }
+
+    try {
+      // Get network info
+      const network = await this.provider!.getNetwork();
+
+      // Set deadline (default to 1 hour from now)
+      const deadline = params.deadline || Math.floor(Date.now() / 1000) + 3600;
+
+      // Create SafeTxPool domain
+      const domain = createSafeTxPoolDomain(network.chainId, this.contract.address);
+
+      // Prepare SignTx data
+      const signTxData: SignTxData = {
+        txHash: params.txHash,
+        signer: params.signer,
+        deadline
+      };
+
+      // Sign with EIP-712
+      const eip712Signature = await signSignTx(this.signer, domain, signTxData);
+
+      // Call the contract with EIP-712 signature
+      const tx = await this.contract.signTxWithSignature(
+        params.txHash,
+        params.signer,
+        deadline,
+        eip712Signature,
+        txSignature
+      );
+
+      await tx.wait();
+    } catch (error) {
+      console.error('Error signing transaction with EIP-712:', error);
+      throw new Error(`Failed to sign transaction with EIP-712: ${error}`);
+    }
+  }
+
+  /**
+   * Sign a proposed transaction (legacy method)
    */
   async signTx(txHash: string, signature: string): Promise<void> {
     if (!this.contract || !this.signer) {
