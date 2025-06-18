@@ -69,17 +69,6 @@ export const useAddressBook = (options: UseAddressBookOptions = {}): UseAddressB
     return unsubscribe;
   }, [service]);
 
-  // Load entries when safe address changes
-  useEffect(() => {
-    if (service && safeAddress) {
-      loadEntries();
-
-      if (autoRefresh) {
-        setupEventListeners();
-      }
-    }
-  }, [service, safeAddress, autoRefresh, loadEntries, setupEventListeners]);
-
   const loadEntries = useCallback(async () => {
     if (!service || !safeAddress) return;
 
@@ -105,6 +94,17 @@ export const useAddressBook = (options: UseAddressBookOptions = {}): UseAddressB
       loadEntries();
     });
   }, [service, safeAddress, loadEntries]);
+
+  // Load entries when safe address changes
+  useEffect(() => {
+    if (service && safeAddress) {
+      loadEntries();
+
+      if (autoRefresh) {
+        setupEventListeners();
+      }
+    }
+  }, [service, safeAddress, autoRefresh, loadEntries, setupEventListeners]);
 
   const addEntry = useCallback(async (walletAddress: string, name: string) => {
     if (!service || !safeAddress) {
