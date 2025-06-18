@@ -115,7 +115,6 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
     error,
     addEntry,
     removeEntry,
-    searchEntries,
     refresh,
     clearError
   } = useAddressBook({
@@ -204,7 +203,7 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
           type="text"
           placeholder="Search by name or address..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
         />
       </SearchContainer>
 

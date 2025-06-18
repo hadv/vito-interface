@@ -3,7 +3,7 @@ import { SafeTxPoolService, AddressBookEntry } from './SafeTxPoolService';
 import { createSafeTxPoolService } from './SafeTxPoolService';
 
 // Re-export the AddressBookEntry interface for convenience
-export { AddressBookEntry };
+export type { AddressBookEntry };
 
 export interface AddressBookEntryWithValidation extends AddressBookEntry {
   isValid: boolean;

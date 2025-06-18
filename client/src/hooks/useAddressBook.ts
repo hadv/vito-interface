@@ -73,12 +73,12 @@ export const useAddressBook = (options: UseAddressBookOptions = {}): UseAddressB
   useEffect(() => {
     if (service && safeAddress) {
       loadEntries();
-      
+
       if (autoRefresh) {
         setupEventListeners();
       }
     }
-  }, [service, safeAddress, autoRefresh]);
+  }, [service, safeAddress, autoRefresh, loadEntries, setupEventListeners]);
 
   const loadEntries = useCallback(async () => {
     if (!service || !safeAddress) return;
@@ -126,7 +126,7 @@ export const useAddressBook = (options: UseAddressBookOptions = {}): UseAddressB
     } finally {
       setLoading(false);
     }
-  }, [service, safeAddress, showToast, loadEntries]);
+  }, [service, safeAddress, success, showError, loadEntries]);
 
   const removeEntry = useCallback(async (walletAddress: string) => {
     if (!service || !safeAddress) {
@@ -148,7 +148,7 @@ export const useAddressBook = (options: UseAddressBookOptions = {}): UseAddressB
     } finally {
       setLoading(false);
     }
-  }, [service, safeAddress, showToast, loadEntries]);
+  }, [service, safeAddress, success, showError, loadEntries]);
 
   const searchEntries = useCallback(async (query: string): Promise<AddressBookEntry[]> => {
     if (!service || !safeAddress) {

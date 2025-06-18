@@ -233,10 +233,10 @@ const AddressBookModal: React.FC<AddressBookModalProps> = ({
               id="name"
               type="text"
               value={name}
-              onChange={(e) => handleNameChange(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNameChange(e.target.value)}
               placeholder="Enter a name for this address"
               disabled={isSubmitting}
-              error={Boolean(nameError)}
+              error={nameError || undefined}
             />
             {nameError && <ErrorMessage>{nameError}</ErrorMessage>}
             <HelperText>Maximum 31 characters</HelperText>
@@ -248,10 +248,10 @@ const AddressBookModal: React.FC<AddressBookModalProps> = ({
               id="address"
               type="text"
               value={walletAddress}
-              onChange={(e) => handleAddressChange(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleAddressChange(e.target.value)}
               placeholder="0x..."
               disabled={isSubmitting || isEditing}
-              error={Boolean(addressError)}
+              error={addressError || undefined}
             />
             {addressError && <ErrorMessage>{addressError}</ErrorMessage>}
             {isEditing && (

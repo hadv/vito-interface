@@ -134,10 +134,9 @@ const AddressBookEntryComponent: React.FC<AddressBookEntryProps> = ({
         <EntryInfo>
           <EntryName>{entry.name}</EntryName>
           <EntryAddress>
-            <AddressDisplay 
-              address={entry.walletAddress} 
+            <AddressDisplay
+              address={entry.walletAddress}
               showCopy={true}
-              showQR={false}
             />
           </EntryAddress>
         </EntryInfo>
