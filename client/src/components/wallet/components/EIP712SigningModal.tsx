@@ -429,6 +429,9 @@ const EIP712SigningModal: React.FC<EIP712SigningModalProps> = ({
             variant="secondary"
             onClick={onClose}
             disabled={isLoading}
+            data-1p-ignore="true"
+            data-lpignore="true"
+            type="button"
           >
             Cancel
           </Button>
@@ -436,6 +439,9 @@ const EIP712SigningModal: React.FC<EIP712SigningModalProps> = ({
             variant="primary"
             onClick={handleSign}
             disabled={isLoading}
+            data-1p-ignore="true"
+            data-lpignore="true"
+            type="button"
           >
             {isLoading && <LoadingSpinner />}
             {isLoading ? 'Signing...' : 'Sign Transaction'}

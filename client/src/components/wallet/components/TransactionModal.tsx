@@ -619,6 +619,10 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
               onChange={(e) => setToAddress(e.target.value)}
               placeholder="0x..."
               disabled={isLoading}
+              autoComplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-form-type="other"
             />
           </FormGroup>
 
@@ -668,6 +672,10 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.0"
               disabled={isLoading}
+              autoComplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-form-type="other"
             />
           </FormGroup>
 
@@ -790,6 +798,8 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
               variant="secondary"
               onClick={onClose}
               disabled={isLoading}
+              data-1p-ignore="true"
+              data-lpignore="true"
             >
               Cancel
             </Button>
@@ -799,6 +809,8 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                 variant="primary"
                 onClick={handleConnectSigner}
                 disabled={isLoading}
+                data-1p-ignore="true"
+                data-lpignore="true"
               >
                 Connect Wallet to Sign
               </Button>
@@ -807,6 +819,8 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                 type="submit"
                 variant="primary"
                 disabled={isLoading || !toAddress || !amount}
+                data-1p-ignore="true"
+                data-lpignore="true"
               >
                 {isLoading ?
                   (currentStep === 'form' ? 'Creating EIP-712 Transaction...' :

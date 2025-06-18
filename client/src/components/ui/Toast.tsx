@@ -289,11 +289,12 @@ interface ToastContainerProps {
     };
   }>;
   onClose: (id: string) => void;
+  style?: React.CSSProperties;
 }
 
-export const ToastNotificationContainer: React.FC<ToastContainerProps> = ({ toasts, onClose }) => {
+export const ToastNotificationContainer: React.FC<ToastContainerProps> = ({ toasts, onClose, style }) => {
   return (
-    <ToastContainerWrapper>
+    <ToastContainerWrapper style={style}>
       {toasts.map((toast) => (
         <Toast
           key={toast.id}

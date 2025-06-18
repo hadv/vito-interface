@@ -28,8 +28,7 @@ import { Asset, Transaction, MenuSection, WalletPageProps } from './types';
 import { TokenService } from '../../services/TokenService';
 import { safeWalletService } from '../../services/SafeWalletService';
 import { getRpcUrl } from '../../contracts/abis';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { testTokenDetection, testLinkTokenSepolia } from '../../utils/testTokenDetection';
+
 
 // Menu Icons
 const HomeIcon = () => (
@@ -253,16 +252,7 @@ const WalletPage: React.FC<WalletPageProps> = ({
     setShowQRCode(!showQRCode);
   };
 
-  // Make test functions available globally for debugging
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      (window as any).testTokenDetection = testTokenDetection;
-      (window as any).testLinkTokenSepolia = testLinkTokenSepolia;
-      console.log('🧪 Token detection test functions available:');
-      console.log('  - testTokenDetection(safeAddress, network)');
-      console.log('  - testLinkTokenSepolia(safeAddress)');
-    }
-  }, []);
+
 
   // Initialize Safe wallet data
   useEffect(() => {
