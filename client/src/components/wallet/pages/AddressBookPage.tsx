@@ -306,7 +306,7 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
           <Button
             variant="secondary"
             size="sm"
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
               handleEditEntry(entry);
             }}
@@ -317,7 +317,7 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
           <Button
             variant="danger"
             size="sm"
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
               handleRemoveEntry(entry.walletAddress);
             }}
