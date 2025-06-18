@@ -4,6 +4,8 @@ export interface Asset {
   balance: string;
   value: string;
   type: 'native' | 'erc20' | 'erc721';
+  contractAddress?: string; // For ERC-20 tokens
+  decimals?: number; // For ERC-20 tokens
 }
 
 export interface TokenTransferInfo {

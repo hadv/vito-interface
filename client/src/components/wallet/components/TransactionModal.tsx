@@ -11,6 +11,7 @@ import { isSafeTxPoolConfigured } from '../../../contracts/abis';
 import { useToast } from '../../../hooks/useToast';
 import { ErrorHandler } from '../../../utils/errorHandling';
 import { errorRecoveryService } from '../../../services/ErrorRecoveryService';
+import { Asset } from '../types';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -219,13 +220,15 @@ interface TransactionModalProps {
   onClose: () => void;
   onTransactionCreated?: (transaction: any) => void;
   fromAddress?: string;
+  preSelectedAsset?: Asset | null; // Pre-selected asset for sending
 }
 
 const TransactionModal: React.FC<TransactionModalProps> = ({
   isOpen,
   onClose,
   onTransactionCreated,
-  fromAddress
+  fromAddress,
+  preSelectedAsset
 }) => {
   const [toAddress, setToAddress] = useState('');
   const [amount, setAmount] = useState('');
@@ -308,12 +311,32 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     try {
       // Step 1: Create domain type EIP-712 transaction with retry logic
       const result = await errorRecoveryService.retry(async () => {
-        return await safeWalletService.createEIP712Transaction({
-          to: toAddress,
-          value: ethers.utils.parseEther(amount).toString(),
-          data: '0x',
-          operation: 0
-        });
+        // Handle ERC-20 token transfers vs ETH transfers
+        if (preSelectedAsset && preSelectedAsset.type === 'erc20' && preSelectedAsset.contractAddress) {
+          // ERC-20 token transfer
+          const transferInterface = new ethers.utils.Interface([
+            'function transfer(address to, uint256 amount) returns (bool)'
+          ]);
+
+          const decimals = preSelectedAsset.decimals || 18;
+          const parsedAmount = ethers.utils.parseUnits(amount, decimals);
+          const data = transferInterface.encodeFunctionData('transfer', [toAddress, parsedAmount]);
+
+          return await safeWalletService.createEIP712Transaction({
+            to: preSelectedAsset.contractAddress,
+            value: '0',
+            data,
+            operation: 0
+          });
+        } else {
+          // ETH transfer
+          return await safeWalletService.createEIP712Transaction({
+            to: toAddress,
+            value: ethers.utils.parseEther(amount).toString(),
+            data: '0x',
+            operation: 0
+          });
+        }
       }, {
         maxAttempts: 3,
         retryCondition: (error) => {
@@ -491,8 +514,45 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             />
           </FormGroup>
 
+          {preSelectedAsset && (
+            <FormGroup>
+              <Label>Sending Asset</Label>
+              <div style={{
+                padding: '12px 16px',
+                background: '#334155',
+                border: '1px solid #475569',
+                borderRadius: '8px',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <div style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #007bff, #0056b3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontSize: '12px',
+                  fontWeight: 'bold'
+                }}>
+                  {preSelectedAsset.symbol.charAt(0)}
+                </div>
+                <div>
+                  <div style={{ fontWeight: '600' }}>{preSelectedAsset.name}</div>
+                  <div style={{ fontSize: '12px', color: '#888' }}>
+                    Balance: {preSelectedAsset.balance} {preSelectedAsset.symbol}
+                  </div>
+                </div>
+              </div>
+            </FormGroup>
+          )}
+
           <FormGroup>
-            <Label>Amount (ETH)</Label>
+            <Label>Amount ({preSelectedAsset?.symbol || 'ETH'})</Label>
             <Input
               type="number"
               step="0.000001"
@@ -511,7 +571,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Amount:</DetailLabel>
-                <DetailValue>{amount} ETH</DetailValue>
+                <DetailValue>{amount} {preSelectedAsset?.symbol || 'ETH'}</DetailValue>
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Estimated Gas:</DetailLabel>

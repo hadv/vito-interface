@@ -117,6 +117,40 @@ const AssetValue = styled.div`
   font-weight: ${theme.typography.fontWeight.medium};
 `;
 
+const AssetActions = styled.div`
+  display: flex;
+  gap: ${theme.spacing[2]};
+  margin-left: ${theme.spacing[3]};
+`;
+
+const SendButton = styled.button`
+  padding: ${theme.spacing[2]} ${theme.spacing[3]};
+  background: ${theme.colors.primary[500]};
+  color: white;
+  border: none;
+  border-radius: ${theme.borderRadius.md};
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 60px;
+
+  &:hover {
+    background: ${theme.colors.primary[600]};
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    background: ${theme.colors.text.muted};
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
 const LoadingState = styled.div`
   display: flex;
   align-items: center;
@@ -159,9 +193,10 @@ const EmptyStateDescription = styled.p`
 interface AssetsPageProps {
   assets: Asset[];
   isLoading: boolean;
+  onSendAsset?: (asset: Asset) => void;
 }
 
-const AssetsPage: React.FC<AssetsPageProps> = ({ assets, isLoading }) => {
+const AssetsPage: React.FC<AssetsPageProps> = ({ assets, isLoading, onSendAsset }) => {
   const renderAssetItem = (asset: Asset, isSelected: boolean, isFocused: boolean) => (
     <AssetCard
       variant="elevated"
@@ -185,6 +220,17 @@ const AssetsPage: React.FC<AssetsPageProps> = ({ assets, isLoading }) => {
           <AssetBalance>{asset.balance} {asset.symbol}</AssetBalance>
           <AssetValue>{asset.value}</AssetValue>
         </AssetBalanceInfo>
+        <AssetActions>
+          <SendButton
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent triggering list item selection
+              onSendAsset?.(asset);
+            }}
+            disabled={!onSendAsset || parseFloat(asset.balance) <= 0}
+          >
+            Send
+          </SendButton>
+        </AssetActions>
       </AssetItem>
     </AssetCard>
   );
