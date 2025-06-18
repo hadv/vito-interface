@@ -12,50 +12,91 @@ const ModalOverlay = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 `;
 
 const ModalContent = styled.div`
   background: ${theme.colors.background.primary};
-  border-radius: ${theme.borderRadius.lg};
-  padding: ${theme.spacing[6]};
+  border: 1px solid ${theme.colors.border.primary};
+  border-radius: ${theme.borderRadius.xl};
+  padding: ${theme.spacing[8]};
   max-width: 500px;
   width: 90%;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+  animation: slideIn 0.3s ease-out;
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-20px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
 `;
 
 const ModalHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: ${theme.spacing[6]};
+  margin-bottom: ${theme.spacing[8]};
+  padding-bottom: ${theme.spacing[4]};
+  border-bottom: 1px solid ${theme.colors.border.primary};
 `;
 
 const ModalTitle = styled.h2`
   margin: 0;
-  font-size: ${theme.typography.fontSize.xl};
-  font-weight: ${theme.typography.fontWeight.semibold};
+  font-size: ${theme.typography.fontSize['2xl']};
+  font-weight: ${theme.typography.fontWeight.bold};
   color: ${theme.colors.text.primary};
+  background: linear-gradient(135deg, ${theme.colors.primary[400]} 0%, ${theme.colors.secondary[400]} 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 `;
 
 const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: ${theme.typography.fontSize.xl};
+  background: ${theme.colors.background.secondary};
+  border: 1px solid ${theme.colors.border.primary};
+  width: 32px;
+  height: 32px;
+  border-radius: ${theme.borderRadius.full};
   color: ${theme.colors.text.secondary};
   cursor: pointer;
-  padding: ${theme.spacing[1]};
-  border-radius: ${theme.borderRadius.sm};
-  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: ${theme.typography.fontSize.lg};
+  transition: all 0.2s ease;
+
   &:hover {
-    background: ${theme.colors.background.secondary};
+    background: ${theme.colors.background.tertiary};
     color: ${theme.colors.text.primary};
+    border-color: ${theme.colors.border.secondary};
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
   }
 `;
 
