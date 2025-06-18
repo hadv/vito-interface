@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { Button } from '@components/ui';
 import { SafeTransactionData } from '../../../utils/eip712';
 import { DecodedTransactionData } from '../../../utils/transactionDecoder';
+import AddressDisplay from './AddressDisplay';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -18,14 +19,16 @@ const ModalOverlay = styled.div<{ isOpen: boolean }>`
 `;
 
 const ModalContainer = styled.div`
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-  border: 1px solid #404040;
-  border-radius: 16px;
-  padding: 24px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 20px;
+  padding: 32px;
+  width: 95%;
+  max-width: 800px;
+  max-height: 95vh;
   overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(20px);
 `;
 
 const ModalHeader = styled.div`
@@ -94,48 +97,66 @@ const InfoText = styled.p`
 `;
 
 const TransactionDetails = styled.div`
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #404040;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 24px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 32px;
 `;
 
 const SectionTitle = styled.h4`
-  color: #fff;
-  font-size: 16px;
-  font-weight: 700;
-  margin: 0 0 12px 0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: #f1f5f9;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 20px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &::before {
+    content: '';
+    width: 4px;
+    height: 20px;
+    background: linear-gradient(135deg, #4ECDC4, #44A08D);
+    border-radius: 2px;
+  }
 `;
 
 const DetailRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
-  
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+
   &:last-child {
     margin-bottom: 0;
+    border-bottom: none;
+  }
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    text-align: left;
   }
 `;
 
 const DetailLabel = styled.span`
-  color: #d0d0d0;
-  font-size: 15px;
+  color: #94a3b8;
+  font-size: 14px;
   font-weight: 500;
-  min-width: 120px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 `;
 
-const DetailValue = styled.span`
-  color: #fff;
+const DetailValue = styled.div`
+  color: #f1f5f9;
   font-size: 15px;
-  font-weight: 600;
-  word-break: break-all;
-  text-align: right;
-  flex: 1;
-  margin-left: 16px;
+  font-weight: 500;
+  word-break: break-word;
+  line-height: 1.5;
 `;
 
 const EIP712Badge = styled.div`
@@ -153,8 +174,11 @@ const EIP712Badge = styled.div`
 
 const ButtonGroup = styled.div`
   display: flex;
-  gap: 12px;
+  gap: 16px;
   justify-content: flex-end;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
 `;
 
 const LoadingSpinner = styled.div`
@@ -180,6 +204,7 @@ interface EIP712SigningModalProps {
   safeAddress: string;
   chainId: number;
   decodedTransaction?: DecodedTransactionData | null;
+  network?: string;
 }
 
 const EIP712SigningModal: React.FC<EIP712SigningModalProps> = ({
@@ -189,7 +214,8 @@ const EIP712SigningModal: React.FC<EIP712SigningModalProps> = ({
   transactionData,
   safeAddress,
   chainId,
-  decodedTransaction
+  decodedTransaction,
+  network = 'ethereum'
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -209,10 +235,6 @@ const EIP712SigningModal: React.FC<EIP712SigningModalProps> = ({
     if (e.target === e.currentTarget) {
       onClose();
     }
-  };
-
-  const formatAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
   const formatValue = (value: string) => {
@@ -263,7 +285,14 @@ const EIP712SigningModal: React.FC<EIP712SigningModalProps> = ({
 
           <DetailRow>
             <DetailLabel>Safe Address:</DetailLabel>
-            <DetailValue>{formatAddress(safeAddress)}</DetailValue>
+            <DetailValue>
+              <AddressDisplay
+                address={safeAddress}
+                network={network}
+                truncate={true}
+                truncateLength={6}
+              />
+            </DetailValue>
           </DetailRow>
 
           <DetailRow>
@@ -273,7 +302,14 @@ const EIP712SigningModal: React.FC<EIP712SigningModalProps> = ({
 
           <DetailRow>
             <DetailLabel>To:</DetailLabel>
-            <DetailValue>{formatAddress(transactionData.to)}</DetailValue>
+            <DetailValue>
+              <AddressDisplay
+                address={transactionData.to}
+                network={network}
+                truncate={true}
+                truncateLength={6}
+              />
+            </DetailValue>
           </DetailRow>
 
           <DetailRow>
@@ -291,7 +327,14 @@ const EIP712SigningModal: React.FC<EIP712SigningModalProps> = ({
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Token Address:</DetailLabel>
-                <DetailValue>{formatAddress(decodedTransaction.details.token.address)}</DetailValue>
+                <DetailValue>
+                  <AddressDisplay
+                    address={decodedTransaction.details.token.address}
+                    network={network}
+                    truncate={true}
+                    truncateLength={6}
+                  />
+                </DetailValue>
               </DetailRow>
               {decodedTransaction.details.formattedAmount && (
                 <DetailRow>
@@ -330,26 +373,51 @@ const EIP712SigningModal: React.FC<EIP712SigningModalProps> = ({
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Raw Transaction Data:</DetailLabel>
-                <DetailValue style={{
-                  fontSize: '11px',
-                  fontFamily: 'monospace',
-                  color: '#888',
-                  wordBreak: 'break-all',
-                  cursor: 'pointer',
-                  padding: '8px',
-                  background: '#1a1a1a',
-                  borderRadius: '4px',
-                  border: '1px solid #333',
-                  maxHeight: '100px',
-                  overflowY: 'auto'
-                }}
-                onClick={() => {
-                  navigator.clipboard.writeText(transactionData.data);
-                  console.log('Transaction data copied to clipboard');
-                }}
-                title="Click to copy raw transaction data"
-                >
-                  {transactionData.data}
+                <DetailValue>
+                  <div style={{
+                    fontSize: '12px',
+                    fontFamily: 'SF Mono, Monaco, Inconsolata, Roboto Mono, monospace',
+                    color: '#94a3b8',
+                    wordBreak: 'break-all',
+                    cursor: 'pointer',
+                    padding: '16px',
+                    background: 'rgba(15, 23, 42, 0.8)',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(148, 163, 184, 0.2)',
+                    maxHeight: '120px',
+                    overflowY: 'auto',
+                    lineHeight: '1.6',
+                    transition: 'all 0.2s ease',
+                    position: 'relative'
+                  }}
+                  onClick={() => {
+                    navigator.clipboard.writeText(transactionData.data);
+                    console.log('Transaction data copied to clipboard');
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(76, 236, 196, 0.05)';
+                    e.currentTarget.style.borderColor = 'rgba(76, 236, 196, 0.3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(15, 23, 42, 0.8)';
+                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+                  }}
+                  title="Click to copy raw transaction data"
+                  >
+                    <div style={{
+                      position: 'absolute',
+                      top: '8px',
+                      right: '8px',
+                      fontSize: '10px',
+                      color: '#64748b',
+                      background: 'rgba(0, 0, 0, 0.5)',
+                      padding: '2px 6px',
+                      borderRadius: '4px'
+                    }}>
+                      Click to copy
+                    </div>
+                    {transactionData.data}
+                  </div>
                 </DetailValue>
               </DetailRow>
             </>

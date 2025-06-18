@@ -315,6 +315,7 @@ const WalletPage: React.FC<WalletPageProps> = ({
             assets={assets}
             isLoading={isLoading}
             onSendAsset={handleSendAsset}
+            network={currentNetwork}
           />
         );
       case 'transactions':

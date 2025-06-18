@@ -9,6 +9,7 @@ import { useToast } from '../../../hooks/useToast';
 import { TransactionDecoder, DecodedTransactionData } from '../../../utils/transactionDecoder';
 import { TokenService } from '../../../services/TokenService';
 import { getRpcUrl } from '../../../contracts/abis';
+import AddressDisplay from './AddressDisplay';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -24,14 +25,15 @@ const ModalOverlay = styled.div<{ isOpen: boolean }>`
 `;
 
 const ModalContainer = styled.div`
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-  border: 1px solid #374151;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 20px;
+  width: 95%;
+  max-width: 900px;
+  max-height: 95vh;
   overflow-y: auto;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(20px);
 `;
 
 const ModalHeader = styled.div`
@@ -79,25 +81,40 @@ const TransactionDetails = styled.div`
 `;
 
 const DetailRow = styled.div`
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 24px;
   align-items: center;
-  margin-bottom: 12px;
-  
+  margin-bottom: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+
   &:last-child {
     margin-bottom: 0;
+    border-bottom: none;
+  }
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    text-align: left;
   }
 `;
 
 const DetailLabel = styled.span`
-  color: #9ca3af;
-  font-size: 0.875rem;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 `;
 
-const DetailValue = styled.span`
-  color: #f9fafb;
-  font-size: 0.875rem;
-  font-family: 'Monaco', 'Menlo', monospace;
+const DetailValue = styled.div`
+  color: #f1f5f9;
+  font-size: 15px;
+  font-weight: 500;
+  word-break: break-word;
+  line-height: 1.5;
 `;
 
 const SignersSection = styled.div`
@@ -452,7 +469,14 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
             <DetailRow>
               <DetailLabel>To:</DetailLabel>
-              <DetailValue>{formatWalletAddress(transaction.to)}</DetailValue>
+              <DetailValue>
+                <AddressDisplay
+                  address={transaction.to}
+                  network={network}
+                  truncate={true}
+                  truncateLength={6}
+                />
+              </DetailValue>
             </DetailRow>
 
             <DetailRow>
@@ -472,7 +496,14 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
                 </DetailRow>
                 <DetailRow>
                   <DetailLabel>Token Address:</DetailLabel>
-                  <DetailValue>{formatWalletAddress(decodedTransaction.details.token.address)}</DetailValue>
+                  <DetailValue>
+                    <AddressDisplay
+                      address={decodedTransaction.details.token.address}
+                      network={network}
+                      truncate={true}
+                      truncateLength={6}
+                    />
+                  </DetailValue>
                 </DetailRow>
               </>
             )}
@@ -483,7 +514,15 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
             </DetailRow>
             <DetailRow>
               <DetailLabel>Transaction Hash:</DetailLabel>
-              <DetailValue>{formatWalletAddress(transaction.txHash)}</DetailValue>
+              <DetailValue>
+                <AddressDisplay
+                  address={transaction.txHash}
+                  network={network}
+                  truncate={true}
+                  truncateLength={8}
+                  type="transaction"
+                />
+              </DetailValue>
             </DetailRow>
 
             {transaction.data && transaction.data !== '0x' && (

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { TokenInfo, TokenBalance } from '../../../services/TokenService';
+import AddressDisplay from './AddressDisplay';
 
 const Container = styled.div`
   position: relative;
@@ -184,6 +185,7 @@ export interface TokenSelectorProps {
   knownTokens: TokenBalance[];
   onAddCustomToken: (address: string) => Promise<TokenInfo | null>;
   disabled?: boolean;
+  network?: string;
 }
 
 const TokenSelector: React.FC<TokenSelectorProps> = ({
@@ -191,7 +193,8 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
   onTokenSelect,
   knownTokens,
   onAddCustomToken,
-  disabled = false
+  disabled = false,
+  network = 'ethereum'
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [customTokenAddress, setCustomTokenAddress] = useState('');
@@ -288,18 +291,29 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
           <DropdownSection>
             <SectionTitle>Your Tokens</SectionTitle>
             {knownTokens.map((tokenBalance) => (
-              <TokenOption
-                key={tokenBalance.tokenInfo.address}
-                onClick={() => handleTokenSelect(tokenBalance.tokenInfo)}
-              >
-                <TokenIcon>
-                  {tokenBalance.tokenInfo.symbol.charAt(0)}
-                </TokenIcon>
-                <TokenInfo>
-                  <TokenSymbol>{tokenBalance.tokenInfo.symbol}</TokenSymbol>
-                  <TokenBalance>Balance: {tokenBalance.formattedBalance}</TokenBalance>
-                </TokenInfo>
-              </TokenOption>
+              <div key={tokenBalance.tokenInfo.address}>
+                <TokenOption
+                  onClick={() => handleTokenSelect(tokenBalance.tokenInfo)}
+                >
+                  <TokenIcon>
+                    {tokenBalance.tokenInfo.symbol.charAt(0)}
+                  </TokenIcon>
+                  <TokenInfo>
+                    <TokenSymbol>{tokenBalance.tokenInfo.symbol}</TokenSymbol>
+                    <TokenBalance>Balance: {tokenBalance.formattedBalance}</TokenBalance>
+                    <div style={{ marginTop: '4px' }}>
+                      <AddressDisplay
+                        address={tokenBalance.tokenInfo.address}
+                        network={network}
+                        truncate={true}
+                        truncateLength={4}
+                        showCopy={false}
+                        showExplorer={true}
+                      />
+                    </div>
+                  </TokenInfo>
+                </TokenOption>
+              </div>
             ))}
           </DropdownSection>
         )}

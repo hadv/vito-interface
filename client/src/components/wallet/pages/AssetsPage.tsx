@@ -4,6 +4,7 @@ import { VitoList } from '@components/vitoUI';
 import { Asset } from '../types';
 import { theme } from '../../../theme';
 import { Card, Badge } from '../../ui';
+import AddressDisplay from '../components/AddressDisplay';
 
 const Container = styled.div`
   padding: 0;
@@ -194,9 +195,10 @@ interface AssetsPageProps {
   assets: Asset[];
   isLoading: boolean;
   onSendAsset?: (asset: Asset) => void;
+  network?: string;
 }
 
-const AssetsPage: React.FC<AssetsPageProps> = ({ assets, isLoading, onSendAsset }) => {
+const AssetsPage: React.FC<AssetsPageProps> = ({ assets, isLoading, onSendAsset, network = 'ethereum' }) => {
   const renderAssetItem = (asset: Asset, isSelected: boolean, isFocused: boolean) => (
     <AssetCard
       variant="elevated"
@@ -215,6 +217,18 @@ const AssetsPage: React.FC<AssetsPageProps> = ({ assets, isLoading, onSendAsset 
             </Badge>
           </AssetHeader>
           <AssetSymbol>{asset.symbol}</AssetSymbol>
+          {asset.type === 'erc20' && asset.contractAddress && (
+            <div style={{ marginTop: '4px' }}>
+              <AddressDisplay
+                address={asset.contractAddress}
+                network={network}
+                truncate={true}
+                truncateLength={4}
+                showCopy={true}
+                showExplorer={true}
+              />
+            </div>
+          )}
         </AssetInfo>
         <AssetBalanceInfo>
           <AssetBalance>{asset.balance} {asset.symbol}</AssetBalance>

@@ -15,6 +15,7 @@ import { Asset } from '../types';
 import { TransactionDecoder, DecodedTransactionData } from '../../../utils/transactionDecoder';
 import { TokenService } from '../../../services/TokenService';
 import { getRpcUrl } from '../../../contracts/abis';
+import AddressDisplay from './AddressDisplay';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -189,33 +190,41 @@ const TransactionDetails = styled.div`
 `;
 
 const DetailRow = styled.div`
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 24px;
   align-items: center;
   margin-bottom: 16px;
-  padding: 12px 0;
+  padding: 16px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 
   &:last-child {
     margin-bottom: 0;
     border-bottom: none;
   }
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    text-align: left;
+  }
 `;
 
 const DetailLabel = styled.span`
   color: #4ECDC4;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   text-shadow: 0 0 8px rgba(78, 205, 196, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 `;
 
-const DetailValue = styled.span`
+const DetailValue = styled.div`
   color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-  word-break: break-all;
-  text-align: right;
-  max-width: 60%;
+  font-size: 15px;
+  font-weight: 500;
+  word-break: break-word;
+  line-height: 1.5;
 `;
 
 interface TransactionModalProps {
@@ -637,7 +646,14 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
               <DetailRow>
                 <DetailLabel>Recipient:</DetailLabel>
-                <DetailValue>{toAddress.slice(0, 6)}...{toAddress.slice(-4)}</DetailValue>
+                <DetailValue>
+                  <AddressDisplay
+                    address={toAddress}
+                    network={connectionState.network || 'ethereum'}
+                    truncate={true}
+                    truncateLength={6}
+                  />
+                </DetailValue>
               </DetailRow>
 
               <DetailRow>
@@ -656,8 +672,12 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                   <DetailRow>
                     <DetailLabel>Token Address:</DetailLabel>
                     <DetailValue>
-                      {decodedTransaction.details.token.address.slice(0, 6)}...
-                      {decodedTransaction.details.token.address.slice(-4)}
+                      <AddressDisplay
+                        address={decodedTransaction.details.token.address}
+                        network={connectionState.network || 'ethereum'}
+                        truncate={true}
+                        truncateLength={6}
+                      />
                     </DetailValue>
                   </DetailRow>
                 </>
@@ -776,6 +796,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             safeAddress={pendingTransaction.domain.verifyingContract}
             chainId={pendingTransaction.domain.chainId}
             decodedTransaction={decodedTransaction}
+            network={connectionState.network || 'ethereum'}
           />
         )}
       </ModalContainer>
