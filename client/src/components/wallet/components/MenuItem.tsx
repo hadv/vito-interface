@@ -9,6 +9,22 @@ interface MenuItemProps {
   icon?: React.ReactNode;
 }
 
+const IconWrapper = styled.div<{ active: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: ${props => props.active ? '#ffffff' : 'rgba(255, 255, 255, 0.9)'};
+  transition: all 0.2s ease;
+  font-size: 20px;
+  opacity: ${props => props.active ? 1 : 0.85};
+
+  svg {
+    filter: ${props => props.active ? 'none' : 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))'};
+  }
+`;
+
 const StyledMenuItem = styled.div<{ active: boolean }>`
   padding: 18px 24px;
   margin: 6px 16px;
@@ -40,22 +56,6 @@ const StyledMenuItem = styled.div<{ active: boolean }>`
 
   &:active {
     background: ${props => props.active ? '#1d4ed8' : '#475569'};
-  }
-`;
-
-const IconWrapper = styled.div<{ active: boolean }>`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  color: ${props => props.active ? '#ffffff' : 'rgba(255, 255, 255, 0.9)'};
-  transition: all 0.2s ease;
-  font-size: 20px;
-  opacity: ${props => props.active ? 1 : 0.85};
-
-  svg {
-    filter: ${props => props.active ? 'none' : 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))'};
   }
 `;
 
