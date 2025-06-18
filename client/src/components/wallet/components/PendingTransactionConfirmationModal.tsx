@@ -6,6 +6,10 @@ import { SafeWalletService } from '../../../services/SafeWalletService';
 import { walletConnectionService } from '../../../services/WalletConnectionService';
 import { formatWalletAddress } from '../../../utils';
 import { useToast } from '../../../hooks/useToast';
+import { TransactionDecoder, DecodedTransactionData } from '../../../utils/transactionDecoder';
+import { TokenService } from '../../../services/TokenService';
+import { getRpcUrl } from '../../../contracts/abis';
+import AddressDisplay from './AddressDisplay';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -21,14 +25,15 @@ const ModalOverlay = styled.div<{ isOpen: boolean }>`
 `;
 
 const ModalContainer = styled.div`
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-  border: 1px solid #374151;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 20px;
+  width: 95%;
+  max-width: 900px;
+  max-height: 95vh;
   overflow-y: auto;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(20px);
 `;
 
 const ModalHeader = styled.div`
@@ -76,25 +81,40 @@ const TransactionDetails = styled.div`
 `;
 
 const DetailRow = styled.div`
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 24px;
   align-items: center;
-  margin-bottom: 12px;
-  
+  margin-bottom: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+
   &:last-child {
     margin-bottom: 0;
+    border-bottom: none;
+  }
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    text-align: left;
   }
 `;
 
 const DetailLabel = styled.span`
-  color: #9ca3af;
-  font-size: 0.875rem;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 `;
 
-const DetailValue = styled.span`
-  color: #f9fafb;
-  font-size: 0.875rem;
-  font-family: 'Monaco', 'Menlo', monospace;
+const DetailValue = styled.div`
+  color: #f1f5f9;
+  font-size: 15px;
+  font-weight: 500;
+  word-break: break-word;
+  line-height: 1.5;
 `;
 
 const SignersSection = styled.div`
@@ -229,14 +249,37 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
   const [currentUserAddress, setCurrentUserAddress] = useState<string | null>(null);
   const [hasUserSigned, setHasUserSigned] = useState(false);
   const [canUserSign, setCanUserSign] = useState(false);
+  const [decodedTransaction, setDecodedTransaction] = useState<DecodedTransactionData | null>(null);
   const toast = useToast();
 
   useEffect(() => {
     if (isOpen) {
       loadSafeInfo();
       getCurrentUserAddress();
+      decodeTransaction();
     }
   }, [isOpen, safeAddress]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Decode transaction for better display
+  const decodeTransaction = async () => {
+    try {
+      const rpcUrl = getRpcUrl(network);
+      const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+      const tokenService = new TokenService(provider, network);
+      const decoder = new TransactionDecoder(tokenService);
+
+      const decoded = await decoder.decodeTransactionData(
+        transaction.to,
+        transaction.value,
+        transaction.data || '0x'
+      );
+
+      setDecodedTransaction(decoded);
+    } catch (error) {
+      console.error('Error decoding transaction:', error);
+      setDecodedTransaction(null);
+    }
+  };
 
   // Update user permissions when safeInfo or currentUserAddress changes
   useEffect(() => {
@@ -415,27 +458,112 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
         <ModalContent>
           <TransactionDetails>
+            {decodedTransaction && (
+              <DetailRow>
+                <DetailLabel>Transaction Type:</DetailLabel>
+                <DetailValue style={{ color: '#10b981', fontWeight: 'bold' }}>
+                  {decodedTransaction.description}
+                </DetailValue>
+              </DetailRow>
+            )}
+
             <DetailRow>
               <DetailLabel>To:</DetailLabel>
-              <DetailValue>{formatWalletAddress(transaction.to)}</DetailValue>
+              <DetailValue>
+                <AddressDisplay
+                  address={transaction.to}
+                  network={network}
+                  truncate={true}
+                  truncateLength={6}
+                />
+              </DetailValue>
             </DetailRow>
+
             <DetailRow>
               <DetailLabel>Amount:</DetailLabel>
-              <DetailValue>{formatAmount(transaction.value)} ETH</DetailValue>
+              <DetailValue>
+                {decodedTransaction?.details.formattedAmount || `${formatAmount(transaction.value)} ETH`}
+              </DetailValue>
             </DetailRow>
+
+            {decodedTransaction?.details.token && (
+              <>
+                <DetailRow>
+                  <DetailLabel>Token:</DetailLabel>
+                  <DetailValue>
+                    {decodedTransaction.details.token.name} ({decodedTransaction.details.token.symbol})
+                  </DetailValue>
+                </DetailRow>
+                <DetailRow>
+                  <DetailLabel>Token Address:</DetailLabel>
+                  <DetailValue>
+                    <AddressDisplay
+                      address={decodedTransaction.details.token.address}
+                      network={network}
+                      truncate={true}
+                      truncateLength={6}
+                    />
+                  </DetailValue>
+                </DetailRow>
+              </>
+            )}
+
             <DetailRow>
               <DetailLabel>Nonce:</DetailLabel>
               <DetailValue>{transaction.nonce}</DetailValue>
             </DetailRow>
             <DetailRow>
               <DetailLabel>Transaction Hash:</DetailLabel>
-              <DetailValue>{formatWalletAddress(transaction.txHash)}</DetailValue>
+              <DetailValue>
+                <AddressDisplay
+                  address={transaction.txHash}
+                  network={network}
+                  truncate={true}
+                  truncateLength={8}
+                  type="transaction"
+                />
+              </DetailValue>
             </DetailRow>
+
             {transaction.data && transaction.data !== '0x' && (
-              <DetailRow>
-                <DetailLabel>Data:</DetailLabel>
-                <DetailValue>{transaction.data.slice(0, 20)}...</DetailValue>
-              </DetailRow>
+              <>
+                <DetailRow>
+                  <DetailLabel>Function:</DetailLabel>
+                  <DetailValue>
+                    {decodedTransaction?.type === 'ERC20_TRANSFER' ? (
+                      <span style={{ color: '#10b981' }}>ERC-20 Transfer Function</span>
+                    ) : decodedTransaction?.type === 'CONTRACT_CALL' ? (
+                      <span style={{ color: '#3b82f6' }}>Contract Interaction</span>
+                    ) : (
+                      'Contract Call'
+                    )}
+                  </DetailValue>
+                </DetailRow>
+                <DetailRow>
+                  <DetailLabel>Raw Transaction Data:</DetailLabel>
+                  <DetailValue style={{
+                    fontSize: '11px',
+                    fontFamily: 'monospace',
+                    color: '#888',
+                    wordBreak: 'break-all',
+                    cursor: 'pointer',
+                    padding: '8px',
+                    background: '#1a1a1a',
+                    borderRadius: '4px',
+                    border: '1px solid #333',
+                    maxHeight: '120px',
+                    overflowY: 'auto'
+                  }}
+                  onClick={() => {
+                    navigator.clipboard.writeText(transaction.data);
+                    console.log('Transaction data copied to clipboard');
+                  }}
+                  title="Click to copy raw transaction data"
+                  >
+                    {transaction.data}
+                  </DetailValue>
+                </DetailRow>
+              </>
             )}
           </TransactionDetails>
 

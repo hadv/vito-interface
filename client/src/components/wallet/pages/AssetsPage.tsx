@@ -4,6 +4,7 @@ import { VitoList } from '@components/vitoUI';
 import { Asset } from '../types';
 import { theme } from '../../../theme';
 import { Card, Badge } from '../../ui';
+import AddressDisplay from '../components/AddressDisplay';
 
 const Container = styled.div`
   padding: 0;
@@ -117,6 +118,85 @@ const AssetValue = styled.div`
   font-weight: ${theme.typography.fontWeight.medium};
 `;
 
+const AssetActions = styled.div`
+  display: flex;
+  gap: ${theme.spacing[2]};
+  margin-left: ${theme.spacing[3]};
+`;
+
+const SendButton = styled.button`
+  padding: ${theme.spacing[3]} ${theme.spacing[6]};
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  border-radius: ${theme.borderRadius.lg};
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  position: relative;
+  overflow: hidden;
+
+  /* Add subtle glow effect */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+
+  &:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    border-color: rgba(16, 185, 129, 0.6);
+
+    &::before {
+      left: 100%;
+    }
+  }
+
+  &:active {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  &:disabled {
+    background: ${theme.colors.text.muted};
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    border-color: transparent;
+
+    &::before {
+      display: none;
+    }
+  }
+
+  /* Send icon */
+  svg {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.2s ease;
+  }
+
+  &:hover svg {
+    transform: translateX(2px);
+  }
+`;
+
 const LoadingState = styled.div`
   display: flex;
   align-items: center;
@@ -159,9 +239,11 @@ const EmptyStateDescription = styled.p`
 interface AssetsPageProps {
   assets: Asset[];
   isLoading: boolean;
+  onSendAsset?: (asset: Asset) => void;
+  network?: string;
 }
 
-const AssetsPage: React.FC<AssetsPageProps> = ({ assets, isLoading }) => {
+const AssetsPage: React.FC<AssetsPageProps> = ({ assets, isLoading, onSendAsset, network = 'ethereum' }) => {
   const renderAssetItem = (asset: Asset, isSelected: boolean, isFocused: boolean) => (
     <AssetCard
       variant="elevated"
@@ -180,11 +262,40 @@ const AssetsPage: React.FC<AssetsPageProps> = ({ assets, isLoading }) => {
             </Badge>
           </AssetHeader>
           <AssetSymbol>{asset.symbol}</AssetSymbol>
+          {asset.type === 'erc20' && asset.contractAddress && (
+            <div style={{ marginTop: '4px' }}>
+              <AddressDisplay
+                address={asset.contractAddress}
+                network={network}
+                truncate={true}
+                truncateLength={4}
+                showCopy={true}
+                showExplorer={true}
+              />
+            </div>
+          )}
         </AssetInfo>
         <AssetBalanceInfo>
           <AssetBalance>{asset.balance} {asset.symbol}</AssetBalance>
           <AssetValue>{asset.value}</AssetValue>
         </AssetBalanceInfo>
+        <AssetActions>
+          <SendButton
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent triggering list item selection
+              onSendAsset?.(asset);
+            }}
+            disabled={!onSendAsset || parseFloat(asset.balance) <= 0}
+            title={`Send ${asset.symbol}`}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Send
+          </SendButton>
+        </AssetActions>
       </AssetItem>
     </AssetCard>
   );

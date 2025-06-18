@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { ethers } from 'ethers';
 import { createSafeWallet, connectSafeWallet } from '@models/SafeWallet';
 import { walletConnectionService } from '../../services/WalletConnectionService';
 import { theme } from '../../theme';
@@ -9,9 +10,10 @@ import MenuItem from './components/MenuItem';
 import NetworkBadge from './components/NetworkBadge';
 import WalletHeader from './components/WalletHeader';
 import QRCodeModal from './components/QRCodeModal';
-import SignerConnectionBanner from './components/SignerConnectionBanner';
+
 import NetworkSwitchingBanner from './components/NetworkSwitchingBanner';
 import SafeTxPoolWarningBanner from './components/SafeTxPoolWarningBanner';
+import TransactionModal from './components/TransactionModal';
 
 // Import page components
 import HomePage from './pages/HomePage';
@@ -21,6 +23,12 @@ import SettingsPage from './pages/SettingsPage';
 
 // Import types
 import { Asset, Transaction, MenuSection, WalletPageProps } from './types';
+
+// Import services
+import { TokenService } from '../../services/TokenService';
+import { safeWalletService } from '../../services/SafeWalletService';
+import { getRpcUrl } from '../../contracts/abis';
+
 
 // Menu Icons
 const HomeIcon = () => (
@@ -96,7 +104,7 @@ const MainContent = styled.div`
   background: ${theme.colors.background.primary};
 `;
 
-const WalletPage: React.FC<WalletPageProps> = ({ 
+const WalletPage: React.FC<WalletPageProps> = ({
   walletAddress = '0x1234567890123456789012345678901234567890',
   ensName = '',
   network = 'ethereum',
@@ -108,11 +116,129 @@ const WalletPage: React.FC<WalletPageProps> = ({
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showQRCode, setShowQRCode] = useState(false);
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+  const [selectedAssetForSend, setSelectedAssetForSend] = useState<Asset | null>(null);
 
   const handleTransactionCreated = (transaction: any) => {
     // Add the new transaction to the list
     setTransactions(prev => [transaction, ...prev]);
   };
+
+  const handleSendAsset = (asset: Asset) => {
+    setSelectedAssetForSend(asset);
+    setIsTransactionModalOpen(true);
+  };
+
+  const handleCloseTransactionModal = () => {
+    setIsTransactionModalOpen(false);
+    setSelectedAssetForSend(null);
+    // Refresh token balances after transaction
+    refreshTokenBalances();
+  };
+
+  // Function to refresh token balances
+  const refreshTokenBalances = async () => {
+    if (!walletAddress) return;
+
+    try {
+      console.log('🔄 Refreshing token balances...');
+      const refreshedAssets = await loadTokenBalances(walletAddress, network || 'ethereum');
+      setAssets(refreshedAssets);
+      console.log('✅ Token balances refreshed');
+    } catch (error) {
+      console.error('❌ Error refreshing token balances:', error);
+    }
+  };
+
+  // Load real token balances for the Safe wallet
+  const loadTokenBalances = async (safeAddress: string, network: string): Promise<Asset[]> => {
+    try {
+      console.log(`🪙 Loading token balances for Safe: ${safeAddress} on ${network}`);
+
+      // Initialize TokenService with the current provider
+      const rpcUrl = getRpcUrl(network);
+      const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+      const tokenService = new TokenService(provider, network);
+
+      // Get ETH balance from Safe info
+      const safeInfo = await safeWalletService.getSafeInfo();
+      const ethBalance = safeInfo.balance;
+
+      // Start with ETH asset
+      const assets: Asset[] = [
+        {
+          symbol: 'ETH',
+          name: 'Ethereum',
+          balance: ethBalance,
+          value: `$${(parseFloat(ethBalance) * 2000).toFixed(2)}`, // Mock ETH price
+          type: 'native'
+        }
+      ];
+
+      // Get all token balances (known + popular tokens)
+      console.log(`🔍 Checking for ERC-20 token balances on ${network}...`);
+      console.log(`📍 Safe address: ${safeAddress}`);
+
+      // Debug: Show which tokens we're checking
+      const knownTokens = tokenService.getKnownTokens();
+      const popularAddresses = tokenService.getPopularTokenAddresses();
+      console.log(`🔍 Known tokens from TOKEN_ADDRESSES:`, knownTokens);
+      console.log(`🔍 Popular token addresses for ${network}:`, popularAddresses);
+
+      const tokenBalances = await tokenService.getAllTokenBalances(safeAddress);
+
+      console.log(`✅ Found ${tokenBalances.length} tokens with balances`);
+
+      // Add all tokens with balances to assets
+      for (const tokenBalance of tokenBalances) {
+        // Calculate mock USD value (in a real app, you'd fetch from a price API)
+        const symbol = tokenBalance.tokenInfo.symbol.toUpperCase();
+        const mockPrice = symbol === 'USDC' || symbol === 'USDT' ? 1 :
+                         symbol === 'DAI' ? 1 :
+                         symbol === 'WETH' || symbol === 'ETH' ? 2000 :
+                         symbol === 'WBTC' || symbol === 'BTC' ? 45000 :
+                         symbol === 'UNI' ? 8 :
+                         symbol === 'AAVE' ? 85 :
+                         symbol === 'LINK' ? 15 : 100;
+
+        const usdValue = parseFloat(tokenBalance.formattedBalance) * mockPrice;
+
+        assets.push({
+          symbol: tokenBalance.tokenInfo.symbol,
+          name: tokenBalance.tokenInfo.name,
+          balance: tokenBalance.formattedBalance,
+          value: `$${usdValue.toFixed(2)}`,
+          type: 'erc20',
+          contractAddress: tokenBalance.tokenInfo.address,
+          decimals: tokenBalance.tokenInfo.decimals
+        });
+
+        console.log(`💰 ${tokenBalance.tokenInfo.symbol}: ${tokenBalance.formattedBalance} ($${usdValue.toFixed(2)})`);
+      }
+
+      console.log(`🎯 Loaded ${assets.length} assets (${assets.length - 1} ERC-20 tokens with balances)`);
+      return assets;
+
+    } catch (error) {
+      console.error('❌ Error loading token balances:', error);
+
+      // Fallback to ETH only if token loading fails
+      try {
+        const safeInfo = await safeWalletService.getSafeInfo();
+        return [{
+          symbol: 'ETH',
+          name: 'Ethereum',
+          balance: safeInfo.balance,
+          value: `$${(parseFloat(safeInfo.balance) * 2000).toFixed(2)}`,
+          type: 'native'
+        }];
+      } catch (fallbackError) {
+        console.error('❌ Even ETH balance loading failed:', fallbackError);
+        return [];
+      }
+    }
+  };
+
   const [currentNetwork, setCurrentNetwork] = useState(network);
   const menuRef = React.useRef<HTMLDivElement>(null);
 
@@ -125,6 +251,8 @@ const WalletPage: React.FC<WalletPageProps> = ({
   const toggleQRCode = () => {
     setShowQRCode(!showQRCode);
   };
+
+
 
   // Initialize Safe wallet data
   useEffect(() => {
@@ -139,26 +267,10 @@ const WalletPage: React.FC<WalletPageProps> = ({
         // Load wallet data from Safe services
         const wallet = await createSafeWallet();
 
-        // Create assets based on Safe balance (simplified for now)
-        const mockAssets: Asset[] = [
-          {
-            symbol: 'ETH',
-            name: 'Ethereum',
-            balance: wallet.accounts[0]?.balance || '0',
-            value: `$${(parseFloat(wallet.accounts[0]?.balance || '0') * 2000).toFixed(2)}`, // Mock ETH price
-            type: 'native'
-          },
-          // TODO: Add ERC20 token detection and balances
-          {
-            symbol: 'USDC',
-            name: 'USD Coin',
-            balance: '0',
-            value: '$0',
-            type: 'erc20'
-          }
-        ];
+        // Load real token balances for the Safe wallet
+        const realAssets = await loadTokenBalances(walletAddress, network || 'ethereum');
 
-        setAssets(mockAssets);
+        setAssets(realAssets);
         setTransactions(wallet.transactions);
       } catch (error) {
         console.error('Error loading Safe wallet:', error);
@@ -189,9 +301,11 @@ const WalletPage: React.FC<WalletPageProps> = ({
         );
       case 'assets':
         return (
-          <AssetsPage 
+          <AssetsPage
             assets={assets}
             isLoading={isLoading}
+            onSendAsset={handleSendAsset}
+            network={currentNetwork}
           />
         );
       case 'transactions':
@@ -257,7 +371,6 @@ const WalletPage: React.FC<WalletPageProps> = ({
           network={currentNetwork}
           onOpenSettings={() => setActiveSection('settings')}
         />
-        <SignerConnectionBanner />
         {renderContent()}
       </MainContent>
       
@@ -266,6 +379,14 @@ const WalletPage: React.FC<WalletPageProps> = ({
         walletAddress={walletAddress}
         network={currentNetwork}
         onClose={toggleQRCode}
+      />
+
+      <TransactionModal
+        isOpen={isTransactionModalOpen}
+        onClose={handleCloseTransactionModal}
+        onTransactionCreated={handleTransactionCreated}
+        fromAddress={walletAddress}
+        preSelectedAsset={selectedAssetForSend}
       />
     </WalletPageLayout>
   );
