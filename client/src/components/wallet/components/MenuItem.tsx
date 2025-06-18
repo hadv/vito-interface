@@ -30,6 +30,12 @@ const StyledMenuItem = styled.div<{ active: boolean }>`
     background: ${props => props.active ? '#2563eb' : '#334155'};
     color: #ffffff;
     border-color: ${props => props.active ? '#2563eb' : '#475569'};
+
+    ${IconWrapper} {
+      color: #ffffff;
+      opacity: 1;
+      transform: scale(1.05);
+    }
   }
 
   &:active {
@@ -41,11 +47,16 @@ const IconWrapper = styled.div<{ active: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  color: ${props => props.active ? '#ffffff' : '#ffffff'};
+  width: 28px;
+  height: 28px;
+  color: ${props => props.active ? '#ffffff' : 'rgba(255, 255, 255, 0.9)'};
   transition: all 0.2s ease;
-  font-size: 24px;
+  font-size: 20px;
+  opacity: ${props => props.active ? 1 : 0.85};
+
+  svg {
+    filter: ${props => props.active ? 'none' : 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))'};
+  }
 `;
 
 const MenuItem: React.FC<MenuItemProps> = ({ active, onClick, children, icon }) => {
