@@ -541,7 +541,9 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     <ModalOverlay isOpen={isOpen} onClick={handleOverlayClick}>
       <ModalContainer>
         <ModalHeader>
-          <ModalTitle>Send Transaction</ModalTitle>
+          <ModalTitle>
+            {preSelectedAsset?.type === 'native' ? 'Send ETH' : 'Send Transaction'}
+          </ModalTitle>
           <CloseButton onClick={onClose}>&times;</CloseButton>
         </ModalHeader>
 
@@ -571,6 +573,42 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             Propose to Pool
           </StepText>
         </StepIndicator>
+
+        {preSelectedAsset?.type === 'native' && (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(76, 236, 196, 0.1), rgba(68, 160, 141, 0.1))',
+            border: '1px solid rgba(76, 236, 196, 0.3)',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              background: 'linear-gradient(135deg, #4ECDC4, #44A08D)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#1a1a1a',
+              fontWeight: 'bold',
+              fontSize: '16px'
+            }}>
+              ETH
+            </div>
+            <div>
+              <div style={{ color: '#4ECDC4', fontWeight: '600', fontSize: '16px' }}>
+                Native Ethereum Transfer
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: '14px' }}>
+                Send ETH directly to any Ethereum address
+              </div>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <FormGroup>

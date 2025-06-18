@@ -167,7 +167,7 @@ interface HomePageProps {
 const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, onTransactionCreated }) => {
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
 
-  const handleSendTokensClick = () => {
+  const handleSendETHClick = () => {
     setIsTransactionModalOpen(true);
   };
 
@@ -186,8 +186,8 @@ const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, on
           <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       ),
-      title: 'Send Tokens',
-      description: 'Transfer assets to other addresses'
+      title: 'Send ETH',
+      description: 'Transfer native Ethereum to other addresses'
     },
     {
       icon: (
@@ -273,7 +273,7 @@ const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, on
               variant="glass"
               padding="lg"
               hover
-              onClick={index === 0 ? handleSendTokensClick : undefined}
+              onClick={index === 0 ? handleSendETHClick : undefined}
             >
               <ActionIcon>{action.icon}</ActionIcon>
               <ActionTitle>{action.title}</ActionTitle>
@@ -288,6 +288,14 @@ const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, on
         onClose={() => setIsTransactionModalOpen(false)}
         onTransactionCreated={handleTransactionCreated}
         fromAddress={walletAddress}
+        preSelectedAsset={{
+          type: 'native',
+          symbol: 'ETH',
+          name: 'Ethereum',
+          balance: '0',
+          value: '0',
+          decimals: 18
+        }}
       />
     </Container>
   );
