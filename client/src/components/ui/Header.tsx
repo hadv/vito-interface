@@ -66,9 +66,10 @@ const Header: React.FC<HeaderProps> = ({
 
   // Handle disconnecting signer wallet
   const handleDisconnectSigner = async () => {
+    setShowSignerMenu(false); // Close dropdown immediately
+
     try {
       await walletConnectionService.disconnectSignerWallet();
-      setShowSignerMenu(false);
       toast.success('Wallet Disconnected', {
         message: 'Successfully disconnected signer wallet'
       });
@@ -85,10 +86,7 @@ const Header: React.FC<HeaderProps> = ({
     setShowSignerMenu(false);
     setIsConnectingWallet(true);
     try {
-      // First disconnect current signer
-      await walletConnectionService.disconnectSignerWallet();
-      // Then connect new signer
-      await walletConnectionService.connectSignerWallet();
+      await walletConnectionService.switchSignerWallet();
       toast.success('Signer Switched', {
         message: 'Successfully switched to new signer wallet'
       });
@@ -213,78 +211,161 @@ const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* Signer Management Dropdown */}
+            {/* MetaMask-style Wallet Dropdown */}
             {showSignerMenu && connectionState.signerConnected && (
-              <div 
-                className="absolute top-full right-0 mt-2 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl overflow-hidden"
-                style={{ 
-                  zIndex: 10000,
-                  position: 'absolute',
-                  top: '100%',
-                  right: 0,
-                  marginTop: '8px'
-                }}
-              >
-                {/* Signer Info Header */}
-                <div className="px-4 py-3 bg-gray-700 border-b border-gray-600">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                        <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <circle cx="12" cy="7" r="4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <>
+                {/* Backdrop Dimming */}
+                <div
+                  className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
+                  style={{ zIndex: 9999 }}
+                  onClick={() => setShowSignerMenu(false)}
+                />
+
+                <div
+                  className="absolute top-full right-0 mt-2 w-80 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden"
+                  style={{
+                    zIndex: 10000,
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: '8px'
+                  }}
+                >
+                {/* Wallet Header - MetaMask Style */}
+                <div className="px-4 py-4 bg-gray-800 border-b border-gray-700">
+                  <div className="flex items-center gap-3 mb-3">
+                    {/* Official MetaMask Icon */}
+                    <div className="w-8 h-8 flex items-center justify-center">
+                      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <path d="M30.0389 1.51562L17.8555 10.4844L20.2278 4.82812L30.0389 1.51562Z" fill="#E17726" stroke="#E17726" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M1.95117 1.51562L14.0278 10.5625L11.7722 4.82812L1.95117 1.51562Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M25.5889 23.0156L22.4445 27.7656L29.4445 29.7656L31.5556 23.1719L25.5889 23.0156Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M0.453125 23.1719L2.55556 29.7656L9.55556 27.7656L6.41112 23.0156L0.453125 23.1719Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M9.22223 14.0469L7.16668 17.2969L14.1111 17.6406L13.8889 10.0156L9.22223 14.0469Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M22.7778 14.0469L18.0278 9.9375L17.8889 17.6406L24.8333 17.2969L22.7778 14.0469Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M9.55556 27.7656L13.6111 25.7969L10.1111 23.2188L9.55556 27.7656Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M18.3889 25.7969L22.4445 27.7656L21.8889 23.2188L18.3889 25.7969Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M22.4445 27.7656L18.3889 25.7969L18.7222 28.5781L18.6667 29.6875L22.4445 27.7656Z" fill="#D5BFB2" stroke="#D5BFB2" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M9.55556 27.7656L13.3333 29.6875L13.2889 28.5781L13.6111 25.7969L9.55556 27.7656Z" fill="#D5BFB2" stroke="#D5BFB2" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M13.3889 21.2969L10.0278 20.3281L12.3889 19.2188L13.3889 21.2969Z" fill="#233447" stroke="#233447" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M18.6111 21.2969L19.6111 19.2188L21.9722 20.3281L18.6111 21.2969Z" fill="#233447" stroke="#233447" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M9.55556 27.7656L10.1389 23.0156L6.41112 23.1719L9.55556 27.7656Z" fill="#CC6228" stroke="#CC6228" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M21.8611 23.0156L22.4445 27.7656L25.5889 23.1719L21.8611 23.0156Z" fill="#CC6228" stroke="#CC6228" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M24.8333 17.2969L17.8889 17.6406L18.6111 21.2969L19.6111 19.2188L21.9722 20.3281L24.8333 17.2969Z" fill="#CC6228" stroke="#CC6228" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M10.0278 20.3281L12.3889 19.2188L13.3889 21.2969L14.1111 17.6406L7.16668 17.2969L10.0278 20.3281Z" fill="#CC6228" stroke="#CC6228" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M7.16668 17.2969L10.1111 23.2188L10.0278 20.3281L7.16668 17.2969Z" fill="#E27525" stroke="#E27525" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M21.9722 20.3281L21.8889 23.2188L24.8333 17.2969L21.9722 20.3281Z" fill="#E27525" stroke="#E27525" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M14.1111 17.6406L13.3889 21.2969L14.3333 25.2969L14.5556 19.9531L14.1111 17.6406Z" fill="#E27525" stroke="#E27525" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M17.8889 17.6406L17.4445 19.9375L17.6667 25.2969L18.6111 21.2969L17.8889 17.6406Z" fill="#E27525" stroke="#E27525" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M18.6111 21.2969L17.6667 25.2969L18.3889 25.7969L21.8889 23.2188L21.9722 20.3281L18.6111 21.2969Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M10.0278 20.3281L10.1111 23.2188L13.6111 25.7969L14.3333 25.2969L13.3889 21.2969L10.0278 20.3281Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M18.6667 29.6875L18.7222 28.5781L18.4167 28.3125H13.5833L13.2889 28.5781L13.3333 29.6875L9.55556 27.7656L10.9722 28.9375L13.5278 30.7656H18.4722L21.0278 28.9375L22.4445 27.7656L18.6667 29.6875Z" fill="#C0AC9D" stroke="#C0AC9D" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M18.3889 25.7969L17.6667 25.2969H14.3333L13.6111 25.7969L13.2889 28.5781L13.5833 28.3125H18.4167L18.7222 28.5781L18.3889 25.7969Z" fill="#161616" stroke="#161616" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M30.5556 11.2188L32 5.20312L30.0389 1.51562L18.3889 10.2969L22.7778 14.0469L29.3333 15.9531L30.6111 14.4531L30.0278 14.0156L31.4167 12.7656L30.6667 12.1719L32.0556 11.1406L30.5556 11.2188Z" fill="#763E1A" stroke="#763E1A" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M0 5.20312L1.44445 11.2188L-0.0555556 11.1406L1.33334 12.1719L0.583334 12.7656L1.97223 14.0156L1.38889 14.4531L2.66667 15.9531L9.22223 14.0469L13.6111 10.2969L1.96112 1.51562L0 5.20312Z" fill="#763E1A" stroke="#763E1A" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M29.3333 15.9531L22.7778 14.0469L24.8333 17.2969L21.8889 23.2188L25.5889 23.1719H31.5556L29.3333 15.9531Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M9.22223 14.0469L2.66667 15.9531L0.453125 23.1719H6.41112L10.1111 23.2188L7.16668 17.2969L9.22223 14.0469Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M17.8889 17.6406L18.3889 10.2969L20.2278 4.82812H11.7722L13.6111 10.2969L14.1111 17.6406L14.3333 19.9688L14.3333 25.2969H17.6667L17.6667 19.9688L17.8889 17.6406Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </div>
-                    <div>
-                      <div className="text-white font-medium text-sm">Signer Wallet</div>
-                      <div className="text-gray-300 text-xs">Manage your connected wallet</div>
+                    <div className="flex-1">
+                      <div className="text-white font-semibold text-sm">MetaMask</div>
+                      <div className="text-gray-400 text-xs">Connected</div>
+                    </div>
+                  </div>
+
+                  {/* Wallet Info */}
+                  <div className="space-y-3">
+                    {/* Address with Copy and Link buttons */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-mono text-sm">
+                          {connectionState.signerAddress ?
+                            truncateAddress(connectionState.signerAddress, 6, 4) :
+                            'Connected'
+                          }
+                        </span>
+                        {connectionState.signerAddress && (
+                          <div className="flex items-center gap-1">
+                            {/* Copy Button */}
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(connectionState.signerAddress!);
+                                toast.success('Address Copied', {
+                                  message: 'Wallet address copied to clipboard'
+                                });
+                              }}
+                              className="p-1 text-gray-400 hover:text-white transition-colors"
+                              title="Copy address"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2"/>
+                              </svg>
+                            </button>
+                            {/* External Link Button */}
+                            <button
+                              onClick={() => {
+                                const network = connectionState.network || 'ethereum';
+                                const baseUrl = network === 'sepolia'
+                                  ? 'https://sepolia.etherscan.io'
+                                  : network === 'arbitrum'
+                                  ? 'https://arbiscan.io'
+                                  : 'https://etherscan.io';
+                                window.open(`${baseUrl}/address/${connectionState.signerAddress}`, '_blank');
+                              }}
+                              className="p-1 text-gray-400 hover:text-white transition-colors"
+                              title="View on block explorer"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" stroke="currentColor" strokeWidth="2"/>
+                                <polyline points="15,3 21,3 21,9" stroke="currentColor" strokeWidth="2"/>
+                                <line x1="10" y1="14" x2="21" y2="3" stroke="currentColor" strokeWidth="2"/>
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Balance - on same line */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400 text-xs uppercase tracking-wide">Balance</span>
+                      <span className="text-white font-medium">
+                        {connectionState.signerBalance ?
+                          `${parseFloat(connectionState.signerBalance).toFixed(4)} ETH` :
+                          '0.0000 ETH'
+                        }
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Menu Options */}
-                <div className="py-2">
-                  <button
-                    onClick={() => {
-                      if (connectionState.signerAddress) {
-                        navigator.clipboard.writeText(connectionState.signerAddress);
-                        toast.success('Address Copied', {
-                          message: 'Signer address copied to clipboard'
-                        });
-                      }
-                    }}
-                    className="w-full px-4 py-2 text-left text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-3"
-                    data-1p-ignore="true"
-                    data-lpignore="true"
-                    type="button"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2"/>
-                    </svg>
-                    Copy Address
-                  </button>
-
+                {/* Action Buttons */}
+                <div className="p-3">
+                  {/* Switch Wallet Button */}
                   <button
                     onClick={handleSwitchSigner}
                     disabled={isConnectingWallet}
-                    className="w-full px-4 py-2 text-left text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-3 disabled:opacity-50"
+                    className="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 px-4 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     data-1p-ignore="true"
                     data-lpignore="true"
                     type="button"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                      <path d="M1 4V10H7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M23 20V14H17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14L18.36 18.36A9 9 0 0 1 3.51 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M21 12V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M3 10H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M7 15H7.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                    Switch Signer
+                    Switch wallet
                   </button>
+                </div>
 
-                  <div className="border-t border-gray-600 my-2"></div>
-
+                {/* Menu Options */}
+                <div className="border-t border-gray-700">
                   <button
                     onClick={handleDisconnectSigner}
-                    className="w-full px-4 py-2 text-left text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center gap-3"
+                    className="w-full px-4 py-3 text-left text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center gap-3"
                     data-1p-ignore="true"
                     data-lpignore="true"
                     type="button"
@@ -298,6 +379,7 @@ const Header: React.FC<HeaderProps> = ({
                   </button>
                 </div>
               </div>
+              </>
             )}
           </div>
         )}

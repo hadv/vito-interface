@@ -13,6 +13,7 @@ export interface WalletConnectionState {
   // New fields for signer wallet state
   signerConnected?: boolean;
   signerAddress?: string;
+  signerBalance?: string;
   readOnlyMode?: boolean;
 }
 
@@ -94,6 +95,13 @@ export class WalletConnectionService {
         isOwner = await safeWalletService.isOwner(userAddress);
       }
 
+      // Get signer balance if we have a signer
+      let signerBalance: string | undefined;
+      if (this.signer && userAddress) {
+        const balance = await this.provider!.getBalance(userAddress);
+        signerBalance = ethers.utils.formatEther(balance);
+      }
+
       // Update state
       this.state = {
         isConnected: true,
@@ -104,6 +112,7 @@ export class WalletConnectionService {
         isOwner,
         signerConnected: !!this.signer,
         signerAddress: userAddress,
+        signerBalance,
         readOnlyMode: !this.signer,
         error: undefined
       };
@@ -237,6 +246,10 @@ export class WalletConnectionService {
       // Get user address
       const userAddress = await this.signer.getAddress();
 
+      // Get signer balance
+      const signerBalance = await this.provider.getBalance(userAddress);
+      const formattedSignerBalance = ethers.utils.formatEther(signerBalance);
+
       // Update Safe Wallet Service with signer
       await safeWalletService.setSigner(this.signer);
 
@@ -250,6 +263,7 @@ export class WalletConnectionService {
         isOwner,
         signerConnected: true,
         signerAddress: userAddress,
+        signerBalance: formattedSignerBalance,
         readOnlyMode: false,
         error: undefined
       };
@@ -306,12 +320,94 @@ export class WalletConnectionService {
       isOwner: false,
       signerConnected: false,
       signerAddress: undefined,
+      signerBalance: undefined,
       readOnlyMode: true,
       error: undefined
     };
 
     this.removeEventListeners();
     this.notifyListeners();
+  }
+
+  /**
+   * Switch to a different signer wallet account
+   */
+  async switchSignerWallet(): Promise<WalletConnectionState> {
+    if (!this.state.isConnected || !this.state.safeAddress) {
+      throw new Error('Safe wallet must be connected first');
+    }
+
+    try {
+      // Check if MetaMask or other wallet is available
+      if (typeof window.ethereum === 'undefined') {
+        throw new Error('No wallet detected. Please install MetaMask or another Web3 wallet.');
+      }
+
+      // Request account access (this will show MetaMask account selector)
+      await window.ethereum.request({
+        method: 'wallet_requestPermissions',
+        params: [{ eth_accounts: {} }]
+      });
+
+      // Get accounts after permission request
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No accounts found. Please connect your wallet.');
+      }
+
+      // Check and switch network if needed
+      const networkResult = await this.checkAndSwitchNetwork(this.state.network!);
+      if (!networkResult.switched) {
+        throw new Error(networkResult.error || `Please switch your wallet to ${this.state.network} network`);
+      }
+
+      // Create provider and signer
+      this.provider = new ethers.providers.Web3Provider(window.ethereum);
+      this.signer = this.provider.getSigner();
+
+      // Get user address
+      const userAddress = await this.signer.getAddress();
+
+      // Get signer balance
+      const signerBalance = await this.provider.getBalance(userAddress);
+      const formattedSignerBalance = ethers.utils.formatEther(signerBalance);
+
+      // Update Safe Wallet Service with signer
+      await safeWalletService.setSigner(this.signer);
+
+      // Check if user is owner
+      const isOwner = await safeWalletService.isOwner(userAddress);
+
+      // Update state
+      this.state = {
+        ...this.state,
+        address: userAddress,
+        isOwner,
+        signerConnected: true,
+        signerAddress: userAddress,
+        signerBalance: formattedSignerBalance,
+        readOnlyMode: false,
+        error: undefined
+      };
+
+      // Set up event listeners for account/network changes
+      this.setupEventListeners();
+
+      // Notify listeners
+      this.notifyListeners();
+
+      return this.state;
+    } catch (error: any) {
+      const errorMessage = error.message || 'Failed to switch signer wallet';
+      this.state = {
+        ...this.state,
+        error: errorMessage
+      };
+
+      this.notifyListeners();
+      throw new Error(errorMessage);
+    }
   }
 
   /**
