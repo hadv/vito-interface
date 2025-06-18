@@ -457,7 +457,7 @@ export class WalletConnectionService {
    */
   subscribe(listener: (state: WalletConnectionState) => void): () => void {
     this.listeners.push(listener);
-    
+
     // Return unsubscribe function
     return () => {
       const index = this.listeners.indexOf(listener);
@@ -465,6 +465,20 @@ export class WalletConnectionService {
         this.listeners.splice(index, 1);
       }
     };
+  }
+
+  /**
+   * Alias for subscribe method for convenience
+   */
+  onConnectionStateChange(listener: (state: WalletConnectionState) => void): () => void {
+    return this.subscribe(listener);
+  }
+
+  /**
+   * Get current connection state (alias for getState)
+   */
+  getConnectionState(): WalletConnectionState {
+    return this.getState();
   }
 
   /**

@@ -132,6 +132,64 @@ export const SAFE_TX_POOL_ABI = [
       {"name": "safe", "type": "address", "indexed": true},
       {"name": "txId", "type": "uint256", "indexed": false}
     ]
+  },
+  // Address Book functions
+  {
+    "type": "function",
+    "name": "addAddressBookEntry",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "walletAddress", "type": "address"},
+      {"name": "name", "type": "bytes32"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "removeAddressBookEntry",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "walletAddress", "type": "address"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getAddressBookEntries",
+    "inputs": [
+      {"name": "safe", "type": "address"}
+    ],
+    "outputs": [
+      {
+        "name": "entries",
+        "type": "tuple[]",
+        "components": [
+          {"name": "name", "type": "bytes32"},
+          {"name": "walletAddress", "type": "address"}
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  // Address Book events
+  {
+    "type": "event",
+    "name": "AddressBookEntryAdded",
+    "inputs": [
+      {"name": "safe", "type": "address", "indexed": true},
+      {"name": "walletAddress", "type": "address", "indexed": true},
+      {"name": "name", "type": "bytes32", "indexed": false}
+    ]
+  },
+  {
+    "type": "event",
+    "name": "AddressBookEntryRemoved",
+    "inputs": [
+      {"name": "safe", "type": "address", "indexed": true},
+      {"name": "walletAddress", "type": "address", "indexed": true}
+    ]
   }
 ];
 

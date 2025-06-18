@@ -57,7 +57,7 @@ export interface Transaction {
   tokenTransfer?: TokenTransferInfo;
 }
 
-export type MenuSection = 'home' | 'assets' | 'transactions' | 'settings';
+export type MenuSection = 'home' | 'assets' | 'transactions' | 'addressbook' | 'settings';
 
 export interface WalletPageProps {
   walletAddress?: string;

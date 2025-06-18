@@ -19,6 +19,7 @@ import TransactionModal from './components/TransactionModal';
 import HomePage from './pages/HomePage';
 import AssetsPage from './pages/AssetsPage';
 import TransactionsPage from './pages/TransactionsPage';
+import AddressBookPage from './pages/AddressBookPage';
 import SettingsPage from './pages/SettingsPage';
 
 // Import types
@@ -59,6 +60,15 @@ const TransactionsIcon = () => (
     <path d="M16 5L16 19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
     <path d="M16 5L13 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
     <path d="M16 5L19 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const AddressBookIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M16 4H18C18.5523 4 19 4.44772 19 5V19C19 19.5523 18.5523 20 18 20H6C5.44772 20 5 19.5523 5 19V5C5 4.44772 5.44772 4 6 4H8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <rect x="8" y="2" width="8" height="4" rx="1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <circle cx="12" cy="11" r="2" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M8 17C8 15.8954 9.79086 15 12 15C14.2091 15 16 15.8954 16 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
   </svg>
 );
 
@@ -315,6 +325,8 @@ const WalletPage: React.FC<WalletPageProps> = ({
             network={network}
           />
         );
+      case 'addressbook':
+        return <AddressBookPage network={currentNetwork} />;
       case 'settings':
         return <SettingsPage />;
       default:
@@ -349,15 +361,22 @@ const WalletPage: React.FC<WalletPageProps> = ({
         >
           Assets
         </MenuItem>
-        <MenuItem 
-          active={activeSection === 'transactions'} 
+        <MenuItem
+          active={activeSection === 'transactions'}
           onClick={() => setActiveSection('transactions')}
           icon={<TransactionsIcon />}
         >
           Transactions
         </MenuItem>
-        <MenuItem 
-          active={activeSection === 'settings'} 
+        <MenuItem
+          active={activeSection === 'addressbook'}
+          onClick={() => setActiveSection('addressbook')}
+          icon={<AddressBookIcon />}
+        >
+          Address Book
+        </MenuItem>
+        <MenuItem
+          active={activeSection === 'settings'}
           onClick={() => setActiveSection('settings')}
           icon={<SettingsIcon />}
         >
