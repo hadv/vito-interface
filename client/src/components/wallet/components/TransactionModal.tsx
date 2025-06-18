@@ -12,6 +12,9 @@ import { useToast } from '../../../hooks/useToast';
 import { ErrorHandler } from '../../../utils/errorHandling';
 import { errorRecoveryService } from '../../../services/ErrorRecoveryService';
 import { Asset } from '../types';
+import { TransactionDecoder, DecodedTransactionData } from '../../../utils/transactionDecoder';
+import { TokenService } from '../../../services/TokenService';
+import { getRpcUrl } from '../../../contracts/abis';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -243,6 +246,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     domain: SafeDomain;
     txHash: string;
   } | null>(null);
+  const [decodedTransaction, setDecodedTransaction] = useState<DecodedTransactionData | null>(null);
   // const [retryCount, setRetryCount] = useState(0); // Reserved for future retry functionality
 
   // Initialize toast system
@@ -258,6 +262,63 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
     return unsubscribe;
   }, []);
+
+  // Decode transaction data when inputs change
+  useEffect(() => {
+    const decodeTransaction = async () => {
+      if (!toAddress || !amount || parseFloat(amount) <= 0) {
+        setDecodedTransaction(null);
+        return;
+      }
+
+      try {
+        // Initialize decoder with current network
+        const network = connectionState.network || 'ethereum';
+        const rpcUrl = getRpcUrl(network);
+        const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+        const tokenService = new TokenService(provider, network);
+        const decoder = new TransactionDecoder(tokenService);
+
+        let transactionTo: string;
+        let transactionValue: string;
+        let transactionData: string;
+
+        if (preSelectedAsset && preSelectedAsset.type === 'erc20' && preSelectedAsset.contractAddress) {
+          // ERC-20 token transfer
+          const transferInterface = new ethers.utils.Interface([
+            'function transfer(address to, uint256 amount) returns (bool)'
+          ]);
+
+          const decimals = preSelectedAsset.decimals || 18;
+          const parsedAmount = ethers.utils.parseUnits(amount, decimals);
+          const data = transferInterface.encodeFunctionData('transfer', [toAddress, parsedAmount]);
+
+          transactionTo = preSelectedAsset.contractAddress;
+          transactionValue = '0';
+          transactionData = data;
+        } else {
+          // ETH transfer
+          transactionTo = toAddress;
+          transactionValue = ethers.utils.parseEther(amount).toString();
+          transactionData = '0x';
+        }
+
+        const decoded = await decoder.decodeTransactionData(
+          transactionTo,
+          transactionValue,
+          transactionData,
+          toAddress
+        );
+
+        setDecodedTransaction(decoded);
+      } catch (error) {
+        console.error('Error decoding transaction:', error);
+        setDecodedTransaction(null);
+      }
+    };
+
+    decodeTransaction();
+  }, [toAddress, amount, preSelectedAsset, connectionState.network]);
 
   const handleConnectSigner = async () => {
     try {
@@ -565,14 +626,92 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
           {(toAddress && amount && parseFloat(amount) > 0) && (
             <TransactionDetails>
+              {decodedTransaction && (
+                <DetailRow>
+                  <DetailLabel>Transaction Type:</DetailLabel>
+                  <DetailValue style={{ color: '#4ECDC4', fontWeight: 'bold' }}>
+                    {decodedTransaction.description}
+                  </DetailValue>
+                </DetailRow>
+              )}
+
               <DetailRow>
                 <DetailLabel>Recipient:</DetailLabel>
                 <DetailValue>{toAddress.slice(0, 6)}...{toAddress.slice(-4)}</DetailValue>
               </DetailRow>
+
               <DetailRow>
                 <DetailLabel>Amount:</DetailLabel>
                 <DetailValue>{amount} {preSelectedAsset?.symbol || 'ETH'}</DetailValue>
               </DetailRow>
+
+              {decodedTransaction?.details.token && (
+                <>
+                  <DetailRow>
+                    <DetailLabel>Token:</DetailLabel>
+                    <DetailValue>
+                      {decodedTransaction.details.token.name} ({decodedTransaction.details.token.symbol})
+                    </DetailValue>
+                  </DetailRow>
+                  <DetailRow>
+                    <DetailLabel>Token Address:</DetailLabel>
+                    <DetailValue>
+                      {decodedTransaction.details.token.address.slice(0, 6)}...
+                      {decodedTransaction.details.token.address.slice(-4)}
+                    </DetailValue>
+                  </DetailRow>
+                </>
+              )}
+
+              {preSelectedAsset?.type === 'erc20' && (
+                <>
+                  <DetailRow>
+                    <DetailLabel>Function:</DetailLabel>
+                    <DetailValue style={{ color: '#4ECDC4' }}>
+                      ERC-20 Transfer Function
+                    </DetailValue>
+                  </DetailRow>
+                  <DetailRow>
+                    <DetailLabel>Raw Data:</DetailLabel>
+                    <DetailValue style={{
+                      fontSize: '11px',
+                      fontFamily: 'monospace',
+                      color: '#888',
+                      wordBreak: 'break-all',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => {
+                      // Calculate the hex data for copying
+                      if (preSelectedAsset?.contractAddress) {
+                        const transferInterface = new ethers.utils.Interface([
+                          'function transfer(address to, uint256 amount) returns (bool)'
+                        ]);
+                        const decimals = preSelectedAsset.decimals || 18;
+                        const parsedAmount = ethers.utils.parseUnits(amount, decimals);
+                        const data = transferInterface.encodeFunctionData('transfer', [toAddress, parsedAmount]);
+                        navigator.clipboard.writeText(data);
+                        toast.success('Transaction data copied to clipboard');
+                      }
+                    }}
+                    title="Click to copy raw transaction data"
+                    >
+                      {(() => {
+                        if (preSelectedAsset?.contractAddress) {
+                          const transferInterface = new ethers.utils.Interface([
+                            'function transfer(address to, uint256 amount) returns (bool)'
+                          ]);
+                          const decimals = preSelectedAsset.decimals || 18;
+                          const parsedAmount = ethers.utils.parseUnits(amount, decimals);
+                          const data = transferInterface.encodeFunctionData('transfer', [toAddress, parsedAmount]);
+                          return data.length > 50 ? `${data.slice(0, 50)}...` : data;
+                        }
+                        return 'Calculating...';
+                      })()}
+                    </DetailValue>
+                  </DetailRow>
+                </>
+              )}
+
               <DetailRow>
                 <DetailLabel>Estimated Gas:</DetailLabel>
                 <DetailValue>{estimatedGas} ETH</DetailValue>
@@ -636,6 +775,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             transactionData={pendingTransaction.data}
             safeAddress={pendingTransaction.domain.verifyingContract}
             chainId={pendingTransaction.domain.chainId}
+            decodedTransaction={decodedTransaction}
           />
         )}
       </ModalContainer>

@@ -7,6 +7,9 @@ import EnhancedTransactionsPage from './EnhancedTransactionsPage';
 import { SafeTxPoolService, SafeTxPoolTransaction } from '../../../services/SafeTxPoolService';
 import { SafeWalletService } from '../../../services/SafeWalletService';
 import PendingTransactionConfirmationModal from '../components/PendingTransactionConfirmationModal';
+import { TransactionDecoder, DecodedTransactionData } from '../../../utils/transactionDecoder';
+import { TokenService } from '../../../services/TokenService';
+import { getRpcUrl } from '../../../contracts/abis';
 
 
 
@@ -36,6 +39,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
   const [pendingLoading, setPendingLoading] = useState(false);
   const [pendingError, setPendingError] = useState<string | null>(null);
   const [safeInfo, setSafeInfo] = useState<{ threshold: number; owners: string[] } | null>(null);
+  const [decodedTransactions, setDecodedTransactions] = useState<Map<string, DecodedTransactionData>>(new Map());
 
   // Initialize SafeTxPoolService for the current network
   const [safeTxPoolService] = useState(() => new SafeTxPoolService(network));
@@ -100,6 +104,11 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
       console.log(`Showing ${validPending.length} valid transactions (filtered out ${allPending.length - validPending.length})`);
       setPendingTxs(validPending);
+
+      // Decode transactions for better display
+      if (validPending.length > 0) {
+        decodePendingTransactions(validPending);
+      }
     } catch (error) {
       console.error('Error loading pending transactions:', error);
       setPendingError('Failed to load pending transactions from Safe TX pool');
@@ -125,9 +134,37 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
       const interval = setInterval(loadPendingTransactions, 30000);
       return () => clearInterval(interval);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, safeAddress, network, loadPendingTransactions]);
 
+  // Decode pending transactions for better display
+  const decodePendingTransactions = useCallback(async (transactions: SafeTxPoolTransaction[]) => {
+    try {
+      const rpcUrl = getRpcUrl(network);
+      const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+      const tokenService = new TokenService(provider, network);
+      const decoder = new TransactionDecoder(tokenService);
 
+      const newDecodedTransactions = new Map<string, DecodedTransactionData>();
+
+      for (const tx of transactions) {
+        try {
+          const decoded = await decoder.decodeTransactionData(
+            tx.to,
+            tx.value,
+            tx.data || '0x'
+          );
+          newDecodedTransactions.set(tx.txHash, decoded);
+        } catch (error) {
+          console.warn(`Failed to decode transaction ${tx.txHash}:`, error);
+        }
+      }
+
+      setDecodedTransactions(newDecodedTransactions);
+    } catch (error) {
+      console.error('Error decoding pending transactions:', error);
+    }
+  }, [network]);
 
   const formatAmount = (amount: string): string => {
     try {
@@ -148,6 +185,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     const confirmationProgress = `${tx.signatures.length} of ${threshold} signatures`;
     const hasEnoughSignatures = tx.signatures.length >= threshold;
 
+    // Get decoded transaction data
+    const decodedTx = decodedTransactions.get(tx.txHash);
+
     return (
       <div className="flex flex-col p-4 border-b border-gray-700 last:border-b-0">
         {/* Transaction Header */}
@@ -159,9 +199,25 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
             {hasEnoughSignatures ? 'Ready to Execute' : 'Pending Transaction'}
           </div>
           <div className="text-base font-medium text-yellow-400">
-            {formatAmount(tx.value)} ETH
+            {decodedTx?.details.formattedAmount || `${formatAmount(tx.value)} ETH`}
           </div>
         </div>
+
+        {/* Transaction Type and Description */}
+        {decodedTx && (
+          <div className="mb-2">
+            <div className="text-sm font-semibold text-blue-400 mb-1">
+              {decodedTx.description}
+            </div>
+            {decodedTx.details.token && (
+              <div className="text-xs text-gray-400">
+                Token: {decodedTx.details.token.name} ({decodedTx.details.token.symbol})
+                <br />
+                Contract: {decodedTx.details.token.address.slice(0, 6)}...{decodedTx.details.token.address.slice(-4)}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Transaction Details */}
         <div className="flex justify-between mb-2">
@@ -233,8 +289,29 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
         {/* Operation details */}
         {tx.data && tx.data !== '0x' && (
-          <div className="text-xs text-gray-500 mt-1">
-            <span>Data: {tx.data.slice(0, 20)}...</span>
+          <div className="text-xs mt-2 space-y-1">
+            <div className="text-gray-400">
+              Function: {decodedTx?.type === 'ERC20_TRANSFER' ? (
+                <span className="text-green-400">ERC-20 Transfer</span>
+              ) : decodedTx?.type === 'CONTRACT_CALL' ? (
+                <span className="text-blue-400">Contract Interaction</span>
+              ) : (
+                <span className="text-yellow-400">Contract Call</span>
+              )}
+            </div>
+            <div className="text-gray-500">
+              <span className="text-gray-400">Raw Data:</span>
+              <div
+                className="font-mono text-xs bg-gray-800 p-2 rounded mt-1 cursor-pointer hover:bg-gray-700 transition-colors"
+                onClick={() => {
+                  navigator.clipboard.writeText(tx.data);
+                  console.log('Transaction data copied to clipboard');
+                }}
+                title="Click to copy raw transaction data"
+              >
+                {tx.data.length > 100 ? `${tx.data.slice(0, 100)}...` : tx.data}
+              </div>
+            </div>
           </div>
         )}
       </div>

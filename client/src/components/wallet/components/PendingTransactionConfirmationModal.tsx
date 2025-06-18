@@ -6,6 +6,9 @@ import { SafeWalletService } from '../../../services/SafeWalletService';
 import { walletConnectionService } from '../../../services/WalletConnectionService';
 import { formatWalletAddress } from '../../../utils';
 import { useToast } from '../../../hooks/useToast';
+import { TransactionDecoder, DecodedTransactionData } from '../../../utils/transactionDecoder';
+import { TokenService } from '../../../services/TokenService';
+import { getRpcUrl } from '../../../contracts/abis';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -229,14 +232,37 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
   const [currentUserAddress, setCurrentUserAddress] = useState<string | null>(null);
   const [hasUserSigned, setHasUserSigned] = useState(false);
   const [canUserSign, setCanUserSign] = useState(false);
+  const [decodedTransaction, setDecodedTransaction] = useState<DecodedTransactionData | null>(null);
   const toast = useToast();
 
   useEffect(() => {
     if (isOpen) {
       loadSafeInfo();
       getCurrentUserAddress();
+      decodeTransaction();
     }
   }, [isOpen, safeAddress]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Decode transaction for better display
+  const decodeTransaction = async () => {
+    try {
+      const rpcUrl = getRpcUrl(network);
+      const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+      const tokenService = new TokenService(provider, network);
+      const decoder = new TransactionDecoder(tokenService);
+
+      const decoded = await decoder.decodeTransactionData(
+        transaction.to,
+        transaction.value,
+        transaction.data || '0x'
+      );
+
+      setDecodedTransaction(decoded);
+    } catch (error) {
+      console.error('Error decoding transaction:', error);
+      setDecodedTransaction(null);
+    }
+  };
 
   // Update user permissions when safeInfo or currentUserAddress changes
   useEffect(() => {
@@ -415,14 +441,42 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
         <ModalContent>
           <TransactionDetails>
+            {decodedTransaction && (
+              <DetailRow>
+                <DetailLabel>Transaction Type:</DetailLabel>
+                <DetailValue style={{ color: '#10b981', fontWeight: 'bold' }}>
+                  {decodedTransaction.description}
+                </DetailValue>
+              </DetailRow>
+            )}
+
             <DetailRow>
               <DetailLabel>To:</DetailLabel>
               <DetailValue>{formatWalletAddress(transaction.to)}</DetailValue>
             </DetailRow>
+
             <DetailRow>
               <DetailLabel>Amount:</DetailLabel>
-              <DetailValue>{formatAmount(transaction.value)} ETH</DetailValue>
+              <DetailValue>
+                {decodedTransaction?.details.formattedAmount || `${formatAmount(transaction.value)} ETH`}
+              </DetailValue>
             </DetailRow>
+
+            {decodedTransaction?.details.token && (
+              <>
+                <DetailRow>
+                  <DetailLabel>Token:</DetailLabel>
+                  <DetailValue>
+                    {decodedTransaction.details.token.name} ({decodedTransaction.details.token.symbol})
+                  </DetailValue>
+                </DetailRow>
+                <DetailRow>
+                  <DetailLabel>Token Address:</DetailLabel>
+                  <DetailValue>{formatWalletAddress(decodedTransaction.details.token.address)}</DetailValue>
+                </DetailRow>
+              </>
+            )}
+
             <DetailRow>
               <DetailLabel>Nonce:</DetailLabel>
               <DetailValue>{transaction.nonce}</DetailValue>
@@ -431,11 +485,46 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
               <DetailLabel>Transaction Hash:</DetailLabel>
               <DetailValue>{formatWalletAddress(transaction.txHash)}</DetailValue>
             </DetailRow>
+
             {transaction.data && transaction.data !== '0x' && (
-              <DetailRow>
-                <DetailLabel>Data:</DetailLabel>
-                <DetailValue>{transaction.data.slice(0, 20)}...</DetailValue>
-              </DetailRow>
+              <>
+                <DetailRow>
+                  <DetailLabel>Function:</DetailLabel>
+                  <DetailValue>
+                    {decodedTransaction?.type === 'ERC20_TRANSFER' ? (
+                      <span style={{ color: '#10b981' }}>ERC-20 Transfer Function</span>
+                    ) : decodedTransaction?.type === 'CONTRACT_CALL' ? (
+                      <span style={{ color: '#3b82f6' }}>Contract Interaction</span>
+                    ) : (
+                      'Contract Call'
+                    )}
+                  </DetailValue>
+                </DetailRow>
+                <DetailRow>
+                  <DetailLabel>Raw Transaction Data:</DetailLabel>
+                  <DetailValue style={{
+                    fontSize: '11px',
+                    fontFamily: 'monospace',
+                    color: '#888',
+                    wordBreak: 'break-all',
+                    cursor: 'pointer',
+                    padding: '8px',
+                    background: '#1a1a1a',
+                    borderRadius: '4px',
+                    border: '1px solid #333',
+                    maxHeight: '120px',
+                    overflowY: 'auto'
+                  }}
+                  onClick={() => {
+                    navigator.clipboard.writeText(transaction.data);
+                    console.log('Transaction data copied to clipboard');
+                  }}
+                  title="Click to copy raw transaction data"
+                  >
+                    {transaction.data}
+                  </DetailValue>
+                </DetailRow>
+              </>
             )}
           </TransactionDetails>
 

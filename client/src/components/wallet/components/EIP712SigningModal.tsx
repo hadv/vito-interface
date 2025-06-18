@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Button } from '@components/ui';
 import { SafeTransactionData } from '../../../utils/eip712';
+import { DecodedTransactionData } from '../../../utils/transactionDecoder';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -178,6 +179,7 @@ interface EIP712SigningModalProps {
   transactionData: SafeTransactionData;
   safeAddress: string;
   chainId: number;
+  decodedTransaction?: DecodedTransactionData | null;
 }
 
 const EIP712SigningModal: React.FC<EIP712SigningModalProps> = ({
@@ -186,7 +188,8 @@ const EIP712SigningModal: React.FC<EIP712SigningModalProps> = ({
   onSign,
   transactionData,
   safeAddress,
-  chainId
+  chainId,
+  decodedTransaction
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -248,42 +251,108 @@ const EIP712SigningModal: React.FC<EIP712SigningModalProps> = ({
 
         <TransactionDetails>
           <SectionTitle>Transaction Details</SectionTitle>
-          
+
+          {decodedTransaction && (
+            <DetailRow>
+              <DetailLabel>Transaction Type:</DetailLabel>
+              <DetailValue style={{ color: '#10b981', fontWeight: 'bold' }}>
+                {decodedTransaction.description}
+              </DetailValue>
+            </DetailRow>
+          )}
+
           <DetailRow>
             <DetailLabel>Safe Address:</DetailLabel>
             <DetailValue>{formatAddress(safeAddress)}</DetailValue>
           </DetailRow>
-          
+
           <DetailRow>
             <DetailLabel>Chain ID:</DetailLabel>
             <DetailValue>{chainId}</DetailValue>
           </DetailRow>
-          
+
           <DetailRow>
             <DetailLabel>To:</DetailLabel>
             <DetailValue>{formatAddress(transactionData.to)}</DetailValue>
           </DetailRow>
-          
+
           <DetailRow>
             <DetailLabel>Value:</DetailLabel>
             <DetailValue>{formatValue(transactionData.value)}</DetailValue>
           </DetailRow>
-          
+
+          {decodedTransaction?.details.token && (
+            <>
+              <DetailRow>
+                <DetailLabel>Token:</DetailLabel>
+                <DetailValue>
+                  {decodedTransaction.details.token.name} ({decodedTransaction.details.token.symbol})
+                </DetailValue>
+              </DetailRow>
+              <DetailRow>
+                <DetailLabel>Token Address:</DetailLabel>
+                <DetailValue>{formatAddress(decodedTransaction.details.token.address)}</DetailValue>
+              </DetailRow>
+              {decodedTransaction.details.formattedAmount && (
+                <DetailRow>
+                  <DetailLabel>Token Amount:</DetailLabel>
+                  <DetailValue style={{ color: '#10b981', fontWeight: 'bold' }}>
+                    {decodedTransaction.details.formattedAmount}
+                  </DetailValue>
+                </DetailRow>
+              )}
+            </>
+          )}
+
           <DetailRow>
             <DetailLabel>Operation:</DetailLabel>
             <DetailValue>{transactionData.operation === 0 ? 'Call' : 'DelegateCall'}</DetailValue>
           </DetailRow>
-          
+
           <DetailRow>
             <DetailLabel>Nonce:</DetailLabel>
             <DetailValue>{transactionData.nonce}</DetailValue>
           </DetailRow>
-          
+
           {transactionData.data !== '0x' && (
-            <DetailRow>
-              <DetailLabel>Data:</DetailLabel>
-              <DetailValue>{transactionData.data.slice(0, 20)}...</DetailValue>
-            </DetailRow>
+            <>
+              <DetailRow>
+                <DetailLabel>Function:</DetailLabel>
+                <DetailValue>
+                  {decodedTransaction?.type === 'ERC20_TRANSFER' ? (
+                    <span style={{ color: '#10b981' }}>ERC-20 Transfer Function</span>
+                  ) : decodedTransaction?.type === 'CONTRACT_CALL' ? (
+                    <span style={{ color: '#3b82f6' }}>Contract Interaction</span>
+                  ) : (
+                    'Contract Call'
+                  )}
+                </DetailValue>
+              </DetailRow>
+              <DetailRow>
+                <DetailLabel>Raw Transaction Data:</DetailLabel>
+                <DetailValue style={{
+                  fontSize: '11px',
+                  fontFamily: 'monospace',
+                  color: '#888',
+                  wordBreak: 'break-all',
+                  cursor: 'pointer',
+                  padding: '8px',
+                  background: '#1a1a1a',
+                  borderRadius: '4px',
+                  border: '1px solid #333',
+                  maxHeight: '100px',
+                  overflowY: 'auto'
+                }}
+                onClick={() => {
+                  navigator.clipboard.writeText(transactionData.data);
+                  console.log('Transaction data copied to clipboard');
+                }}
+                title="Click to copy raw transaction data"
+                >
+                  {transactionData.data}
+                </DetailValue>
+              </DetailRow>
+            </>
           )}
         </TransactionDetails>
 
