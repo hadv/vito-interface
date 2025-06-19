@@ -551,6 +551,8 @@ export class TransactionDecoder {
         name: 'SafeTxPool',
         abi: [
           {
+            "type": "function",
+            "name": "proposeTx",
             "inputs": [
               {"name": "txHash", "type": "bytes32"},
               {"name": "safe", "type": "address"},
@@ -560,41 +562,78 @@ export class TransactionDecoder {
               {"name": "operation", "type": "uint8"},
               {"name": "nonce", "type": "uint256"}
             ],
-            "name": "proposeTx",
             "outputs": [],
-            "stateMutability": "nonpayable",
-            "type": "function"
+            "stateMutability": "nonpayable"
           },
           {
+            "type": "function",
+            "name": "signTransaction",
             "inputs": [
               {"name": "txHash", "type": "bytes32"},
               {"name": "signature", "type": "bytes"}
             ],
-            "name": "signTransaction",
             "outputs": [],
-            "stateMutability": "nonpayable",
-            "type": "function"
+            "stateMutability": "nonpayable"
           },
           {
+            "type": "function",
+            "name": "addSigner",
             "inputs": [
               {"name": "safe", "type": "address"},
               {"name": "signer", "type": "address"},
               {"name": "txHash", "type": "bytes32"}
             ],
-            "name": "addSigner",
             "outputs": [],
-            "stateMutability": "nonpayable",
-            "type": "function"
+            "stateMutability": "nonpayable"
           },
           {
+            "type": "function",
+            "name": "removeSigner",
             "inputs": [
               {"name": "safe", "type": "address"},
               {"name": "signer", "type": "address"}
             ],
-            "name": "removeSigner",
             "outputs": [],
-            "stateMutability": "nonpayable",
-            "type": "function"
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "addAddressBookEntry",
+            "inputs": [
+              {"name": "safe", "type": "address"},
+              {"name": "walletAddress", "type": "address"},
+              {"name": "amount", "type": "uint256"}
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "removeAddressBookEntry",
+            "inputs": [
+              {"name": "safe", "type": "address"},
+              {"name": "walletAddress", "type": "address"}
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "executeTransaction",
+            "inputs": [
+              {"name": "txHash", "type": "bytes32"}
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "cancelTransaction",
+            "inputs": [
+              {"name": "txHash", "type": "bytes32"}
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
           }
         ]
       };
@@ -916,6 +955,10 @@ export class TransactionDecoder {
       // SafeTxPool functions
       '0x10ff18f9': { signature: 'proposeTx(bytes32,address,address,uint256,bytes,uint8,uint256)', name: 'proposeTx', inputs: [{name: 'txHash', type: 'bytes32'}, {name: 'safe', type: 'address'}, {name: 'to', type: 'address'}, {name: 'value', type: 'uint256'}, {name: 'data', type: 'bytes'}, {name: 'operation', type: 'uint8'}, {name: 'nonce', type: 'uint256'}] },
       '0x0f1b1cd2': { signature: 'signTransaction(bytes32,bytes)', name: 'signTransaction', inputs: [{name: 'txHash', type: 'bytes32'}, {name: 'signature', type: 'bytes'}] },
+      '0x09959f6b': { signature: 'addAddressBookEntry(address,address,uint256)', name: 'addAddressBookEntry', inputs: [{name: 'safe', type: 'address'}, {name: 'walletAddress', type: 'address'}, {name: 'amount', type: 'uint256'}] },
+      '0x93271368': { signature: 'removeAddressBookEntry(address,address)', name: 'removeAddressBookEntry', inputs: [{name: 'safe', type: 'address'}, {name: 'walletAddress', type: 'address'}] },
+      '0xfab3dfaa': { signature: 'executeTransaction(bytes32)', name: 'executeTransaction', inputs: [{name: 'txHash', type: 'bytes32'}] },
+      '0xa4c9b0ca': { signature: 'cancelTransaction(bytes32)', name: 'cancelTransaction', inputs: [{name: 'txHash', type: 'bytes32'}] },
 
       // Common utility functions
       '0x70a08231': { signature: 'balanceOf(address)', name: 'balanceOf', inputs: [{name: 'owner', type: 'address'}] },
@@ -1222,17 +1265,34 @@ export class TransactionDecoder {
         }
         return `Transfer NFT`;
 
+      case 'proposeTx':
       case 'proposeTransaction':
-        return `Propose Transaction on ${contractName}`;
+        return `📝 Propose Transaction on ${contractName}`;
       case 'signTransaction':
-        return `Sign Transaction on ${contractName}`;
+        return `✍️ Sign Transaction on ${contractName}`;
       case 'executeTransaction':
       case 'execTransaction':
-        return `Execute Transaction on ${contractName}`;
+        return `⚡ Execute Transaction on ${contractName}`;
+      case 'cancelTransaction':
+        return `❌ Cancel Transaction on ${contractName}`;
+      case 'addAddressBookEntry':
       case 'addEntry':
-        return `Add Address Book Entry`;
+        if (inputs.length >= 2) {
+          const walletAddress = inputs.find(i => i.name === 'walletAddress' || i.name === 'address')?.value;
+          if (walletAddress) {
+            return `📇 Add ${this.formatAddress(walletAddress)} to Address Book`;
+          }
+        }
+        return `📇 Add Address Book Entry`;
+      case 'removeAddressBookEntry':
       case 'removeEntry':
-        return `Remove Address Book Entry`;
+        if (inputs.length >= 2) {
+          const walletAddress = inputs.find(i => i.name === 'walletAddress' || i.name === 'address')?.value;
+          if (walletAddress) {
+            return `🗑️ Remove ${this.formatAddress(walletAddress)} from Address Book`;
+          }
+        }
+        return `🗑️ Remove Address Book Entry`;
       case 'mint':
         return `Mint Tokens`;
       case 'burn':
