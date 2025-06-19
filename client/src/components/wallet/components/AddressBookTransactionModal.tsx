@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { ethers } from 'ethers';
 import { theme } from '../../../theme';
-import { AddressBookEntry } from '../../../services/AddressBookService';
-import { addressBookService } from '../../../services/AddressBookService';
-import { safeTxPoolService } from '../../../services/SafeTxPoolService';
+import { AddressBookEntry, createAddressBookService } from '../../../services/AddressBookService';
+import { createSafeTxPoolService } from '../../../services/SafeTxPoolService';
+import { walletConnectionService } from '../../../services/WalletConnectionService';
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
 import { useToast } from '../../../hooks/useToast';
@@ -155,17 +155,37 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
   const [nameError, setNameError] = useState('');
   const [addressError, setAddressError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentNetwork, setCurrentNetwork] = useState<string>('sepolia');
+  const [addressBookService, setAddressBookService] = useState<any>(null);
+  const [safeTxPoolService, setSafeTxPoolService] = useState<any>(null);
   const { success, error: showError } = useToast();
 
   const isEditing = Boolean(editEntry);
   const isRemoving = operation === 'remove';
 
-  // Initialize addressBookService when modal opens
+  // Get current network and initialize services when modal opens
   useEffect(() => {
     if (isOpen && window.ethereum) {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const signer = provider.getSigner();
-      addressBookService.initialize(provider, signer);
+
+      // Get the current network from wallet connection service
+      const connectionState = walletConnectionService.getState();
+      const network = connectionState.network || 'sepolia'; // Default to sepolia
+
+      console.log('Current network:', network);
+      setCurrentNetwork(network);
+
+      // Create network-specific services
+      const addressBookSvc = createAddressBookService(network);
+      const safeTxPoolSvc = createSafeTxPoolService(network);
+
+      // Initialize services
+      addressBookSvc.initialize(provider, signer);
+      safeTxPoolSvc.setSigner(signer);
+
+      setAddressBookService(addressBookSvc);
+      setSafeTxPoolService(safeTxPoolSvc);
     }
   }, [isOpen]);
 
@@ -227,11 +247,18 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
       return;
     }
 
+    if (!addressBookService || !safeTxPoolService) {
+      showError('Services not initialized. Please try again.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      console.log(`Creating transaction for network: ${currentNetwork}`);
+
       let txData;
-      
+
       if (isRemoving) {
         txData = await addressBookService.createRemoveEntryTransaction(safeAddress, walletAddress);
       } else {
@@ -248,6 +275,7 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
         nonce: txData.nonce
       };
 
+      console.log('Proposing transaction:', proposeTxParams);
       await safeTxPoolService.proposeTx(proposeTxParams);
 
       success(isRemoving ? 'Address book entry removal proposed successfully!' : 'Address book entry addition proposed successfully!');
