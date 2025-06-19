@@ -284,14 +284,20 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
   // Update user permissions when safeInfo or currentUserAddress changes
   useEffect(() => {
     if (currentUserAddress && safeInfo) {
-      const isOwner = safeInfo.owners.includes(currentUserAddress.toLowerCase());
+      // Normalize addresses for comparison (convert both to lowercase)
+      const normalizedCurrentUser = currentUserAddress.toLowerCase();
+      const normalizedOwners = safeInfo.owners.map(owner => owner.toLowerCase());
+
+      const isOwner = normalizedOwners.includes(normalizedCurrentUser);
       const alreadySigned = transaction.signatures.some(sig =>
-        sig.signer.toLowerCase() === currentUserAddress.toLowerCase()
+        sig.signer.toLowerCase() === normalizedCurrentUser
       );
 
       console.log('🔍 Authorization Check:');
       console.log('  Current User:', currentUserAddress);
+      console.log('  Current User (normalized):', normalizedCurrentUser);
       console.log('  Safe Owners:', safeInfo.owners);
+      console.log('  Safe Owners (normalized):', normalizedOwners);
       console.log('  Is Owner:', isOwner);
       console.log('  Already Signed:', alreadySigned);
       console.log('  Can Sign:', isOwner && !alreadySigned);
