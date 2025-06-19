@@ -210,32 +210,27 @@ export class TransactionDecoder {
    */
   private decodeKnownMethod(methodId: string, contractAddress: string, data: string): DecodedTransactionData | null {
     // Known SafeTxPool method IDs
-    const knownMethods: { [key: string]: { name: string; description: string; abi: string } } = {
+    const knownMethods: { [key: string]: { name: string; description: string } } = {
       '0x10ff18f9': {
         name: 'proposeTransaction',
-        description: 'Propose Transaction on SafeTxPool',
-        abi: 'function proposeTransaction(address safe, address to)'
+        description: 'Propose Transaction on SafeTxPool'
       },
       '0x09959f6b': {
         name: 'signTransaction',
-        description: 'Sign Transaction on SafeTxPool',
-        abi: 'function signTransaction(bytes32 txHash)'
+        description: 'Sign Transaction on SafeTxPool'
       },
       '0x6a761202': {
         name: 'executeTransaction',
-        description: 'Execute Transaction on SafeTxPool',
-        abi: 'function executeTransaction(bytes32 txHash)'
+        description: 'Execute Transaction on SafeTxPool'
       },
       // Address book methods
       '0x4ce38b5f': {
         name: 'addEntry',
-        description: 'Add Address Book Entry',
-        abi: 'function addEntry(address addr, string name)'
+        description: 'Add Address Book Entry'
       },
       '0x2f54bf6e': {
         name: 'removeEntry',
-        description: 'Remove Address Book Entry',
-        abi: 'function removeEntry(address addr)'
+        description: 'Remove Address Book Entry'
       }
     };
 
@@ -244,52 +239,19 @@ export class TransactionDecoder {
       return null;
     }
 
-    try {
-      // Try to decode the parameters using the known ABI
-      const iface = new ethers.utils.Interface([method.abi]);
-      const decoded = iface.decodeFunctionData(method.name, data);
-
-      // Format parameters for display
-      const decodedInputs = Object.keys(decoded)
-        .map((key, index) => {
-          if (isNaN(Number(key))) {
-            return {
-              name: key,
-              type: 'unknown',
-              value: this.formatParameterValue(decoded[key], 'unknown')
-            };
-          }
-          return null;
-        })
-        .filter((item): item is { name: string; type: string; value: any } => item !== null);
-
-      return {
-        type: 'CONTRACT_CALL',
-        description: method.description,
-        details: {
-          method: methodId,
-          methodName: method.name,
-          recipient: contractAddress,
-          parameters: Array.from(decoded),
-          decodedInputs,
-          contractName: this.getContractName(contractAddress)
-        }
-      };
-    } catch (error) {
-      console.warn(`Failed to decode known method ${methodId}:`, error);
-      // Return basic info even if decoding fails
-      return {
-        type: 'CONTRACT_CALL',
-        description: method.description,
-        details: {
-          method: methodId,
-          methodName: method.name,
-          recipient: contractAddress,
-          contractName: this.getContractName(contractAddress)
-        }
-      };
-    }
+    return {
+      type: 'CONTRACT_CALL',
+      description: method.description,
+      details: {
+        method: methodId,
+        methodName: method.name,
+        recipient: contractAddress,
+        contractName: this.getContractName(contractAddress)
+      }
+    };
   }
+
+
 
   /**
    * Get contract name based on address
