@@ -597,7 +597,11 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
                     borderRadius: '4px',
                     border: '1px solid #333',
                     maxHeight: '120px',
-                    overflowY: 'auto'
+                    overflowY: 'auto',
+                    overflowX: 'auto',
+                    whiteSpace: 'pre-wrap',
+                    width: '100%',
+                    boxSizing: 'border-box'
                   }}
                   onClick={() => {
                     navigator.clipboard.writeText(transaction.data);

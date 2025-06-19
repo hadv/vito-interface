@@ -63,6 +63,19 @@ function VitoList<T>({
   // Handle item selection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if user is currently typing in an input field
+      const activeElement = document.activeElement;
+      const isTypingInInput = activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        (activeElement as HTMLElement).contentEditable === 'true'
+      );
+
+      // Don't intercept keys when user is typing in input fields
+      if (isTypingInInput) {
+        return;
+      }
+
       if (mode === 'NORMAL' && focusedIndex >= 0 && focusedIndex < items.length) {
         if (e.key === 'Enter') {
           // Enter key to execute action on item

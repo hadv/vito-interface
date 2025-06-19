@@ -71,11 +71,24 @@ export const useVitoNavigation = (options: VitoNavigationOptions = {}) => {
   // Keyboard handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if user is currently typing in an input field
+      const activeElement = document.activeElement;
+      const isTypingInInput = activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        (activeElement as HTMLElement).contentEditable === 'true'
+      );
+
+      // Don't intercept keys when user is typing in input fields
+      if (isTypingInInput) {
+        return;
+      }
+
       // Prevent default for navigation keys to avoid scrolling
       if (['j', 'k', 'h', 'l', 'Escape', ':'].includes(e.key)) {
         e.preventDefault();
       }
-      
+
       if (mode === 'NORMAL') {
         switch(e.key) {
           case 'j': moveDown(); break;
