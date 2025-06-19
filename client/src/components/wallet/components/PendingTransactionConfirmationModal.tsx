@@ -267,7 +267,7 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
       const rpcUrl = getRpcUrl(network);
       const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
       const tokenService = new TokenService(provider, network);
-      const decoder = new TransactionDecoder(tokenService);
+      const decoder = new TransactionDecoder(tokenService, network);
 
       const decoded = await decoder.decodeTransactionData(
         transaction.to,
@@ -578,12 +578,57 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
                     {decodedTransaction?.type === 'ERC20_TRANSFER' ? (
                       <span style={{ color: '#10b981' }}>ERC-20 Transfer Function</span>
                     ) : decodedTransaction?.type === 'CONTRACT_CALL' ? (
-                      <span style={{ color: '#3b82f6' }}>Contract Interaction</span>
+                      <span style={{ color: '#3b82f6' }}>
+                        {decodedTransaction.details.methodName || 'Contract Interaction'}
+                        {decodedTransaction.details.contractName && (
+                          <span style={{ color: '#888', fontSize: '12px', marginLeft: '8px' }}>
+                            on {decodedTransaction.details.contractName}
+                          </span>
+                        )}
+                      </span>
                     ) : (
                       'Contract Call'
                     )}
                   </DetailValue>
                 </DetailRow>
+
+                {/* Display decoded method parameters */}
+                {decodedTransaction?.details.decodedInputs && decodedTransaction.details.decodedInputs.length > 0 && (
+                  <div style={{
+                    marginBottom: '16px',
+                    paddingBottom: '12px',
+                    borderBottom: '1px solid rgba(148, 163, 184, 0.1)'
+                  }}>
+                    <DetailLabel style={{ marginBottom: '8px' }}>Method Parameters:</DetailLabel>
+                    {decodedTransaction.details.decodedInputs.map((input, index) => (
+                      <div key={index} style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        marginBottom: '6px',
+                        padding: '6px 8px',
+                        background: 'rgba(59, 130, 246, 0.1)',
+                        borderRadius: '4px',
+                        fontSize: '12px'
+                      }}>
+                        <div style={{ fontWeight: 'bold', color: '#3b82f6', minWidth: '80px' }}>
+                          {input.name}:
+                        </div>
+                        <div style={{
+                          color: '#888',
+                          fontSize: '11px',
+                          fontFamily: 'monospace',
+                          wordBreak: 'break-all',
+                          flex: 1,
+                          marginLeft: '8px'
+                        }}>
+                          <div style={{ color: '#666', fontSize: '10px' }}>({input.type})</div>
+                          {input.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div style={{
                   display: 'flex',
                   flexDirection: 'column',

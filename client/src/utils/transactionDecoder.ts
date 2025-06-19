@@ -15,15 +15,91 @@ export interface DecodedTransactionData {
     formattedAmount?: string;
     recipient?: string;
     method?: string;
+    methodName?: string;
     parameters?: any[];
+    decodedInputs?: { name: string; type: string; value: any }[];
+    contractName?: string;
   };
+}
+
+interface EtherscanABIResponse {
+  status: string;
+  message: string;
+  result: string;
+}
+
+interface ContractInfo {
+  abi: any[];
+  name: string;
 }
 
 export class TransactionDecoder {
   private tokenService: TokenService;
+  private abiCache: Map<string, ContractInfo> = new Map();
+  private network: string;
 
-  constructor(tokenService: TokenService) {
+  constructor(tokenService: TokenService, network: string = 'ethereum') {
     this.tokenService = tokenService;
+    this.network = network;
+  }
+
+  /**
+   * Get Etherscan API URL for the current network
+   */
+  private getEtherscanApiUrl(): string {
+    switch (this.network) {
+      case 'sepolia':
+        return 'https://api-sepolia.etherscan.io/api';
+      case 'goerli':
+        return 'https://api-goerli.etherscan.io/api';
+      case 'ethereum':
+      default:
+        return 'https://api.etherscan.io/api';
+    }
+  }
+
+  /**
+   * Fetch contract ABI from Etherscan
+   */
+  private async fetchContractABI(contractAddress: string): Promise<ContractInfo | null> {
+    // Check cache first
+    const cacheKey = `${this.network}-${contractAddress.toLowerCase()}`;
+    if (this.abiCache.has(cacheKey)) {
+      return this.abiCache.get(cacheKey)!;
+    }
+
+    try {
+      const apiUrl = this.getEtherscanApiUrl();
+      const url = `${apiUrl}?module=contract&action=getsourcecode&address=${contractAddress}&apikey=YourApiKeyToken`;
+
+      console.log(`Fetching ABI for contract ${contractAddress} from ${apiUrl}`);
+
+      const response = await fetch(url);
+      const data: EtherscanABIResponse = await response.json();
+
+      if (data.status === '1' && data.result && Array.isArray(JSON.parse(data.result))) {
+        const result = JSON.parse(data.result)[0];
+
+        if (result.ABI && result.ABI !== 'Contract source code not verified') {
+          const abi = JSON.parse(result.ABI);
+          const contractInfo: ContractInfo = {
+            abi,
+            name: result.ContractName || 'Unknown Contract'
+          };
+
+          // Cache the result
+          this.abiCache.set(cacheKey, contractInfo);
+          console.log(`✅ Successfully fetched ABI for ${contractInfo.name} (${contractAddress})`);
+          return contractInfo;
+        }
+      }
+
+      console.log(`❌ Contract ${contractAddress} is not verified or ABI not available`);
+      return null;
+    } catch (error) {
+      console.error(`Error fetching ABI for contract ${contractAddress}:`, error);
+      return null;
+    }
   }
 
   /**
@@ -69,7 +145,13 @@ export class TransactionDecoder {
           return await this.decodeERC20Approve(to, data);
         }
 
-        // Generic contract call
+        // Try to decode using contract ABI
+        const decodedCall = await this.decodeContractCall(to, data);
+        if (decodedCall) {
+          return decodedCall;
+        }
+
+        // Generic contract call fallback
         return {
           type: 'CONTRACT_CALL',
           description: 'Contract Interaction',
@@ -98,6 +180,110 @@ export class TransactionDecoder {
           recipient: to
         }
       };
+    }
+  }
+
+  /**
+   * Decode contract call using fetched ABI
+   */
+  private async decodeContractCall(contractAddress: string, data: string): Promise<DecodedTransactionData | null> {
+    try {
+      const contractInfo = await this.fetchContractABI(contractAddress);
+      if (!contractInfo) {
+        return null;
+      }
+
+      const contractInterface = new ethers.utils.Interface(contractInfo.abi);
+      const methodId = data.slice(0, 10);
+
+      // Find the function in the ABI
+      const functionFragment = contractInterface.getFunction(methodId);
+      if (!functionFragment) {
+        console.log(`Method ${methodId} not found in contract ABI`);
+        return null;
+      }
+
+      // Decode the function call
+      const decodedData = contractInterface.decodeFunctionData(functionFragment, data);
+
+      // Format the decoded inputs
+      const decodedInputs = functionFragment.inputs.map((input, index) => ({
+        name: input.name || `param${index}`,
+        type: input.type,
+        value: this.formatParameterValue(decodedData[index], input.type)
+      }));
+
+      // Create a human-readable description
+      const description = this.createMethodDescription(functionFragment.name, decodedInputs, contractInfo.name);
+
+      return {
+        type: 'CONTRACT_CALL',
+        description,
+        details: {
+          method: methodId,
+          methodName: functionFragment.name,
+          recipient: contractAddress,
+          parameters: Array.from(decodedData),
+          decodedInputs,
+          contractName: contractInfo.name
+        }
+      };
+
+    } catch (error) {
+      console.error('Error decoding contract call:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Format parameter values for display
+   */
+  private formatParameterValue(value: any, type: string): any {
+    if (type.includes('address')) {
+      return value.toString();
+    } else if (type.includes('uint') || type.includes('int')) {
+      return value.toString();
+    } else if (type.includes('bytes')) {
+      return value.toString();
+    } else if (type === 'bool') {
+      return value.toString();
+    } else if (type === 'string') {
+      return value.toString();
+    } else if (type.includes('[]')) {
+      // Handle arrays
+      return Array.isArray(value) ? value.map(v => this.formatParameterValue(v, type.replace('[]', ''))) : value.toString();
+    }
+    return value.toString();
+  }
+
+  /**
+   * Create human-readable description for method calls
+   */
+  private createMethodDescription(methodName: string, inputs: any[], contractName: string): string {
+    // Special handling for common method patterns
+    switch (methodName) {
+      case 'proposeTransaction':
+        return `Propose Transaction on ${contractName}`;
+      case 'signTransaction':
+        return `Sign Transaction on ${contractName}`;
+      case 'executeTransaction':
+        return `Execute Transaction on ${contractName}`;
+      case 'addEntry':
+        return `Add Address Book Entry`;
+      case 'removeEntry':
+        return `Remove Address Book Entry`;
+      case 'approve':
+        return `Approve Token Spending`;
+      case 'transfer':
+        return `Transfer Tokens`;
+      case 'mint':
+        return `Mint Tokens`;
+      case 'burn':
+        return `Burn Tokens`;
+      default:
+        // Generic description with method name
+        const formattedMethod = methodName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+        return `${formattedMethod} on ${contractName}`;
     }
   }
 

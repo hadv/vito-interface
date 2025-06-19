@@ -286,7 +286,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         const rpcUrl = getRpcUrl(network);
         const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
         const tokenService = new TokenService(provider, network);
-        const decoder = new TransactionDecoder(tokenService);
+        const decoder = new TransactionDecoder(tokenService, network);
 
         let transactionTo: string;
         let transactionValue: string;
