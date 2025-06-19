@@ -360,7 +360,10 @@ const AssetsPage: React.FC<AssetsPageProps> = ({ assets, isLoading, onSendAsset,
         <VitoList
           items={assets}
           renderItem={renderAssetItem}
-          onItemEnter={(asset) => alert(`Selected ${asset.name} (${asset.balance} ${asset.symbol})`)}
+          onItemEnter={(asset) => {
+            // TODO: Implement asset selection functionality
+            console.log(`Selected ${asset.name} (${asset.balance} ${asset.symbol})`);
+          }}
         />
       </AssetsGrid>
     </Container>
