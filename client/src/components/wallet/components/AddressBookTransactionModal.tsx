@@ -160,6 +160,15 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
   const isEditing = Boolean(editEntry);
   const isRemoving = operation === 'remove';
 
+  // Initialize addressBookService when modal opens
+  useEffect(() => {
+    if (isOpen && window.ethereum) {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      addressBookService.initialize(provider, signer);
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen) {
       if (editEntry) {

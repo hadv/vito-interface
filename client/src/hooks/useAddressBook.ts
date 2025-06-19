@@ -45,26 +45,32 @@ export const useAddressBook = (options: UseAddressBookOptions = {}): UseAddressB
     };
   }, [network]);
 
-  // Set up signer when wallet connection state changes
+  // Set up provider and signer when wallet connection state changes
   useEffect(() => {
     if (!service) return;
 
-    const updateSigner = () => {
+    const updateProviderAndSigner = () => {
       const connectionState = walletConnectionService.getState();
-      if (connectionState.signerConnected && window.ethereum) {
-        // Get the signer from the wallet connection service
+
+      // Always try to set up a provider for read operations
+      if (window.ethereum) {
         const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
-        service.setSigner(signer);
-      } else {
-        service.setSigner(null);
+
+        if (connectionState.signerConnected) {
+          // Initialize with both provider and signer
+          const signer = provider.getSigner();
+          service.initialize(provider, signer);
+        } else {
+          // Initialize with just provider for read-only operations
+          service.initialize(provider);
+        }
       }
     };
 
-    updateSigner();
+    updateProviderAndSigner();
 
     // Listen for connection state changes
-    const unsubscribe = walletConnectionService.subscribe(updateSigner);
+    const unsubscribe = walletConnectionService.subscribe(updateProviderAndSigner);
 
     return unsubscribe;
   }, [service]);

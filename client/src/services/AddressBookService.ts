@@ -23,6 +23,14 @@ export class AddressBookService {
   }
 
   /**
+   * Initialize the service with provider and signer
+   */
+  initialize(provider: ethers.providers.Provider, signer?: ethers.Signer): void {
+    this.safeTxPoolService.setSigner(signer || null);
+    this.safeTransactionService.initialize(provider, signer);
+  }
+
+  /**
    * Set the signer for write operations
    */
   setSigner(signer: ethers.Signer | null): void {
