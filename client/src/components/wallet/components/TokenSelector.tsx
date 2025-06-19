@@ -52,7 +52,7 @@ const TokenIcon = styled.div`
   font-weight: bold;
 `;
 
-const TokenInfo = styled.div`
+const TokenInfoContainer = styled.div`
   text-align: left;
 `;
 
@@ -61,7 +61,7 @@ const TokenSymbol = styled.div`
   font-size: 16px;
 `;
 
-const TokenBalance = styled.div`
+const TokenBalanceDisplay = styled.div`
   font-size: 12px;
   color: #888;
 `;
@@ -265,12 +265,12 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
           <TokenIcon>
             {displayToken.symbol.charAt(0)}
           </TokenIcon>
-          <TokenInfo>
+          <TokenInfoContainer>
             <TokenSymbol>{displayToken.symbol}</TokenSymbol>
             {selectedBalance && (
-              <TokenBalance>Balance: {selectedBalance.formattedBalance}</TokenBalance>
+              <TokenBalanceDisplay>Balance: {selectedBalance.formattedBalance}</TokenBalanceDisplay>
             )}
-          </TokenInfo>
+          </TokenInfoContainer>
         </TokenDisplay>
         <ChevronIcon isOpen={isOpen} />
       </TokenButton>
@@ -280,10 +280,10 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
           <SectionTitle>Native Token</SectionTitle>
           <TokenOption onClick={() => handleTokenSelect(nativeToken)}>
             <TokenIcon>ETH</TokenIcon>
-            <TokenInfo>
+            <TokenInfoContainer>
               <TokenSymbol>ETH</TokenSymbol>
-              <TokenBalance>Ethereum</TokenBalance>
-            </TokenInfo>
+              <TokenBalanceDisplay>Ethereum</TokenBalanceDisplay>
+            </TokenInfoContainer>
           </TokenOption>
         </DropdownSection>
 
@@ -298,9 +298,9 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                   <TokenIcon>
                     {tokenBalance.tokenInfo.symbol.charAt(0)}
                   </TokenIcon>
-                  <TokenInfo>
+                  <TokenInfoContainer>
                     <TokenSymbol>{tokenBalance.tokenInfo.symbol}</TokenSymbol>
-                    <TokenBalance>Balance: {tokenBalance.formattedBalance}</TokenBalance>
+                    <TokenBalanceDisplay>Balance: {tokenBalance.formattedBalance}</TokenBalanceDisplay>
                     <div style={{ marginTop: '4px' }}>
                       <AddressDisplay
                         address={tokenBalance.tokenInfo.address}
@@ -311,7 +311,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                         showExplorer={true}
                       />
                     </div>
-                  </TokenInfo>
+                  </TokenInfoContainer>
                 </TokenOption>
               </div>
             ))}

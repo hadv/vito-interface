@@ -11,7 +11,9 @@ const Container = styled.div`
   width: 100%;
 `;
 
-const Backdrop = styled.div<{ isOpen: boolean }>`
+const Backdrop = styled.div.withConfig({
+  shouldForwardProp: (prop) => prop !== 'isOpen',
+})<{ isOpen: boolean }>`
   position: fixed;
   top: 0;
   left: 0;
@@ -34,7 +36,9 @@ const Backdrop = styled.div<{ isOpen: boolean }>`
   }
 `;
 
-const SelectorButton = styled.button<{ isOpen: boolean; hasValue: boolean }>`
+const SelectorButton = styled.button.withConfig({
+  shouldForwardProp: (prop) => !['isOpen', 'hasValue'].includes(prop),
+})<{ isOpen: boolean; hasValue: boolean }>`
   width: 100%;
   padding: 12px 16px;
   background: rgba(255, 255, 255, 0.1);
@@ -116,7 +120,9 @@ const PlaceholderText = styled.div`
   font-size: 14px;
 `;
 
-const ChevronIcon = styled.div<{ isOpen: boolean }>`
+const ChevronIcon = styled.div.withConfig({
+  shouldForwardProp: (prop) => prop !== 'isOpen',
+})<{ isOpen: boolean }>`
   width: 0;
   height: 0;
   border-left: 5px solid transparent;
@@ -127,7 +133,9 @@ const ChevronIcon = styled.div<{ isOpen: boolean }>`
   flex-shrink: 0;
 `;
 
-const Dropdown = styled.div<{ isOpen: boolean }>`
+const Dropdown = styled.div.withConfig({
+  shouldForwardProp: (prop) => prop !== 'isOpen',
+})<{ isOpen: boolean }>`
   position: absolute;
   top: 100%;
   left: 0;
@@ -157,7 +165,9 @@ const SectionTitle = styled.div`
   letter-spacing: 0.5px;
 `;
 
-const AddressOption = styled.div<{ isFocused?: boolean }>`
+const AddressOption = styled.div.withConfig({
+  shouldForwardProp: (prop) => prop !== 'isFocused',
+})<{ isFocused?: boolean }>`
   padding: 12px 16px;
   cursor: pointer;
   display: flex;
