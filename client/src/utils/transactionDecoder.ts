@@ -542,9 +542,11 @@ export class TransactionDecoder {
    */
   private getKnownContractInfo(address: string): ContractInfo | null {
     const lowerAddress = address.toLowerCase();
+    console.log(`🔍 Checking known contracts for address: ${lowerAddress}`);
 
     // SafeTxPool contract (unverified on Sepolia but we know the ABI)
     if (lowerAddress === '0x1f738438af91442ffa472d4bd40e13fe0a264db8') {
+      console.log('✅ Matched SafeTxPool contract!');
       return {
         name: 'SafeTxPool',
         abi: [
@@ -598,6 +600,7 @@ export class TransactionDecoder {
       };
     }
 
+    console.log('❌ No known contract found for this address');
     // Add more known contracts here
     return null;
   }
@@ -684,14 +687,35 @@ export class TransactionDecoder {
   private async decodeWithABI(contractInfo: ContractInfo, contractAddress: string, data: string): Promise<DecodedTransactionData | null> {
     try {
       console.log(`🔍 Decoding with ABI for ${contractInfo.name}`);
+      console.log('  ABI functions available:', contractInfo.abi.map((f: any) => f.name).join(', '));
       const contractInterface = new ethers.utils.Interface(contractInfo.abi);
       const methodId = data.slice(0, 10);
-      console.log('  Looking for method:', methodId);
+      console.log('  Looking for method ID:', methodId);
+
+      // List all available function selectors for debugging
+      const availableSelectors = contractInfo.abi
+        .filter((item: any) => item.type === 'function')
+        .map((func: any) => {
+          try {
+            const fragment = contractInterface.getFunction(func.name);
+            return `${func.name}: ${fragment.format('sighash')}`;
+          } catch {
+            return `${func.name}: error`;
+          }
+        });
+      console.log('  Available function selectors:', availableSelectors);
 
       // Find the function in the ABI
-      const functionFragment = contractInterface.getFunction(methodId);
+      let functionFragment;
+      try {
+        functionFragment = contractInterface.getFunction(methodId);
+      } catch (error) {
+        console.log('❌ Function not found in ABI, error:', error);
+        return null;
+      }
+
       if (!functionFragment) {
-        console.log('❌ Function not found in ABI');
+        console.log('❌ Function fragment is null');
         return null;
       }
 
