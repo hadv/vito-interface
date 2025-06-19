@@ -157,6 +157,13 @@ export class TransactionDecoder {
           return await this.decodeERC20Approve(to, data);
         }
 
+        // Try known method IDs first (fallback for when ABI fetching fails)
+        const knownMethodResult = this.decodeKnownMethod(methodId, to, data);
+        if (knownMethodResult) {
+          console.log('✅ Decoded using known method ID:', knownMethodResult);
+          return knownMethodResult;
+        }
+
         console.log('🔍 Attempting to decode contract call using ABI...');
         // Try to decode using contract ABI
         const decodedCall = await this.decodeContractCall(to, data);
@@ -196,6 +203,103 @@ export class TransactionDecoder {
         }
       };
     }
+  }
+
+  /**
+   * Decode known method IDs without requiring ABI
+   */
+  private decodeKnownMethod(methodId: string, contractAddress: string, data: string): DecodedTransactionData | null {
+    // Known SafeTxPool method IDs
+    const knownMethods: { [key: string]: { name: string; description: string; abi: string } } = {
+      '0x10ff18f9': {
+        name: 'proposeTransaction',
+        description: 'Propose Transaction on SafeTxPool',
+        abi: 'function proposeTransaction(address safe, address to)'
+      },
+      '0x09959f6b': {
+        name: 'signTransaction',
+        description: 'Sign Transaction on SafeTxPool',
+        abi: 'function signTransaction(bytes32 txHash)'
+      },
+      '0x6a761202': {
+        name: 'executeTransaction',
+        description: 'Execute Transaction on SafeTxPool',
+        abi: 'function executeTransaction(bytes32 txHash)'
+      },
+      // Address book methods
+      '0x4ce38b5f': {
+        name: 'addEntry',
+        description: 'Add Address Book Entry',
+        abi: 'function addEntry(address addr, string name)'
+      },
+      '0x2f54bf6e': {
+        name: 'removeEntry',
+        description: 'Remove Address Book Entry',
+        abi: 'function removeEntry(address addr)'
+      }
+    };
+
+    const method = knownMethods[methodId];
+    if (!method) {
+      return null;
+    }
+
+    try {
+      // Try to decode the parameters using the known ABI
+      const iface = new ethers.utils.Interface([method.abi]);
+      const decoded = iface.decodeFunctionData(method.name, data);
+
+      // Format parameters for display
+      const decodedInputs = Object.keys(decoded).map((key, index) => {
+        if (isNaN(Number(key))) {
+          return {
+            name: key,
+            type: 'unknown',
+            value: this.formatParameterValue(decoded[key], 'unknown')
+          };
+        }
+        return null;
+      }).filter(Boolean);
+
+      return {
+        type: 'CONTRACT_CALL',
+        description: method.description,
+        details: {
+          method: methodId,
+          methodName: method.name,
+          recipient: contractAddress,
+          parameters: Array.from(decoded),
+          decodedInputs,
+          contractName: this.getContractName(contractAddress)
+        }
+      };
+    } catch (error) {
+      console.warn(`Failed to decode known method ${methodId}:`, error);
+      // Return basic info even if decoding fails
+      return {
+        type: 'CONTRACT_CALL',
+        description: method.description,
+        details: {
+          method: methodId,
+          methodName: method.name,
+          recipient: contractAddress,
+          contractName: this.getContractName(contractAddress)
+        }
+      };
+    }
+  }
+
+  /**
+   * Get contract name based on address
+   */
+  private getContractName(address: string): string {
+    // Known contract addresses
+    const knownContracts: { [key: string]: string } = {
+      '0x1F738438AF91442fFa472d4Bd40e13FE0A264db8': 'SafeTxPool',
+      // Add more known contracts here
+    };
+
+    return knownContracts[address.toLowerCase()] || knownContracts[address] || 'Contract';
   }
 
   /**
