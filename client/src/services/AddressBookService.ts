@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { SafeTxPoolService, AddressBookEntry } from './SafeTxPoolService';
 import { createSafeTxPoolService } from './SafeTxPoolService';
+import { SafeTransactionService } from './SafeTransactionService';
 
 // Re-export the AddressBookEntry interface for convenience
 export type { AddressBookEntry };
@@ -12,11 +13,13 @@ export interface AddressBookEntryWithValidation extends AddressBookEntry {
 
 export class AddressBookService {
   private safeTxPoolService: SafeTxPoolService;
+  private safeTransactionService: SafeTransactionService;
   private cache: Map<string, AddressBookEntry[]> = new Map();
   private eventListeners: Array<() => void> = [];
 
   constructor(network: string = 'ethereum') {
     this.safeTxPoolService = createSafeTxPoolService(network);
+    this.safeTransactionService = new SafeTransactionService(network);
   }
 
   /**
@@ -24,6 +27,7 @@ export class AddressBookService {
    */
   setSigner(signer: ethers.Signer | null): void {
     this.safeTxPoolService.setSigner(signer);
+    this.safeTransactionService.setSigner(signer);
   }
 
   /**
@@ -63,44 +67,69 @@ export class AddressBookService {
   }
 
   /**
-   * Add an entry to the address book
+   * Create a Safe transaction for adding an address book entry
    */
-  async addEntry(safe: string, walletAddress: string, name: string): Promise<void> {
+  async createAddEntryTransaction(safe: string, walletAddress: string, name: string): Promise<any> {
     const validation = this.validateEntry(name, walletAddress);
     if (!validation.isValid) {
       throw new Error(validation.error);
     }
 
     try {
-      await this.safeTxPoolService.addAddressBookEntry(safe, walletAddress, name.trim());
-      
-      // Update cache
-      this.invalidateCache(safe);
-      
-      // Refresh cache
-      await this.getEntries(safe);
+      // Get the next nonce for the Safe
+      const nonce = await this.safeTransactionService.getSafeNonce(safe);
+
+      // Create the Safe transaction data
+      const txData = await this.safeTransactionService.createAddAddressBookEntryTransaction(
+        safe,
+        walletAddress,
+        name.trim(),
+        nonce
+      );
+
+      return txData;
     } catch (error) {
-      console.error('Error adding address book entry:', error);
+      console.error('Error creating add address book entry transaction:', error);
       throw error;
     }
   }
 
   /**
-   * Remove an entry from the address book
+   * Add an entry to the address book (legacy method - now creates Safe transaction)
    */
-  async removeEntry(safe: string, walletAddress: string): Promise<void> {
+  async addEntry(safe: string, walletAddress: string, name: string): Promise<void> {
+    // For now, throw an error directing users to use the transaction modal
+    throw new Error('Address book entries must be added through Safe transactions. Please use the transaction interface.');
+  }
+
+  /**
+   * Create a Safe transaction for removing an address book entry
+   */
+  async createRemoveEntryTransaction(safe: string, walletAddress: string): Promise<any> {
     try {
-      await this.safeTxPoolService.removeAddressBookEntry(safe, walletAddress);
-      
-      // Update cache
-      this.invalidateCache(safe);
-      
-      // Refresh cache
-      await this.getEntries(safe);
+      // Get the next nonce for the Safe
+      const nonce = await this.safeTransactionService.getSafeNonce(safe);
+
+      // Create the Safe transaction data
+      const txData = await this.safeTransactionService.createRemoveAddressBookEntryTransaction(
+        safe,
+        walletAddress,
+        nonce
+      );
+
+      return txData;
     } catch (error) {
-      console.error('Error removing address book entry:', error);
+      console.error('Error creating remove address book entry transaction:', error);
       throw error;
     }
+  }
+
+  /**
+   * Remove an entry from the address book (legacy method - now creates Safe transaction)
+   */
+  async removeEntry(safe: string, walletAddress: string): Promise<void> {
+    // For now, throw an error directing users to use the transaction modal
+    throw new Error('Address book entries must be removed through Safe transactions. Please use the transaction interface.');
   }
 
   /**

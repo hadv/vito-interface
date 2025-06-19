@@ -7,7 +7,7 @@ import { AddressBookEntry } from '../../../services/AddressBookService';
 import { Card } from '../../ui';
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
-import AddressBookModal from '../components/AddressBookModal';
+import AddressBookTransactionModal from '../components/AddressBookTransactionModal';
 import AddressDisplay from '../components/AddressDisplay';
 import { walletConnectionService } from '../../../services/WalletConnectionService';
 
@@ -228,6 +228,7 @@ interface AddressBookPageProps {
 const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalOperation, setModalOperation] = useState<'add' | 'remove'>('add');
   const [editingEntry, setEditingEntry] = useState<AddressBookEntry | null>(null);
   const [removingAddress, setRemovingAddress] = useState<string | null>(null);
 
@@ -319,7 +320,7 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
             size="sm"
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
-              handleRemoveEntry(entry.walletAddress);
+              handleRemoveEntry(entry);
             }}
             disabled={removingAddress === entry.walletAddress}
             loading={removingAddress === entry.walletAddress}
@@ -333,38 +334,31 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
 
   const handleAddEntry = () => {
     setEditingEntry(null);
+    setModalOperation('add');
     setIsModalOpen(true);
   };
 
   const handleEditEntry = (entry: AddressBookEntry) => {
     setEditingEntry(entry);
+    setModalOperation('add');
     setIsModalOpen(true);
   };
 
-  const handleRemoveEntry = async (walletAddress: string) => {
-    setRemovingAddress(walletAddress);
-    try {
-      await removeEntry(walletAddress);
-    } catch (error) {
-      console.error('Error removing entry:', error);
-    } finally {
-      setRemovingAddress(null);
-    }
+  const handleRemoveEntry = (entry: AddressBookEntry) => {
+    setEditingEntry(entry);
+    setModalOperation('remove');
+    setIsModalOpen(true);
   };
 
-  const handleSaveEntry = async (walletAddress: string, name: string) => {
-    if (editingEntry) {
-      // For editing, we need to remove the old entry and add the new one
-      // Since we can't change the address, we only update the name
-      await addEntry(walletAddress, name);
-    } else {
-      await addEntry(walletAddress, name);
-    }
+  const handleTransactionCreated = () => {
+    // Refresh the entries after transaction is created
+    refresh();
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingEntry(null);
+    setRemovingAddress(null);
   };
 
   if (!safeAddress) {
@@ -465,10 +459,12 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
           </EmptyStateDescription>
         </EmptyState>
 
-        <AddressBookModal
+        <AddressBookTransactionModal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
-          onSave={handleSaveEntry}
+          onTransactionCreated={handleTransactionCreated}
+          operation={modalOperation}
+          safeAddress={safeAddress}
           editEntry={editingEntry}
           existingAddresses={existingAddresses}
         />
@@ -539,10 +535,12 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
         />
       </EntriesGrid>
 
-      <AddressBookModal
+      <AddressBookTransactionModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        onSave={handleSaveEntry}
+        onTransactionCreated={handleTransactionCreated}
+        operation={modalOperation}
+        safeAddress={safeAddress}
         editEntry={editingEntry}
         existingAddresses={existingAddresses}
       />
