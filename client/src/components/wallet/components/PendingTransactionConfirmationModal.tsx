@@ -32,7 +32,8 @@ const ModalContainer = styled.div`
   width: 95%;
   max-width: 900px;
   max-height: 95vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(20px);
 `;
@@ -72,6 +73,9 @@ const CloseButton = styled.button`
 
 const ModalContent = styled.div`
   padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 `;
 
 const TransactionDetails = styled.div`
@@ -264,6 +268,12 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
   // Decode transaction for better display
   const decodeTransaction = async () => {
     try {
+      console.log('🔍 Starting transaction decoding...');
+      console.log('  To:', transaction.to);
+      console.log('  Value:', transaction.value);
+      console.log('  Data:', transaction.data);
+      console.log('  Network:', network);
+
       const rpcUrl = getRpcUrl(network);
       const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
       const tokenService = new TokenService(provider, network);
@@ -275,9 +285,10 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
         transaction.data || '0x'
       );
 
+      console.log('✅ Transaction decoded:', decoded);
       setDecodedTransaction(decoded);
     } catch (error) {
-      console.error('Error decoding transaction:', error);
+      console.error('❌ Error decoding transaction:', error);
       setDecodedTransaction(null);
     }
   };
@@ -635,27 +646,32 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
                   gap: '8px',
                   marginBottom: '16px',
                   paddingBottom: '12px',
-                  borderBottom: '1px solid rgba(148, 163, 184, 0.1)'
+                  borderBottom: '1px solid rgba(148, 163, 184, 0.1)',
+                  width: '100%',
+                  maxWidth: '100%'
                 }}>
                   <DetailLabel>Raw Transaction Data:</DetailLabel>
                   <div style={{
-                    fontSize: '11px',
+                    fontSize: '10px',
                     fontFamily: 'monospace',
                     color: '#888',
-                    wordBreak: 'break-all',
                     cursor: 'pointer',
                     padding: '8px',
                     background: '#1a1a1a',
                     borderRadius: '4px',
                     border: '1px solid #333',
-                    maxHeight: '120px',
+                    maxHeight: '100px',
                     overflowY: 'auto',
-                    overflowX: 'auto',
+                    overflowX: 'hidden',
+                    wordWrap: 'break-word',
+                    wordBreak: 'break-all',
                     whiteSpace: 'pre-wrap',
                     width: '100%',
+                    maxWidth: '100%',
                     boxSizing: 'border-box',
-                    minWidth: 0, // Allow shrinking below content size
-                    resize: 'vertical' // Allow vertical resizing
+                    minWidth: 0,
+                    resize: 'vertical',
+                    lineHeight: '1.2'
                   }}
                   onClick={() => {
                     navigator.clipboard.writeText(transaction.data);

@@ -112,8 +112,16 @@ export class TransactionDecoder {
     recipient?: string
   ): Promise<DecodedTransactionData> {
     try {
+      console.log('🔍 TransactionDecoder.decodeTransactionData called with:');
+      console.log('  to:', to);
+      console.log('  value:', value);
+      console.log('  data:', data);
+      console.log('  data length:', data.length);
+      console.log('  network:', this.network);
+
       // ETH transfer (no data or empty data)
       if ((!data || data === '0x') && value !== '0') {
+        console.log('✅ Detected ETH transfer');
         const ethAmount = ethers.utils.formatEther(value);
         return {
           type: 'ETH_TRANSFER',
@@ -129,28 +137,35 @@ export class TransactionDecoder {
       // Contract call with data
       if (data && data.length > 10) {
         const methodId = data.slice(0, 10);
+        console.log('🔍 Method ID:', methodId);
 
         // ERC-20 transfer: 0xa9059cbb
         if (methodId === '0xa9059cbb') {
+          console.log('✅ Detected ERC-20 transfer');
           return await this.decodeERC20Transfer(to, data);
         }
 
         // ERC-20 transferFrom: 0x23b872dd
         if (methodId === '0x23b872dd') {
+          console.log('✅ Detected ERC-20 transferFrom');
           return await this.decodeERC20TransferFrom(to, data);
         }
 
         // ERC-20 approve: 0x095ea7b3
         if (methodId === '0x095ea7b3') {
+          console.log('✅ Detected ERC-20 approve');
           return await this.decodeERC20Approve(to, data);
         }
 
+        console.log('🔍 Attempting to decode contract call using ABI...');
         // Try to decode using contract ABI
         const decodedCall = await this.decodeContractCall(to, data);
         if (decodedCall) {
+          console.log('✅ Successfully decoded contract call:', decodedCall);
           return decodedCall;
         }
 
+        console.log('❌ Could not decode contract call, using generic fallback');
         // Generic contract call fallback
         return {
           type: 'CONTRACT_CALL',
