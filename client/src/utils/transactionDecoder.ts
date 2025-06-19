@@ -293,15 +293,98 @@ export class TransactionDecoder {
   }
 
   /**
+   * Decode SafeTxPool proposeTx to extract the actual target transaction
+   */
+  private decodeSafeTxPoolProposeTx(data: string): DecodedTransactionData | null {
+    try {
+      // SafeTxPool proposeTx ABI
+      const proposeTxInterface = new ethers.utils.Interface([
+        'function proposeTx(bytes32 txHash, address safe, address to, uint256 value, bytes calldata data, uint8 operation, uint256 nonce)'
+      ]);
+
+      const decoded = proposeTxInterface.decodeFunctionData('proposeTx', data);
+      const targetTo = decoded.to;
+      const targetValue = decoded.value;
+      const targetData = decoded.data;
+
+      console.log('🔍 SafeTxPool proposeTx decoded:');
+      console.log('  targetTo (actual target):', targetTo);
+      console.log('  targetValue:', targetValue.toString());
+      console.log('  targetData:', targetData);
+
+      // If there's target transaction data, decode that
+      if (targetData && targetData !== '0x' && targetData.length > 10) {
+        const targetMethodId = targetData.slice(0, 10);
+        console.log('🔍 Target method ID:', targetMethodId);
+
+        // Decode the target transaction using the actual target contract
+        const targetDecoded = this.decodeKnownMethod(targetMethodId, targetTo, targetData);
+
+        if (targetDecoded) {
+          console.log('✅ Target transaction decoded successfully:', targetDecoded);
+          return targetDecoded;
+        }
+        console.log('❌ Failed to decode target transaction with known methods');
+
+        // If not a known method, return generic info with target contract
+        return {
+          type: 'CONTRACT_CALL',
+          description: 'Contract Interaction',
+          details: {
+            method: targetMethodId,
+            methodName: 'Unknown Method',
+            recipient: targetTo,
+            contractName: this.getContractName(targetTo)
+          }
+        };
+      }
+
+      // If no target data, show ETH transfer to target
+      if (targetValue && targetValue.toString() !== '0') {
+        const ethAmount = ethers.utils.formatEther(targetValue);
+        return {
+          type: 'ETH_TRANSFER',
+          description: `Send ${ethAmount} ETH`,
+          details: {
+            amount: targetValue.toString(),
+            formattedAmount: `${ethAmount} ETH`,
+            recipient: targetTo
+          }
+        };
+      }
+
+      // Generic target interaction
+      return {
+        type: 'CONTRACT_CALL',
+        description: 'Contract Interaction',
+        details: {
+          method: '0x10ff18f9',
+          methodName: 'proposeTx',
+          recipient: targetTo
+        }
+      };
+
+    } catch (error) {
+      console.log('❌ Failed to decode SafeTxPool proposeTx:', error);
+      return null;
+    }
+  }
+
+  /**
    * Decode known method IDs without requiring ABI
    */
   private decodeKnownMethod(methodId: string, contractAddress: string, data: string): DecodedTransactionData | null {
-    // Known SafeTxPool method IDs
+    // Check if this is SafeTxPool proposeTx
+    if (methodId === '0x10ff18f9') {
+      console.log('🔍 Detected SafeTxPool proposeTx, decoding target transaction...');
+      const proposeTxDecoded = this.decodeSafeTxPoolProposeTx(data);
+      if (proposeTxDecoded) {
+        return proposeTxDecoded;
+      }
+    }
+
+    // Known method IDs for other contracts
     const knownMethods: { [key: string]: { name: string; description: string } } = {
-      '0x10ff18f9': {
-        name: 'proposeTransaction',
-        description: 'Propose Transaction on SafeTxPool'
-      },
       '0x09959f6b': {
         name: 'signTransaction',
         description: 'Sign Transaction on SafeTxPool'
