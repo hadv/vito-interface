@@ -110,8 +110,10 @@ export class TransactionDecoder {
    */
   private async fetchFromEtherscan(contractAddress: string): Promise<ContractInfo | null> {
     try {
+      console.log(`🔍 Fetching ABI from Etherscan for ${contractAddress}`);
       const apiUrl = this.getEtherscanApiUrl();
       const url = `${apiUrl}?module=contract&action=getsourcecode&address=${contractAddress}&apikey=YourApiKeyToken`;
+      console.log('  API URL:', url);
 
       const response = await fetch(url, {
         timeout: 5000,
@@ -122,25 +124,36 @@ export class TransactionDecoder {
       } as any);
 
       if (!response.ok) {
+        console.log(`❌ HTTP error: ${response.status}`);
         throw new Error(`HTTP ${response.status}`);
       }
 
       const data: EtherscanABIResponse = await response.json();
+      console.log('  Etherscan response status:', data.status);
+      console.log('  Etherscan response message:', data.message);
 
       if (data.status === '1' && data.result && Array.isArray(JSON.parse(data.result))) {
         const result = JSON.parse(data.result)[0];
+        console.log('  Contract name:', result.ContractName);
+        console.log('  ABI available:', result.ABI && result.ABI !== 'Contract source code not verified');
 
         if (result.ABI && result.ABI !== 'Contract source code not verified') {
           const abi = JSON.parse(result.ABI);
+          console.log(`✅ ABI fetched successfully for ${result.ContractName}, ${abi.length} functions`);
           return {
             abi,
             name: result.ContractName || 'Unknown Contract'
           };
+        } else {
+          console.log('❌ Contract not verified or ABI not available');
         }
+      } else {
+        console.log('❌ Invalid Etherscan response format');
       }
 
       return null;
     } catch (error) {
+      console.log('❌ Error fetching from Etherscan:', error);
       throw error;
     }
   }
@@ -244,7 +257,10 @@ export class TransactionDecoder {
     recipient?: string
   ): Promise<DecodedTransactionData> {
     try {
-      // Silent operation - no console logs
+      console.log('🔍 DECODING TRANSACTION:');
+      console.log('  to:', to);
+      console.log('  value:', value);
+      console.log('  data:', data?.slice(0, 50) + '...');
 
       // ETH transfer (no data or empty data)
       if ((!data || data === '0x') && value !== '0') {
@@ -263,42 +279,54 @@ export class TransactionDecoder {
       // Contract call with data
       if (data && data.length > 10) {
         const methodId = data.slice(0, 10);
+        console.log('  methodId:', methodId);
 
         // Check if this is a Safe execTransaction call first
         if (methodId === '0x6a761202') {
+          console.log('🔍 Detected Safe execTransaction, decoding...');
           const safeInnerTx = this.decodeSafeExecTransaction(data);
           if (safeInnerTx) {
+            console.log('✅ Safe inner transaction decoded:', safeInnerTx);
             return safeInnerTx;
           }
+          console.log('❌ Failed to decode Safe inner transaction');
         }
 
         // ERC-20 transfer: 0xa9059cbb
         if (methodId === '0xa9059cbb') {
+          console.log('🔍 Detected ERC20 transfer');
           return await this.decodeERC20Transfer(to, data);
         }
 
         // ERC-20 transferFrom: 0x23b872dd
         if (methodId === '0x23b872dd') {
+          console.log('🔍 Detected ERC20 transferFrom');
           return await this.decodeERC20TransferFrom(to, data);
         }
 
         // ERC-20 approve: 0x095ea7b3
         if (methodId === '0x095ea7b3') {
+          console.log('🔍 Detected ERC20 approve');
           return await this.decodeERC20Approve(to, data);
         }
 
-        // Try known method IDs first (fallback for when ABI fetching fails)
+        // PRIORITY: Try to decode using contract ABI FIRST
+        console.log('🔍 Trying ABI-based decoding for contract:', to);
+        const decodedCall = await this.decodeContractCall(to, data);
+        if (decodedCall) {
+          console.log('✅ ABI-based decoding successful:', decodedCall);
+          return decodedCall;
+        }
+        console.log('❌ ABI-based decoding failed, trying known methods');
+
+        // Try known method IDs as fallback
         const knownMethodResult = this.decodeKnownMethod(methodId, to, data);
         if (knownMethodResult) {
+          console.log('✅ Known method decoding successful:', knownMethodResult);
           return knownMethodResult;
         }
 
-        // Try to decode using contract ABI or common signatures
-        const decodedCall = await this.decodeContractCall(to, data);
-        if (decodedCall) {
-          return decodedCall;
-        }
-
+        console.log('❌ All decoding methods failed, using basic signature');
         // This should never happen now since decodeContractCall has fallbacks
         // But keeping as final safety net
         return this.decodeBasicFunctionSignature(to, data);
@@ -532,22 +560,40 @@ export class TransactionDecoder {
    */
   private async decodeContractCall(contractAddress: string, data: string): Promise<DecodedTransactionData | null> {
     try {
+      console.log(`🔍 Starting contract call decoding for ${contractAddress}`);
+
       // First try to get ABI from Etherscan
+      console.log('🔍 Step 1: Trying ABI fetching...');
       const contractInfo = await this.fetchContractABI(contractAddress);
       if (contractInfo) {
+        console.log(`✅ ABI fetched for ${contractInfo.name}`);
         const result = await this.decodeWithABI(contractInfo, contractAddress, data);
-        if (result) return result;
+        if (result) {
+          console.log('✅ ABI-based decoding successful');
+          return result;
+        }
+        console.log('❌ ABI-based decoding failed');
+      } else {
+        console.log('❌ No ABI available');
       }
 
       // If ABI fetching fails, try common function signatures
+      console.log('🔍 Step 2: Trying common signatures...');
       const result = await this.decodeWithCommonSignatures(contractAddress, data);
-      if (result) return result;
+      if (result) {
+        console.log('✅ Common signature decoding successful');
+        return result;
+      }
+      console.log('❌ Common signature decoding failed');
 
       // If all else fails, try to decode basic function signature
-      return this.decodeBasicFunctionSignature(contractAddress, data);
+      console.log('🔍 Step 3: Using basic function signature...');
+      const basicResult = this.decodeBasicFunctionSignature(contractAddress, data);
+      console.log('✅ Basic signature decoding complete');
+      return basicResult;
 
     } catch (error) {
-      console.error('Error decoding contract call:', error);
+      console.error('❌ Error decoding contract call:', error);
       return this.decodeBasicFunctionSignature(contractAddress, data);
     }
   }
@@ -557,17 +603,24 @@ export class TransactionDecoder {
    */
   private async decodeWithABI(contractInfo: ContractInfo, contractAddress: string, data: string): Promise<DecodedTransactionData | null> {
     try {
+      console.log(`🔍 Decoding with ABI for ${contractInfo.name}`);
       const contractInterface = new ethers.utils.Interface(contractInfo.abi);
       const methodId = data.slice(0, 10);
+      console.log('  Looking for method:', methodId);
 
       // Find the function in the ABI
       const functionFragment = contractInterface.getFunction(methodId);
       if (!functionFragment) {
+        console.log('❌ Function not found in ABI');
         return null;
       }
 
+      console.log(`✅ Found function: ${functionFragment.name}`);
+      console.log('  Function signature:', functionFragment.format());
+
       // Decode the function call
       const decodedData = contractInterface.decodeFunctionData(functionFragment, data);
+      console.log('  Decoded parameters:', decodedData);
 
       // Enhanced parameter formatting with type-specific handling
       const decodedInputs = functionFragment.inputs.map((input, index) => ({
@@ -578,8 +631,11 @@ export class TransactionDecoder {
         description: this.getParameterDescription(input.name, input.type, decodedData[index])
       }));
 
+      console.log('  Formatted inputs:', decodedInputs);
+
       // Analyze function for special behaviors
       const functionAnalysis = this.analyzeFunctionBehavior(functionFragment, decodedInputs, contractInfo);
+      console.log('  Function analysis:', functionAnalysis);
 
       // Create enhanced description with context
       const description = this.createEnhancedMethodDescription(
@@ -588,6 +644,8 @@ export class TransactionDecoder {
         contractInfo.name,
         functionAnalysis
       );
+
+      console.log(`✅ ABI decoding complete: ${description}`);
 
       return {
         type: 'CONTRACT_CALL',
@@ -608,6 +666,7 @@ export class TransactionDecoder {
       };
 
     } catch (error) {
+      console.log('❌ Error in ABI decoding:', error);
       return null;
     }
   }
