@@ -72,7 +72,7 @@ export class TransactionDecoder {
       const apiUrl = this.getEtherscanApiUrl();
       const url = `${apiUrl}?module=contract&action=getsourcecode&address=${contractAddress}&apikey=YourApiKeyToken`;
 
-      console.log(`Fetching ABI for contract ${contractAddress} from ${apiUrl}`);
+      // Silent ABI fetching
 
       const response = await fetch(url);
       const data: EtherscanABIResponse = await response.json();
@@ -89,12 +89,12 @@ export class TransactionDecoder {
 
           // Cache the result
           this.abiCache.set(cacheKey, contractInfo);
-          console.log(`✅ Successfully fetched ABI for ${contractInfo.name} (${contractAddress})`);
+          // ABI fetched successfully
           return contractInfo;
         }
       }
 
-      console.log(`❌ Contract ${contractAddress} is not verified or ABI not available`);
+      // Contract not verified or ABI not available
       return null;
     } catch (error) {
       console.error(`Error fetching ABI for contract ${contractAddress}:`, error);
@@ -134,19 +134,16 @@ export class TransactionDecoder {
 
         // ERC-20 transfer: 0xa9059cbb
         if (methodId === '0xa9059cbb') {
-          console.log('✅ Detected ERC-20 transfer');
           return await this.decodeERC20Transfer(to, data);
         }
 
         // ERC-20 transferFrom: 0x23b872dd
         if (methodId === '0x23b872dd') {
-          console.log('✅ Detected ERC-20 transferFrom');
           return await this.decodeERC20TransferFrom(to, data);
         }
 
         // ERC-20 approve: 0x095ea7b3
         if (methodId === '0x095ea7b3') {
-          console.log('✅ Detected ERC-20 approve');
           return await this.decodeERC20Approve(to, data);
         }
 
@@ -269,7 +266,6 @@ export class TransactionDecoder {
       // Find the function in the ABI
       const functionFragment = contractInterface.getFunction(methodId);
       if (!functionFragment) {
-        console.log(`Method ${methodId} not found in contract ABI`);
         return null;
       }
 
