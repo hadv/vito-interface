@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { SAFE_TX_POOL_ABI } from '../contracts/SafeTxPoolABI';
+import { SAFE_TX_POOL_ABI } from '../contracts/abis';
 
 export interface SafeTransactionData {
   to: string;

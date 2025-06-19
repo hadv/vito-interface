@@ -5,7 +5,6 @@ import { theme } from '../../../theme';
 import { AddressBookEntry } from '../../../services/AddressBookService';
 import { addressBookService } from '../../../services/AddressBookService';
 import { safeTxPoolService } from '../../../services/SafeTxPoolService';
-import { walletConnectionService } from '../../../services/WalletConnectionService';
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
 import { useToast } from '../../../hooks/useToast';
@@ -230,24 +229,17 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
         txData = await addressBookService.createAddEntryTransaction(safeAddress, walletAddress, name.trim());
       }
 
-      // Create the transaction hash for EIP-712 signing
-      const connectionState = walletConnectionService.getConnectionState();
-      const chainId = connectionState.chainId || 1;
-      
       // Propose the transaction to SafeTxPool
-      await safeTxPoolService.proposeTx(
-        safeAddress,
-        txData.to,
-        txData.value,
-        txData.data,
-        txData.operation,
-        txData.safeTxGas,
-        txData.baseGas,
-        txData.gasPrice,
-        txData.gasToken,
-        txData.refundReceiver,
-        txData.nonce
-      );
+      const proposeTxParams = {
+        safe: safeAddress,
+        to: txData.to,
+        value: txData.value,
+        data: txData.data,
+        operation: txData.operation,
+        nonce: txData.nonce
+      };
+
+      await safeTxPoolService.proposeTx(proposeTxParams);
 
       success(isRemoving ? 'Address book entry removal proposed successfully!' : 'Address book entry addition proposed successfully!');
       onTransactionCreated();

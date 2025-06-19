@@ -253,8 +253,6 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
     entries,
     loading,
     error,
-    addEntry,
-    removeEntry,
     refresh,
     clearError
   } = useAddressBook({
