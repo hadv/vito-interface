@@ -20,7 +20,7 @@ const Container = styled.div`
 
 const ContentArea = styled.div`
   flex: 1;
-  overflow: auto;
+  overflow: hidden; /* Remove auto scroll - let child components handle their own scrolling */
   padding: 0 1rem 3rem 0;
   padding-left: 0;
   padding-bottom: 3rem; /* Add padding to account for the status bar height */

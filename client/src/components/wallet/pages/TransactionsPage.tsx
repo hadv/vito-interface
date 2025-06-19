@@ -143,7 +143,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
       const rpcUrl = getRpcUrl(network);
       const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
       const tokenService = new TokenService(provider, network);
-      const decoder = new TransactionDecoder(tokenService);
+      const decoder = new TransactionDecoder(tokenService, network);
 
       const newDecodedTransactions = new Map<string, DecodedTransactionData>();
 
@@ -154,15 +154,16 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
             tx.value,
             tx.data || '0x'
           );
+
           newDecodedTransactions.set(tx.txHash, decoded);
         } catch (error) {
-          console.warn(`Failed to decode transaction ${tx.txHash}:`, error);
+          // Silent error handling - no console logs
         }
       }
 
       setDecodedTransactions(newDecodedTransactions);
     } catch (error) {
-      console.error('Error decoding pending transactions:', error);
+      // Silent error handling - no console logs
     }
   }, [network]);
 
@@ -291,23 +292,59 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         {tx.data && tx.data !== '0x' && (
           <div className="text-xs mt-2 space-y-1">
             <div className="text-gray-400">
-              Function: {decodedTx?.type === 'ERC20_TRANSFER' ? (
-                <span className="text-green-400">ERC-20 Transfer</span>
-              ) : decodedTx?.type === 'CONTRACT_CALL' ? (
-                <span className="text-blue-400">Contract Interaction</span>
+              Function: {decodedTx ? (
+                decodedTx.type === 'ERC20_TRANSFER' ? (
+                  <span className="text-green-400">ERC-20 Transfer</span>
+                ) : decodedTx.description && decodedTx.description !== 'Contract Interaction' ? (
+                  <span className="text-blue-400">{decodedTx.description}</span>
+                ) : decodedTx.details.methodName ? (
+                  <span className="text-blue-400">{decodedTx.details.methodName}</span>
+                ) : (
+                  <span className="text-blue-400">Contract Interaction</span>
+                )
               ) : (
                 <span className="text-yellow-400">Contract Call</span>
               )}
             </div>
+
+            {/* Show decoded parameters if available */}
+            {decodedTx?.details.decodedInputs && decodedTx.details.decodedInputs.length > 0 && (
+              <div className="text-gray-500 mt-1">
+                <span className="text-gray-400">Parameters:</span>
+                <div className="ml-2 mt-1 space-y-1">
+                  {decodedTx.details.decodedInputs.slice(0, 3).map((input, index) => (
+                    <div key={index} className="text-xs">
+                      <span className="text-gray-400">{input.name}:</span>{' '}
+                      <span className="text-gray-300">
+                        {typeof input.value === 'string' && input.value.length > 42
+                          ? `${input.value.slice(0, 20)}...${input.value.slice(-10)}`
+                          : String(input.value)
+                        }
+                      </span>
+                    </div>
+                  ))}
+                  {decodedTx.details.decodedInputs.length > 3 && (
+                    <div className="text-xs text-gray-500">
+                      ... and {decodedTx.details.decodedInputs.length - 3} more parameters
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="text-gray-500">
               <span className="text-gray-400">Raw Data:</span>
               <div
-                className="font-mono text-xs bg-gray-800 p-2 rounded mt-1 cursor-pointer hover:bg-gray-700 transition-colors"
+                className="font-mono text-xs bg-gray-800 p-2 rounded mt-1 cursor-pointer hover:bg-gray-700 transition-colors max-w-full overflow-hidden"
                 onClick={() => {
                   navigator.clipboard.writeText(tx.data);
                   console.log('Transaction data copied to clipboard');
                 }}
                 title="Click to copy raw transaction data"
+                style={{
+                  wordBreak: 'break-all',
+                  whiteSpace: 'pre-wrap'
+                }}
               >
                 {tx.data.length > 100 ? `${tx.data.slice(0, 100)}...` : tx.data}
               </div>

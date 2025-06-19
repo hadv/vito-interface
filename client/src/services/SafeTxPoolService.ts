@@ -16,6 +16,11 @@ export interface SafeTxPoolTransaction {
   signatures: Array<{ signature: string; signer: string }>;
 }
 
+export interface AddressBookEntry {
+  name: string;
+  walletAddress: string;
+}
+
 export interface ProposeTransactionParams {
   safe: string;
   to: string;
@@ -395,6 +400,96 @@ export class SafeTxPoolService {
     if (this.contract) {
       this.contract.removeAllListeners();
     }
+  }
+
+  // Address Book Methods
+
+  /**
+   * Add an entry to the address book of a Safe
+   */
+  async addAddressBookEntry(safe: string, walletAddress: string, name: string): Promise<void> {
+    if (!this.contract || !this.signer) {
+      throw new Error('Contract not initialized or signer not set');
+    }
+
+    if (!walletAddress || walletAddress === ethers.constants.AddressZero) {
+      throw new Error('Invalid wallet address');
+    }
+
+    if (!name || name.trim().length === 0) {
+      throw new Error('Name is required');
+    }
+
+    try {
+      // Convert string name to bytes32
+      const nameBytes32 = ethers.utils.formatBytes32String(name.trim().substring(0, 31));
+
+      const tx = await this.contract.addAddressBookEntry(safe, walletAddress, nameBytes32);
+      await tx.wait();
+    } catch (error) {
+      console.error('Error adding address book entry:', error);
+      throw new Error(`Failed to add address book entry: ${error}`);
+    }
+  }
+
+  /**
+   * Remove an entry from the address book of a Safe
+   */
+  async removeAddressBookEntry(safe: string, walletAddress: string): Promise<void> {
+    if (!this.contract || !this.signer) {
+      throw new Error('Contract not initialized or signer not set');
+    }
+
+    try {
+      const tx = await this.contract.removeAddressBookEntry(safe, walletAddress);
+      await tx.wait();
+    } catch (error) {
+      console.error('Error removing address book entry:', error);
+      throw new Error(`Failed to remove address book entry: ${error}`);
+    }
+  }
+
+  /**
+   * Get all address book entries for a Safe
+   */
+  async getAddressBookEntries(safe: string): Promise<AddressBookEntry[]> {
+    if (!this.contract) {
+      throw new Error('Contract not initialized');
+    }
+
+    try {
+      const entries = await this.contract.getAddressBookEntries(safe);
+
+      return entries.map((entry: any) => ({
+        name: ethers.utils.parseBytes32String(entry.name),
+        walletAddress: entry.walletAddress
+      }));
+    } catch (error) {
+      console.error('Error getting address book entries:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Listen for address book events
+   */
+  onAddressBookEntryAdded(callback: (safe: string, walletAddress: string, name: string) => void): void {
+    if (!this.contract) {
+      throw new Error('Contract not initialized');
+    }
+
+    this.contract.on('AddressBookEntryAdded', (safe: string, walletAddress: string, nameBytes32: string) => {
+      const name = ethers.utils.parseBytes32String(nameBytes32);
+      callback(safe, walletAddress, name);
+    });
+  }
+
+  onAddressBookEntryRemoved(callback: (safe: string, walletAddress: string) => void): void {
+    if (!this.contract) {
+      throw new Error('Contract not initialized');
+    }
+
+    this.contract.on('AddressBookEntryRemoved', callback);
   }
 }
 

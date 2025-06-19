@@ -6,6 +6,7 @@ import { SafeWalletService } from '../../../services/SafeWalletService';
 import { walletConnectionService } from '../../../services/WalletConnectionService';
 import { formatWalletAddress } from '../../../utils';
 import { useToast } from '../../../hooks/useToast';
+import { toChecksumAddress, addressInArray, formatChecksumAddress } from '../../../utils/addressUtils';
 import { TransactionDecoder, DecodedTransactionData } from '../../../utils/transactionDecoder';
 import { TokenService } from '../../../services/TokenService';
 import { getRpcUrl } from '../../../contracts/abis';
@@ -31,7 +32,8 @@ const ModalContainer = styled.div`
   width: 95%;
   max-width: 900px;
   max-height: 95vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(20px);
 `;
@@ -71,6 +73,9 @@ const CloseButton = styled.button`
 
 const ModalContent = styled.div`
   padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 `;
 
 const TransactionDetails = styled.div`
@@ -264,9 +269,10 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
   const decodeTransaction = async () => {
     try {
       const rpcUrl = getRpcUrl(network);
+
       const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
       const tokenService = new TokenService(provider, network);
-      const decoder = new TransactionDecoder(tokenService);
+      const decoder = new TransactionDecoder(tokenService, network);
 
       const decoded = await decoder.decodeTransactionData(
         transaction.to,
@@ -274,9 +280,13 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
         transaction.data || '0x'
       );
 
+      console.log('✅ Transaction decoded:', decoded);
       setDecodedTransaction(decoded);
     } catch (error) {
-      console.error('Error decoding transaction:', error);
+      console.error('❌ Error decoding transaction:', error);
+      if (error instanceof Error) {
+        console.error('❌ Error stack:', error.stack);
+      }
       setDecodedTransaction(null);
     }
   };
@@ -284,13 +294,39 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
   // Update user permissions when safeInfo or currentUserAddress changes
   useEffect(() => {
     if (currentUserAddress && safeInfo) {
-      const isOwner = safeInfo.owners.includes(currentUserAddress.toLowerCase());
-      const alreadySigned = transaction.signatures.some(sig =>
-        sig.signer.toLowerCase() === currentUserAddress.toLowerCase()
-      );
+      try {
+        // Use utility functions for proper address comparison
+        const checksumCurrentUser = toChecksumAddress(currentUserAddress);
 
-      setCanUserSign(isOwner && !alreadySigned);
-      setHasUserSigned(alreadySigned);
+        if (!checksumCurrentUser) {
+          console.error('Invalid current user address:', currentUserAddress);
+          setCanUserSign(false);
+          setHasUserSigned(false);
+          return;
+        }
+
+        const isOwner = addressInArray(checksumCurrentUser, safeInfo.owners);
+        const alreadySigned = transaction.signatures.some(sig => {
+          const checksumSigner = toChecksumAddress(sig.signer);
+          return checksumSigner === checksumCurrentUser;
+        });
+
+        console.log('🔍 Authorization Check:');
+        console.log('  Current User:', currentUserAddress);
+        console.log('  Current User (checksum):', checksumCurrentUser);
+        console.log('  Safe Owners:', safeInfo.owners);
+        console.log('  Safe Owners (checksum):', safeInfo.owners.map(owner => toChecksumAddress(owner)));
+        console.log('  Is Owner:', isOwner);
+        console.log('  Already Signed:', alreadySigned);
+        console.log('  Can Sign:', isOwner && !alreadySigned);
+
+        setCanUserSign(isOwner && !alreadySigned);
+        setHasUserSigned(alreadySigned);
+      } catch (error) {
+        console.error('Error processing addresses for authorization check:', error);
+        setCanUserSign(false);
+        setHasUserSigned(false);
+      }
     }
   }, [currentUserAddress, safeInfo, transaction.signatures]);
 
@@ -340,8 +376,26 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
     setIsLoading(true);
     try {
+      // Check if we have a signer available from the wallet connection
+      if (typeof window.ethereum === 'undefined') {
+        throw new Error('No wallet detected. Please connect your wallet first.');
+      }
+
+      // Create provider and signer
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+
+      // Verify the signer address matches the current user
+      const signerAddress = await signer.getAddress();
+      if (signerAddress.toLowerCase() !== currentUserAddress.toLowerCase()) {
+        throw new Error('Wallet address mismatch. Please ensure you are connected with the correct wallet.');
+      }
+
       const walletService = new SafeWalletService();
       await walletService.initialize({ safeAddress, network });
+
+      // Set the signer for transaction signing
+      await walletService.setSigner(signer);
 
       // Sign the transaction using the existing txHash and EIP-712 signature
       await walletService.signExistingTransaction({
@@ -533,26 +587,89 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
                     {decodedTransaction?.type === 'ERC20_TRANSFER' ? (
                       <span style={{ color: '#10b981' }}>ERC-20 Transfer Function</span>
                     ) : decodedTransaction?.type === 'CONTRACT_CALL' ? (
-                      <span style={{ color: '#3b82f6' }}>Contract Interaction</span>
+                      <span style={{ color: '#3b82f6' }}>
+                        {decodedTransaction.details.methodName || 'Contract Interaction'}
+                        {decodedTransaction.details.contractName && (
+                          <span style={{ color: '#888', fontSize: '12px', marginLeft: '8px' }}>
+                            on {decodedTransaction.details.contractName}
+                          </span>
+                        )}
+                      </span>
                     ) : (
                       'Contract Call'
                     )}
                   </DetailValue>
                 </DetailRow>
-                <DetailRow>
+
+                {/* Display decoded method parameters */}
+                {decodedTransaction?.details.decodedInputs && decodedTransaction.details.decodedInputs.length > 0 && (
+                  <div style={{
+                    marginBottom: '16px',
+                    paddingBottom: '12px',
+                    borderBottom: '1px solid rgba(148, 163, 184, 0.1)'
+                  }}>
+                    <DetailLabel style={{ marginBottom: '8px' }}>Method Parameters:</DetailLabel>
+                    {decodedTransaction.details.decodedInputs.map((input, index) => (
+                      <div key={index} style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        marginBottom: '6px',
+                        padding: '6px 8px',
+                        background: 'rgba(59, 130, 246, 0.1)',
+                        borderRadius: '4px',
+                        fontSize: '12px'
+                      }}>
+                        <div style={{ fontWeight: 'bold', color: '#3b82f6', minWidth: '80px' }}>
+                          {input.name}:
+                        </div>
+                        <div style={{
+                          color: '#888',
+                          fontSize: '11px',
+                          fontFamily: 'monospace',
+                          wordBreak: 'break-all',
+                          flex: 1,
+                          marginLeft: '8px'
+                        }}>
+                          <div style={{ color: '#666', fontSize: '10px' }}>({input.type})</div>
+                          {input.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  marginBottom: '16px',
+                  paddingBottom: '12px',
+                  borderBottom: '1px solid rgba(148, 163, 184, 0.1)',
+                  width: '100%',
+                  maxWidth: '100%'
+                }}>
                   <DetailLabel>Raw Transaction Data:</DetailLabel>
-                  <DetailValue style={{
-                    fontSize: '11px',
+                  <div style={{
+                    fontSize: '10px',
                     fontFamily: 'monospace',
                     color: '#888',
-                    wordBreak: 'break-all',
                     cursor: 'pointer',
                     padding: '8px',
                     background: '#1a1a1a',
                     borderRadius: '4px',
                     border: '1px solid #333',
-                    maxHeight: '120px',
-                    overflowY: 'auto'
+                    maxHeight: '100px',
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    wordWrap: 'break-word',
+                    wordBreak: 'break-all',
+                    whiteSpace: 'pre-wrap',
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                    minWidth: 0,
+                    resize: 'vertical',
+                    lineHeight: '1.2'
                   }}
                   onClick={() => {
                     navigator.clipboard.writeText(transaction.data);
@@ -561,8 +678,8 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
                   title="Click to copy raw transaction data"
                   >
                     {transaction.data}
-                  </DetailValue>
-                </DetailRow>
+                  </div>
+                </div>
               </>
             )}
           </TransactionDetails>
@@ -610,7 +727,21 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
           {!canUserSign && !hasUserSigned && currentUserAddress && (
             <WarningBox>
-              ⚠️ You are not authorized to sign this transaction or you're not connected to the correct wallet.
+              ⚠️ You are not authorized to sign this transaction. Your wallet address ({formatChecksumAddress(currentUserAddress)}) is not an owner of this Safe wallet.
+              <br /><br />
+              <strong>Safe Owners:</strong>
+              <div style={{ marginTop: '8px' }}>
+                {safeInfo?.owners.map((owner, index) => {
+                  const checksumOwner = toChecksumAddress(owner);
+                  return (
+                    <div key={index} style={{ fontSize: '12px', fontFamily: 'monospace', color: '#666' }}>
+                      {checksumOwner ? formatChecksumAddress(checksumOwner) : `${formatWalletAddress(owner)} (invalid format)`}
+                    </div>
+                  );
+                })}
+              </div>
+              <br />
+              Please connect with one of the owner wallets to sign this transaction.
             </WarningBox>
           )}
 
