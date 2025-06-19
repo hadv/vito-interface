@@ -268,13 +268,19 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
   // Decode transaction for better display
   const decodeTransaction = async () => {
     try {
+      console.log('🚀🚀🚀 DECODER FUNCTION CALLED - NEW VERSION 🚀🚀🚀');
       console.log('🔍 Starting transaction decoding...');
       console.log('  To:', transaction.to);
       console.log('  Value:', transaction.value);
       console.log('  Data:', transaction.data);
       console.log('  Network:', network);
 
+      // Force alert to make sure this is running
+      alert('Decoder function called! Check console for details.');
+
       const rpcUrl = getRpcUrl(network);
+      console.log('  RPC URL:', rpcUrl);
+
       const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
       const tokenService = new TokenService(provider, network);
       const decoder = new TransactionDecoder(tokenService, network);
@@ -289,6 +295,9 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
       setDecodedTransaction(decoded);
     } catch (error) {
       console.error('❌ Error decoding transaction:', error);
+      if (error instanceof Error) {
+        console.error('❌ Error stack:', error.stack);
+      }
       setDecodedTransaction(null);
     }
   };
