@@ -6,6 +6,7 @@ import { SafeWalletService } from '../../../services/SafeWalletService';
 import { walletConnectionService } from '../../../services/WalletConnectionService';
 import { formatWalletAddress } from '../../../utils';
 import { useToast } from '../../../hooks/useToast';
+import { toChecksumAddress, addressInArray, formatChecksumAddress } from '../../../utils/addressUtils';
 import { TransactionDecoder, DecodedTransactionData } from '../../../utils/transactionDecoder';
 import { TokenService } from '../../../services/TokenService';
 import { getRpcUrl } from '../../../contracts/abis';
@@ -284,26 +285,39 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
   // Update user permissions when safeInfo or currentUserAddress changes
   useEffect(() => {
     if (currentUserAddress && safeInfo) {
-      // Normalize addresses for comparison (convert both to lowercase)
-      const normalizedCurrentUser = currentUserAddress.toLowerCase();
-      const normalizedOwners = safeInfo.owners.map(owner => owner.toLowerCase());
+      try {
+        // Use utility functions for proper address comparison
+        const checksumCurrentUser = toChecksumAddress(currentUserAddress);
 
-      const isOwner = normalizedOwners.includes(normalizedCurrentUser);
-      const alreadySigned = transaction.signatures.some(sig =>
-        sig.signer.toLowerCase() === normalizedCurrentUser
-      );
+        if (!checksumCurrentUser) {
+          console.error('Invalid current user address:', currentUserAddress);
+          setCanUserSign(false);
+          setHasUserSigned(false);
+          return;
+        }
 
-      console.log('🔍 Authorization Check:');
-      console.log('  Current User:', currentUserAddress);
-      console.log('  Current User (normalized):', normalizedCurrentUser);
-      console.log('  Safe Owners:', safeInfo.owners);
-      console.log('  Safe Owners (normalized):', normalizedOwners);
-      console.log('  Is Owner:', isOwner);
-      console.log('  Already Signed:', alreadySigned);
-      console.log('  Can Sign:', isOwner && !alreadySigned);
+        const isOwner = addressInArray(checksumCurrentUser, safeInfo.owners);
+        const alreadySigned = transaction.signatures.some(sig => {
+          const checksumSigner = toChecksumAddress(sig.signer);
+          return checksumSigner === checksumCurrentUser;
+        });
 
-      setCanUserSign(isOwner && !alreadySigned);
-      setHasUserSigned(alreadySigned);
+        console.log('🔍 Authorization Check:');
+        console.log('  Current User:', currentUserAddress);
+        console.log('  Current User (checksum):', checksumCurrentUser);
+        console.log('  Safe Owners:', safeInfo.owners);
+        console.log('  Safe Owners (checksum):', safeInfo.owners.map(owner => toChecksumAddress(owner)));
+        console.log('  Is Owner:', isOwner);
+        console.log('  Already Signed:', alreadySigned);
+        console.log('  Can Sign:', isOwner && !alreadySigned);
+
+        setCanUserSign(isOwner && !alreadySigned);
+        setHasUserSigned(alreadySigned);
+      } catch (error) {
+        console.error('Error processing addresses for authorization check:', error);
+        setCanUserSign(false);
+        setHasUserSigned(false);
+      }
     }
   }, [currentUserAddress, safeInfo, transaction.signatures]);
 
@@ -623,15 +637,18 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
           {!canUserSign && !hasUserSigned && currentUserAddress && (
             <WarningBox>
-              ⚠️ You are not authorized to sign this transaction. Your wallet address ({formatWalletAddress(currentUserAddress)}) is not an owner of this Safe wallet.
+              ⚠️ You are not authorized to sign this transaction. Your wallet address ({formatChecksumAddress(currentUserAddress)}) is not an owner of this Safe wallet.
               <br /><br />
               <strong>Safe Owners:</strong>
               <div style={{ marginTop: '8px' }}>
-                {safeInfo?.owners.map((owner, index) => (
-                  <div key={index} style={{ fontSize: '12px', fontFamily: 'monospace', color: '#666' }}>
-                    {formatWalletAddress(owner)}
-                  </div>
-                ))}
+                {safeInfo?.owners.map((owner, index) => {
+                  const checksumOwner = toChecksumAddress(owner);
+                  return (
+                    <div key={index} style={{ fontSize: '12px', fontFamily: 'monospace', color: '#666' }}>
+                      {checksumOwner ? formatChecksumAddress(checksumOwner) : `${formatWalletAddress(owner)} (invalid format)`}
+                    </div>
+                  );
+                })}
               </div>
               <br />
               Please connect with one of the owner wallets to sign this transaction.

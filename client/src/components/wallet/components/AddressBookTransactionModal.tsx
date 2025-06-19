@@ -5,6 +5,7 @@ import { theme } from '../../../theme';
 import { AddressBookEntry, createAddressBookService } from '../../../services/AddressBookService';
 import { createSafeTxPoolService } from '../../../services/SafeTxPoolService';
 import { walletConnectionService } from '../../../services/WalletConnectionService';
+import { toChecksumAddress, isValidAddress, isZeroAddress } from '../../../utils/addressUtils';
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
 import { useToast } from '../../../hooks/useToast';
@@ -224,17 +225,26 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
     if (!walletAddress.trim()) {
       setAddressError('Wallet address is required');
       isValid = false;
-    } else if (!ethers.utils.isAddress(walletAddress)) {
+    } else if (!isValidAddress(walletAddress)) {
       setAddressError('Invalid wallet address format');
       isValid = false;
-    } else if (walletAddress === ethers.constants.AddressZero) {
+    } else if (isZeroAddress(walletAddress)) {
       setAddressError('Cannot use zero address');
       isValid = false;
-    } else if (!isEditing && existingAddresses.includes(walletAddress.toLowerCase())) {
-      setAddressError('This address is already in your address book');
-      isValid = false;
     } else {
-      setAddressError('');
+      // Check for duplicates using checksum comparison
+      const checksumAddress = toChecksumAddress(walletAddress);
+      const isDuplicate = !isEditing && checksumAddress && existingAddresses.some(existing => {
+        const checksumExisting = toChecksumAddress(existing);
+        return checksumExisting === checksumAddress;
+      });
+
+      if (isDuplicate) {
+        setAddressError('This address is already in your address book');
+        isValid = false;
+      } else {
+        setAddressError('');
+      }
     }
 
     return isValid;
@@ -257,12 +267,18 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
     try {
       console.log(`Creating transaction for network: ${currentNetwork}`);
 
+      // Convert to checksum address for consistency
+      const checksumWalletAddress = toChecksumAddress(walletAddress);
+      if (!checksumWalletAddress) {
+        throw new Error('Invalid wallet address format');
+      }
+
       let txData;
 
       if (isRemoving) {
-        txData = await addressBookService.createRemoveEntryTransaction(safeAddress, walletAddress);
+        txData = await addressBookService.createRemoveEntryTransaction(safeAddress, checksumWalletAddress);
       } else {
-        txData = await addressBookService.createAddEntryTransaction(safeAddress, walletAddress, name.trim());
+        txData = await addressBookService.createAddEntryTransaction(safeAddress, checksumWalletAddress, name.trim());
       }
 
       // Propose the transaction to SafeTxPool
