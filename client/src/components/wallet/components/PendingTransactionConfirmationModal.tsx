@@ -367,8 +367,26 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
     setIsLoading(true);
     try {
+      // Check if we have a signer available from the wallet connection
+      if (typeof window.ethereum === 'undefined') {
+        throw new Error('No wallet detected. Please connect your wallet first.');
+      }
+
+      // Create provider and signer
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+
+      // Verify the signer address matches the current user
+      const signerAddress = await signer.getAddress();
+      if (signerAddress.toLowerCase() !== currentUserAddress.toLowerCase()) {
+        throw new Error('Wallet address mismatch. Please ensure you are connected with the correct wallet.');
+      }
+
       const walletService = new SafeWalletService();
       await walletService.initialize({ safeAddress, network });
+
+      // Set the signer for transaction signing
+      await walletService.setSigner(signer);
 
       // Sign the transaction using the existing txHash and EIP-712 signature
       await walletService.signExistingTransaction({
