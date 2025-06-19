@@ -132,6 +132,14 @@ export class TransactionDecoder {
       if (data && data.length > 10) {
         const methodId = data.slice(0, 10);
 
+        // Check if this is a Safe execTransaction call first
+        if (methodId === '0x6a761202') {
+          const safeInnerTx = this.decodeSafeExecTransaction(data);
+          if (safeInnerTx) {
+            return safeInnerTx;
+          }
+        }
+
         // ERC-20 transfer: 0xa9059cbb
         if (methodId === '0xa9059cbb') {
           return await this.decodeERC20Transfer(to, data);
@@ -190,6 +198,78 @@ export class TransactionDecoder {
   }
 
   /**
+   * Decode Safe execTransaction to extract the inner transaction
+   */
+  private decodeSafeExecTransaction(data: string): DecodedTransactionData | null {
+    try {
+      // Safe execTransaction ABI
+      const safeInterface = new ethers.utils.Interface([
+        'function execTransaction(address to, uint256 value, bytes calldata data, uint8 operation, uint256 safeTxGas, uint256 baseGas, uint256 gasPrice, address gasToken, address refundReceiver, bytes memory signatures)'
+      ]);
+
+      const decoded = safeInterface.decodeFunctionData('execTransaction', data);
+      const innerTo = decoded.to;
+      const innerValue = decoded.value;
+      const innerData = decoded.data;
+
+      // If there's inner transaction data, decode that with the TARGET CONTRACT (innerTo)
+      if (innerData && innerData !== '0x' && innerData.length > 10) {
+        const innerMethodId = innerData.slice(0, 10);
+
+        // Decode the inner transaction using the TARGET CONTRACT ADDRESS (innerTo), not the Safe address
+        const innerDecoded = this.decodeKnownMethod(innerMethodId, innerTo, innerData);
+
+        if (innerDecoded) {
+          // Return the inner transaction details with the target contract
+          return innerDecoded;
+        }
+
+        // If not a known method, try to decode using the target contract's ABI
+        // This would require async call, so for now return generic info with target contract
+        return {
+          type: 'CONTRACT_CALL',
+          description: 'Contract Interaction',
+          details: {
+            method: innerMethodId,
+            methodName: 'Unknown Method',
+            recipient: innerTo, // This is the TARGET contract, not the Safe
+            contractName: this.getContractName(innerTo)
+          }
+        };
+      }
+
+      // If no inner data or couldn't decode, show ETH transfer to target
+      if (innerValue && innerValue.toString() !== '0') {
+        const ethAmount = ethers.utils.formatEther(innerValue);
+        return {
+          type: 'ETH_TRANSFER',
+          description: `Send ${ethAmount} ETH`,
+          details: {
+            amount: innerValue.toString(),
+            formattedAmount: `${ethAmount} ETH`,
+            recipient: innerTo // This is the TARGET recipient, not the Safe
+          }
+        };
+      }
+
+      // Generic contract interaction with target
+      return {
+        type: 'CONTRACT_CALL',
+        description: 'Contract Interaction',
+        details: {
+          method: '0x6a761202',
+          methodName: 'execTransaction',
+          recipient: innerTo // This is the TARGET contract, not the Safe
+        }
+      };
+
+    } catch (error) {
+      // If decoding fails, return null to try other methods
+      return null;
+    }
+  }
+
+  /**
    * Decode known method IDs without requiring ABI
    */
   private decodeKnownMethod(methodId: string, contractAddress: string, data: string): DecodedTransactionData | null {
@@ -202,10 +282,6 @@ export class TransactionDecoder {
       '0x09959f6b': {
         name: 'signTransaction',
         description: 'Sign Transaction on SafeTxPool'
-      },
-      '0x6a761202': {
-        name: 'executeTransaction',
-        description: 'Execute Transaction on SafeTxPool'
       },
       // Address book methods
       '0x4ce38b5f': {
