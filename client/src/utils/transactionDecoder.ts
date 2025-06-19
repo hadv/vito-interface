@@ -250,16 +250,18 @@ export class TransactionDecoder {
       const decoded = iface.decodeFunctionData(method.name, data);
 
       // Format parameters for display
-      const decodedInputs = Object.keys(decoded).map((key, index) => {
-        if (isNaN(Number(key))) {
-          return {
-            name: key,
-            type: 'unknown',
-            value: this.formatParameterValue(decoded[key], 'unknown')
-          };
-        }
-        return null;
-      }).filter(Boolean);
+      const decodedInputs = Object.keys(decoded)
+        .map((key, index) => {
+          if (isNaN(Number(key))) {
+            return {
+              name: key,
+              type: 'unknown',
+              value: this.formatParameterValue(decoded[key], 'unknown')
+            };
+          }
+          return null;
+        })
+        .filter((item): item is { name: string; type: string; value: any } => item !== null);
 
       return {
         type: 'CONTRACT_CALL',
