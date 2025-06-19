@@ -584,9 +584,16 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
                     )}
                   </DetailValue>
                 </DetailRow>
-                <DetailRow>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  marginBottom: '16px',
+                  paddingBottom: '12px',
+                  borderBottom: '1px solid rgba(148, 163, 184, 0.1)'
+                }}>
                   <DetailLabel>Raw Transaction Data:</DetailLabel>
-                  <DetailValue style={{
+                  <div style={{
                     fontSize: '11px',
                     fontFamily: 'monospace',
                     color: '#888',
@@ -601,7 +608,9 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
                     overflowX: 'auto',
                     whiteSpace: 'pre-wrap',
                     width: '100%',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    minWidth: 0, // Allow shrinking below content size
+                    resize: 'vertical' // Allow vertical resizing
                   }}
                   onClick={() => {
                     navigator.clipboard.writeText(transaction.data);
@@ -610,8 +619,8 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
                   title="Click to copy raw transaction data"
                   >
                     {transaction.data}
-                  </DetailValue>
-                </DetailRow>
+                  </div>
+                </div>
               </>
             )}
           </TransactionDetails>
