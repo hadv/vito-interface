@@ -216,14 +216,9 @@ export class TransactionDecoder {
     // - Sourcify
     // - Custom ABI databases
 
-    // Try 4byte.directory for function signature
-    try {
-      // This would need the actual method ID from transaction data
-      // For now, return null and rely on common signatures
-      return null;
-    } catch {
-      return null;
-    }
+    // This would need the actual method ID from transaction data
+    // For now, return null and rely on common signatures
+    return null;
   }
 
   /**
@@ -543,10 +538,80 @@ export class TransactionDecoder {
 
 
   /**
+   * Get contract name and ABI for known contracts
+   */
+  private getKnownContractInfo(address: string): ContractInfo | null {
+    const lowerAddress = address.toLowerCase();
+
+    // SafeTxPool contract (unverified on Sepolia but we know the ABI)
+    if (lowerAddress === '0x1f738438af91442ffa472d4bd40e13fe0a264db8') {
+      return {
+        name: 'SafeTxPool',
+        abi: [
+          {
+            "inputs": [
+              {"name": "txHash", "type": "bytes32"},
+              {"name": "safe", "type": "address"},
+              {"name": "to", "type": "address"},
+              {"name": "value", "type": "uint256"},
+              {"name": "data", "type": "bytes"},
+              {"name": "operation", "type": "uint8"},
+              {"name": "nonce", "type": "uint256"}
+            ],
+            "name": "proposeTx",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {"name": "txHash", "type": "bytes32"},
+              {"name": "signature", "type": "bytes"}
+            ],
+            "name": "signTransaction",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {"name": "safe", "type": "address"},
+              {"name": "signer", "type": "address"},
+              {"name": "txHash", "type": "bytes32"}
+            ],
+            "name": "addSigner",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {"name": "safe", "type": "address"},
+              {"name": "signer", "type": "address"}
+            ],
+            "name": "removeSigner",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+          }
+        ]
+      };
+    }
+
+    // Add more known contracts here
+    return null;
+  }
+
+  /**
    * Get contract name based on address
    */
   private getContractName(address: string): string {
-    // Known contract addresses
+    const contractInfo = this.getKnownContractInfo(address);
+    if (contractInfo) {
+      return contractInfo.name;
+    }
+
+    // Fallback to generic names
     const knownContracts: { [key: string]: string } = {
       '0x1F738438AF91442fFa472d4Bd40e13FE0A264db8': 'SafeTxPool',
       // Add more known contracts here
@@ -562,22 +627,37 @@ export class TransactionDecoder {
     try {
       console.log(`🔍 Starting contract call decoding for ${contractAddress}`);
 
-      // First try to get ABI from Etherscan
-      console.log('🔍 Step 1: Trying ABI fetching...');
-      const contractInfo = await this.fetchContractABI(contractAddress);
-      if (contractInfo) {
-        console.log(`✅ ABI fetched for ${contractInfo.name}`);
-        const result = await this.decodeWithABI(contractInfo, contractAddress, data);
+      // FIRST: Check if this is a known contract with hardcoded ABI
+      console.log('🔍 Step 0: Checking known contracts...');
+      const knownContractInfo = this.getKnownContractInfo(contractAddress);
+      if (knownContractInfo) {
+        console.log(`✅ Found known contract: ${knownContractInfo.name}`);
+        const result = await this.decodeWithABI(knownContractInfo, contractAddress, data);
         if (result) {
-          console.log('✅ ABI-based decoding successful');
+          console.log('✅ Known contract ABI decoding successful');
           return result;
         }
-        console.log('❌ ABI-based decoding failed');
+        console.log('❌ Known contract ABI decoding failed');
       } else {
-        console.log('❌ No ABI available');
+        console.log('❌ Not a known contract');
       }
 
-      // If ABI fetching fails, try common function signatures
+      // SECOND: Try to get ABI from Etherscan
+      console.log('🔍 Step 1: Trying Etherscan ABI fetching...');
+      const contractInfo = await this.fetchContractABI(contractAddress);
+      if (contractInfo) {
+        console.log(`✅ ABI fetched from Etherscan for ${contractInfo.name}`);
+        const result = await this.decodeWithABI(contractInfo, contractAddress, data);
+        if (result) {
+          console.log('✅ Etherscan ABI-based decoding successful');
+          return result;
+        }
+        console.log('❌ Etherscan ABI-based decoding failed');
+      } else {
+        console.log('❌ No ABI available from Etherscan');
+      }
+
+      // THIRD: Try common function signatures
       console.log('🔍 Step 2: Trying common signatures...');
       const result = await this.decodeWithCommonSignatures(contractAddress, data);
       if (result) {
@@ -586,7 +666,7 @@ export class TransactionDecoder {
       }
       console.log('❌ Common signature decoding failed');
 
-      // If all else fails, try to decode basic function signature
+      // FOURTH: Try to decode basic function signature
       console.log('🔍 Step 3: Using basic function signature...');
       const basicResult = this.decodeBasicFunctionSignature(contractAddress, data);
       console.log('✅ Basic signature decoding complete');
@@ -808,6 +888,10 @@ export class TransactionDecoder {
 
       // Safe functions
       '0x6a761202': { signature: 'execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)', name: 'execTransaction', inputs: [{name: 'to', type: 'address'}, {name: 'value', type: 'uint256'}, {name: 'data', type: 'bytes'}, {name: 'operation', type: 'uint8'}, {name: 'safeTxGas', type: 'uint256'}, {name: 'baseGas', type: 'uint256'}, {name: 'gasPrice', type: 'uint256'}, {name: 'gasToken', type: 'address'}, {name: 'refundReceiver', type: 'address'}, {name: 'signatures', type: 'bytes'}] },
+
+      // SafeTxPool functions
+      '0x10ff18f9': { signature: 'proposeTx(bytes32,address,address,uint256,bytes,uint8,uint256)', name: 'proposeTx', inputs: [{name: 'txHash', type: 'bytes32'}, {name: 'safe', type: 'address'}, {name: 'to', type: 'address'}, {name: 'value', type: 'uint256'}, {name: 'data', type: 'bytes'}, {name: 'operation', type: 'uint8'}, {name: 'nonce', type: 'uint256'}] },
+      '0x0f1b1cd2': { signature: 'signTransaction(bytes32,bytes)', name: 'signTransaction', inputs: [{name: 'txHash', type: 'bytes32'}, {name: 'signature', type: 'bytes'}] },
 
       // Common utility functions
       '0x70a08231': { signature: 'balanceOf(address)', name: 'balanceOf', inputs: [{name: 'owner', type: 'address'}] },
