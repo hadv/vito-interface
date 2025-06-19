@@ -140,10 +140,6 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
   // Decode pending transactions for better display
   const decodePendingTransactions = useCallback(async (transactions: SafeTxPoolTransaction[]) => {
     try {
-      console.log('🔍 Decoding pending transactions for list view...');
-      console.log('  Network:', network);
-      console.log('  Transactions count:', transactions.length);
-
       const rpcUrl = getRpcUrl(network);
       const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
       const tokenService = new TokenService(provider, network);
@@ -153,29 +149,21 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
       for (const tx of transactions) {
         try {
-          console.log(`🔍 Decoding transaction ${tx.txHash}:`, {
-            to: tx.to,
-            value: tx.value,
-            data: tx.data?.slice(0, 50) + '...'
-          });
-
           const decoded = await decoder.decodeTransactionData(
             tx.to,
             tx.value,
             tx.data || '0x'
           );
 
-          console.log(`✅ Decoded transaction ${tx.txHash}:`, decoded);
           newDecodedTransactions.set(tx.txHash, decoded);
         } catch (error) {
-          console.warn(`❌ Failed to decode transaction ${tx.txHash}:`, error);
+          // Silent error handling - no console logs
         }
       }
 
-      console.log('✅ All transactions decoded, setting state...');
       setDecodedTransactions(newDecodedTransactions);
     } catch (error) {
-      console.error('❌ Error decoding pending transactions:', error);
+      // Silent error handling - no console logs
     }
   }, [network]);
 
@@ -307,10 +295,10 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
               Function: {decodedTx ? (
                 decodedTx.type === 'ERC20_TRANSFER' ? (
                   <span className="text-green-400">ERC-20 Transfer</span>
+                ) : decodedTx.description && decodedTx.description !== 'Contract Interaction' ? (
+                  <span className="text-blue-400">{decodedTx.description}</span>
                 ) : decodedTx.details.methodName ? (
                   <span className="text-blue-400">{decodedTx.details.methodName}</span>
-                ) : decodedTx.details.contractName ? (
-                  <span className="text-blue-400">{decodedTx.description}</span>
                 ) : (
                   <span className="text-blue-400">Contract Interaction</span>
                 )

@@ -23,7 +23,7 @@ const appContainerClasses = cn(
 
 
 
-const contentContainerClasses = 'flex-1 overflow-auto relative p-0 m-0';
+const contentContainerClasses = 'flex-1 overflow-hidden relative p-0 m-0';
 
 // Tailwind classes for welcome page
 const welcomeContainerClasses = cn(

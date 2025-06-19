@@ -112,16 +112,10 @@ export class TransactionDecoder {
     recipient?: string
   ): Promise<DecodedTransactionData> {
     try {
-      console.log('🔍 TransactionDecoder.decodeTransactionData called with:');
-      console.log('  to:', to);
-      console.log('  value:', value);
-      console.log('  data:', data);
-      console.log('  data length:', data.length);
-      console.log('  network:', this.network);
+      // Silent operation - no console logs
 
       // ETH transfer (no data or empty data)
       if ((!data || data === '0x') && value !== '0') {
-        console.log('✅ Detected ETH transfer');
         const ethAmount = ethers.utils.formatEther(value);
         return {
           type: 'ETH_TRANSFER',
@@ -137,7 +131,6 @@ export class TransactionDecoder {
       // Contract call with data
       if (data && data.length > 10) {
         const methodId = data.slice(0, 10);
-        console.log('🔍 Method ID:', methodId);
 
         // ERC-20 transfer: 0xa9059cbb
         if (methodId === '0xa9059cbb') {
@@ -160,19 +153,13 @@ export class TransactionDecoder {
         // Try known method IDs first (fallback for when ABI fetching fails)
         const knownMethodResult = this.decodeKnownMethod(methodId, to, data);
         if (knownMethodResult) {
-          console.log('✅ Decoded using known method ID:', knownMethodResult);
           return knownMethodResult;
         }
-
-        console.log('🔍 Attempting to decode contract call using ABI...');
         // Try to decode using contract ABI
         const decodedCall = await this.decodeContractCall(to, data);
         if (decodedCall) {
-          console.log('✅ Successfully decoded contract call:', decodedCall);
           return decodedCall;
         }
-
-        console.log('❌ Could not decode contract call, using generic fallback');
         // Generic contract call fallback
         return {
           type: 'CONTRACT_CALL',

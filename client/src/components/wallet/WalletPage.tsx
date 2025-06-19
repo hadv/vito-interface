@@ -116,7 +116,7 @@ const LeftSidebar = styled.div`
 
 const MainContent = styled.div`
   flex: 1;
-  overflow-y: auto;
+  overflow-y: hidden; /* Remove auto scroll - let child components handle scrolling */
   padding: ${theme.spacing[6]};
   background: ${theme.colors.background.primary};
 `;
