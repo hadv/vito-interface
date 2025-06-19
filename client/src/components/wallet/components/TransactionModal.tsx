@@ -16,6 +16,7 @@ import { TransactionDecoder, DecodedTransactionData } from '../../../utils/trans
 import { TokenService } from '../../../services/TokenService';
 import { getRpcUrl } from '../../../contracts/abis';
 import AddressDisplay from './AddressDisplay';
+import AddressBookSelector from './AddressBookSelector';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -613,16 +614,13 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         <form onSubmit={handleSubmit}>
           <FormGroup>
             <Label>Recipient Address</Label>
-            <Input
-              type="text"
+            <AddressBookSelector
               value={toAddress}
-              onChange={(e) => setToAddress(e.target.value)}
-              placeholder="0x..."
+              onChange={setToAddress}
+              placeholder="Select from address book or enter address..."
               disabled={isLoading}
-              autoComplete="off"
-              data-1p-ignore="true"
-              data-lpignore="true"
-              data-form-type="other"
+              network={connectionState.network || 'ethereum'}
+              safeAddress={fromAddress}
             />
           </FormGroup>
 
