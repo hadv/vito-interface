@@ -245,7 +245,6 @@ export class TransactionDecoder {
           return innerDecoded;
         }
         console.log('❌ Failed to decode inner transaction with known methods');
-      }
 
         // If not a known method, try to decode using the target contract's ABI
         // This would require async call, so for now return generic info with target contract
