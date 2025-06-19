@@ -17,8 +17,19 @@ export interface DecodedTransactionData {
     method?: string;
     methodName?: string;
     parameters?: any[];
-    decodedInputs?: { name: string; type: string; value: any }[];
+    decodedInputs?: {
+      name: string;
+      type: string;
+      value: any;
+      rawValue?: any;
+      description?: string;
+    }[];
     contractName?: string;
+    functionSignature?: string;
+    stateMutability?: string;
+    gasEstimate?: string;
+    riskLevel?: string;
+    functionType?: string;
   };
 }
 
@@ -59,7 +70,7 @@ export class TransactionDecoder {
   }
 
   /**
-   * Fetch contract ABI from Etherscan
+   * Enhanced contract ABI fetching with multiple strategies
    */
   private async fetchContractABI(contractAddress: string): Promise<ContractInfo | null> {
     // Check cache first
@@ -68,13 +79,52 @@ export class TransactionDecoder {
       return this.abiCache.get(cacheKey)!;
     }
 
+    // Try multiple strategies in order
+    const strategies = [
+      () => this.fetchFromEtherscan(contractAddress),
+      () => this.fetchFromProxy(contractAddress),
+      () => this.fetchFromAlternativeAPIs(contractAddress)
+    ];
+
+    for (const strategy of strategies) {
+      try {
+        const result = await strategy();
+        if (result) {
+          // Cache successful result
+          this.abiCache.set(cacheKey, result);
+          return result;
+        }
+      } catch (error) {
+        // Continue to next strategy
+        continue;
+      }
+    }
+
+    // Cache negative result to avoid repeated failed requests
+    this.abiCache.set(cacheKey, null as any);
+    return null;
+  }
+
+  /**
+   * Fetch ABI from Etherscan API
+   */
+  private async fetchFromEtherscan(contractAddress: string): Promise<ContractInfo | null> {
     try {
       const apiUrl = this.getEtherscanApiUrl();
       const url = `${apiUrl}?module=contract&action=getsourcecode&address=${contractAddress}&apikey=YourApiKeyToken`;
 
-      // Silent ABI fetching
+      const response = await fetch(url, {
+        timeout: 5000,
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Vito-Interface/1.0'
+        }
+      } as any);
 
-      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
       const data: EtherscanABIResponse = await response.json();
 
       if (data.status === '1' && data.result && Array.isArray(JSON.parse(data.result))) {
@@ -82,23 +132,105 @@ export class TransactionDecoder {
 
         if (result.ABI && result.ABI !== 'Contract source code not verified') {
           const abi = JSON.parse(result.ABI);
-          const contractInfo: ContractInfo = {
+          return {
             abi,
             name: result.ContractName || 'Unknown Contract'
           };
-
-          // Cache the result
-          this.abiCache.set(cacheKey, contractInfo);
-          // ABI fetched successfully
-          return contractInfo;
         }
       }
 
-      // Contract not verified or ABI not available
       return null;
     } catch (error) {
-      console.error(`Error fetching ABI for contract ${contractAddress}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handle proxy contracts by fetching implementation ABI
+   */
+  private async fetchFromProxy(contractAddress: string): Promise<ContractInfo | null> {
+    try {
+      // Common proxy patterns
+      const proxyPatterns = [
+        '0x5c60da1b', // implementation() - EIP-1967
+        '0x4555d5c9', // masterCopy() - Gnosis Safe
+        '0x7050c9e0', // target() - Some proxies
+      ];
+
+      const provider = new ethers.providers.JsonRpcProvider(this.getRpcUrl());
+
+      for (const methodId of proxyPatterns) {
+        try {
+          const callData = methodId + '0'.repeat(56); // Pad to 32 bytes
+          const result = await provider.call({
+            to: contractAddress,
+            data: callData
+          });
+
+          if (result && result !== '0x' && result.length >= 66) {
+            // Extract address from result (last 20 bytes)
+            const implementationAddress = '0x' + result.slice(-40);
+
+            if (implementationAddress !== '0x0000000000000000000000000000000000000000') {
+              // Recursively fetch ABI from implementation
+              const implABI = await this.fetchFromEtherscan(implementationAddress);
+              if (implABI) {
+                return {
+                  ...implABI,
+                  name: `${implABI.name} (Proxy)`
+                };
+              }
+            }
+          }
+        } catch {
+          // Continue to next pattern
+          continue;
+        }
+      }
+
       return null;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Try alternative API sources for ABI
+   */
+  private async fetchFromAlternativeAPIs(contractAddress: string): Promise<ContractInfo | null> {
+    // For now, we could add other sources like:
+    // - 4byte.directory for function signatures
+    // - Sourcify
+    // - Custom ABI databases
+
+    // Try 4byte.directory for function signature
+    try {
+      // This would need the actual method ID from transaction data
+      // For now, return null and rely on common signatures
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Get RPC URL for the current network
+   */
+  private getRpcUrl(): string {
+    const ALCHEMY_KEY = process.env.REACT_APP_ALCHEMY_KEY || 'YOUR_ALCHEMY_KEY';
+
+    switch(this.network.toLowerCase()) {
+      case 'arbitrum':
+        return 'https://arb1.arbitrum.io/rpc';
+      case 'sepolia':
+        return ALCHEMY_KEY !== 'YOUR_ALCHEMY_KEY'
+          ? `https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_KEY}`
+          : 'https://ethereum-sepolia-rpc.publicnode.com';
+      case 'ethereum':
+      default:
+        return ALCHEMY_KEY !== 'YOUR_ALCHEMY_KEY'
+          ? `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`
+          : 'https://ethereum-rpc.publicnode.com';
     }
   }
 
@@ -421,7 +553,7 @@ export class TransactionDecoder {
   }
 
   /**
-   * Decode using contract ABI
+   * Enhanced ABI-based decoding with detailed analysis
    */
   private async decodeWithABI(contractInfo: ContractInfo, contractAddress: string, data: string): Promise<DecodedTransactionData | null> {
     try {
@@ -437,15 +569,25 @@ export class TransactionDecoder {
       // Decode the function call
       const decodedData = contractInterface.decodeFunctionData(functionFragment, data);
 
-      // Format the decoded inputs
+      // Enhanced parameter formatting with type-specific handling
       const decodedInputs = functionFragment.inputs.map((input, index) => ({
         name: input.name || `param${index}`,
         type: input.type,
-        value: this.formatParameterValue(decodedData[index], input.type)
+        value: this.formatParameterValue(decodedData[index], input.type),
+        rawValue: decodedData[index],
+        description: this.getParameterDescription(input.name, input.type, decodedData[index])
       }));
 
-      // Create a human-readable description
-      const description = this.createMethodDescription(functionFragment.name, decodedInputs, contractInfo.name);
+      // Analyze function for special behaviors
+      const functionAnalysis = this.analyzeFunctionBehavior(functionFragment, decodedInputs, contractInfo);
+
+      // Create enhanced description with context
+      const description = this.createEnhancedMethodDescription(
+        functionFragment.name,
+        decodedInputs,
+        contractInfo.name,
+        functionAnalysis
+      );
 
       return {
         type: 'CONTRACT_CALL',
@@ -456,13 +598,122 @@ export class TransactionDecoder {
           recipient: contractAddress,
           parameters: Array.from(decodedData),
           decodedInputs,
-          contractName: contractInfo.name
+          contractName: contractInfo.name,
+          functionSignature: functionFragment.format(),
+          stateMutability: functionFragment.stateMutability,
+          gasEstimate: functionAnalysis.gasEstimate,
+          riskLevel: functionAnalysis.riskLevel,
+          functionType: functionAnalysis.functionType
         }
       };
 
     } catch (error) {
       return null;
     }
+  }
+
+  /**
+   * Analyze function behavior for enhanced context
+   */
+  private analyzeFunctionBehavior(functionFragment: any, decodedInputs: any[], contractInfo: ContractInfo): any {
+    const analysis = {
+      functionType: 'unknown',
+      riskLevel: 'low',
+      gasEstimate: 'medium',
+      specialBehaviors: [] as string[]
+    };
+
+    const funcName = functionFragment.name.toLowerCase();
+
+    // Determine function type
+    if (funcName.includes('transfer') || funcName.includes('send')) {
+      analysis.functionType = 'transfer';
+      analysis.riskLevel = 'medium';
+    } else if (funcName.includes('approve') || funcName.includes('allowance')) {
+      analysis.functionType = 'approval';
+      analysis.riskLevel = 'medium';
+    } else if (funcName.includes('swap') || funcName.includes('exchange')) {
+      analysis.functionType = 'swap';
+      analysis.riskLevel = 'high';
+      analysis.gasEstimate = 'high';
+    } else if (funcName.includes('stake') || funcName.includes('deposit')) {
+      analysis.functionType = 'staking';
+      analysis.riskLevel = 'medium';
+    } else if (funcName.includes('withdraw') || funcName.includes('claim')) {
+      analysis.functionType = 'withdrawal';
+      analysis.riskLevel = 'low';
+    } else if (funcName.includes('vote') || funcName.includes('propose')) {
+      analysis.functionType = 'governance';
+      analysis.riskLevel = 'low';
+    } else if (functionFragment.stateMutability === 'payable') {
+      analysis.riskLevel = 'high';
+      analysis.specialBehaviors.push('Accepts ETH');
+    }
+
+    // Check for high-value operations
+    const hasLargeAmount = decodedInputs.some(input => {
+      if (input.type.includes('uint') && input.rawValue) {
+        try {
+          const value = ethers.BigNumber.from(input.rawValue);
+          const ethValue = parseFloat(ethers.utils.formatEther(value));
+          return ethValue > 1; // More than 1 ETH equivalent
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    });
+
+    if (hasLargeAmount) {
+      analysis.riskLevel = 'high';
+      analysis.specialBehaviors.push('High value transaction');
+    }
+
+    // Check for array parameters (batch operations)
+    const hasBatchOperation = decodedInputs.some(input => input.type.includes('[]'));
+    if (hasBatchOperation) {
+      analysis.specialBehaviors.push('Batch operation');
+      analysis.gasEstimate = 'high';
+    }
+
+    return analysis;
+  }
+
+  /**
+   * Get parameter description based on name and type
+   */
+  private getParameterDescription(name: string, type: string, value: any): string {
+    const lowerName = name.toLowerCase();
+
+    if (lowerName.includes('amount') || lowerName.includes('value')) {
+      if (type.includes('uint')) {
+        try {
+          const ethValue = ethers.utils.formatEther(value);
+          return `Amount: ${ethValue} ETH equivalent`;
+        } catch {
+          return `Amount: ${value}`;
+        }
+      }
+    }
+
+    if (lowerName.includes('address') || type === 'address') {
+      return `Address: ${value}`;
+    }
+
+    if (lowerName.includes('deadline') || lowerName.includes('timestamp')) {
+      try {
+        const date = new Date(parseInt(value) * 1000);
+        return `Deadline: ${date.toLocaleString()}`;
+      } catch {
+        return `Timestamp: ${value}`;
+      }
+    }
+
+    if (type.includes('[]')) {
+      return `Array with ${Array.isArray(value) ? value.length : 0} items`;
+    }
+
+    return `${type}: ${value}`;
   }
 
   /**
@@ -653,6 +904,48 @@ export class TransactionDecoder {
       return Array.isArray(value) ? value.map(v => this.formatParameterValue(v, type.replace('[]', ''))) : value.toString();
     }
     return value.toString();
+  }
+
+  /**
+   * Create enhanced method description with analysis context
+   */
+  private createEnhancedMethodDescription(
+    methodName: string,
+    inputs: any[],
+    contractName: string,
+    analysis: any
+  ): string {
+    const baseDescription = this.createMethodDescription(methodName, inputs, contractName);
+
+    // Add risk and type indicators
+    const indicators = [];
+
+    if (analysis.riskLevel === 'high') {
+      indicators.push('⚠️ High Risk');
+    }
+
+    if (analysis.specialBehaviors.length > 0) {
+      indicators.push(`(${analysis.specialBehaviors.join(', ')})`);
+    }
+
+    if (analysis.functionType !== 'unknown') {
+      const typeEmojiMap: { [key: string]: string } = {
+        'transfer': '💸',
+        'approval': '✅',
+        'swap': '🔄',
+        'staking': '🔒',
+        'withdrawal': '💰',
+        'governance': '🗳️'
+      };
+
+      const typeEmoji = typeEmojiMap[analysis.functionType] || '';
+
+      if (typeEmoji) {
+        return `${typeEmoji} ${baseDescription}${indicators.length > 0 ? ' ' + indicators.join(' ') : ''}`;
+      }
+    }
+
+    return `${baseDescription}${indicators.length > 0 ? ' ' + indicators.join(' ') : ''}`;
   }
 
   /**
