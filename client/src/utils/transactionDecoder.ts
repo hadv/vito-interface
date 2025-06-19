@@ -132,12 +132,22 @@ export class TransactionDecoder {
       if (data && data.length > 10) {
         const methodId = data.slice(0, 10);
 
+        // DEBUG: Log what we're decoding
+        console.log('🔍 DEBUGGING TRANSACTION DECODE:');
+        console.log('  to:', to);
+        console.log('  methodId:', methodId);
+        console.log('  data length:', data.length);
+        console.log('  data preview:', data.slice(0, 50) + '...');
+
         // Check if this is a Safe execTransaction call first
         if (methodId === '0x6a761202') {
+          console.log('🔍 Detected Safe execTransaction, decoding inner transaction...');
           const safeInnerTx = this.decodeSafeExecTransaction(data);
           if (safeInnerTx) {
+            console.log('✅ Safe inner transaction decoded:', safeInnerTx);
             return safeInnerTx;
           }
+          console.log('❌ Failed to decode Safe inner transaction');
         }
 
         // ERC-20 transfer: 0xa9059cbb
@@ -156,10 +166,13 @@ export class TransactionDecoder {
         }
 
         // Try known method IDs first (fallback for when ABI fetching fails)
+        console.log('🔍 Trying known method IDs for methodId:', methodId, 'to:', to);
         const knownMethodResult = this.decodeKnownMethod(methodId, to, data);
         if (knownMethodResult) {
+          console.log('✅ Known method result:', knownMethodResult);
           return knownMethodResult;
         }
+        console.log('❌ No known method found for:', methodId);
         // Try to decode using contract ABI
         const decodedCall = await this.decodeContractCall(to, data);
         if (decodedCall) {
@@ -212,17 +225,27 @@ export class TransactionDecoder {
       const innerValue = decoded.value;
       const innerData = decoded.data;
 
+      console.log('🔍 Safe execTransaction decoded:');
+      console.log('  innerTo (target contract):', innerTo);
+      console.log('  innerValue:', innerValue.toString());
+      console.log('  innerData:', innerData);
+
       // If there's inner transaction data, decode that with the TARGET CONTRACT (innerTo)
       if (innerData && innerData !== '0x' && innerData.length > 10) {
         const innerMethodId = innerData.slice(0, 10);
+        console.log('🔍 Inner method ID:', innerMethodId);
 
         // Decode the inner transaction using the TARGET CONTRACT ADDRESS (innerTo), not the Safe address
+        console.log('🔍 Decoding inner transaction with target contract:', innerTo);
         const innerDecoded = this.decodeKnownMethod(innerMethodId, innerTo, innerData);
 
         if (innerDecoded) {
+          console.log('✅ Inner transaction decoded successfully:', innerDecoded);
           // Return the inner transaction details with the target contract
           return innerDecoded;
         }
+        console.log('❌ Failed to decode inner transaction with known methods');
+      }
 
         // If not a known method, try to decode using the target contract's ABI
         // This would require async call, so for now return generic info with target contract
