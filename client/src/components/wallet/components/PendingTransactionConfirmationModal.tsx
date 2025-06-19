@@ -289,6 +289,13 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
         sig.signer.toLowerCase() === currentUserAddress.toLowerCase()
       );
 
+      console.log('🔍 Authorization Check:');
+      console.log('  Current User:', currentUserAddress);
+      console.log('  Safe Owners:', safeInfo.owners);
+      console.log('  Is Owner:', isOwner);
+      console.log('  Already Signed:', alreadySigned);
+      console.log('  Can Sign:', isOwner && !alreadySigned);
+
       setCanUserSign(isOwner && !alreadySigned);
       setHasUserSigned(alreadySigned);
     }
@@ -610,7 +617,18 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
           {!canUserSign && !hasUserSigned && currentUserAddress && (
             <WarningBox>
-              ⚠️ You are not authorized to sign this transaction or you're not connected to the correct wallet.
+              ⚠️ You are not authorized to sign this transaction. Your wallet address ({formatWalletAddress(currentUserAddress)}) is not an owner of this Safe wallet.
+              <br /><br />
+              <strong>Safe Owners:</strong>
+              <div style={{ marginTop: '8px' }}>
+                {safeInfo?.owners.map((owner, index) => (
+                  <div key={index} style={{ fontSize: '12px', fontFamily: 'monospace', color: '#666' }}>
+                    {formatWalletAddress(owner)}
+                  </div>
+                ))}
+              </div>
+              <br />
+              Please connect with one of the owner wallets to sign this transaction.
             </WarningBox>
           )}
 
