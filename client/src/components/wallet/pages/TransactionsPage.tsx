@@ -60,6 +60,36 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     }
   }, [safeAddress, network]);
 
+  // Decode pending transactions for better display
+  const decodePendingTransactions = useCallback(async (transactions: SafeTxPoolTransaction[]) => {
+    try {
+      const rpcUrl = getRpcUrl(network);
+      const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+      const tokenService = new TokenService(provider, network);
+      const decoder = new TransactionDecoder(tokenService, network);
+
+      const newDecodedTransactions = new Map<string, DecodedTransactionData>();
+
+      for (const tx of transactions) {
+        try {
+          const decoded = await decoder.decodeTransactionData(
+            tx.to,
+            tx.value,
+            tx.data || '0x'
+          );
+
+          newDecodedTransactions.set(tx.txHash, decoded);
+        } catch (error) {
+          // Silent error handling - no console logs
+        }
+      }
+
+      setDecodedTransactions(newDecodedTransactions);
+    } catch (error) {
+      // Silent error handling - no console logs
+    }
+  }, [network]);
+
   // Load pending transactions from Safe TX pool smart contract
   const loadPendingTransactions = useCallback(async () => {
     if (!safeAddress) return;
@@ -116,7 +146,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     } finally {
       setPendingLoading(false);
     }
-  }, [safeAddress, network, safeTxPoolService]);
+  }, [safeAddress, network, safeTxPoolService, decodePendingTransactions]);
 
   // Load Safe info and pending transactions when component mounts or dependencies change
   useEffect(() => {
@@ -136,36 +166,6 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, safeAddress, network, loadPendingTransactions]);
-
-  // Decode pending transactions for better display
-  const decodePendingTransactions = useCallback(async (transactions: SafeTxPoolTransaction[]) => {
-    try {
-      const rpcUrl = getRpcUrl(network);
-      const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-      const tokenService = new TokenService(provider, network);
-      const decoder = new TransactionDecoder(tokenService, network);
-
-      const newDecodedTransactions = new Map<string, DecodedTransactionData>();
-
-      for (const tx of transactions) {
-        try {
-          const decoded = await decoder.decodeTransactionData(
-            tx.to,
-            tx.value,
-            tx.data || '0x'
-          );
-
-          newDecodedTransactions.set(tx.txHash, decoded);
-        } catch (error) {
-          // Silent error handling - no console logs
-        }
-      }
-
-      setDecodedTransactions(newDecodedTransactions);
-    } catch (error) {
-      // Silent error handling - no console logs
-    }
-  }, [network]);
 
   const formatAmount = (amount: string): string => {
     try {

@@ -256,6 +256,8 @@ const AddressBookSelector: React.FC<AddressBookSelectorProps> = ({
 
   // Close dropdown when clicking outside
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -264,7 +266,7 @@ const AddressBookSelector: React.FC<AddressBookSelectorProps> = ({
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
   // Filter entries based on search query
   const filteredEntries = entries.filter(entry =>

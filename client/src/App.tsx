@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import WalletPage from '@components/wallet/WalletPage';
-import { VitoContainer } from '@components/vitoUI';
-import { resolveAddressToEns, isValidEthereumAddress } from '@utils';
-import { Button, Input, Card } from '@components/ui';
+import WalletPage from './components/wallet/WalletPage';
+import { VitoContainer } from './components/vitoUI';
+import { resolveAddressToEns, isValidEthereumAddress } from './utils';
+import { Button, Input, Card } from './components/ui';
 import { walletConnectionService } from './services/WalletConnectionService';
 import { cn } from './utils/cn';
 import './App.css';
