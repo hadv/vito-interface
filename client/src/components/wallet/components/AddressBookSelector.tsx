@@ -77,6 +77,8 @@ const SelectorContent = styled.div`
   gap: 12px;
   flex: 1;
   min-width: 0;
+  text-align: left;
+  justify-content: flex-start;
 `;
 
 const EntryIcon = styled.div`
@@ -99,6 +101,7 @@ const EntryInfo = styled.div`
   gap: 2px;
   min-width: 0;
   flex: 1;
+  text-align: left;
 `;
 
 const EntryName = styled.div`
@@ -113,11 +116,15 @@ const EntryName = styled.div`
 const EntryAddress = styled.div`
   font-size: 12px;
   color: #94a3b8;
+  text-align: left;
+  word-break: break-all;
+  line-height: 1.3;
 `;
 
 const PlaceholderText = styled.div`
   color: #94a3b8;
   font-size: 14px;
+  text-align: left;
 `;
 
 const ChevronIcon = styled.div.withConfig({
@@ -367,8 +374,7 @@ const AddressBookSelector: React.FC<AddressBookSelectorProps> = ({
                   <AddressDisplay
                     address={selectedEntry.walletAddress}
                     network={network}
-                    truncate={true}
-                    truncateLength={6}
+                    truncate={false}
                     showCopy={false}
                     showExplorer={false}
                   />
@@ -386,8 +392,7 @@ const AddressBookSelector: React.FC<AddressBookSelectorProps> = ({
                   <AddressDisplay
                     address={value}
                     network={network}
-                    truncate={true}
-                    truncateLength={6}
+                    truncate={false}
                     showCopy={false}
                     showExplorer={false}
                   />
