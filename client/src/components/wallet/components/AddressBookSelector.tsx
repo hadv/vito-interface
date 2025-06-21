@@ -238,7 +238,7 @@ const AddressBookSelector: React.FC<AddressBookSelectorProps> = ({
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { entries, loading } = useAddressBook({
+  const { entries, loading, error: addressBookError } = useAddressBook({
     network,
     safeAddress,
     autoRefresh: true
@@ -261,6 +261,9 @@ const AddressBookSelector: React.FC<AddressBookSelectorProps> = ({
     entry.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     entry.walletAddress.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Check if we have a valid safe address for address book functionality
+  const hasValidSafeAddress = safeAddress && safeAddress.length > 0;
 
   // Find the selected entry if value matches an address book entry
   const selectedEntry = entries.find(entry => 
@@ -411,7 +414,15 @@ const AddressBookSelector: React.FC<AddressBookSelectorProps> = ({
           />
         </SearchContainer>
 
-        {loading ? (
+        {!hasValidSafeAddress ? (
+          <EmptyState>
+            Connect your wallet to access address book
+          </EmptyState>
+        ) : addressBookError ? (
+          <EmptyState>
+            Unable to load address book: {addressBookError}
+          </EmptyState>
+        ) : loading ? (
           <EmptyState>Loading address book...</EmptyState>
         ) : filteredEntries.length > 0 ? (
           <DropdownSection>

@@ -37,12 +37,22 @@ export const useAddressBook = (options: UseAddressBookOptions = {}): UseAddressB
 
   // Initialize service
   useEffect(() => {
-    const addressBookService = createAddressBookService(network);
-    setService(addressBookService);
+    try {
+      const addressBookService = createAddressBookService(network);
+      setService(addressBookService);
 
-    return () => {
-      addressBookService.cleanup();
-    };
+      return () => {
+        try {
+          addressBookService.cleanup();
+        } catch (err) {
+          console.error('Error cleaning up address book service:', err);
+        }
+      };
+    } catch (err: any) {
+      console.error('Error creating address book service:', err);
+      setError('Failed to initialize address book service');
+      setService(null);
+    }
   }, [network]);
 
   // Set up provider and signer when wallet connection state changes
@@ -50,20 +60,25 @@ export const useAddressBook = (options: UseAddressBookOptions = {}): UseAddressB
     if (!service) return;
 
     const updateProviderAndSigner = () => {
-      const connectionState = walletConnectionService.getState();
+      try {
+        const connectionState = walletConnectionService.getState();
 
-      // Always try to set up a provider for read operations
-      if (window.ethereum) {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        // Always try to set up a provider for read operations
+        if (window.ethereum) {
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
 
-        if (connectionState.signerConnected) {
-          // Initialize with both provider and signer
-          const signer = provider.getSigner();
-          service.initialize(provider, signer);
-        } else {
-          // Initialize with just provider for read-only operations
-          service.initialize(provider);
+          if (connectionState.signerConnected) {
+            // Initialize with both provider and signer
+            const signer = provider.getSigner();
+            service.initialize(provider, signer);
+          } else {
+            // Initialize with just provider for read-only operations
+            service.initialize(provider);
+          }
         }
+      } catch (err: any) {
+        console.error('Error updating provider and signer:', err);
+        setError('Failed to connect to wallet provider');
       }
     };
 
@@ -76,7 +91,11 @@ export const useAddressBook = (options: UseAddressBookOptions = {}): UseAddressB
   }, [service]);
 
   const loadEntries = useCallback(async () => {
-    if (!service || !safeAddress) return;
+    if (!service || !safeAddress) {
+      setEntries([]);
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -88,6 +107,8 @@ export const useAddressBook = (options: UseAddressBookOptions = {}): UseAddressB
       const errorMessage = err.message || 'Failed to load address book entries';
       setError(errorMessage);
       console.error('Error loading address book entries:', err);
+      // Set empty entries on error to prevent UI issues
+      setEntries([]);
     } finally {
       setLoading(false);
     }
@@ -96,9 +117,14 @@ export const useAddressBook = (options: UseAddressBookOptions = {}): UseAddressB
   const setupEventListeners = useCallback(() => {
     if (!service || !safeAddress) return;
 
-    service.setupEventListeners(safeAddress, () => {
-      loadEntries();
-    });
+    try {
+      service.setupEventListeners(safeAddress, () => {
+        loadEntries();
+      });
+    } catch (err: any) {
+      console.error('Error setting up event listeners:', err);
+      // Don't set error state for event listener setup failures
+    }
   }, [service, safeAddress, loadEntries]);
 
   // Load entries when safe address changes
