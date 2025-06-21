@@ -33,24 +33,25 @@ const NetworkBadgeContainer = styled.div<{ networkColor: string }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${props => props.networkColor};
-  color: ${theme.colors.text.inverse};
-  padding: ${theme.spacing[3]} ${theme.spacing[5]};
-  margin: ${theme.spacing[4]};
-  border-radius: ${theme.borderRadius.full};
+  background: ${props => props.networkColor}20;
+  color: #ffffff;
+  padding: ${theme.spacing[2]} ${theme.spacing[3]};
+  margin: 0;
+  border-radius: 0;
   font-size: ${theme.typography.fontSize.xs};
-  font-weight: ${theme.typography.fontWeight.bold};
+  font-weight: ${theme.typography.fontWeight.medium};
   text-transform: uppercase;
-  letter-spacing: 1px;
-  box-shadow: ${theme.shadows.sm};
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  width: calc(100% - ${theme.spacing[8]});
+  letter-spacing: 0.5px;
+  border: none;
+  border-left: 3px solid ${props => props.networkColor};
+  width: 100%;
   box-sizing: border-box;
   transition: ${theme.transitions.fast};
+  backdrop-filter: blur(10px);
 
   &:hover {
-    transform: translateY(-1px);
-    box-shadow: ${theme.shadows.md};
+    background: ${props => props.networkColor}30;
+    border-left-width: 4px;
   }
 `;
 
