@@ -35,16 +35,16 @@ const NetworkBadgeContainer = styled.div<{ networkColor: string }>`
   justify-content: center;
   background: ${props => props.networkColor};
   color: ${theme.colors.text.inverse};
-  padding: ${theme.spacing[3]} ${theme.spacing[5]};
-  margin: ${theme.spacing[4]};
-  border-radius: ${theme.borderRadius.full};
+  padding: ${theme.spacing[2]} ${theme.spacing[3]};
+  margin: 0;
+  border-radius: ${theme.borderRadius.md};
   font-size: ${theme.typography.fontSize.xs};
   font-weight: ${theme.typography.fontWeight.bold};
   text-transform: uppercase;
   letter-spacing: 1px;
   box-shadow: ${theme.shadows.sm};
   border: 1px solid rgba(255, 255, 255, 0.1);
-  width: calc(100% - ${theme.spacing[8]});
+  width: 100%;
   box-sizing: border-box;
   transition: ${theme.transitions.fast};
 
