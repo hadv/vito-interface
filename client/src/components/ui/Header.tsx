@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { cn } from '../../utils/cn';
 import logo from '../../logo.svg';
-import Badge from './Badge';
 import { walletConnectionService, WalletConnectionState } from '../../services/WalletConnectionService';
 import { useToast } from '../../hooks/useToast';
 
@@ -9,6 +8,37 @@ import { useToast } from '../../hooks/useToast';
 const truncateAddress = (address: string, startLength: number = 6, endLength: number = 4): string => {
   if (!address || address.length <= startLength + endLength) return address;
   return `${address.slice(0, startLength)}...${address.slice(-endLength)}`;
+};
+
+// Network display configuration
+const getNetworkDisplayInfo = (network: string) => {
+  const networkConfig = {
+    ethereum: {
+      short: 'ETH',
+      full: 'Ethereum Mainnet',
+      color: '#627EEA',
+      badgeVariant: 'primary' as const
+    },
+    sepolia: {
+      short: 'SEP',
+      full: 'Sepolia Testnet',
+      color: '#CFB5F0',
+      badgeVariant: 'warning' as const
+    },
+    arbitrum: {
+      short: 'ARB',
+      full: 'Arbitrum One',
+      color: '#96BEDC',
+      badgeVariant: 'info' as const
+    }
+  };
+
+  return networkConfig[network as keyof typeof networkConfig] || {
+    short: network.toUpperCase().slice(0, 3),
+    full: network,
+    color: '#888888',
+    badgeVariant: 'default' as const
+  };
 };
 
 interface HeaderProps {
@@ -386,59 +416,110 @@ const Header: React.FC<HeaderProps> = ({
         
         {/* Network Selector */}
         <div className="relative network-selector">
-          <div
-            className={`bg-white/10 text-white border-2 border-gray-700 rounded-lg px-4 py-2 h-10 cursor-pointer font-medium text-sm flex items-center capitalize transition-all duration-200 backdrop-blur-md hover:bg-white/20 hover:border-gray-500 hover:shadow-lg active:scale-95 ${networkSelectorOpen ? 'bg-white/20 border-gray-500 shadow-lg ring-2 ring-blue-500/30' : ''}`}
-            onClick={onToggleNetworkSelector}
-            title="Click to switch network"
-            data-1p-ignore="true"
-            data-lpignore="true"
-          >
-            {isNetworkSwitching ? (
-              <>
-                <span className="animate-pulse">{network}</span>
-                <div className="w-3 h-3 border border-gray-400 border-t-white rounded-full animate-spin ml-2" />
-              </>
-            ) : (
-              <>
-                <span className="mr-2">{network}</span>
-                <div className={`ml-2 inline-block w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] border-l-transparent border-r-transparent border-t-current transition-transform duration-250 ${networkSelectorOpen ? 'rotate-180' : 'rotate-0'}`} />
-              </>
-            )}
-          </div>
+          {(() => {
+            const networkInfo = getNetworkDisplayInfo(network);
+            return (
+              <div
+                className={cn(
+                  'bg-white/5 text-white border border-gray-600 rounded-lg',
+                  'px-3 py-1.5 h-8 cursor-pointer font-medium text-sm',
+                  'flex items-center gap-2 transition-all duration-200',
+                  'backdrop-blur-md hover:bg-white/10 hover:border-gray-500',
+                  'hover:shadow-lg active:scale-95',
+                  networkSelectorOpen && 'bg-white/10 border-gray-500 shadow-lg ring-1 ring-blue-500/30'
+                )}
+                onClick={onToggleNetworkSelector}
+                title={`${networkInfo.full} - Click to switch network`}
+                data-1p-ignore="true"
+                data-lpignore="true"
+              >
+                {isNetworkSwitching ? (
+                  <>
+                    {/* Network indicator dot */}
+                    <div
+                      className="w-2 h-2 rounded-full animate-pulse"
+                      style={{ backgroundColor: networkInfo.color }}
+                    />
+                    <span className="animate-pulse text-xs">{networkInfo.short}</span>
+                    <div className="w-3 h-3 border border-gray-400 border-t-white rounded-full animate-spin" />
+                  </>
+                ) : (
+                  <>
+                    {/* Network indicator dot */}
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: networkInfo.color }}
+                    />
+                    <span className="text-xs font-semibold">{networkInfo.short}</span>
+                    <div className={cn(
+                      'w-0 h-0 border-l-[3px] border-r-[3px] border-t-[3px]',
+                      'border-l-transparent border-r-transparent border-t-current',
+                      'transition-transform duration-200',
+                      networkSelectorOpen ? 'rotate-180' : 'rotate-0'
+                    )} />
+                  </>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
       {/* Network Selector Dropdown */}
       {networkSelectorOpen && (
-        <div className="fixed top-20 right-6 bg-gray-900/95 border border-gray-600 rounded-xl w-48 z-[9999] shadow-2xl backdrop-blur-lg overflow-hidden network-selector">
+        <>
+          {/* Backdrop Dimming */}
           <div
-            className={`px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white ${network === 'ethereum' ? 'bg-blue-500/20 text-blue-400 border-l-2 border-blue-500' : 'text-gray-300'}`}
-            onClick={() => onSelectNetwork('ethereum')}
-            data-1p-ignore="true"
-            data-lpignore="true"
-          >
-            <Badge variant="primary" size="sm" dot />
-            Ethereum
+            className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm"
+            style={{ zIndex: 9998 }}
+            onClick={onToggleNetworkSelector}
+          />
+
+          <div className="fixed top-20 right-6 bg-gray-900/95 border border-gray-600 rounded-xl w-52 z-[9999] shadow-2xl backdrop-blur-lg overflow-hidden network-selector">
+            {['ethereum', 'sepolia', 'arbitrum'].map((networkKey) => {
+              const networkInfo = getNetworkDisplayInfo(networkKey);
+              const isSelected = network === networkKey;
+
+              return (
+                <div
+                  key={networkKey}
+                  className={cn(
+                    'px-4 py-3 cursor-pointer text-sm font-medium',
+                    'transition-all duration-200 flex items-center gap-3',
+                    'hover:bg-gray-800 hover:text-white',
+                    isSelected
+                      ? 'bg-blue-500/20 text-blue-400 border-l-2 border-blue-500'
+                      : 'text-gray-300'
+                  )}
+                  onClick={() => onSelectNetwork(networkKey)}
+                  data-1p-ignore="true"
+                  data-lpignore="true"
+                >
+                  {/* Network colored indicator */}
+                  <div
+                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: networkInfo.color }}
+                  />
+
+                  {/* Network info */}
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span className="font-semibold">{networkInfo.full.split(' ')[0]}</span>
+                    {networkInfo.full.includes(' ') && (
+                      <span className="text-xs text-gray-400 truncate">
+                        {networkInfo.full.split(' ').slice(1).join(' ')}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Short label */}
+                  <span className="text-xs font-mono text-gray-500 flex-shrink-0">
+                    {networkInfo.short}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-          <div
-            className={`px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white ${network === 'sepolia' ? 'bg-blue-500/20 text-blue-400 border-l-2 border-blue-500' : 'text-gray-300'}`}
-            onClick={() => onSelectNetwork('sepolia')}
-            data-1p-ignore="true"
-            data-lpignore="true"
-          >
-            <Badge variant="warning" size="sm" dot />
-            Sepolia
-          </div>
-          <div
-            className={`px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white ${network === 'arbitrum' ? 'bg-blue-500/20 text-blue-400 border-l-2 border-blue-500' : 'text-gray-300'}`}
-            onClick={() => onSelectNetwork('arbitrum')}
-            data-1p-ignore="true"
-            data-lpignore="true"
-          >
-            <Badge variant="info" size="sm" dot />
-            Arbitrum
-          </div>
-        </div>
+        </>
       )}
     </header>
   );
