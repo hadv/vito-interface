@@ -93,6 +93,7 @@ const EntryIcon = styled.div`
   font-weight: bold;
   font-size: 14px;
   flex-shrink: 0;
+  margin-top: 2px;
 `;
 
 const EntryInfo = styled.div`
@@ -151,12 +152,13 @@ const Dropdown = styled.div.withConfig({
   border: 2px solid rgba(75, 85, 99, 0.8);
   border-radius: 16px;
   margin-top: 8px;
-  max-height: 320px;
+  max-height: 400px;
   overflow-y: auto;
   z-index: 1001;
   display: ${props => props.isOpen ? 'block' : 'none'};
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(12px);
+  min-width: 100%;
 `;
 
 const DropdownSection = styled.div`
@@ -175,13 +177,14 @@ const SectionTitle = styled.div`
 const AddressOption = styled.div.withConfig({
   shouldForwardProp: (prop) => prop !== 'isFocused',
 })<{ isFocused?: boolean }>`
-  padding: 12px 16px;
+  padding: 16px;
   cursor: pointer;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   transition: all 0.2s ease;
   border-left: 3px solid transparent;
+  min-height: 60px;
 
   &:hover, ${props => props.isFocused && `
     background: rgba(59, 130, 246, 0.1);
@@ -447,8 +450,7 @@ const AddressBookSelector: React.FC<AddressBookSelectorProps> = ({
                     <AddressDisplay
                       address={entry.walletAddress}
                       network={network}
-                      truncate={true}
-                      truncateLength={6}
+                      truncate={false}
                       showCopy={false}
                       showExplorer={false}
                     />
