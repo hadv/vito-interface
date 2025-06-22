@@ -231,9 +231,9 @@ const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, on
   return (
     <Container>
       <WelcomeSection>
-        <Heading>Safe Wallet Dashboard</Heading>
+        <Heading>Vito Wallet Dashboard</Heading>
         <InfoText>
-          Welcome to your Safe multi-signature wallet. Secure, decentralized, and fully under your control.
+          Welcome to your Vito multi-signature wallet. Secure, decentralized, and fully under your control.
         </InfoText>
 
         <StatsGrid>
