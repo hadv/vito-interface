@@ -20,11 +20,7 @@ const Heading = styled.h1`
   font-size: ${theme.typography.fontSize['3xl']};
   font-weight: ${theme.typography.fontWeight.bold};
   margin-bottom: ${theme.spacing[4]};
-  color: ${theme.colors.text.primary};
-  background: linear-gradient(135deg, ${theme.colors.primary[400]} 0%, ${theme.colors.secondary[400]} 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: ${theme.colors.primary[400]};
 `;
 
 const SubHeading = styled.p`

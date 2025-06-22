@@ -135,6 +135,8 @@ const Header: React.FC<HeaderProps> = ({
     'text-white text-xl font-bold tracking-wide'
   );
 
+
+
   return (
     <header className={headerClasses}>
       <div className={logoContainerClasses}>

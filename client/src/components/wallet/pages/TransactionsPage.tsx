@@ -13,13 +13,92 @@ import { getRpcUrl } from '../../../contracts/abis';
 
 
 
-// Tailwind CSS classes for the new tabbed interface
-const containerClasses = "p-6 bg-gray-900 text-white min-h-screen";
-const headingClasses = "text-2xl font-medium text-white mb-6";
-const tabsContainerClasses = "flex border-b border-gray-700 mb-6";
-const tabClasses = "px-4 py-2 text-sm font-medium cursor-pointer transition-colors";
-const activeTabClasses = "text-blue-400 border-b-2 border-blue-400";
-const inactiveTabClasses = "text-gray-400 hover:text-gray-300";
+import styled from 'styled-components';
+import { theme } from '../../../theme';
+
+// Styled components to match Assets page structure
+const Container = styled.div`
+  padding: 0;
+  height: 100%;
+  overflow-y: auto;
+`;
+
+const Header = styled.div`
+  margin-bottom: ${theme.spacing[8]};
+`;
+
+const Heading = styled.h1`
+  font-size: ${theme.typography.fontSize['3xl']};
+  font-weight: ${theme.typography.fontWeight.bold};
+  margin-bottom: ${theme.spacing[4]};
+  color: ${theme.colors.primary[400]};
+`;
+
+// Styled components for professional tabs
+const TabsContainer = styled.div`
+  display: flex;
+  border-bottom: 1px solid ${theme.colors.neutral[700]};
+  margin-bottom: ${theme.spacing[6]};
+  position: relative;
+`;
+
+const Tab = styled.button<{ isActive: boolean }>`
+  padding: ${theme.spacing[4]} ${theme.spacing[6]};
+  font-size: ${theme.typography.fontSize.base};
+  font-weight: ${props => props.isActive ? '700' : '600'};
+  font-family: ${theme.typography.fontFamily.sans.join(', ')};
+  letter-spacing: 0.025em;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  background: transparent;
+  position: relative;
+  color: ${props => props.isActive
+    ? theme.colors.primary[400]
+    : theme.colors.text.tertiary
+  };
+
+  /* Professional underline animation */
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, ${theme.colors.primary[400]}, ${theme.colors.primary[300]});
+    transform: scaleX(${props => props.isActive ? '1' : '0'});
+    transform-origin: center;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 1px;
+  }
+
+  /* Hover effects */
+  &:hover {
+    color: ${props => props.isActive
+      ? theme.colors.primary[300]
+      : theme.colors.text.secondary
+    };
+
+    &::after {
+      transform: scaleX(${props => props.isActive ? '1' : '0.5'});
+      opacity: ${props => props.isActive ? '1' : '0.6'};
+    }
+  }
+
+  /* Focus states for accessibility */
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px ${theme.colors.primary[400]}40;
+    border-radius: ${theme.borderRadius.sm};
+  }
+
+  /* Active press state */
+  &:active {
+    transform: translateY(1px);
+  }
+`;
+
 const tabContentClasses = "mt-6";
 
 
@@ -358,24 +437,26 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
 
   return (
-    <div className={containerClasses}>
-      <h1 className={headingClasses}>Transactions</h1>
+    <Container>
+      <Header>
+        <Heading>Transactions</Heading>
+      </Header>
 
       {/* Tab Navigation */}
-      <div className={tabsContainerClasses}>
-        <button
-          className={`${tabClasses} ${activeTab === 'pending' ? activeTabClasses : inactiveTabClasses}`}
+      <TabsContainer>
+        <Tab
+          isActive={activeTab === 'pending'}
           onClick={() => setActiveTab('pending')}
         >
           Pending & Queue
-        </button>
-        <button
-          className={`${tabClasses} ${activeTab === 'history' ? activeTabClasses : inactiveTabClasses}`}
+        </Tab>
+        <Tab
+          isActive={activeTab === 'history'}
           onClick={() => setActiveTab('history')}
         >
           History
-        </button>
-      </div>
+        </Tab>
+      </TabsContainer>
 
       {/* Tab Content */}
       <div className={tabContentClasses}>
@@ -494,7 +575,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
           network={network}
         />
       )}
-    </div>
+    </Container>
   );
 };
 

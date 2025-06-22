@@ -4,15 +4,26 @@ import { theme } from '../../../theme';
 import NetworkConfigStatus from '../components/NetworkConfigStatus';
 
 const Container = styled.div`
-  padding: ${theme.spacing[6]};
-  max-width: 800px;
+  padding: 0;
+  height: 100%;
+  overflow-y: auto;
+`;
+
+const Header = styled.div`
+  margin-bottom: ${theme.spacing[8]};
 `;
 
 const Heading = styled.h1`
-  margin: 0 0 ${theme.spacing[6]} 0;
-  font-size: ${theme.typography.fontSize['2xl']};
+  font-size: ${theme.typography.fontSize['3xl']};
   font-weight: ${theme.typography.fontWeight.bold};
-  color: ${theme.colors.text.primary};
+  margin-bottom: ${theme.spacing[4]};
+  color: ${theme.colors.primary[400]};
+`;
+
+const Content = styled.div`
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 ${theme.spacing[6]};
 `;
 
 const Section = styled.div`
@@ -36,27 +47,31 @@ const SectionDescription = styled.p`
 const SettingsPage: React.FC = () => {
   return (
     <Container>
-      <Heading>Safe Wallet Settings</Heading>
+      <Header>
+        <Heading>Vito Wallet Settings</Heading>
+      </Header>
 
-      <Section>
-        <SectionTitle>Network Configuration</SectionTitle>
-        <SectionDescription>
-          View the configuration status of Safe TX Pool contracts across different networks.
-          Properly configured networks enable full transaction functionality including
-          transaction proposals and multi-signature workflows.
-        </SectionDescription>
-        <NetworkConfigStatus />
-      </Section>
+      <Content>
+        <Section>
+          <SectionTitle>Network Configuration</SectionTitle>
+          <SectionDescription>
+            View the configuration status of Safe TX Pool contracts across different networks.
+            Properly configured networks enable full transaction functionality including
+            transaction proposals and multi-signature workflows.
+          </SectionDescription>
+          <NetworkConfigStatus />
+        </Section>
 
-      <Section>
-        <SectionTitle>About</SectionTitle>
-        <SectionDescription>
-          Vito Safe Wallet Interface provides a modern, user-friendly interface for
-          interacting with Safe (formerly Gnosis Safe) multi-signature wallets.
-          Features include read-only wallet viewing, transaction creation, and
-          multi-network support.
-        </SectionDescription>
-      </Section>
+        <Section>
+          <SectionTitle>About</SectionTitle>
+          <SectionDescription>
+            Vito Safe Wallet Interface provides a modern, user-friendly interface for
+            interacting with Safe (formerly Gnosis Safe) multi-signature wallets.
+            Features include read-only wallet viewing, transaction creation, and
+            multi-network support.
+          </SectionDescription>
+        </Section>
+      </Content>
     </Container>
   );
 };
