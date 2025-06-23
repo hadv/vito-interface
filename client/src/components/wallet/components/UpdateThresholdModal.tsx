@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { theme } from '../../../theme';
 import { safeWalletService } from '../../../services/SafeWalletService';
 import SafeManagementService from '../../../services/SafeManagementService';
+import { SafeTxPoolService } from '../../../services/SafeTxPoolService';
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
 import Modal from '../../ui/Modal';
@@ -123,6 +124,8 @@ interface UpdateThresholdModalProps {
   onClose: () => void;
   currentThreshold: number;
   ownerCount: number;
+  network: string;
+  safeAddress: string;
   onSuccess: (message: string) => void;
 }
 
@@ -131,19 +134,67 @@ const UpdateThresholdModal: React.FC<UpdateThresholdModalProps> = ({
   onClose,
   currentThreshold,
   ownerCount,
+  network,
+  safeAddress,
   onSuccess
 }) => {
   const [newThreshold, setNewThreshold] = useState(currentThreshold);
+  const [customNonce, setCustomNonce] = useState(0);
+  const [recommendedNonce, setRecommendedNonce] = useState(0);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset form when modal opens
+  // Reset form when modal opens and calculate recommended nonce
   useEffect(() => {
     if (isOpen) {
       setNewThreshold(currentThreshold);
       setError(null);
+      calculateRecommendedNonce();
     }
   }, [isOpen, currentThreshold]);
+
+  const calculateRecommendedNonce = async () => {
+    try {
+      // Get current Safe nonce
+      const safeInfo = await safeWalletService.getEnhancedSafeInfo();
+      const currentNonce = safeInfo.nonce;
+
+      // Initialize SafeTxPoolService
+      const safeTxPoolService = new SafeTxPoolService(network);
+
+      if (!safeTxPoolService.isConfigured()) {
+        setRecommendedNonce(currentNonce);
+        setCustomNonce(currentNonce);
+        return;
+      }
+
+      // Get pending transactions
+      const pending = await safeTxPoolService.getPendingTransactions(safeAddress);
+
+      // Filter valid pending transactions (nonce >= currentNonce)
+      const validPending = pending.filter(tx => tx.nonce >= currentNonce);
+
+      // Extract nonces and find maximum
+      const pendingNonces = validPending.map(tx => tx.nonce);
+      const maxPending = pendingNonces.length > 0 ? Math.max(...pendingNonces) : currentNonce - 1;
+
+      // Calculate recommended nonce: max(currentNonce, maxPendingNonce) + 1
+      const recommended = Math.max(currentNonce, maxPending) + 1;
+
+      setRecommendedNonce(recommended);
+      setCustomNonce(recommended);
+    } catch (err) {
+      console.warn('Error calculating recommended nonce:', err);
+      // Fallback to current nonce
+      try {
+        const safeInfo = await safeWalletService.getEnhancedSafeInfo();
+        setRecommendedNonce(safeInfo.nonce);
+        setCustomNonce(safeInfo.nonce);
+      } catch (fallbackErr) {
+        console.error('Error getting Safe nonce:', fallbackErr);
+      }
+    }
+  };
 
   const handleSubmit = async () => {
     try {
@@ -162,11 +213,11 @@ const UpdateThresholdModal: React.FC<UpdateThresholdModalProps> = ({
       // Get Safe info for nonce
       const safeInfo = await safeWalletService.getEnhancedSafeInfo();
 
-      // Create transaction
+      // Create transaction with custom nonce
       const txData = SafeManagementService.createChangeThresholdTransaction(
         safeInfo.address,
         newThreshold,
-        safeInfo.nonce
+        customNonce
       );
 
       // Create and propose transaction
@@ -176,7 +227,7 @@ const UpdateThresholdModal: React.FC<UpdateThresholdModalProps> = ({
         data: txData.data
       });
 
-      onSuccess(`Transaction created to change threshold to ${newThreshold} out of ${ownerCount} signers`);
+      onSuccess(`Transaction created to change threshold to ${newThreshold} out of ${ownerCount} signers (nonce: ${customNonce})`);
       onClose();
     } catch (err: any) {
       console.error('Error creating change threshold transaction:', err);
@@ -223,6 +274,25 @@ const UpdateThresholdModal: React.FC<UpdateThresholdModalProps> = ({
             />
             <ThresholdLabel>out of {ownerCount} signers</ThresholdLabel>
           </ThresholdGroup>
+        </FormGroup>
+
+        <FormGroup>
+          <Label>Transaction Nonce</Label>
+          <ThresholdGroup>
+            <ThresholdInput
+              type="number"
+              min={0}
+              value={customNonce}
+              onChange={(e) => setCustomNonce(parseInt(e.target.value) || 0)}
+              disabled={isCreating}
+            />
+            <ThresholdLabel>
+              (Recommended: {recommendedNonce})
+            </ThresholdLabel>
+          </ThresholdGroup>
+          <Description style={{ marginTop: theme.spacing[2], marginBottom: 0 }}>
+            Use recommended nonce to avoid conflicts with pending transactions.
+          </Description>
         </FormGroup>
 
         {isThresholdChanged && (

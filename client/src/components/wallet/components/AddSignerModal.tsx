@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { theme } from '../../../theme';
 import { safeWalletService } from '../../../services/SafeWalletService';
 import SafeManagementService from '../../../services/SafeManagementService';
+import { SafeTxPoolService } from '../../../services/SafeTxPoolService';
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
 import Modal from '../../ui/Modal';
@@ -78,6 +79,9 @@ interface AddSignerModalProps {
   onClose: () => void;
   currentOwners: string[];
   currentThreshold: number;
+  currentNonce: number;
+  network: string;
+  safeAddress: string;
   onSuccess: (message: string) => void;
 }
 
@@ -86,21 +90,60 @@ const AddSignerModal: React.FC<AddSignerModalProps> = ({
   onClose,
   currentOwners,
   currentThreshold,
+  currentNonce,
+  network,
+  safeAddress,
   onSuccess
 }) => {
   const [newOwnerAddress, setNewOwnerAddress] = useState('');
   const [newThreshold, setNewThreshold] = useState(currentThreshold + 1);
+  const [customNonce, setCustomNonce] = useState(currentNonce);
+  const [recommendedNonce, setRecommendedNonce] = useState(currentNonce);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset form when modal opens
+  // Reset form when modal opens and calculate recommended nonce
   useEffect(() => {
     if (isOpen) {
       setNewOwnerAddress('');
       setNewThreshold(currentThreshold + 1);
       setError(null);
+      calculateRecommendedNonce();
     }
-  }, [isOpen, currentThreshold]);
+  }, [isOpen, currentThreshold, currentNonce]);
+
+  const calculateRecommendedNonce = async () => {
+    try {
+      // Initialize SafeTxPoolService
+      const safeTxPoolService = new SafeTxPoolService(network);
+
+      if (!safeTxPoolService.isConfigured()) {
+        setRecommendedNonce(currentNonce);
+        setCustomNonce(currentNonce);
+        return;
+      }
+
+      // Get pending transactions
+      const pending = await safeTxPoolService.getPendingTransactions(safeAddress);
+
+      // Filter valid pending transactions (nonce >= currentNonce)
+      const validPending = pending.filter(tx => tx.nonce >= currentNonce);
+
+      // Extract nonces and find maximum
+      const pendingNonces = validPending.map(tx => tx.nonce);
+      const maxPending = pendingNonces.length > 0 ? Math.max(...pendingNonces) : currentNonce - 1;
+
+      // Calculate recommended nonce: max(currentNonce, maxPendingNonce) + 1
+      const recommended = Math.max(currentNonce, maxPending) + 1;
+
+      setRecommendedNonce(recommended);
+      setCustomNonce(recommended);
+    } catch (err) {
+      console.warn('Error calculating recommended nonce:', err);
+      setRecommendedNonce(currentNonce);
+      setCustomNonce(currentNonce);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!newOwnerAddress) return;
@@ -127,12 +170,12 @@ const AddSignerModal: React.FC<AddSignerModalProps> = ({
       // Get Safe info for nonce
       const safeInfo = await safeWalletService.getEnhancedSafeInfo();
 
-      // Create transaction
+      // Create transaction with custom nonce
       const txData = SafeManagementService.createAddOwnerTransaction(
         safeInfo.address,
         newOwnerAddress,
         newThreshold,
-        safeInfo.nonce
+        customNonce
       );
 
       // Create and propose transaction
@@ -142,7 +185,7 @@ const AddSignerModal: React.FC<AddSignerModalProps> = ({
         data: txData.data
       });
 
-      onSuccess(`Transaction created to add signer ${newOwnerAddress.slice(0, 6)}...${newOwnerAddress.slice(-4)} with threshold ${newThreshold}`);
+      onSuccess(`Transaction created to add signer ${newOwnerAddress.slice(0, 6)}...${newOwnerAddress.slice(-4)} with threshold ${newThreshold} (nonce: ${customNonce})`);
       onClose();
     } catch (err: any) {
       console.error('Error creating add owner transaction:', err);
@@ -189,6 +232,25 @@ const AddSignerModal: React.FC<AddSignerModalProps> = ({
           </ThresholdGroup>
           <Description style={{ marginTop: theme.spacing[2], marginBottom: 0 }}>
             Current: {currentThreshold} out of {currentOwners.length} signers
+          </Description>
+        </FormGroup>
+
+        <FormGroup>
+          <Label>Transaction Nonce</Label>
+          <ThresholdGroup>
+            <ThresholdInput
+              type="number"
+              min={currentNonce}
+              value={customNonce}
+              onChange={(e) => setCustomNonce(parseInt(e.target.value) || currentNonce)}
+              disabled={isCreating}
+            />
+            <ThresholdLabel>
+              (Recommended: {recommendedNonce})
+            </ThresholdLabel>
+          </ThresholdGroup>
+          <Description style={{ marginTop: theme.spacing[2], marginBottom: 0 }}>
+            Current Safe nonce: {currentNonce}. Use recommended nonce to avoid conflicts with pending transactions.
           </Description>
         </FormGroup>
 

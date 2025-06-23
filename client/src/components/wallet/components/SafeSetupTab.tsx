@@ -7,7 +7,6 @@ import Button from '../../ui/Button';
 import AddSignerModal from './AddSignerModal';
 import RemoveSignerModal from './RemoveSignerModal';
 import UpdateThresholdModal from './UpdateThresholdModal';
-import NonceManagementModal from './NonceManagementModal';
 
 const Container = styled.div`
   max-width: 800px;
@@ -156,11 +155,6 @@ const RemoveButton = styled(Button)`
   font-size: ${theme.typography.fontSize.xs};
 `;
 
-const ManageNonceButton = styled(Button)`
-  padding: ${theme.spacing[1]} ${theme.spacing[2]};
-  font-size: ${theme.typography.fontSize.xs};
-`;
-
 const SuccessMessage = styled.div`
   padding: ${theme.spacing[3]};
   background: ${theme.colors.status.success}20;
@@ -194,7 +188,6 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
   const [showAddSignerModal, setShowAddSignerModal] = useState(false);
   const [showRemoveSignerModal, setShowRemoveSignerModal] = useState(false);
   const [showUpdateThresholdModal, setShowUpdateThresholdModal] = useState(false);
-  const [showNonceManagementModal, setShowNonceManagementModal] = useState(false);
   const [signerToRemove, setSignerToRemove] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -279,18 +272,7 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
         <InfoGrid>
           <InfoItem>
             <InfoLabel>Safe Transaction Nonce</InfoLabel>
-            <InfoValue>
-              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing[2] }}>
-                <span>{safeInfo.nonce}</span>
-                <ManageNonceButton
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setShowNonceManagementModal(true)}
-                >
-                  Manage
-                </ManageNonceButton>
-              </div>
-            </InfoValue>
+            <InfoValue>{safeInfo.nonce}</InfoValue>
           </InfoItem>
           <InfoItem>
             <InfoLabel>Contract Version</InfoLabel>
@@ -408,6 +390,9 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
         onClose={() => setShowAddSignerModal(false)}
         currentOwners={safeInfo.owners}
         currentThreshold={safeInfo.threshold}
+        currentNonce={safeInfo.nonce}
+        network={network}
+        safeAddress={safeInfo.address}
         onSuccess={handleModalSuccess}
       />
 
@@ -429,13 +414,6 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
         onClose={() => setShowUpdateThresholdModal(false)}
         currentThreshold={safeInfo.threshold}
         ownerCount={safeInfo.owners.length}
-        onSuccess={handleModalSuccess}
-      />
-
-      <NonceManagementModal
-        isOpen={showNonceManagementModal}
-        onClose={() => setShowNonceManagementModal(false)}
-        currentNonce={safeInfo.nonce}
         network={network}
         safeAddress={safeInfo.address}
         onSuccess={handleModalSuccess}
