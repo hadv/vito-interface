@@ -9,6 +9,7 @@ import { useToast } from '../../../hooks/useToast';
 import { toChecksumAddress, addressInArray, formatChecksumAddress } from '../../../utils/addressUtils';
 import { TransactionDecoder, DecodedTransactionData } from '../../../utils/transactionDecoder';
 import { TokenService } from '../../../services/TokenService';
+import ParameterDisplay from './ParameterDisplay';
 import { getRpcUrl } from '../../../contracts/abis';
 import AddressDisplay from './AddressDisplay';
 
@@ -603,39 +604,12 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
                 {/* Display decoded method parameters */}
                 {decodedTransaction?.details.decodedInputs && decodedTransaction.details.decodedInputs.length > 0 && (
-                  <div style={{
-                    marginBottom: '16px',
-                    paddingBottom: '12px',
-                    borderBottom: '1px solid rgba(148, 163, 184, 0.1)'
-                  }}>
-                    <DetailLabel style={{ marginBottom: '8px' }}>Method Parameters:</DetailLabel>
-                    {decodedTransaction.details.decodedInputs.map((input, index) => (
-                      <div key={index} style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        marginBottom: '6px',
-                        padding: '6px 8px',
-                        background: 'rgba(59, 130, 246, 0.1)',
-                        borderRadius: '4px',
-                        fontSize: '12px'
-                      }}>
-                        <div style={{ fontWeight: 'bold', color: '#3b82f6', minWidth: '80px' }}>
-                          {input.name}:
-                        </div>
-                        <div style={{
-                          color: '#888',
-                          fontSize: '11px',
-                          fontFamily: 'monospace',
-                          wordBreak: 'break-all',
-                          flex: 1,
-                          marginLeft: '8px'
-                        }}>
-                          <div style={{ color: '#666', fontSize: '10px' }}>({input.type})</div>
-                          {input.value}
-                        </div>
-                      </div>
-                    ))}
+                  <div style={{ marginBottom: '16px' }}>
+                    <ParameterDisplay
+                      parameters={decodedTransaction.details.decodedInputs}
+                      network={network}
+                      compact={false}
+                    />
                   </div>
                 )}
                 <div style={{

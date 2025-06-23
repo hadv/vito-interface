@@ -9,6 +9,7 @@ import { SafeWalletService } from '../../../services/SafeWalletService';
 import PendingTransactionConfirmationModal from '../components/PendingTransactionConfirmationModal';
 import { TransactionDecoder, DecodedTransactionData } from '../../../utils/transactionDecoder';
 import { TokenService } from '../../../services/TokenService';
+import ParameterDisplay from '../components/ParameterDisplay';
 import { getRpcUrl } from '../../../contracts/abis';
 
 
@@ -417,26 +418,12 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
             {/* Show decoded parameters if available */}
             {decodedTx?.details.decodedInputs && decodedTx.details.decodedInputs.length > 0 && (
-              <div className="text-gray-500 mt-1">
-                <span className="text-gray-400">Parameters:</span>
-                <div className="ml-2 mt-1 space-y-1">
-                  {decodedTx.details.decodedInputs.slice(0, 3).map((input, index) => (
-                    <div key={index} className="text-xs">
-                      <span className="text-gray-400">{input.name}:</span>{' '}
-                      <span className="text-gray-300">
-                        {typeof input.value === 'string' && input.value.length > 42
-                          ? `${input.value.slice(0, 20)}...${input.value.slice(-10)}`
-                          : String(input.value)
-                        }
-                      </span>
-                    </div>
-                  ))}
-                  {decodedTx.details.decodedInputs.length > 3 && (
-                    <div className="text-xs text-gray-500">
-                      ... and {decodedTx.details.decodedInputs.length - 3} more parameters
-                    </div>
-                  )}
-                </div>
+              <div className="mt-2">
+                <ParameterDisplay
+                  parameters={decodedTx.details.decodedInputs}
+                  network={network}
+                  compact={true}
+                />
               </div>
             )}
 
