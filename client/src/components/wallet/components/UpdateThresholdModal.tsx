@@ -151,6 +151,7 @@ const UpdateThresholdModal: React.FC<UpdateThresholdModalProps> = ({
       setError(null);
       calculateRecommendedNonce();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, currentThreshold]);
 
   const calculateRecommendedNonce = async () => {

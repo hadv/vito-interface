@@ -110,6 +110,7 @@ const AddSignerModal: React.FC<AddSignerModalProps> = ({
       setError(null);
       calculateRecommendedNonce();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, currentThreshold, currentNonce]);
 
   const calculateRecommendedNonce = async () => {
