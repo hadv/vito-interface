@@ -1,114 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
-import { theme } from '../../../theme';
 import { safeWalletService } from '../../../services/SafeWalletService';
 import SafeManagementService from '../../../services/SafeManagementService';
 
 import Button from '../../ui/Button';
-import Input from '../../ui/Input';
 import Modal from '../../ui/Modal';
 import AddressDisplay from './AddressDisplay';
+import {
+  ModalDescription,
+  FormGroup,
+  Label,
+  StyledInput,
+  InputGroup,
+  InputLabel,
+  TransactionDetails,
+  DetailRow,
+  DetailLabel,
+  DetailValue,
+  ErrorMessage,
+  WarningMessage,
+  ButtonGroup,
+  SignerToRemove,
+  RemoveIcon
+} from './ModalStyles';
 
-const ModalContent = styled.div`
-  padding: ${theme.spacing[6]};
-  max-width: 500px;
-  width: 100%;
-`;
 
-const Title = styled.h2`
-  margin: 0 0 ${theme.spacing[4]} 0;
-  font-size: ${theme.typography.fontSize.xl};
-  font-weight: ${theme.typography.fontWeight.semibold};
-  color: ${theme.colors.text.primary};
-`;
-
-const Description = styled.p`
-  margin: 0 0 ${theme.spacing[6]} 0;
-  font-size: ${theme.typography.fontSize.sm};
-  color: ${theme.colors.text.secondary};
-  line-height: 1.5;
-`;
-
-const FormGroup = styled.div`
-  margin-bottom: ${theme.spacing[4]};
-`;
-
-const Label = styled.label`
-  display: block;
-  margin-bottom: ${theme.spacing[2]};
-  font-size: ${theme.typography.fontSize.sm};
-  font-weight: ${theme.typography.fontWeight.medium};
-  color: ${theme.colors.text.secondary};
-`;
-
-const SignerToRemove = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing[3]};
-  padding: ${theme.spacing[3]};
-  background: ${theme.colors.status.error}10;
-  border: 1px solid ${theme.colors.status.error}30;
-  border-radius: ${theme.borderRadius.md};
-  margin-bottom: ${theme.spacing[4]};
-`;
-
-const RemoveIcon = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: ${theme.colors.status.error};
-  color: white;
-  border-radius: 50%;
-  font-size: ${theme.typography.fontSize.xs};
-  font-weight: ${theme.typography.fontWeight.bold};
-  flex-shrink: 0;
-`;
-
-const ThresholdGroup = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing[3]};
-  margin-top: ${theme.spacing[2]};
-`;
-
-const ThresholdInput = styled(Input)`
-  width: 80px;
-  text-align: center;
-`;
-
-const ThresholdLabel = styled.span`
-  font-size: ${theme.typography.fontSize.sm};
-  color: ${theme.colors.text.secondary};
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: ${theme.spacing[3]};
-  justify-content: flex-end;
-  margin-top: ${theme.spacing[6]};
-`;
-
-const ErrorMessage = styled.div`
-  padding: ${theme.spacing[3]};
-  background: ${theme.colors.status.error}20;
-  border: 1px solid ${theme.colors.status.error}30;
-  border-radius: ${theme.borderRadius.md};
-  color: ${theme.colors.status.error};
-  font-size: ${theme.typography.fontSize.sm};
-  margin-bottom: ${theme.spacing[4]};
-`;
-
-const WarningMessage = styled.div`
-  padding: ${theme.spacing[3]};
-  background: ${theme.colors.status.warning}20;
-  border: 1px solid ${theme.colors.status.warning}30;
-  border-radius: ${theme.borderRadius.md};
-  color: ${theme.colors.status.warning};
-  font-size: ${theme.typography.fontSize.sm};
-  margin-bottom: ${theme.spacing[4]};
-`;
 
 interface RemoveSignerModalProps {
   isOpen: boolean;
@@ -201,94 +116,112 @@ const RemoveSignerModal: React.FC<RemoveSignerModalProps> = ({
   const isLastOwner = currentOwners.length <= 1;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <ModalContent>
-        <Title>Remove Signer</Title>
-        <Description>
-          Remove a signer from the Safe wallet. You must also set the new threshold for the reduced number of signers.
-        </Description>
+    <Modal isOpen={isOpen} onClose={onClose} title="Remove Signer">
+      <ModalDescription>
+        Remove a signer from the Safe wallet. You must also set the new threshold for the reduced number of signers.
+      </ModalDescription>
 
-        {error && <ErrorMessage>{error}</ErrorMessage>}
+      {error && <ErrorMessage>{error}</ErrorMessage>}
 
-        {isLastOwner && (
-          <WarningMessage>
-            <strong>Cannot remove the last signer!</strong><br />
-            A Safe must have at least one signer to remain functional.
-          </WarningMessage>
-        )}
+      {isLastOwner && (
+        <WarningMessage>
+          <strong>Cannot remove the last signer!</strong><br />
+          A Safe must have at least one signer to remain functional.
+        </WarningMessage>
+      )}
 
-        {signerToRemove && (
-          <FormGroup>
-            <Label>Signer to Remove</Label>
-            <SignerToRemove>
-              <RemoveIcon>−</RemoveIcon>
-              <AddressDisplay
-                address={signerToRemove}
-                network={network}
-                truncate={true}
-                truncateLength={6}
-                showCopy={true}
-                showExplorer={true}
-              />
-            </SignerToRemove>
-          </FormGroup>
-        )}
-
+      {signerToRemove && (
         <FormGroup>
-          <Label>New Threshold</Label>
-          <ThresholdGroup>
-            <ThresholdInput
-              type="number"
-              min={1}
-              max={Math.max(1, newOwnerCount)}
-              value={newThreshold}
-              onChange={(e) => setNewThreshold(parseInt(e.target.value) || 1)}
-              disabled={isCreating || isLastOwner}
+          <Label>Signer to Remove</Label>
+          <SignerToRemove>
+            <RemoveIcon>−</RemoveIcon>
+            <AddressDisplay
+              address={signerToRemove}
+              network={network}
+              truncate={true}
+              truncateLength={6}
+              showCopy={true}
+              showExplorer={true}
             />
-            <ThresholdLabel>out of {newOwnerCount} signers</ThresholdLabel>
-          </ThresholdGroup>
-          <Description style={{ marginTop: theme.spacing[2], marginBottom: 0 }}>
-            Current: {currentThreshold} out of {currentOwners.length} signers
-          </Description>
+          </SignerToRemove>
         </FormGroup>
+      )}
 
-        <FormGroup>
-          <Label>Transaction Nonce</Label>
-          <ThresholdGroup>
-            <ThresholdInput
-              type="number"
-              min={0}
-              value={customNonce}
-              onChange={(e) => setCustomNonce(parseInt(e.target.value) || 0)}
-              disabled={isCreating || isLastOwner}
-            />
-            <ThresholdLabel>
-              (Recommended: {recommendedNonce})
-            </ThresholdLabel>
-          </ThresholdGroup>
-          <Description style={{ marginTop: theme.spacing[2], marginBottom: 0 }}>
-            Current Safe nonce: {currentNonce}. Recommended nonce is current + 1.
-          </Description>
-        </FormGroup>
+      <FormGroup>
+        <Label>New Threshold</Label>
+        <InputGroup>
+          <StyledInput
+            type="number"
+            min={1}
+            max={Math.max(1, newOwnerCount)}
+            value={newThreshold}
+            onChange={(e) => setNewThreshold(parseInt(e.target.value) || 1)}
+            disabled={isCreating || isLastOwner}
+            style={{ width: '120px', textAlign: 'center' }}
+          />
+          <InputLabel>out of {newOwnerCount} signers</InputLabel>
+        </InputGroup>
+        <ModalDescription style={{ marginTop: '8px', marginBottom: 0, fontSize: '14px' }}>
+          Current: {currentThreshold} out of {currentOwners.length} signers
+        </ModalDescription>
+      </FormGroup>
 
-        <ButtonGroup>
-          <Button
-            variant="secondary"
-            onClick={onClose}
-            disabled={isCreating}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="danger"
-            onClick={handleSubmit}
-            disabled={isCreating || !signerToRemove || isLastOwner}
-            loading={isCreating}
-          >
-            Remove Signer
-          </Button>
-        </ButtonGroup>
-      </ModalContent>
+      <FormGroup>
+        <Label>Transaction Nonce</Label>
+        <InputGroup>
+          <StyledInput
+            type="number"
+            min={0}
+            value={customNonce}
+            onChange={(e) => setCustomNonce(parseInt(e.target.value) || 0)}
+            disabled={isCreating || isLastOwner}
+            style={{ width: '120px', textAlign: 'center' }}
+          />
+          <InputLabel>(Recommended: {recommendedNonce})</InputLabel>
+        </InputGroup>
+        <ModalDescription style={{ marginTop: '8px', marginBottom: 0, fontSize: '14px' }}>
+          Current Safe nonce: {currentNonce}. Recommended nonce is current + 1.
+        </ModalDescription>
+      </FormGroup>
+
+      <TransactionDetails>
+        <DetailRow>
+          <DetailLabel>Operation:</DetailLabel>
+          <DetailValue style={{ color: '#FF6B6B', fontWeight: 'bold' }}>
+            Remove Owner with Threshold
+          </DetailValue>
+        </DetailRow>
+        <DetailRow>
+          <DetailLabel>Removing Signer:</DetailLabel>
+          <DetailValue>{signerToRemove || 'Not specified'}</DetailValue>
+        </DetailRow>
+        <DetailRow>
+          <DetailLabel>New Threshold:</DetailLabel>
+          <DetailValue>{newThreshold} out of {newOwnerCount} signers</DetailValue>
+        </DetailRow>
+        <DetailRow>
+          <DetailLabel>Transaction Nonce:</DetailLabel>
+          <DetailValue>{customNonce}</DetailValue>
+        </DetailRow>
+      </TransactionDetails>
+
+      <ButtonGroup>
+        <Button
+          variant="secondary"
+          onClick={onClose}
+          disabled={isCreating}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="danger"
+          onClick={handleSubmit}
+          disabled={isCreating || !signerToRemove || isLastOwner}
+          loading={isCreating}
+        >
+          {isCreating ? 'Creating Transaction...' : 'Remove Signer'}
+        </Button>
+      </ButtonGroup>
     </Modal>
   );
 };

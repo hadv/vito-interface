@@ -1,123 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
-import { theme } from '../../../theme';
 import { safeWalletService } from '../../../services/SafeWalletService';
 import SafeManagementService from '../../../services/SafeManagementService';
 
 import Button from '../../ui/Button';
-import Input from '../../ui/Input';
 import Modal from '../../ui/Modal';
+import {
+  ModalDescription,
+  FormGroup,
+  Label,
+  StyledInput,
+  InputGroup,
+  InputLabel,
+  TransactionDetails,
+  DetailRow,
+  DetailLabel,
+  DetailValue,
+  ErrorMessage,
+  InfoMessage,
+  ButtonGroup,
+  CurrentThreshold,
+  CurrentLabel,
+  CurrentValue,
+  ThresholdBadge
+} from './ModalStyles';
 
-const ModalContent = styled.div`
-  padding: ${theme.spacing[6]};
-  max-width: 500px;
-  width: 100%;
-`;
 
-const Title = styled.h2`
-  margin: 0 0 ${theme.spacing[4]} 0;
-  font-size: ${theme.typography.fontSize.xl};
-  font-weight: ${theme.typography.fontWeight.semibold};
-  color: ${theme.colors.text.primary};
-`;
-
-const Description = styled.p`
-  margin: 0 0 ${theme.spacing[6]} 0;
-  font-size: ${theme.typography.fontSize.sm};
-  color: ${theme.colors.text.secondary};
-  line-height: 1.5;
-`;
-
-const FormGroup = styled.div`
-  margin-bottom: ${theme.spacing[4]};
-`;
-
-const Label = styled.label`
-  display: block;
-  margin-bottom: ${theme.spacing[2]};
-  font-size: ${theme.typography.fontSize.sm};
-  font-weight: ${theme.typography.fontWeight.medium};
-  color: ${theme.colors.text.secondary};
-`;
-
-const ThresholdGroup = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing[3]};
-  margin-top: ${theme.spacing[2]};
-`;
-
-const ThresholdInput = styled(Input)`
-  width: 120px;
-  text-align: center;
-  font-size: ${theme.typography.fontSize.lg};
-  font-weight: ${theme.typography.fontWeight.semibold};
-`;
-
-const ThresholdLabel = styled.span`
-  font-size: ${theme.typography.fontSize.sm};
-  color: ${theme.colors.text.secondary};
-`;
-
-const CurrentThreshold = styled.div`
-  padding: ${theme.spacing[3]};
-  background: ${theme.colors.neutral[800]};
-  border: 1px solid ${theme.colors.neutral[700]};
-  border-radius: ${theme.borderRadius.md};
-  margin-bottom: ${theme.spacing[4]};
-`;
-
-const CurrentLabel = styled.div`
-  font-size: ${theme.typography.fontSize.xs};
-  color: ${theme.colors.text.tertiary};
-  margin-bottom: ${theme.spacing[1]};
-`;
-
-const CurrentValue = styled.div`
-  font-size: ${theme.typography.fontSize.base};
-  font-weight: ${theme.typography.fontWeight.semibold};
-  color: ${theme.colors.text.primary};
-`;
-
-const ThresholdBadge = styled.div`
-  display: inline-flex;
-  align-items: center;
-  gap: ${theme.spacing[1]};
-  padding: ${theme.spacing[1]} ${theme.spacing[2]};
-  background: ${theme.colors.primary[400]}20;
-  color: ${theme.colors.primary[400]};
-  border: 1px solid ${theme.colors.primary[400]}30;
-  border-radius: ${theme.borderRadius.sm};
-  font-size: ${theme.typography.fontSize.sm};
-  font-weight: ${theme.typography.fontWeight.medium};
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: ${theme.spacing[3]};
-  justify-content: flex-end;
-  margin-top: ${theme.spacing[6]};
-`;
-
-const ErrorMessage = styled.div`
-  padding: ${theme.spacing[3]};
-  background: ${theme.colors.status.error}20;
-  border: 1px solid ${theme.colors.status.error}30;
-  border-radius: ${theme.borderRadius.md};
-  color: ${theme.colors.status.error};
-  font-size: ${theme.typography.fontSize.sm};
-  margin-bottom: ${theme.spacing[4]};
-`;
-
-const InfoMessage = styled.div`
-  padding: ${theme.spacing[3]};
-  background: ${theme.colors.primary[400]}10;
-  border: 1px solid ${theme.colors.primary[400]}30;
-  border-radius: ${theme.borderRadius.md};
-  color: ${theme.colors.primary[400]};
-  font-size: ${theme.typography.fontSize.sm};
-  margin-bottom: ${theme.spacing[4]};
-`;
 
 interface UpdateThresholdModalProps {
   isOpen: boolean;
@@ -199,89 +106,107 @@ const UpdateThresholdModal: React.FC<UpdateThresholdModalProps> = ({
   const isThresholdChanged = newThreshold !== currentThreshold;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <ModalContent>
-        <Title>Update Threshold</Title>
-        <Description>
-          Change the number of required confirmations for Safe transactions. This affects how many signers must approve each transaction.
-        </Description>
+    <Modal isOpen={isOpen} onClose={onClose} title="Update Threshold">
+      <ModalDescription>
+        Change the number of required confirmations for Safe transactions. This affects how many signers must approve each transaction.
+      </ModalDescription>
 
-        {error && <ErrorMessage>{error}</ErrorMessage>}
+      {error && <ErrorMessage>{error}</ErrorMessage>}
 
-        <FormGroup>
-          <Label>Current Threshold</Label>
-          <CurrentThreshold>
-            <CurrentLabel>Required confirmations</CurrentLabel>
-            <CurrentValue>
-              <ThresholdBadge>
-                {currentThreshold} out of {ownerCount} signers
-              </ThresholdBadge>
-            </CurrentValue>
-          </CurrentThreshold>
-        </FormGroup>
+      <FormGroup>
+        <Label>Current Threshold</Label>
+        <CurrentThreshold>
+          <CurrentLabel>Required confirmations</CurrentLabel>
+          <CurrentValue>
+            <ThresholdBadge>
+              {currentThreshold} out of {ownerCount} signers
+            </ThresholdBadge>
+          </CurrentValue>
+        </CurrentThreshold>
+      </FormGroup>
 
-        <FormGroup>
-          <Label>New Threshold</Label>
-          <ThresholdGroup>
-            <ThresholdInput
-              type="number"
-              min={1}
-              max={ownerCount}
-              value={newThreshold}
-              onChange={(e) => setNewThreshold(parseInt(e.target.value) || 1)}
-              disabled={isCreating}
-            />
-            <ThresholdLabel>out of {ownerCount} signers</ThresholdLabel>
-          </ThresholdGroup>
-        </FormGroup>
-
-        <FormGroup>
-          <Label>Transaction Nonce</Label>
-          <ThresholdGroup>
-            <ThresholdInput
-              type="number"
-              min={0}
-              value={customNonce}
-              onChange={(e) => setCustomNonce(parseInt(e.target.value) || 0)}
-              disabled={isCreating}
-            />
-            <ThresholdLabel>
-              (Recommended: {recommendedNonce})
-            </ThresholdLabel>
-          </ThresholdGroup>
-          <Description style={{ marginTop: theme.spacing[2], marginBottom: 0 }}>
-            Current Safe nonce: {currentNonce}. Recommended nonce is current + 1.
-          </Description>
-        </FormGroup>
-
-        {isThresholdChanged && (
-          <InfoMessage>
-            <strong>Threshold Change:</strong><br />
-            {newThreshold > currentThreshold 
-              ? `Increasing security: ${newThreshold - currentThreshold} more signature(s) will be required`
-              : `Decreasing security: ${currentThreshold - newThreshold} fewer signature(s) will be required`
-            }
-          </InfoMessage>
-        )}
-
-        <ButtonGroup>
-          <Button
-            variant="secondary"
-            onClick={onClose}
+      <FormGroup>
+        <Label>New Threshold</Label>
+        <InputGroup>
+          <StyledInput
+            type="number"
+            min={1}
+            max={ownerCount}
+            value={newThreshold}
+            onChange={(e) => setNewThreshold(parseInt(e.target.value) || 1)}
             disabled={isCreating}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleSubmit}
-            disabled={isCreating || !isThresholdChanged}
-            loading={isCreating}
-          >
-            Update Threshold
-          </Button>
-        </ButtonGroup>
-      </ModalContent>
+            style={{ width: '120px', textAlign: 'center', fontSize: '18px', fontWeight: '600' }}
+          />
+          <InputLabel>out of {ownerCount} signers</InputLabel>
+        </InputGroup>
+      </FormGroup>
+
+      <FormGroup>
+        <Label>Transaction Nonce</Label>
+        <InputGroup>
+          <StyledInput
+            type="number"
+            min={0}
+            value={customNonce}
+            onChange={(e) => setCustomNonce(parseInt(e.target.value) || 0)}
+            disabled={isCreating}
+            style={{ width: '120px', textAlign: 'center' }}
+          />
+          <InputLabel>(Recommended: {recommendedNonce})</InputLabel>
+        </InputGroup>
+        <ModalDescription style={{ marginTop: '8px', marginBottom: 0, fontSize: '14px' }}>
+          Current Safe nonce: {currentNonce}. Recommended nonce is current + 1.
+        </ModalDescription>
+      </FormGroup>
+
+      {isThresholdChanged && (
+        <InfoMessage>
+          <strong>Threshold Change:</strong><br />
+          {newThreshold > currentThreshold
+            ? `Increasing security: ${newThreshold - currentThreshold} more signature(s) will be required`
+            : `Decreasing security: ${currentThreshold - newThreshold} fewer signature(s) will be required`
+          }
+        </InfoMessage>
+      )}
+
+      <TransactionDetails>
+        <DetailRow>
+          <DetailLabel>Operation:</DetailLabel>
+          <DetailValue style={{ color: '#4ECDC4', fontWeight: 'bold' }}>
+            Change Threshold
+          </DetailValue>
+        </DetailRow>
+        <DetailRow>
+          <DetailLabel>Current Threshold:</DetailLabel>
+          <DetailValue>{currentThreshold} out of {ownerCount} signers</DetailValue>
+        </DetailRow>
+        <DetailRow>
+          <DetailLabel>New Threshold:</DetailLabel>
+          <DetailValue>{newThreshold} out of {ownerCount} signers</DetailValue>
+        </DetailRow>
+        <DetailRow>
+          <DetailLabel>Transaction Nonce:</DetailLabel>
+          <DetailValue>{customNonce}</DetailValue>
+        </DetailRow>
+      </TransactionDetails>
+
+      <ButtonGroup>
+        <Button
+          variant="secondary"
+          onClick={onClose}
+          disabled={isCreating}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="primary"
+          onClick={handleSubmit}
+          disabled={isCreating || !isThresholdChanged}
+          loading={isCreating}
+        >
+          {isCreating ? 'Creating Transaction...' : 'Update Threshold'}
+        </Button>
+      </ButtonGroup>
     </Modal>
   );
 };

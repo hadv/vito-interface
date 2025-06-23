@@ -1,78 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
-import { theme } from '../../../theme';
 import { safeWalletService } from '../../../services/SafeWalletService';
 import SafeManagementService from '../../../services/SafeManagementService';
 
 import Button from '../../ui/Button';
-import Input from '../../ui/Input';
 import Modal from '../../ui/Modal';
+import {
+  ModalDescription,
+  FormGroup,
+  Label,
+  StyledInput,
+  InputGroup,
+  InputLabel,
+  TransactionDetails,
+  DetailRow,
+  DetailLabel,
+  DetailValue,
+  ErrorMessage,
+  ButtonGroup
+} from './ModalStyles';
 
-const ModalContent = styled.div`
-  padding: ${theme.spacing[6]};
-  max-width: 500px;
-  width: 100%;
-`;
 
-const Title = styled.h2`
-  margin: 0 0 ${theme.spacing[4]} 0;
-  font-size: ${theme.typography.fontSize.xl};
-  font-weight: ${theme.typography.fontWeight.semibold};
-  color: ${theme.colors.text.primary};
-`;
-
-const Description = styled.p`
-  margin: 0 0 ${theme.spacing[6]} 0;
-  font-size: ${theme.typography.fontSize.sm};
-  color: ${theme.colors.text.secondary};
-  line-height: 1.5;
-`;
-
-const FormGroup = styled.div`
-  margin-bottom: ${theme.spacing[4]};
-`;
-
-const Label = styled.label`
-  display: block;
-  margin-bottom: ${theme.spacing[2]};
-  font-size: ${theme.typography.fontSize.sm};
-  font-weight: ${theme.typography.fontWeight.medium};
-  color: ${theme.colors.text.secondary};
-`;
-
-const ThresholdGroup = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing[3]};
-  margin-top: ${theme.spacing[2]};
-`;
-
-const ThresholdInput = styled(Input)`
-  width: 80px;
-  text-align: center;
-`;
-
-const ThresholdLabel = styled.span`
-  font-size: ${theme.typography.fontSize.sm};
-  color: ${theme.colors.text.secondary};
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: ${theme.spacing[3]};
-  justify-content: flex-end;
-  margin-top: ${theme.spacing[6]};
-`;
-
-const ErrorMessage = styled.div`
-  padding: ${theme.spacing[3]};
-  background: ${theme.colors.status.error}20;
-  border: 1px solid ${theme.colors.status.error}30;
-  border-radius: ${theme.borderRadius.md};
-  color: ${theme.colors.status.error};
-  font-size: ${theme.typography.fontSize.sm};
-  margin-bottom: ${theme.spacing[4]};
-`;
 
 interface AddSignerModalProps {
   isOpen: boolean;
@@ -165,80 +112,98 @@ const AddSignerModal: React.FC<AddSignerModalProps> = ({
   const newOwnerCount = currentOwners.length + 1;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <ModalContent>
-        <Title>Add New Signer</Title>
-        <Description>
-          Add a new signer to the Safe wallet. You can also update the threshold to reflect the new security requirements.
-        </Description>
+    <Modal isOpen={isOpen} onClose={onClose} title="Add New Signer">
+      <ModalDescription>
+        Add a new signer to the Safe wallet. You can also update the threshold to reflect the new security requirements.
+      </ModalDescription>
 
-        {error && <ErrorMessage>{error}</ErrorMessage>}
+      {error && <ErrorMessage>{error}</ErrorMessage>}
 
-        <FormGroup>
-          <Label>New Signer Address</Label>
-          <Input
-            placeholder="0x... (Ethereum address)"
-            value={newOwnerAddress}
-            onChange={(e) => setNewOwnerAddress(e.target.value)}
+      <FormGroup>
+        <Label>New Signer Address</Label>
+        <StyledInput
+          placeholder="0x... (Ethereum address)"
+          value={newOwnerAddress}
+          onChange={(e) => setNewOwnerAddress(e.target.value)}
+          disabled={isCreating}
+        />
+      </FormGroup>
+
+      <FormGroup>
+        <Label>New Threshold</Label>
+        <InputGroup>
+          <StyledInput
+            type="number"
+            min={1}
+            max={newOwnerCount}
+            value={newThreshold}
+            onChange={(e) => setNewThreshold(parseInt(e.target.value) || 1)}
             disabled={isCreating}
+            style={{ width: '120px', textAlign: 'center' }}
           />
-        </FormGroup>
+          <InputLabel>out of {newOwnerCount} signers</InputLabel>
+        </InputGroup>
+        <ModalDescription style={{ marginTop: '8px', marginBottom: 0, fontSize: '14px' }}>
+          Current: {currentThreshold} out of {currentOwners.length} signers
+        </ModalDescription>
+      </FormGroup>
 
-        <FormGroup>
-          <Label>New Threshold</Label>
-          <ThresholdGroup>
-            <ThresholdInput
-              type="number"
-              min={1}
-              max={newOwnerCount}
-              value={newThreshold}
-              onChange={(e) => setNewThreshold(parseInt(e.target.value) || 1)}
-              disabled={isCreating}
-            />
-            <ThresholdLabel>out of {newOwnerCount} signers</ThresholdLabel>
-          </ThresholdGroup>
-          <Description style={{ marginTop: theme.spacing[2], marginBottom: 0 }}>
-            Current: {currentThreshold} out of {currentOwners.length} signers
-          </Description>
-        </FormGroup>
-
-        <FormGroup>
-          <Label>Transaction Nonce</Label>
-          <ThresholdGroup>
-            <ThresholdInput
-              type="number"
-              min={currentNonce}
-              value={customNonce}
-              onChange={(e) => setCustomNonce(parseInt(e.target.value) || currentNonce)}
-              disabled={isCreating}
-            />
-            <ThresholdLabel>
-              (Recommended: {recommendedNonce})
-            </ThresholdLabel>
-          </ThresholdGroup>
-          <Description style={{ marginTop: theme.spacing[2], marginBottom: 0 }}>
-            Current Safe nonce: {currentNonce}. Recommended nonce is current + 1.
-          </Description>
-        </FormGroup>
-
-        <ButtonGroup>
-          <Button
-            variant="secondary"
-            onClick={onClose}
+      <FormGroup>
+        <Label>Transaction Nonce</Label>
+        <InputGroup>
+          <StyledInput
+            type="number"
+            min={currentNonce}
+            value={customNonce}
+            onChange={(e) => setCustomNonce(parseInt(e.target.value) || currentNonce)}
             disabled={isCreating}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleSubmit}
-            disabled={isCreating || !newOwnerAddress}
-            loading={isCreating}
-          >
-            Add Signer
-          </Button>
-        </ButtonGroup>
-      </ModalContent>
+            style={{ width: '120px', textAlign: 'center' }}
+          />
+          <InputLabel>(Recommended: {recommendedNonce})</InputLabel>
+        </InputGroup>
+        <ModalDescription style={{ marginTop: '8px', marginBottom: 0, fontSize: '14px' }}>
+          Current Safe nonce: {currentNonce}. Recommended nonce is current + 1.
+        </ModalDescription>
+      </FormGroup>
+
+      <TransactionDetails>
+        <DetailRow>
+          <DetailLabel>Operation:</DetailLabel>
+          <DetailValue style={{ color: '#4ECDC4', fontWeight: 'bold' }}>
+            Add Owner with Threshold
+          </DetailValue>
+        </DetailRow>
+        <DetailRow>
+          <DetailLabel>New Signer:</DetailLabel>
+          <DetailValue>{newOwnerAddress || 'Not specified'}</DetailValue>
+        </DetailRow>
+        <DetailRow>
+          <DetailLabel>New Threshold:</DetailLabel>
+          <DetailValue>{newThreshold} out of {newOwnerCount} signers</DetailValue>
+        </DetailRow>
+        <DetailRow>
+          <DetailLabel>Transaction Nonce:</DetailLabel>
+          <DetailValue>{customNonce}</DetailValue>
+        </DetailRow>
+      </TransactionDetails>
+
+      <ButtonGroup>
+        <Button
+          variant="secondary"
+          onClick={onClose}
+          disabled={isCreating}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="primary"
+          onClick={handleSubmit}
+          disabled={isCreating || !newOwnerAddress}
+          loading={isCreating}
+        >
+          {isCreating ? 'Creating Transaction...' : 'Add Signer'}
+        </Button>
+      </ButtonGroup>
     </Modal>
   );
 };
