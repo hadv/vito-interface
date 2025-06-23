@@ -5,9 +5,24 @@ import NetworkConfigStatus from '../components/NetworkConfigStatus';
 import SafeSetupTab from '../components/SafeSetupTab';
 
 const Container = styled.div`
-  padding: 0;
+  display: flex;
   height: 100%;
+  overflow: hidden;
+`;
+
+const LeftSidebar = styled.div`
+  width: 280px;
+  background: ${theme.colors.background.secondary};
+  border-right: 1px solid ${theme.colors.border.primary};
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
+`;
+
+const MainContent = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding: ${theme.spacing[6]};
 `;
 
 const Header = styled.div`
@@ -21,10 +36,16 @@ const Heading = styled.h1`
   color: ${theme.colors.primary[400]};
 `;
 
-const Content = styled.div`
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 0 ${theme.spacing[6]};
+const SidebarHeader = styled.div`
+  padding: ${theme.spacing[6]} ${theme.spacing[4]} ${theme.spacing[4]};
+  border-bottom: 1px solid ${theme.colors.border.primary};
+`;
+
+const SidebarTitle = styled.h2`
+  font-size: ${theme.typography.fontSize.lg};
+  font-weight: ${theme.typography.fontWeight.semibold};
+  color: ${theme.colors.text.primary};
+  margin: 0;
 `;
 
 const Section = styled.div`
@@ -45,67 +66,66 @@ const SectionDescription = styled.p`
   line-height: 1.5;
 `;
 
-// Tab components (matching TransactionsPage style)
+// Left sidebar navigation
 const TabsContainer = styled.div`
   display: flex;
-  border-bottom: 1px solid ${theme.colors.neutral[700]};
-  margin-bottom: ${theme.spacing[6]};
-  position: relative;
+  flex-direction: column;
+  padding: ${theme.spacing[2]} 0;
 `;
 
 const Tab = styled.button<{ isActive: boolean }>`
-  padding: ${theme.spacing[4]} ${theme.spacing[6]};
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: ${theme.spacing[3]} ${theme.spacing[4]};
   font-size: ${theme.typography.fontSize.base};
-  font-weight: ${props => props.isActive ? '700' : '600'};
+  font-weight: ${props => props.isActive ? '600' : '500'};
   font-family: ${theme.typography.fontFamily.sans.join(', ')};
-  letter-spacing: 0.025em;
+  text-align: left;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
   border: none;
-  background: transparent;
-  position: relative;
+  background: ${props => props.isActive
+    ? theme.colors.primary[400] + '20'
+    : 'transparent'
+  };
   color: ${props => props.isActive
     ? theme.colors.primary[400]
-    : theme.colors.text.tertiary
+    : theme.colors.text.secondary
+  };
+  border-left: 3px solid ${props => props.isActive
+    ? theme.colors.primary[400]
+    : 'transparent'
   };
 
   /* Hover effects */
   &:hover {
-    color: ${props => props.isActive
-      ? theme.colors.primary[400]
-      : theme.colors.text.secondary
+    background: ${props => props.isActive
+      ? theme.colors.primary[400] + '30'
+      : theme.colors.neutral[800]
     };
-    transform: translateY(-1px);
-  }
-
-  /* Active tab underline */
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: ${props => props.isActive ? theme.colors.primary[400] : 'transparent'};
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border-radius: 1px 1px 0 0;
+    color: ${props => props.isActive
+      ? theme.colors.primary[300]
+      : theme.colors.text.primary
+    };
   }
 
   /* Focus states for accessibility */
   &:focus {
     outline: none;
-    box-shadow: 0 0 0 2px ${theme.colors.primary[400]}40;
-    border-radius: ${theme.borderRadius.sm};
+    box-shadow: inset 0 0 0 2px ${theme.colors.primary[400]}40;
   }
 
   /* Active press state */
   &:active {
-    transform: translateY(1px);
+    transform: translateX(2px);
   }
 `;
 
 const TabContent = styled.div`
-  margin-top: ${theme.spacing[6]};
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
 `;
 
 interface SettingsPageProps {
@@ -150,12 +170,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => 
 
   return (
     <Container>
-      <Header>
-        <Heading>Vito Wallet Settings</Heading>
-      </Header>
+      {/* Left Sidebar with Tabs */}
+      <LeftSidebar>
+        <SidebarHeader>
+          <SidebarTitle>Settings</SidebarTitle>
+        </SidebarHeader>
 
-      <Content>
-        {/* Tab Navigation */}
         <TabsContainer>
           <Tab
             isActive={activeTab === 'setup'}
@@ -176,12 +196,22 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => 
             About
           </Tab>
         </TabsContainer>
+      </LeftSidebar>
 
-        {/* Tab Content */}
+      {/* Main Content */}
+      <MainContent>
+        <Header>
+          <Heading>
+            {activeTab === 'setup' && 'Safe Wallet Setup'}
+            {activeTab === 'network' && 'Network Configuration'}
+            {activeTab === 'about' && 'About Vito Wallet'}
+          </Heading>
+        </Header>
+
         <TabContent>
           {renderTabContent()}
         </TabContent>
-      </Content>
+      </MainContent>
     </Container>
   );
 };
