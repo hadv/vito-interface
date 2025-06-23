@@ -267,14 +267,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     }
   }, [activeTab, safeAddress, network, loadPendingTransactions, loadSafeInfo]);
 
-  // Auto-refresh pending transactions every 30 seconds
-  useEffect(() => {
-    if (activeTab === 'pending') {
-      const interval = setInterval(loadPendingTransactions, 30000);
-      return () => clearInterval(interval);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, safeAddress, network, loadPendingTransactions]);
+  // Auto-refresh removed - users can manually refresh using the "Refresh Pool" button
 
   const formatAmount = (amount: string): string => {
     try {
