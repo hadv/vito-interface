@@ -12,43 +12,95 @@ export class WalletConnectProviderImpl extends BaseWalletProvider {
     name: 'WalletConnect',
     icon: 'walletconnect',
     description: 'Connect using WalletConnect protocol',
-    isAvailable: true // WalletConnect is available when imported
+    isAvailable: this.checkAvailability()
   };
 
   private walletConnectProvider: any = null;
+  private isInitializing: boolean = false;
+
+  private checkAvailability(): boolean {
+    try {
+      // Check if we're in a browser environment
+      if (typeof window === 'undefined') return false;
+
+      // Check if WalletConnect dependencies are available
+      return typeof WalletConnectProvider !== 'undefined' && typeof QRCodeModal !== 'undefined';
+    } catch (error) {
+      console.warn('WalletConnect availability check failed:', error);
+      return false;
+    }
+  }
 
   async connect(): Promise<void> {
+    if (this.isInitializing) {
+      throw new Error('WalletConnect connection already in progress');
+    }
+
+    if (this.connected && this.walletConnectProvider) {
+      console.log('✅ WalletConnect already connected');
+      return;
+    }
+
+    this.isInitializing = true;
+
     try {
-      // Create WalletConnect provider
+      // Create WalletConnect provider with better configuration
       this.walletConnectProvider = new WalletConnectProvider({
-        infuraId: process.env.REACT_APP_INFURA_ID || '9aa3d95b3bc440fa88ea12eaa4456161', // Default fallback
+        infuraId: process.env.REACT_APP_INFURA_ID || '9aa3d95b3bc440fa88ea12eaa4456161',
         rpc: {
-          1: 'https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
-          5: 'https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
-          11155111: 'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
-          137: 'https://polygon-mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
-          80001: 'https://polygon-mumbai.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
+          1: `https://mainnet.infura.io/v3/${process.env.REACT_APP_INFURA_ID || '9aa3d95b3bc440fa88ea12eaa4456161'}`,
+          5: `https://goerli.infura.io/v3/${process.env.REACT_APP_INFURA_ID || '9aa3d95b3bc440fa88ea12eaa4456161'}`,
+          11155111: `https://sepolia.infura.io/v3/${process.env.REACT_APP_INFURA_ID || '9aa3d95b3bc440fa88ea12eaa4456161'}`,
+          137: `https://polygon-mainnet.infura.io/v3/${process.env.REACT_APP_INFURA_ID || '9aa3d95b3bc440fa88ea12eaa4456161'}`,
+          42161: `https://arbitrum-mainnet.infura.io/v3/${process.env.REACT_APP_INFURA_ID || '9aa3d95b3bc440fa88ea12eaa4456161'}`,
         },
         chainId: 1, // Default to Ethereum mainnet
         qrcode: true,
         qrcodeModal: QRCodeModal,
+        // Add bridge configuration to avoid connection issues
+        bridge: 'https://bridge.walletconnect.org',
+        // Add timeout to prevent hanging connections
+        clientMeta: {
+          description: 'Vito - Safe Wallet Interface',
+          url: window.location.origin,
+          icons: [`${window.location.origin}/favicon.ico`],
+          name: 'Vito'
+        }
       });
 
-      // Enable session (triggers QR Code modal)
-      await this.walletConnectProvider.enable();
+      console.log('🔄 Initializing WalletConnect...');
+
+      // Set up event listeners before enabling
+      this.setupEventListeners();
+
+      // Enable session with timeout (triggers QR Code modal)
+      await this.enableWithTimeout(this.walletConnectProvider, 30000); // 30 second timeout
 
       // Create ethers provider and signer
       this.provider = new ethers.providers.Web3Provider(this.walletConnectProvider);
       this.signer = this.provider.getSigner();
       this.connected = true;
 
-      // Set up event listeners
-      this.setupEventListeners();
-
       console.log('✅ WalletConnect connected successfully');
     } catch (error: any) {
       console.error('❌ WalletConnect connection failed:', error);
-      throw new Error(`Failed to connect via WalletConnect: ${error.message}`);
+
+      // Clean up on failure
+      this.walletConnectProvider = null;
+      this.provider = null;
+      this.signer = null;
+      this.connected = false;
+
+      // Provide more specific error messages
+      if (error.message?.includes('User closed modal')) {
+        throw new Error('Connection cancelled by user');
+      } else if (error.message?.includes('WebSocket')) {
+        throw new Error('Network connection failed. Please check your internet connection and try again.');
+      } else {
+        throw new Error(`Failed to connect via WalletConnect: ${error.message || 'Unknown error'}`);
+      }
+    } finally {
+      this.isInitializing = false;
     }
   }
 
@@ -137,5 +189,23 @@ export class WalletConnectProviderImpl extends BaseWalletProvider {
 
   isWalletConnectConnected(): boolean {
     return this.walletConnectProvider?.connected || false;
+  }
+
+  private async enableWithTimeout(provider: any, timeoutMs: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('WalletConnect connection timeout. Please try again.'));
+      }, timeoutMs);
+
+      provider.enable()
+        .then((result: any) => {
+          clearTimeout(timeout);
+          resolve(result);
+        })
+        .catch((error: any) => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+    });
   }
 }
