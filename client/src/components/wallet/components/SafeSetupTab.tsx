@@ -176,6 +176,30 @@ const SuccessMessage = styled.div`
   margin-top: ${theme.spacing[3]};
 `;
 
+const ThresholdInputGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing[2]};
+  margin-top: ${theme.spacing[2]};
+`;
+
+const ThresholdLabel = styled.span`
+  font-size: ${theme.typography.fontSize.xs};
+  color: ${theme.colors.text.secondary};
+  white-space: nowrap;
+`;
+
+const ThresholdInput = styled(Input)`
+  width: 80px;
+  text-align: center;
+`;
+
+const RemoveOwnerSection = styled.div`
+  margin-top: ${theme.spacing[3]};
+  padding-top: ${theme.spacing[3]};
+  border-top: 1px solid ${theme.colors.neutral[700]};
+`;
+
 interface SafeInfo {
   address: string;
   owners: string[];
@@ -197,6 +221,8 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
 
   // Management state
   const [newOwnerAddress, setNewOwnerAddress] = useState('');
+  const [addOwnerThreshold, setAddOwnerThreshold] = useState(1);
+  const [removeOwnerThreshold, setRemoveOwnerThreshold] = useState(1);
   const [newThreshold, setNewThreshold] = useState(1);
   const [isCreatingTransaction, setIsCreatingTransaction] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -210,6 +236,8 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
         const info = await safeWalletService.getEnhancedSafeInfo();
         setSafeInfo(info);
         setNewThreshold(info.threshold); // Initialize with current threshold
+        setAddOwnerThreshold(info.threshold + 1); // Default to current + 1 for adding owner
+        setRemoveOwnerThreshold(Math.max(1, info.threshold - 1)); // Default to current - 1 for removing owner
       } catch (err: any) {
         console.error('Error loading Safe info:', err);
         setError(err.message || 'Failed to load Safe information');
@@ -250,7 +278,7 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
       const txData = SafeManagementService.createAddOwnerTransaction(
         safeInfo.address,
         newOwnerAddress,
-        newThreshold,
+        addOwnerThreshold,
         safeInfo.nonce
       );
 
@@ -261,7 +289,7 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
         data: txData.data
       });
 
-      setSuccessMessage(`Transaction created to add owner ${newOwnerAddress.slice(0, 6)}...${newOwnerAddress.slice(-4)}`);
+      setSuccessMessage(`Transaction created to add owner ${newOwnerAddress.slice(0, 6)}...${newOwnerAddress.slice(-4)} with threshold ${addOwnerThreshold}`);
       setNewOwnerAddress('');
     } catch (err: any) {
       console.error('Error creating add owner transaction:', err);
@@ -279,8 +307,8 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
       setError(null);
 
       // Check if removal is valid
-      if (!SafeManagementService.canRemoveOwner(safeInfo.owners.length, newThreshold)) {
-        throw new Error(`Cannot remove owner: would leave ${safeInfo.owners.length - 1} owners but threshold is ${newThreshold}`);
+      if (!SafeManagementService.canRemoveOwner(safeInfo.owners.length, removeOwnerThreshold)) {
+        throw new Error(`Cannot remove owner: would leave ${safeInfo.owners.length - 1} owners but threshold is ${removeOwnerThreshold}`);
       }
 
       // Find previous owner
@@ -291,7 +319,7 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
         safeInfo.address,
         prevOwner,
         ownerToRemove,
-        newThreshold,
+        removeOwnerThreshold,
         safeInfo.nonce
       );
 
@@ -302,7 +330,7 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
         data: txData.data
       });
 
-      setSuccessMessage(`Transaction created to remove owner ${ownerToRemove.slice(0, 6)}...${ownerToRemove.slice(-4)}`);
+      setSuccessMessage(`Transaction created to remove owner ${ownerToRemove.slice(0, 6)}...${ownerToRemove.slice(-4)} with threshold ${removeOwnerThreshold}`);
     } catch (err: any) {
       console.error('Error creating remove owner transaction:', err);
       setError(err.message || 'Failed to create remove owner transaction');
@@ -462,8 +490,41 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
                 Add Signer
               </Button>
             </ActionRow>
+            <ThresholdInputGroup>
+              <ThresholdLabel>New threshold after adding:</ThresholdLabel>
+              <ThresholdInput
+                type="number"
+                min={1}
+                max={safeInfo.owners.length + 1}
+                value={addOwnerThreshold}
+                onChange={(e) => setAddOwnerThreshold(parseInt(e.target.value) || 1)}
+                disabled={isCreatingTransaction}
+              />
+              <ThresholdLabel>out of {safeInfo.owners.length + 1} signers</ThresholdLabel>
+            </ThresholdInputGroup>
           </ActionGroup>
         </ManagementActions>
+
+        <RemoveOwnerSection>
+          <ActionGroup>
+            <ActionLabel>Remove Signer Settings</ActionLabel>
+            <ThresholdInputGroup>
+              <ThresholdLabel>New threshold after removing:</ThresholdLabel>
+              <ThresholdInput
+                type="number"
+                min={1}
+                max={Math.max(1, safeInfo.owners.length - 1)}
+                value={removeOwnerThreshold}
+                onChange={(e) => setRemoveOwnerThreshold(parseInt(e.target.value) || 1)}
+                disabled={isCreatingTransaction}
+              />
+              <ThresholdLabel>out of {safeInfo.owners.length - 1} signers</ThresholdLabel>
+            </ThresholdInputGroup>
+            <Description style={{ marginTop: theme.spacing[2] }}>
+              This threshold will be applied when removing any signer. Click the "Remove" button next to a signer to create the removal transaction.
+            </Description>
+          </ActionGroup>
+        </RemoveOwnerSection>
       </Section>
 
       {/* Threshold */}
