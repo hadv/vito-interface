@@ -92,11 +92,11 @@ const ModalContent = styled.div`
     0 0 0 1px rgba(255, 255, 255, 0.05);
   animation: ${fadeIn} 0.2s ease-out;
   position: relative;
+  margin: auto;
 
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing[6]};
-    max-width: 100%;
-    margin: ${theme.spacing[4]};
+    max-width: calc(100% - ${theme.spacing[8]});
     border-radius: ${theme.borderRadius.lg};
   }
 
