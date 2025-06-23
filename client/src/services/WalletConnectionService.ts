@@ -1,6 +1,8 @@
 import { ethers } from 'ethers';
 import { safeWalletService, SafeWalletService, SafeWalletConfig } from './SafeWalletService';
 import { getRpcUrl, NETWORK_CONFIGS } from '../contracts/abis';
+import { WalletProvider, WalletProviderType } from './WalletProvider';
+import { WalletProviderFactory } from './WalletProviderFactory';
 
 export interface WalletConnectionState {
   isConnected: boolean;
@@ -15,6 +17,8 @@ export interface WalletConnectionState {
   signerAddress?: string;
   signerBalance?: string;
   readOnlyMode?: boolean;
+  // New field for wallet provider type
+  walletProviderType?: WalletProviderType;
 }
 
 export interface ConnectWalletParams {
@@ -34,6 +38,7 @@ export class WalletConnectionService {
   private listeners: ((state: WalletConnectionState) => void)[] = [];
   private provider: ethers.providers.Web3Provider | null = null;
   private signer: ethers.Signer | null = null;
+  private currentWalletProvider: WalletProvider | null = null;
 
   /**
    * Connect to a Safe wallet (can be read-only or with signer)
@@ -145,7 +150,45 @@ export class WalletConnectionService {
   }
 
   /**
-   * Check if wallet network matches Safe network and prompt switching if needed
+   * Check if wallet network matches Safe network and prompt switching if needed (with provider)
+   */
+  async checkAndSwitchNetworkWithProvider(targetNetwork: string, walletProvider: WalletProvider): Promise<{ switched: boolean; error?: string }> {
+    try {
+      // Get current wallet network
+      const network = await walletProvider.getNetwork();
+      const currentChainId = network.chainId;
+
+      // Get target network chain ID
+      const targetConfig = NETWORK_CONFIGS[targetNetwork as keyof typeof NETWORK_CONFIGS];
+      if (!targetConfig) {
+        return { switched: false, error: `Unknown network: ${targetNetwork}` };
+      }
+
+      const targetChainId = targetConfig.chainId;
+
+      // If networks match, no switching needed
+      if (currentChainId === targetChainId) {
+        return { switched: true };
+      }
+
+      console.log(`🔄 Network mismatch detected: wallet=${currentChainId}, target=${targetChainId} (${targetNetwork})`);
+
+      // Try to switch network
+      const switched = await walletProvider.switchNetwork(targetChainId);
+      if (switched) {
+        console.log(`✅ Successfully switched to ${targetNetwork} (chainId: ${targetChainId})`);
+        return { switched: true };
+      } else {
+        return { switched: false, error: `Failed to switch to ${targetNetwork}` };
+      }
+    } catch (error: any) {
+      console.error('Error checking network:', error);
+      return { switched: false, error: `Network check failed: ${error.message}` };
+    }
+  }
+
+  /**
+   * Check if wallet network matches Safe network and prompt switching if needed (legacy MetaMask)
    */
   async checkAndSwitchNetwork(targetNetwork: string): Promise<{ switched: boolean; error?: string }> {
     if (typeof window.ethereum === 'undefined') {
@@ -217,7 +260,92 @@ export class WalletConnectionService {
   }
 
   /**
+   * Connect signer wallet using a specific wallet provider
+   */
+  async connectSignerWalletWithProvider(providerType: WalletProviderType): Promise<WalletConnectionState> {
+    if (!this.state.isConnected || !this.state.safeAddress) {
+      throw new Error('Safe wallet must be connected first');
+    }
+
+    try {
+      // Get the wallet provider
+      const walletProvider = WalletProviderFactory.getProvider(providerType);
+
+      if (!walletProvider.info.isAvailable) {
+        throw new Error(`${walletProvider.info.name} is not available. ${walletProvider.info.description}`);
+      }
+
+      // Connect the wallet provider
+      await walletProvider.connect();
+
+      // Get provider and signer from wallet provider
+      const provider = walletProvider.getProvider();
+      const signer = walletProvider.getSigner();
+
+      if (!provider || !signer) {
+        throw new Error('Failed to get provider or signer from wallet');
+      }
+
+      // Create ethers provider if needed
+      if (!(provider instanceof ethers.providers.Web3Provider)) {
+        this.provider = new ethers.providers.Web3Provider(provider);
+      } else {
+        this.provider = provider;
+      }
+      this.signer = signer;
+      this.currentWalletProvider = walletProvider;
+
+      // Check and switch network if needed
+      const networkResult = await this.checkAndSwitchNetworkWithProvider(this.state.network!, walletProvider);
+      if (!networkResult.switched) {
+        throw new Error(networkResult.error || `Please switch your wallet to ${this.state.network} network`);
+      }
+
+      // Get user address and balance
+      const userAddress = await walletProvider.getAddress();
+      const signerBalance = await walletProvider.getBalance();
+
+      // Update Safe Wallet Service with signer
+      await safeWalletService.setSigner(this.signer);
+
+      // Check if user is owner
+      const isOwner = await safeWalletService.isOwner(userAddress);
+
+      // Update state
+      this.state = {
+        ...this.state,
+        address: userAddress,
+        isOwner,
+        signerConnected: true,
+        signerAddress: userAddress,
+        signerBalance,
+        readOnlyMode: false,
+        walletProviderType: providerType,
+        error: undefined
+      };
+
+      // Set up event listeners for account/network changes
+      this.setupEventListenersWithProvider(walletProvider);
+
+      // Notify listeners
+      this.notifyListeners();
+
+      return this.state;
+    } catch (error: any) {
+      const errorMessage = error.message || 'Failed to connect signer wallet';
+      this.state = {
+        ...this.state,
+        error: errorMessage
+      };
+
+      this.notifyListeners();
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
    * Connect signer wallet to an already connected Safe wallet with network validation
+   * (Legacy method - defaults to MetaMask)
    */
   async connectSignerWallet(): Promise<WalletConnectionState> {
     if (!this.state.isConnected || !this.state.safeAddress) {
@@ -291,13 +419,20 @@ export class WalletConnectionService {
    * Disconnect wallet
    */
   async disconnectWallet(): Promise<void> {
+    // Disconnect wallet provider if connected
+    if (this.currentWalletProvider) {
+      await this.currentWalletProvider.disconnect();
+      this.currentWalletProvider = null;
+    }
+
     this.provider = null;
     this.signer = null;
 
     this.state = {
       isConnected: false,
       signerConnected: false,
-      readOnlyMode: false
+      readOnlyMode: false,
+      walletProviderType: undefined
     };
 
     this.removeEventListeners();
@@ -308,6 +443,12 @@ export class WalletConnectionService {
    * Disconnect only the signer wallet (keep Safe wallet connected in read-only mode)
    */
   async disconnectSignerWallet(): Promise<void> {
+    // Disconnect wallet provider if connected
+    if (this.currentWalletProvider) {
+      await this.currentWalletProvider.disconnect();
+      this.currentWalletProvider = null;
+    }
+
     this.provider = null;
     this.signer = null;
 
@@ -322,6 +463,7 @@ export class WalletConnectionService {
       signerAddress: undefined,
       signerBalance: undefined,
       readOnlyMode: true,
+      walletProviderType: undefined,
       error: undefined
     };
 
@@ -482,7 +624,21 @@ export class WalletConnectionService {
   }
 
   /**
-   * Setup event listeners for wallet events
+   * Setup event listeners for wallet provider events
+   */
+  private setupEventListenersWithProvider(walletProvider: WalletProvider): void {
+    // Account changed
+    walletProvider.on('accountsChanged', this.handleAccountsChanged.bind(this));
+
+    // Network changed
+    walletProvider.on('chainChanged', this.handleChainChanged.bind(this));
+
+    // Disconnect
+    walletProvider.on('disconnect', this.handleDisconnect.bind(this));
+  }
+
+  /**
+   * Setup event listeners for wallet events (legacy MetaMask)
    */
   private setupEventListeners(): void {
     // DISABLED TO PREVENT METAMASK POPUP
@@ -500,13 +656,19 @@ export class WalletConnectionService {
    * Remove event listeners
    */
   private removeEventListeners(): void {
-    if (!window.ethereum) return;
+    // Remove wallet provider listeners
+    if (this.currentWalletProvider) {
+      this.currentWalletProvider.removeAllListeners();
+    }
 
-    try {
-      window.ethereum.removeAllListeners('accountsChanged');
-      window.ethereum.removeAllListeners('chainChanged');
-    } catch (error) {
-      console.warn('Error removing MetaMask listeners:', error);
+    // Remove legacy MetaMask listeners
+    if (window.ethereum) {
+      try {
+        window.ethereum.removeAllListeners('accountsChanged');
+        window.ethereum.removeAllListeners('chainChanged');
+      } catch (error) {
+        console.warn('Error removing MetaMask listeners:', error);
+      }
     }
   }
 
@@ -541,6 +703,14 @@ export class WalletConnectionService {
   }
 
   /**
+   * Handle wallet disconnect
+   */
+  private async handleDisconnect(): Promise<void> {
+    console.log('Wallet disconnected');
+    await this.disconnectSignerWallet();
+  }
+
+  /**
    * Notify all listeners of state changes
    */
   private notifyListeners(): void {
@@ -551,6 +721,20 @@ export class WalletConnectionService {
         console.error('Error in wallet state listener:', error);
       }
     });
+  }
+
+  /**
+   * Get available wallet providers
+   */
+  getAvailableWalletProviders() {
+    return WalletProviderFactory.getAvailableProviderInfo();
+  }
+
+  /**
+   * Get current wallet provider type
+   */
+  getCurrentWalletProviderType(): WalletProviderType | null {
+    return this.state.walletProviderType || null;
   }
 
   /**

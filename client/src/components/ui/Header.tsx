@@ -3,7 +3,9 @@ import { cn } from '../../utils/cn';
 import logo from '../../logo.svg';
 import Badge from './Badge';
 import { walletConnectionService, WalletConnectionState } from '../../services/WalletConnectionService';
+import { WalletProviderType } from '../../services/WalletProvider';
 import { useToast } from '../../hooks/useToast';
+import WalletSelectionModal from '../wallet/WalletSelectionModal';
 
 // Utility function for consistent address truncation
 const truncateAddress = (address: string, startLength: number = 6, endLength: number = 4): string => {
@@ -31,6 +33,7 @@ const Header: React.FC<HeaderProps> = ({
   const [connectionState, setConnectionState] = useState<WalletConnectionState>({ isConnected: false });
   const [isConnectingWallet, setIsConnectingWallet] = useState(false);
   const [showSignerMenu, setShowSignerMenu] = useState(false);
+  const [showWalletSelection, setShowWalletSelection] = useState(false);
   const toast = useToast();
 
   // Monitor wallet connection state
@@ -46,19 +49,25 @@ const Header: React.FC<HeaderProps> = ({
     return unsubscribe;
   }, []);
 
-  // Handle connecting signer wallet
-  const handleConnectSigner = async () => {
+  // Handle connecting signer wallet - show wallet selection modal
+  const handleConnectSigner = () => {
+    setShowWalletSelection(true);
+  };
+
+  // Handle wallet provider selection
+  const handleWalletProviderSelect = async (providerType: WalletProviderType) => {
     setIsConnectingWallet(true);
     try {
-      await walletConnectionService.connectSignerWallet();
+      await walletConnectionService.connectSignerWalletWithProvider(providerType);
       toast.success('Wallet Connected', {
-        message: 'Successfully connected signer wallet'
+        message: `Successfully connected ${providerType} wallet`
       });
     } catch (error: any) {
       console.error('Failed to connect signer wallet:', error);
       toast.error('Connection Failed', {
-        message: `Failed to connect signer wallet: ${error.message}`
+        message: `Failed to connect wallet: ${error.message}`
       });
+      throw error; // Re-throw to let the modal handle it
     } finally {
       setIsConnectingWallet(false);
     }
@@ -271,7 +280,9 @@ const Header: React.FC<HeaderProps> = ({
                       </svg>
                     </div>
                     <div className="flex-1">
-                      <div className="text-white font-semibold text-sm">MetaMask</div>
+                      <div className="text-white font-semibold text-sm">
+                        {connectionState.walletProviderType === WalletProviderType.WALLETCONNECT ? 'WalletConnect' : 'MetaMask'}
+                      </div>
                       <div className="text-gray-400 text-xs">Connected</div>
                     </div>
                   </div>
@@ -442,6 +453,13 @@ const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
       )}
+
+      {/* Wallet Selection Modal */}
+      <WalletSelectionModal
+        isOpen={showWalletSelection}
+        onClose={() => setShowWalletSelection(false)}
+        onWalletSelect={handleWalletProviderSelect}
+      />
     </header>
   );
 };

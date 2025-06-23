@@ -22,7 +22,12 @@ module.exports = override(
       "url": require.resolve("url"),
       "fs": false,
       "path": require.resolve("path-browserify"),
-      "os": require.resolve("os-browserify/browser")
+      "os": require.resolve("os-browserify/browser"),
+      "http": require.resolve("stream-http"),
+      "https": require.resolve("https-browserify"),
+      "zlib": require.resolve("browserify-zlib"),
+      "net": false,
+      "tls": false
     }
   })
 );

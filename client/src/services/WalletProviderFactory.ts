@@ -1,0 +1,69 @@
+import { WalletProvider, WalletProviderType, WalletProviderInfo } from './WalletProvider';
+import { MetaMaskProvider } from './MetaMaskProvider';
+import { WalletConnectProviderImpl } from './WalletConnectProvider';
+
+export class WalletProviderFactory {
+  private static providers: Map<WalletProviderType, WalletProvider> = new Map();
+
+  static getProvider(type: WalletProviderType): WalletProvider {
+    if (!this.providers.has(type)) {
+      this.providers.set(type, this.createProvider(type));
+    }
+    return this.providers.get(type)!;
+  }
+
+  static getAllProviders(): WalletProvider[] {
+    return [
+      this.getProvider(WalletProviderType.METAMASK),
+      this.getProvider(WalletProviderType.WALLETCONNECT)
+    ];
+  }
+
+  static getAvailableProviders(): WalletProvider[] {
+    return this.getAllProviders().filter(provider => provider.info.isAvailable);
+  }
+
+  static getProviderInfo(): WalletProviderInfo[] {
+    return this.getAllProviders().map(provider => provider.info);
+  }
+
+  static getAvailableProviderInfo(): WalletProviderInfo[] {
+    return this.getAvailableProviders().map(provider => provider.info);
+  }
+
+  private static createProvider(type: WalletProviderType): WalletProvider {
+    switch (type) {
+      case WalletProviderType.METAMASK:
+        return new MetaMaskProvider();
+      case WalletProviderType.WALLETCONNECT:
+        return new WalletConnectProviderImpl();
+      default:
+        throw new Error(`Unsupported wallet provider type: ${type}`);
+    }
+  }
+
+  static async disconnectAll(): Promise<void> {
+    const promises = Array.from(this.providers.values()).map(provider => {
+      if (provider.isConnected()) {
+        return provider.disconnect();
+      }
+      return Promise.resolve();
+    });
+    
+    await Promise.all(promises);
+    this.providers.clear();
+  }
+
+  static getConnectedProvider(): WalletProvider | null {
+    for (const provider of this.providers.values()) {
+      if (provider.isConnected()) {
+        return provider;
+      }
+    }
+    return null;
+  }
+
+  static isAnyProviderConnected(): boolean {
+    return this.getConnectedProvider() !== null;
+  }
+}
