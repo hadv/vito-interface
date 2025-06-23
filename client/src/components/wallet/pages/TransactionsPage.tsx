@@ -9,6 +9,7 @@ import { SafeWalletService } from '../../../services/SafeWalletService';
 import PendingTransactionConfirmationModal from '../components/PendingTransactionConfirmationModal';
 import { TransactionDecoder, DecodedTransactionData } from '../../../utils/transactionDecoder';
 import { TokenService } from '../../../services/TokenService';
+import ParameterDisplay from '../components/ParameterDisplay';
 import { getRpcUrl } from '../../../contracts/abis';
 
 
@@ -16,11 +17,12 @@ import { getRpcUrl } from '../../../contracts/abis';
 import styled from 'styled-components';
 import { theme } from '../../../theme';
 
-// Styled components to match Assets page structure
+// Styled components with internal tab scrolling
 const Container = styled.div`
   padding: 0;
   height: 100%;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 `;
 
 const Header = styled.div`
@@ -99,7 +101,35 @@ const Tab = styled.button<{ isActive: boolean }>`
   }
 `;
 
-const tabContentClasses = "mt-6";
+// Tab content with internal scrolling
+const TabContent = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: ${theme.spacing[6]};
+
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: ${theme.colors.neutral[800]};
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${theme.colors.neutral[600]};
+    border-radius: 4px;
+
+    &:hover {
+      background: ${theme.colors.neutral[500]};
+    }
+  }
+
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: ${theme.colors.neutral[600]} ${theme.colors.neutral[800]};
+`;
 
 
 
@@ -237,14 +267,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     }
   }, [activeTab, safeAddress, network, loadPendingTransactions, loadSafeInfo]);
 
-  // Auto-refresh pending transactions every 30 seconds
-  useEffect(() => {
-    if (activeTab === 'pending') {
-      const interval = setInterval(loadPendingTransactions, 30000);
-      return () => clearInterval(interval);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, safeAddress, network, loadPendingTransactions]);
+  // Auto-refresh removed - users can manually refresh using the "Refresh Pool" button
 
   const formatAmount = (amount: string): string => {
     try {
@@ -388,26 +411,12 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
             {/* Show decoded parameters if available */}
             {decodedTx?.details.decodedInputs && decodedTx.details.decodedInputs.length > 0 && (
-              <div className="text-gray-500 mt-1">
-                <span className="text-gray-400">Parameters:</span>
-                <div className="ml-2 mt-1 space-y-1">
-                  {decodedTx.details.decodedInputs.slice(0, 3).map((input, index) => (
-                    <div key={index} className="text-xs">
-                      <span className="text-gray-400">{input.name}:</span>{' '}
-                      <span className="text-gray-300">
-                        {typeof input.value === 'string' && input.value.length > 42
-                          ? `${input.value.slice(0, 20)}...${input.value.slice(-10)}`
-                          : String(input.value)
-                        }
-                      </span>
-                    </div>
-                  ))}
-                  {decodedTx.details.decodedInputs.length > 3 && (
-                    <div className="text-xs text-gray-500">
-                      ... and {decodedTx.details.decodedInputs.length - 3} more parameters
-                    </div>
-                  )}
-                </div>
+              <div className="mt-2">
+                <ParameterDisplay
+                  parameters={decodedTx.details.decodedInputs}
+                  network={network}
+                  compact={true}
+                />
               </div>
             )}
 
@@ -459,7 +468,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
       </TabsContainer>
 
       {/* Tab Content */}
-      <div className={tabContentClasses}>
+      <TabContent>
         {activeTab === 'pending' ? (
           // Pending & Queue tab - transactions from Safe TX pool smart contract
           <>
@@ -554,7 +563,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
             )}
           </>
         )}
-      </div>
+      </TabContent>
 
       {/* Pending Transaction Confirmation Modal */}
       {selectedPendingTx && (

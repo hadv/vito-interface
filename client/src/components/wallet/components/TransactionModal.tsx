@@ -17,6 +17,7 @@ import { TokenService } from '../../../services/TokenService';
 import { getRpcUrl } from '../../../contracts/abis';
 import AddressDisplay from './AddressDisplay';
 import AddressBookSelector from './AddressBookSelector';
+import ParameterDisplay from './ParameterDisplay';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -725,6 +726,17 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                     </DetailValue>
                   </DetailRow>
                 </>
+              )}
+
+              {/* Show decoded parameters if available */}
+              {decodedTransaction?.details?.decodedInputs && decodedTransaction.details.decodedInputs.length > 0 && (
+                <div style={{ marginBottom: '16px' }}>
+                  <ParameterDisplay
+                    parameters={decodedTransaction.details.decodedInputs}
+                    network={connectionState.network || 'ethereum'}
+                    compact={true}
+                  />
+                </div>
               )}
 
               {preSelectedAsset?.type === 'erc20' && (

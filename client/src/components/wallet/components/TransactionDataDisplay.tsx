@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { DecodedTransactionData } from '../../../utils/transactionDecoder';
+import ParameterDisplay from './ParameterDisplay';
 
 const Container = styled.div`
   margin-top: 8px;
@@ -91,13 +92,15 @@ export interface TransactionDataDisplayProps {
   decodedTransaction?: DecodedTransactionData | null;
   compact?: boolean;
   showCopyButton?: boolean;
+  network?: string;
 }
 
 const TransactionDataDisplay: React.FC<TransactionDataDisplayProps> = ({
   data,
   decodedTransaction,
   compact = false,
-  showCopyButton = true
+  showCopyButton = true,
+  network = 'ethereum'
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
@@ -143,9 +146,18 @@ const TransactionDataDisplay: React.FC<TransactionDataDisplayProps> = ({
       <FunctionDisplay>
         <FunctionLabel>Function:</FunctionLabel>
         <FunctionValue type={decodedTransaction?.type || 'UNKNOWN'}>
-          {getFunctionDisplay()}
+          {decodedTransaction?.description || getFunctionDisplay()}
         </FunctionValue>
       </FunctionDisplay>
+
+      {/* Parameters Display */}
+      {decodedTransaction?.details?.decodedInputs && decodedTransaction.details.decodedInputs.length > 0 && (
+        <ParameterDisplay
+          parameters={decodedTransaction.details.decodedInputs}
+          network={network}
+          compact={compact}
+        />
+      )}
 
       {/* Raw Data Display */}
       <RawDataContainer>
