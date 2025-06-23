@@ -20,7 +20,10 @@ export class WalletProviderFactory {
   }
 
   static getAvailableProviders(): WalletProvider[] {
-    return this.getAllProviders().filter(provider => provider.info.isAvailable);
+    const allProviders = this.getAllProviders();
+    const availableProviders = allProviders.filter(provider => provider.info.isAvailable);
+    console.log('🔍 Available wallet providers:', availableProviders.map(p => ({ name: p.info.name, available: p.info.isAvailable })));
+    return availableProviders;
   }
 
   static getProviderInfo(): WalletProviderInfo[] {

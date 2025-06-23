@@ -51,6 +51,7 @@ const Header: React.FC<HeaderProps> = ({
 
   // Handle connecting signer wallet - show wallet selection modal
   const handleConnectSigner = () => {
+    console.log('🔗 Opening wallet selection modal');
     setShowWalletSelection(true);
   };
 

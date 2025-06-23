@@ -141,6 +141,7 @@ const WalletSelectionModal: React.FC<WalletSelectionModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const availableProviders = WalletProviderFactory.getAvailableProviderInfo();
+  console.log('💼 WalletSelectionModal available providers:', availableProviders);
 
   const handleWalletSelect = async (providerType: WalletProviderType) => {
     setConnecting(providerType);
