@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { theme } from '../../../theme';
 import { safeWalletService } from '../../../services/SafeWalletService';
-import SafeManagementService from '../../../services/SafeManagementService';
 import AddressDisplay from './AddressDisplay';
 import Button from '../../ui/Button';
-import Input from '../../ui/Input';
+import AddSignerModal from './AddSignerModal';
+import RemoveSignerModal from './RemoveSignerModal';
+import UpdateThresholdModal from './UpdateThresholdModal';
 
 const Container = styled.div`
   max-width: 800px;
@@ -142,18 +143,6 @@ const ActionRow = styled.div`
   flex-wrap: wrap;
 `;
 
-const ActionGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${theme.spacing[2]};
-`;
-
-const ActionLabel = styled.label`
-  font-size: ${theme.typography.fontSize.sm};
-  font-weight: ${theme.typography.fontWeight.medium};
-  color: ${theme.colors.text.secondary};
-`;
-
 const SignerActions = styled.div`
   display: flex;
   align-items: center;
@@ -176,30 +165,6 @@ const SuccessMessage = styled.div`
   margin-top: ${theme.spacing[3]};
 `;
 
-const ThresholdInputGroup = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing[2]};
-  margin-top: ${theme.spacing[2]};
-`;
-
-const ThresholdLabel = styled.span`
-  font-size: ${theme.typography.fontSize.xs};
-  color: ${theme.colors.text.secondary};
-  white-space: nowrap;
-`;
-
-const ThresholdInput = styled(Input)`
-  width: 80px;
-  text-align: center;
-`;
-
-const RemoveOwnerSection = styled.div`
-  margin-top: ${theme.spacing[3]};
-  padding-top: ${theme.spacing[3]};
-  border-top: 1px solid ${theme.colors.neutral[700]};
-`;
-
 interface SafeInfo {
   address: string;
   owners: string[];
@@ -219,12 +184,11 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Management state
-  const [newOwnerAddress, setNewOwnerAddress] = useState('');
-  const [addOwnerThreshold, setAddOwnerThreshold] = useState(1);
-  const [removeOwnerThreshold, setRemoveOwnerThreshold] = useState(1);
-  const [newThreshold, setNewThreshold] = useState(1);
-  const [isCreatingTransaction, setIsCreatingTransaction] = useState(false);
+  // Modal state
+  const [showAddSignerModal, setShowAddSignerModal] = useState(false);
+  const [showRemoveSignerModal, setShowRemoveSignerModal] = useState(false);
+  const [showUpdateThresholdModal, setShowUpdateThresholdModal] = useState(false);
+  const [signerToRemove, setSignerToRemove] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -235,9 +199,6 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
 
         const info = await safeWalletService.getEnhancedSafeInfo();
         setSafeInfo(info);
-        setNewThreshold(info.threshold); // Initialize with current threshold
-        setAddOwnerThreshold(info.threshold + 1); // Default to current + 1 for adding owner
-        setRemoveOwnerThreshold(Math.max(1, info.threshold - 1)); // Default to current - 1 for removing owner
       } catch (err: any) {
         console.error('Error loading Safe info:', err);
         setError(err.message || 'Failed to load Safe information');
@@ -257,125 +218,23 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
     }
   }, [successMessage]);
 
-  const handleAddOwner = async () => {
-    if (!safeInfo || !newOwnerAddress) return;
-
-    try {
-      setIsCreatingTransaction(true);
-      setError(null);
-
-      // Validate address
-      if (!newOwnerAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
-        throw new Error('Invalid Ethereum address');
-      }
-
-      // Check if owner already exists
-      if (safeInfo.owners.some(owner => owner.toLowerCase() === newOwnerAddress.toLowerCase())) {
-        throw new Error('Address is already an owner');
-      }
-
-      // Create transaction
-      const txData = SafeManagementService.createAddOwnerTransaction(
-        safeInfo.address,
-        newOwnerAddress,
-        addOwnerThreshold,
-        safeInfo.nonce
-      );
-
-      // Create and propose transaction
-      await safeWalletService.createTransaction({
-        to: txData.to,
-        value: txData.value,
-        data: txData.data
-      });
-
-      setSuccessMessage(`Transaction created to add owner ${newOwnerAddress.slice(0, 6)}...${newOwnerAddress.slice(-4)} with threshold ${addOwnerThreshold}`);
-      setNewOwnerAddress('');
-    } catch (err: any) {
-      console.error('Error creating add owner transaction:', err);
-      setError(err.message || 'Failed to create add owner transaction');
-    } finally {
-      setIsCreatingTransaction(false);
-    }
+  const handleRemoveSignerClick = (ownerAddress: string) => {
+    setSignerToRemove(ownerAddress);
+    setShowRemoveSignerModal(true);
   };
 
-  const handleRemoveOwner = async (ownerToRemove: string) => {
-    if (!safeInfo) return;
-
-    try {
-      setIsCreatingTransaction(true);
-      setError(null);
-
-      // Check if removal is valid
-      if (!SafeManagementService.canRemoveOwner(safeInfo.owners.length, removeOwnerThreshold)) {
-        throw new Error(`Cannot remove owner: would leave ${safeInfo.owners.length - 1} owners but threshold is ${removeOwnerThreshold}`);
+  const handleModalSuccess = (message: string) => {
+    setSuccessMessage(message);
+    // Refresh Safe info after successful transaction
+    const loadSafeInfo = async () => {
+      try {
+        const info = await safeWalletService.getEnhancedSafeInfo();
+        setSafeInfo(info);
+      } catch (err) {
+        console.error('Error refreshing Safe info:', err);
       }
-
-      // Find previous owner
-      const prevOwner = SafeManagementService.findPrevOwner(safeInfo.owners, ownerToRemove);
-
-      // Create transaction
-      const txData = SafeManagementService.createRemoveOwnerTransaction(
-        safeInfo.address,
-        prevOwner,
-        ownerToRemove,
-        removeOwnerThreshold,
-        safeInfo.nonce
-      );
-
-      // Create and propose transaction
-      await safeWalletService.createTransaction({
-        to: txData.to,
-        value: txData.value,
-        data: txData.data
-      });
-
-      setSuccessMessage(`Transaction created to remove owner ${ownerToRemove.slice(0, 6)}...${ownerToRemove.slice(-4)} with threshold ${removeOwnerThreshold}`);
-    } catch (err: any) {
-      console.error('Error creating remove owner transaction:', err);
-      setError(err.message || 'Failed to create remove owner transaction');
-    } finally {
-      setIsCreatingTransaction(false);
-    }
-  };
-
-  const handleChangeThreshold = async () => {
-    if (!safeInfo) return;
-
-    try {
-      setIsCreatingTransaction(true);
-      setError(null);
-
-      // Validate threshold
-      if (!SafeManagementService.validateThreshold(newThreshold, safeInfo.owners.length)) {
-        throw new Error(`Invalid threshold: must be between 1 and ${safeInfo.owners.length}`);
-      }
-
-      if (newThreshold === safeInfo.threshold) {
-        throw new Error('New threshold is the same as current threshold');
-      }
-
-      // Create transaction
-      const txData = SafeManagementService.createChangeThresholdTransaction(
-        safeInfo.address,
-        newThreshold,
-        safeInfo.nonce
-      );
-
-      // Create and propose transaction
-      await safeWalletService.createTransaction({
-        to: txData.to,
-        value: txData.value,
-        data: txData.data
-      });
-
-      setSuccessMessage(`Transaction created to change threshold to ${newThreshold}`);
-    } catch (err: any) {
-      console.error('Error creating change threshold transaction:', err);
-      setError(err.message || 'Failed to create change threshold transaction');
-    } finally {
-      setIsCreatingTransaction(false);
-    }
+    };
+    loadSafeInfo();
   };
 
   if (isLoading) {
@@ -460,8 +319,8 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
                 <RemoveButton
                   variant="danger"
                   size="sm"
-                  onClick={() => handleRemoveOwner(owner)}
-                  disabled={isCreatingTransaction || safeInfo.owners.length <= 1}
+                  onClick={() => handleRemoveSignerClick(owner)}
+                  disabled={safeInfo.owners.length <= 1}
                 >
                   Remove
                 </RemoveButton>
@@ -471,60 +330,18 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
         </SignersList>
 
         <ManagementActions>
-          <ActionGroup>
-            <ActionLabel>Add New Signer</ActionLabel>
-            <ActionRow>
-              <Input
-                placeholder="0x... (Ethereum address)"
-                value={newOwnerAddress}
-                onChange={(e) => setNewOwnerAddress(e.target.value)}
-                disabled={isCreatingTransaction}
-                style={{ flex: 1, minWidth: '300px' }}
-              />
-              <Button
-                variant="primary"
-                onClick={handleAddOwner}
-                disabled={isCreatingTransaction || !newOwnerAddress}
-                loading={isCreatingTransaction}
-              >
-                Add Signer
-              </Button>
-            </ActionRow>
-            <ThresholdInputGroup>
-              <ThresholdLabel>New threshold after adding:</ThresholdLabel>
-              <ThresholdInput
-                type="number"
-                min={1}
-                max={safeInfo.owners.length + 1}
-                value={addOwnerThreshold}
-                onChange={(e) => setAddOwnerThreshold(parseInt(e.target.value) || 1)}
-                disabled={isCreatingTransaction}
-              />
-              <ThresholdLabel>out of {safeInfo.owners.length + 1} signers</ThresholdLabel>
-            </ThresholdInputGroup>
-          </ActionGroup>
-        </ManagementActions>
-
-        <RemoveOwnerSection>
-          <ActionGroup>
-            <ActionLabel>Remove Signer Settings</ActionLabel>
-            <ThresholdInputGroup>
-              <ThresholdLabel>New threshold after removing:</ThresholdLabel>
-              <ThresholdInput
-                type="number"
-                min={1}
-                max={Math.max(1, safeInfo.owners.length - 1)}
-                value={removeOwnerThreshold}
-                onChange={(e) => setRemoveOwnerThreshold(parseInt(e.target.value) || 1)}
-                disabled={isCreatingTransaction}
-              />
-              <ThresholdLabel>out of {safeInfo.owners.length - 1} signers</ThresholdLabel>
-            </ThresholdInputGroup>
-            <Description style={{ marginTop: theme.spacing[2] }}>
-              This threshold will be applied when removing any signer. Click the "Remove" button next to a signer to create the removal transaction.
+          <ActionRow>
+            <Button
+              variant="primary"
+              onClick={() => setShowAddSignerModal(true)}
+            >
+              Add Signer
+            </Button>
+            <Description style={{ margin: 0, flex: 1 }}>
+              Add a new signer to the Safe wallet and set the new threshold
             </Description>
-          </ActionGroup>
-        </RemoveOwnerSection>
+          </ActionRow>
+        </ManagementActions>
       </Section>
 
       {/* Threshold */}
@@ -546,31 +363,17 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
         </Description>
 
         <ManagementActions>
-          <ActionGroup>
-            <ActionLabel>Update Threshold</ActionLabel>
-            <ActionRow>
-              <Input
-                type="number"
-                min={1}
-                max={safeInfo.owners.length}
-                value={newThreshold}
-                onChange={(e) => setNewThreshold(parseInt(e.target.value) || 1)}
-                disabled={isCreatingTransaction}
-                style={{ width: '120px' }}
-              />
-              <span style={{ color: theme.colors.text.secondary, fontSize: theme.typography.fontSize.sm }}>
-                out of {safeInfo.owners.length} signers
-              </span>
-              <Button
-                variant="primary"
-                onClick={handleChangeThreshold}
-                disabled={isCreatingTransaction || newThreshold === safeInfo.threshold}
-                loading={isCreatingTransaction}
-              >
-                Update Threshold
-              </Button>
-            </ActionRow>
-          </ActionGroup>
+          <ActionRow>
+            <Button
+              variant="secondary"
+              onClick={() => setShowUpdateThresholdModal(true)}
+            >
+              Update Threshold
+            </Button>
+            <Description style={{ margin: 0, flex: 1 }}>
+              Change the number of required confirmations for transactions
+            </Description>
+          </ActionRow>
         </ManagementActions>
       </Section>
 
@@ -580,6 +383,36 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
           ✅ {successMessage}
         </SuccessMessage>
       )}
+
+      {/* Modal Components */}
+      <AddSignerModal
+        isOpen={showAddSignerModal}
+        onClose={() => setShowAddSignerModal(false)}
+        currentOwners={safeInfo.owners}
+        currentThreshold={safeInfo.threshold}
+        onSuccess={handleModalSuccess}
+      />
+
+      <RemoveSignerModal
+        isOpen={showRemoveSignerModal}
+        onClose={() => {
+          setShowRemoveSignerModal(false);
+          setSignerToRemove(null);
+        }}
+        signerToRemove={signerToRemove}
+        currentOwners={safeInfo.owners}
+        currentThreshold={safeInfo.threshold}
+        network={network}
+        onSuccess={handleModalSuccess}
+      />
+
+      <UpdateThresholdModal
+        isOpen={showUpdateThresholdModal}
+        onClose={() => setShowUpdateThresholdModal(false)}
+        currentThreshold={safeInfo.threshold}
+        ownerCount={safeInfo.owners.length}
+        onSuccess={handleModalSuccess}
+      />
     </Container>
   );
 };
