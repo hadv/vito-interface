@@ -335,7 +335,7 @@ const WalletPage: React.FC<WalletPageProps> = ({
       case 'addressbook':
         return <AddressBookPage network={currentNetwork} />;
       case 'settings':
-        return <SettingsPage />;
+        return <SettingsPage network={currentNetwork} />;
       default:
         return null;
     }

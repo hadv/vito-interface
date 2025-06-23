@@ -218,6 +218,13 @@ export const SAFE_ABI = [
   },
   {
     "type": "function",
+    "name": "VERSION",
+    "inputs": [],
+    "outputs": [{"name": "", "type": "string"}],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "execTransaction",
     "inputs": [
       {"name": "to", "type": "address"},

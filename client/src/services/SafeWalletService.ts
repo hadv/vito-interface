@@ -366,6 +366,68 @@ export class SafeWalletService {
   }
 
   /**
+   * Get enhanced Safe information including version and nonce
+   */
+  async getEnhancedSafeInfo() {
+    this.ensureInitialized();
+
+    if (!this.safeContract || !this.provider) {
+      throw new Error('Safe contract or provider not available');
+    }
+
+    try {
+      // First validate the Safe contract
+      await this.validateSafeContract();
+
+      // Get basic Safe info
+      const [owners, threshold, balance, network] = await Promise.all([
+        this.safeContract.getOwners(),
+        this.safeContract.getThreshold(),
+        this.provider.getBalance(this.config!.safeAddress),
+        this.provider.getNetwork()
+      ]);
+
+      // Get nonce
+      let nonce: number;
+      try {
+        nonce = await this.getNonce();
+      } catch (error) {
+        console.warn('Could not get Safe nonce:', error);
+        nonce = 0;
+      }
+
+      // Get version
+      let version: string | undefined;
+      try {
+        version = await this.safeContract.VERSION();
+        console.log(`✅ Safe version: ${version}`);
+      } catch (error) {
+        console.warn('Could not get Safe version:', error);
+        version = undefined;
+      }
+
+      return {
+        address: this.config!.safeAddress,
+        owners,
+        threshold: threshold.toNumber(),
+        balance: ethers.utils.formatEther(balance),
+        chainId: network.chainId,
+        nonce,
+        version
+      };
+    } catch (error: any) {
+      console.error('Error getting enhanced Safe info:', error);
+
+      // Provide more helpful error messages
+      if (error.message.includes('No contract found') || error.message.includes('Invalid Safe contract')) {
+        throw error;
+      }
+
+      throw new Error(`Failed to get enhanced Safe information: ${error.message || error}`);
+    }
+  }
+
+  /**
    * Step 1: Create domain type EIP-712 transaction
    */
   async createEIP712Transaction(transactionRequest: TransactionRequest): Promise<{
