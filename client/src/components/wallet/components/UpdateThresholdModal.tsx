@@ -48,8 +48,8 @@ const UpdateThresholdModal: React.FC<UpdateThresholdModalProps> = ({
   onSuccess
 }) => {
   const [newThreshold, setNewThreshold] = useState(currentThreshold);
-  const [customNonce, setCustomNonce] = useState(currentNonce + 1);
-  const recommendedNonce = currentNonce + 1;
+  const [customNonce, setCustomNonce] = useState(currentNonce);
+  const recommendedNonce = currentNonce;
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +57,7 @@ const UpdateThresholdModal: React.FC<UpdateThresholdModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setNewThreshold(currentThreshold);
-      setCustomNonce(currentNonce + 1);
+      setCustomNonce(currentNonce);
       setError(null);
     }
   }, [isOpen, currentThreshold, currentNonce]);
@@ -155,7 +155,7 @@ const UpdateThresholdModal: React.FC<UpdateThresholdModalProps> = ({
           <InputLabel>(Recommended: {recommendedNonce})</InputLabel>
         </InputGroup>
         <ModalDescription style={{ marginTop: '8px', marginBottom: 0, fontSize: '14px' }}>
-          Current Safe nonce: {currentNonce}. Recommended nonce is current + 1.
+          Current Safe nonce: {currentNonce}. Use current nonce for new transactions.
         </ModalDescription>
       </FormGroup>
 

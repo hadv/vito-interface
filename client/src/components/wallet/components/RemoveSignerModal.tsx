@@ -47,8 +47,8 @@ const RemoveSignerModal: React.FC<RemoveSignerModalProps> = ({
   onSuccess
 }) => {
   const [newThreshold, setNewThreshold] = useState(Math.max(1, currentThreshold - 1));
-  const [customNonce, setCustomNonce] = useState(currentNonce + 1);
-  const recommendedNonce = currentNonce + 1;
+  const [customNonce, setCustomNonce] = useState(currentNonce);
+  const recommendedNonce = currentNonce;
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,7 +56,7 @@ const RemoveSignerModal: React.FC<RemoveSignerModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setNewThreshold(Math.max(1, currentThreshold - 1));
-      setCustomNonce(currentNonce + 1);
+      setCustomNonce(currentNonce);
       setError(null);
     }
   }, [isOpen, currentThreshold, currentNonce]);
@@ -180,7 +180,7 @@ const RemoveSignerModal: React.FC<RemoveSignerModalProps> = ({
           <InputLabel>(Recommended: {recommendedNonce})</InputLabel>
         </InputGroup>
         <ModalDescription style={{ marginTop: '8px', marginBottom: 0, fontSize: '14px' }}>
-          Current Safe nonce: {currentNonce}. Recommended nonce is current + 1.
+          Current Safe nonce: {currentNonce}. Use current nonce for new transactions.
         </ModalDescription>
       </FormGroup>
 

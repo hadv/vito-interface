@@ -44,8 +44,8 @@ const AddSignerModal: React.FC<AddSignerModalProps> = ({
 }) => {
   const [newOwnerAddress, setNewOwnerAddress] = useState('');
   const [newThreshold, setNewThreshold] = useState(currentThreshold + 1);
-  const [customNonce, setCustomNonce] = useState(currentNonce + 1);
-  const recommendedNonce = currentNonce + 1;
+  const [customNonce, setCustomNonce] = useState(currentNonce);
+  const recommendedNonce = currentNonce;
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,7 +54,7 @@ const AddSignerModal: React.FC<AddSignerModalProps> = ({
     if (isOpen) {
       setNewOwnerAddress('');
       setNewThreshold(currentThreshold + 1);
-      setCustomNonce(currentNonce + 1);
+      setCustomNonce(currentNonce);
       setError(null);
     }
   }, [isOpen, currentThreshold, currentNonce]);
@@ -162,7 +162,7 @@ const AddSignerModal: React.FC<AddSignerModalProps> = ({
           <InputLabel>(Recommended: {recommendedNonce})</InputLabel>
         </InputGroup>
         <ModalDescription style={{ marginTop: '8px', marginBottom: 0, fontSize: '14px' }}>
-          Current Safe nonce: {currentNonce}. Recommended nonce is current + 1.
+          Current Safe nonce: {currentNonce}. Use current nonce for new transactions.
         </ModalDescription>
       </FormGroup>
 
