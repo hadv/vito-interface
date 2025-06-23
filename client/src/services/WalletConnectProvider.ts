@@ -1,7 +1,17 @@
 import { ethers } from 'ethers';
-import WalletConnectProvider from '@walletconnect/web3-provider';
-import QRCodeModal from '@walletconnect/qrcode-modal';
 import { BaseWalletProvider, WalletProviderType, WalletProviderInfo } from './WalletProvider';
+
+// Dynamic imports for WalletConnect dependencies to handle cases where they might not be installed
+let WalletConnectProvider: any = null;
+let QRCodeModal: any = null;
+
+// Try to import WalletConnect dependencies
+try {
+  WalletConnectProvider = require('@walletconnect/web3-provider').default;
+  QRCodeModal = require('@walletconnect/qrcode-modal').default;
+} catch (error) {
+  console.warn('WalletConnect dependencies not found. WalletConnect functionality will be disabled.');
+}
 
 export class WalletConnectProviderImpl extends BaseWalletProvider {
   readonly type = WalletProviderType.WALLETCONNECT;
@@ -10,12 +20,16 @@ export class WalletConnectProviderImpl extends BaseWalletProvider {
     name: 'WalletConnect',
     icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTI5LjUgMTZDMjkuNSAyMy40NTU4IDIzLjQ1NTggMjkuNSAxNiAyOS41QzguNTQ0MTYgMjkuNSAyLjUgMjMuNDU1OCAyLjUgMTZDMi41IDguNTQ0MTYgOC41NDQxNiAyLjUgMTYgMi41QzIzLjQ1NTggMi41IDI5LjUgOC41NDQxNiAyOS41IDE2WiIgZmlsbD0iIzM5ODlGRiIgc3Ryb2tlPSIjMzk4OUZGIi8+CjxwYXRoIGQ9Ik0xMC41IDEzLjVDMTMuNSAxMC41IDE4LjUgMTAuNSAyMS41IDEzLjVMMjIgMTRMMjAuNSAxNS41TDIwIDE1QzE4IDE0IDE0IDE0IDEyIDE1TDExLjUgMTUuNUwxMCAxNEwxMC41IDEzLjVaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMTMgMTguNUMxNC41IDE3IDE3LjUgMTcgMTkgMTguNUwxOS41IDE5TDE4IDE5LjVMMTcuNSAxOUMxNi41IDE4LjUgMTUuNSAxOC41IDE0LjUgMTlMMTQgMTkuNUwxMi41IDE5TDEzIDE4LjVaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K',
     description: 'Connect using WalletConnect protocol',
-    isAvailable: true // WalletConnect is always available
+    isAvailable: WalletConnectProvider !== null && QRCodeModal !== null
   };
 
   private walletConnectProvider: WalletConnectProvider | null = null;
 
   async connect(): Promise<void> {
+    if (!WalletConnectProvider || !QRCodeModal) {
+      throw new Error('WalletConnect dependencies not installed. Please install @walletconnect/web3-provider and @walletconnect/qrcode-modal packages.');
+    }
+
     try {
       // Create WalletConnect provider
       this.walletConnectProvider = new WalletConnectProvider({
