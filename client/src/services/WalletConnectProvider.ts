@@ -23,7 +23,7 @@ export class WalletConnectProviderImpl extends BaseWalletProvider {
     isAvailable: WalletConnectProvider !== null && QRCodeModal !== null
   };
 
-  private walletConnectProvider: WalletConnectProvider | null = null;
+  private walletConnectProvider: any = null;
 
   async connect(): Promise<void> {
     if (!WalletConnectProvider || !QRCodeModal) {
@@ -143,7 +143,7 @@ export class WalletConnectProviderImpl extends BaseWalletProvider {
   }
 
   // WalletConnect specific methods
-  getWalletConnectProvider(): WalletConnectProvider | null {
+  getWalletConnectProvider(): any {
     return this.walletConnectProvider;
   }
 
