@@ -2,7 +2,10 @@ import { ethers } from 'ethers';
 
 export enum WalletProviderType {
   METAMASK = 'metamask',
-  WALLETCONNECT = 'walletconnect'
+  WALLETCONNECT = 'walletconnect',
+  COINBASE_WALLET = 'coinbase_wallet',
+  RAINBOW = 'rainbow',
+  TRUST_WALLET = 'trust_wallet'
 }
 
 export interface WalletProviderInfo {

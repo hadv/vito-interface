@@ -12,7 +12,7 @@ export class MetaMaskProvider extends BaseWalletProvider {
   readonly info: WalletProviderInfo = {
     type: WalletProviderType.METAMASK,
     name: 'MetaMask',
-    icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTI5LjUgMTZDMjkuNSAyMy40NTU4IDIzLjQ1NTggMjkuNSAxNiAyOS41QzguNTQ0MTYgMjkuNSAyLjUgMjMuNDU1OCAyLjUgMTZDMi41IDguNTQ0MTYgOC41NDQxNiAyLjUgMTYgMi41QzIzLjQ1NTggMi41IDI5LjUgOC41NDQxNiAyOS41IDE2WiIgZmlsbD0iI0Y2ODUxQiIgc3Ryb2tlPSIjRjY4NTFCIi8+CjxwYXRoIGQ9Ik0yNi4yNSAxMi4yNUwyMi4yNSA5LjI1TDE5LjI1IDEyLjI1TDE2IDEwLjc1TDEyLjc1IDEyLjI1TDkuNzUgOS4yNUw1Ljc1IDEyLjI1TDkuNzUgMTUuMjVMMTIuNzUgMTMuNzVMMTYgMTUuMjVMMTkuMjUgMTMuNzVMMjIuMjUgMTUuMjVMMjYuMjUgMTIuMjVaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMjIuMjUgMTUuMjVMMTkuMjUgMTguMjVMMTYgMTYuNzVMMTIuNzUgMTguMjVMOS43NSAxNS4yNUwxMi43NSAyMS4yNUwxNiAyMi43NUwxOS4yNSAyMS4yNUwyMi4yNSAxNS4yNVoiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=',
+    icon: 'metamask',
     description: 'Connect using MetaMask browser extension',
     isAvailable: typeof window !== 'undefined' && typeof window.ethereum !== 'undefined'
   };

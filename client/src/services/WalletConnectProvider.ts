@@ -10,7 +10,7 @@ export class WalletConnectProviderImpl extends BaseWalletProvider {
   readonly info: WalletProviderInfo = {
     type: WalletProviderType.WALLETCONNECT,
     name: 'WalletConnect',
-    icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTI5LjUgMTZDMjkuNSAyMy40NTU4IDIzLjQ1NTggMjkuNSAxNiAyOS41QzguNTQ0MTYgMjkuNSAyLjUgMjMuNDU1OCAyLjUgMTZDMi41IDguNTQ0MTYgOC41NDQxNiAyLjUgMTYgMi41QzIzLjQ1NTggMi41IDI5LjUgOC41NDQxNiAyOS41IDE2WiIgZmlsbD0iIzM5ODlGRiIgc3Ryb2tlPSIjMzk4OUZGIi8+CjxwYXRoIGQ9Ik0xMC41IDEzLjVDMTMuNSAxMC41IDE4LjUgMTAuNSAyMS41IDEzLjVMMjIgMTRMMjAuNSAxNS41TDIwIDE1QzE4IDE0IDE0IDE0IDEyIDE1TDExLjUgMTUuNUwxMCAxNEwxMC41IDEzLjVaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMTMgMTguNUMxNC41IDE3IDE3LjUgMTcgMTkgMTguNUwxOS41IDE5TDE4IDE5LjVMMTcuNSAxOUMxNi41IDE4LjUgMTUuNSAxOC41IDE0LjUgMTlMMTQgMTkuNUwxMi41IDE5TDEzIDE4LjVaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K',
+    icon: 'walletconnect',
     description: 'Connect using WalletConnect protocol',
     isAvailable: true // WalletConnect is available when imported
   };

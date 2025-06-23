@@ -1,6 +1,9 @@
 import { WalletProvider, WalletProviderType, WalletProviderInfo } from './WalletProvider';
 import { MetaMaskProvider } from './MetaMaskProvider';
 import { WalletConnectProviderImpl } from './WalletConnectProvider';
+import { CoinbaseWalletProvider } from './CoinbaseWalletProvider';
+import { RainbowProvider } from './RainbowProvider';
+import { TrustWalletProvider } from './TrustWalletProvider';
 
 export class WalletProviderFactory {
   private static providers: Map<WalletProviderType, WalletProvider> = new Map();
@@ -15,7 +18,10 @@ export class WalletProviderFactory {
   static getAllProviders(): WalletProvider[] {
     return [
       this.getProvider(WalletProviderType.METAMASK),
-      this.getProvider(WalletProviderType.WALLETCONNECT)
+      this.getProvider(WalletProviderType.WALLETCONNECT),
+      this.getProvider(WalletProviderType.COINBASE_WALLET),
+      this.getProvider(WalletProviderType.RAINBOW),
+      this.getProvider(WalletProviderType.TRUST_WALLET)
     ];
   }
 
@@ -40,6 +46,12 @@ export class WalletProviderFactory {
         return new MetaMaskProvider();
       case WalletProviderType.WALLETCONNECT:
         return new WalletConnectProviderImpl();
+      case WalletProviderType.COINBASE_WALLET:
+        return new CoinbaseWalletProvider();
+      case WalletProviderType.RAINBOW:
+        return new RainbowProvider();
+      case WalletProviderType.TRUST_WALLET:
+        return new TrustWalletProvider();
       default:
         throw new Error(`Unsupported wallet provider type: ${type}`);
     }
