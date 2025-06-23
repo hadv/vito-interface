@@ -1,4 +1,5 @@
-const { override, addWebpackAlias, addWebpackResolve } = require('customize-cra');
+const { override, addWebpackAlias, addWebpackResolve, addWebpackPlugin } = require('customize-cra');
+const webpack = require('webpack');
 const path = require('path');
 
 module.exports = override(
@@ -29,5 +30,11 @@ module.exports = override(
       "net": false,
       "tls": false
     }
-  })
+  }),
+  addWebpackPlugin(
+    new webpack.ProvidePlugin({
+      Buffer: ['buffer', 'Buffer'],
+      process: 'process/browser',
+    })
+  )
 );
