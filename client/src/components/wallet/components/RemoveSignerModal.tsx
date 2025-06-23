@@ -171,9 +171,9 @@ const RemoveSignerModal: React.FC<RemoveSignerModalProps> = ({
         <InputGroup>
           <StyledInput
             type="number"
-            min={0}
+            min={currentNonce}
             value={customNonce}
-            onChange={(e) => setCustomNonce(parseInt(e.target.value) || 0)}
+            onChange={(e) => setCustomNonce(parseInt(e.target.value) || currentNonce)}
             disabled={isCreating || isLastOwner}
             style={{ width: '120px', textAlign: 'center' }}
           />

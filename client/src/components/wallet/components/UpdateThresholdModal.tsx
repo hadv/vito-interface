@@ -146,9 +146,9 @@ const UpdateThresholdModal: React.FC<UpdateThresholdModalProps> = ({
         <InputGroup>
           <StyledInput
             type="number"
-            min={0}
+            min={currentNonce}
             value={customNonce}
-            onChange={(e) => setCustomNonce(parseInt(e.target.value) || 0)}
+            onChange={(e) => setCustomNonce(parseInt(e.target.value) || currentNonce)}
             disabled={isCreating}
             style={{ width: '120px', textAlign: 'center' }}
           />
