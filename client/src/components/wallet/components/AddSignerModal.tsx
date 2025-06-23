@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { theme } from '../../../theme';
 import { safeWalletService } from '../../../services/SafeWalletService';
 import SafeManagementService from '../../../services/SafeManagementService';
-import { SafeTxPoolService } from '../../../services/SafeTxPoolService';
+
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
 import Modal from '../../ui/Modal';
@@ -97,54 +97,20 @@ const AddSignerModal: React.FC<AddSignerModalProps> = ({
 }) => {
   const [newOwnerAddress, setNewOwnerAddress] = useState('');
   const [newThreshold, setNewThreshold] = useState(currentThreshold + 1);
-  const [customNonce, setCustomNonce] = useState(currentNonce);
-  const [recommendedNonce, setRecommendedNonce] = useState(currentNonce);
+  const [customNonce, setCustomNonce] = useState(currentNonce + 1);
+  const recommendedNonce = currentNonce + 1;
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset form when modal opens and calculate recommended nonce
+  // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
       setNewOwnerAddress('');
       setNewThreshold(currentThreshold + 1);
+      setCustomNonce(currentNonce + 1);
       setError(null);
-      calculateRecommendedNonce();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, currentThreshold, currentNonce]);
-
-  const calculateRecommendedNonce = async () => {
-    try {
-      // Initialize SafeTxPoolService
-      const safeTxPoolService = new SafeTxPoolService(network);
-
-      if (!safeTxPoolService.isConfigured()) {
-        setRecommendedNonce(currentNonce);
-        setCustomNonce(currentNonce);
-        return;
-      }
-
-      // Get pending transactions
-      const pending = await safeTxPoolService.getPendingTransactions(safeAddress);
-
-      // Filter valid pending transactions (nonce >= currentNonce)
-      const validPending = pending.filter(tx => tx.nonce >= currentNonce);
-
-      // Extract nonces and find maximum
-      const pendingNonces = validPending.map(tx => tx.nonce);
-      const maxPending = pendingNonces.length > 0 ? Math.max(...pendingNonces) : currentNonce - 1;
-
-      // Calculate recommended nonce: max(currentNonce, maxPendingNonce) + 1
-      const recommended = Math.max(currentNonce, maxPending) + 1;
-
-      setRecommendedNonce(recommended);
-      setCustomNonce(recommended);
-    } catch (err) {
-      console.warn('Error calculating recommended nonce:', err);
-      setRecommendedNonce(currentNonce);
-      setCustomNonce(currentNonce);
-    }
-  };
 
   const handleSubmit = async () => {
     if (!newOwnerAddress) return;
@@ -251,7 +217,7 @@ const AddSignerModal: React.FC<AddSignerModalProps> = ({
             </ThresholdLabel>
           </ThresholdGroup>
           <Description style={{ marginTop: theme.spacing[2], marginBottom: 0 }}>
-            Current Safe nonce: {currentNonce}. Use recommended nonce to avoid conflicts with pending transactions.
+            Current Safe nonce: {currentNonce}. Recommended nonce is current + 1.
           </Description>
         </FormGroup>
 

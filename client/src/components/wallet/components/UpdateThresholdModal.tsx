@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { theme } from '../../../theme';
 import { safeWalletService } from '../../../services/SafeWalletService';
 import SafeManagementService from '../../../services/SafeManagementService';
-import { SafeTxPoolService } from '../../../services/SafeTxPoolService';
+
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
 import Modal from '../../ui/Modal';
@@ -124,6 +124,7 @@ interface UpdateThresholdModalProps {
   onClose: () => void;
   currentThreshold: number;
   ownerCount: number;
+  currentNonce: number;
   network: string;
   safeAddress: string;
   onSuccess: (message: string) => void;
@@ -134,68 +135,25 @@ const UpdateThresholdModal: React.FC<UpdateThresholdModalProps> = ({
   onClose,
   currentThreshold,
   ownerCount,
+  currentNonce,
   network,
   safeAddress,
   onSuccess
 }) => {
   const [newThreshold, setNewThreshold] = useState(currentThreshold);
-  const [customNonce, setCustomNonce] = useState(0);
-  const [recommendedNonce, setRecommendedNonce] = useState(0);
+  const [customNonce, setCustomNonce] = useState(currentNonce + 1);
+  const recommendedNonce = currentNonce + 1;
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset form when modal opens and calculate recommended nonce
+  // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
       setNewThreshold(currentThreshold);
+      setCustomNonce(currentNonce + 1);
       setError(null);
-      calculateRecommendedNonce();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, currentThreshold]);
-
-  const calculateRecommendedNonce = async () => {
-    try {
-      // Get current Safe nonce
-      const safeInfo = await safeWalletService.getEnhancedSafeInfo();
-      const currentNonce = safeInfo.nonce;
-
-      // Initialize SafeTxPoolService
-      const safeTxPoolService = new SafeTxPoolService(network);
-
-      if (!safeTxPoolService.isConfigured()) {
-        setRecommendedNonce(currentNonce);
-        setCustomNonce(currentNonce);
-        return;
-      }
-
-      // Get pending transactions
-      const pending = await safeTxPoolService.getPendingTransactions(safeAddress);
-
-      // Filter valid pending transactions (nonce >= currentNonce)
-      const validPending = pending.filter(tx => tx.nonce >= currentNonce);
-
-      // Extract nonces and find maximum
-      const pendingNonces = validPending.map(tx => tx.nonce);
-      const maxPending = pendingNonces.length > 0 ? Math.max(...pendingNonces) : currentNonce - 1;
-
-      // Calculate recommended nonce: max(currentNonce, maxPendingNonce) + 1
-      const recommended = Math.max(currentNonce, maxPending) + 1;
-
-      setRecommendedNonce(recommended);
-      setCustomNonce(recommended);
-    } catch (err) {
-      console.warn('Error calculating recommended nonce:', err);
-      // Fallback to current nonce
-      try {
-        const safeInfo = await safeWalletService.getEnhancedSafeInfo();
-        setRecommendedNonce(safeInfo.nonce);
-        setCustomNonce(safeInfo.nonce);
-      } catch (fallbackErr) {
-        console.error('Error getting Safe nonce:', fallbackErr);
-      }
-    }
-  };
+  }, [isOpen, currentThreshold, currentNonce]);
 
   const handleSubmit = async () => {
     try {
@@ -211,7 +169,7 @@ const UpdateThresholdModal: React.FC<UpdateThresholdModalProps> = ({
         throw new Error('New threshold is the same as current threshold');
       }
 
-      // Get Safe info for nonce
+      // Get Safe info
       const safeInfo = await safeWalletService.getEnhancedSafeInfo();
 
       // Create transaction with custom nonce
@@ -292,7 +250,7 @@ const UpdateThresholdModal: React.FC<UpdateThresholdModalProps> = ({
             </ThresholdLabel>
           </ThresholdGroup>
           <Description style={{ marginTop: theme.spacing[2], marginBottom: 0 }}>
-            Use recommended nonce to avoid conflicts with pending transactions.
+            Current Safe nonce: {currentNonce}. Recommended nonce is current + 1.
           </Description>
         </FormGroup>
 

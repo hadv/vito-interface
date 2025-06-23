@@ -405,6 +405,7 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
         signerToRemove={signerToRemove}
         currentOwners={safeInfo.owners}
         currentThreshold={safeInfo.threshold}
+        currentNonce={safeInfo.nonce}
         network={network}
         onSuccess={handleModalSuccess}
       />
@@ -414,6 +415,7 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
         onClose={() => setShowUpdateThresholdModal(false)}
         currentThreshold={safeInfo.threshold}
         ownerCount={safeInfo.owners.length}
+        currentNonce={safeInfo.nonce}
         network={network}
         safeAddress={safeInfo.address}
         onSuccess={handleModalSuccess}
