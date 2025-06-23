@@ -5,24 +5,9 @@ import NetworkConfigStatus from '../components/NetworkConfigStatus';
 import SafeSetupTab from '../components/SafeSetupTab';
 
 const Container = styled.div`
-  display: flex;
+  padding: 0;
   height: 100%;
-  overflow: hidden;
-`;
-
-const LeftSidebar = styled.div`
-  width: 280px;
-  background: ${theme.colors.background.secondary};
-  border-right: 1px solid ${theme.colors.border.primary};
-  display: flex;
-  flex-direction: column;
   overflow-y: auto;
-`;
-
-const MainContent = styled.div`
-  flex: 1;
-  overflow-y: auto;
-  padding: ${theme.spacing[6]};
 `;
 
 const Header = styled.div`
@@ -34,18 +19,6 @@ const Heading = styled.h1`
   font-weight: ${theme.typography.fontWeight.bold};
   margin-bottom: ${theme.spacing[4]};
   color: ${theme.colors.primary[400]};
-`;
-
-const SidebarHeader = styled.div`
-  padding: ${theme.spacing[6]} ${theme.spacing[4]} ${theme.spacing[4]};
-  border-bottom: 1px solid ${theme.colors.border.primary};
-`;
-
-const SidebarTitle = styled.h2`
-  font-size: ${theme.typography.fontSize.lg};
-  font-weight: ${theme.typography.fontWeight.semibold};
-  color: ${theme.colors.text.primary};
-  margin: 0;
 `;
 
 const Section = styled.div`
@@ -66,66 +39,98 @@ const SectionDescription = styled.p`
   line-height: 1.5;
 `;
 
-// Left sidebar navigation
+// Horizontal tabs (matching TransactionsPage style)
 const TabsContainer = styled.div`
   display: flex;
-  flex-direction: column;
-  padding: ${theme.spacing[2]} 0;
+  border-bottom: 1px solid ${theme.colors.neutral[700]};
+  margin-bottom: ${theme.spacing[6]};
+  position: relative;
 `;
 
 const Tab = styled.button<{ isActive: boolean }>`
-  display: flex;
-  align-items: center;
-  width: 100%;
-  padding: ${theme.spacing[3]} ${theme.spacing[4]};
+  padding: ${theme.spacing[4]} ${theme.spacing[6]};
   font-size: ${theme.typography.fontSize.base};
-  font-weight: ${props => props.isActive ? '600' : '500'};
+  font-weight: ${props => props.isActive ? '700' : '600'};
   font-family: ${theme.typography.fontFamily.sans.join(', ')};
-  text-align: left;
+  letter-spacing: 0.025em;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
-  background: ${props => props.isActive
-    ? theme.colors.primary[400] + '20'
-    : 'transparent'
-  };
+  background: transparent;
+  position: relative;
   color: ${props => props.isActive
     ? theme.colors.primary[400]
-    : theme.colors.text.secondary
+    : theme.colors.text.tertiary
   };
-  border-left: 3px solid ${props => props.isActive
-    ? theme.colors.primary[400]
-    : 'transparent'
-  };
+
+  /* Professional underline animation */
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, ${theme.colors.primary[400]}, ${theme.colors.primary[300]});
+    transform: scaleX(${props => props.isActive ? '1' : '0'});
+    transform-origin: center;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 1px;
+  }
 
   /* Hover effects */
   &:hover {
-    background: ${props => props.isActive
-      ? theme.colors.primary[400] + '30'
-      : theme.colors.neutral[800]
-    };
     color: ${props => props.isActive
       ? theme.colors.primary[300]
-      : theme.colors.text.primary
+      : theme.colors.text.secondary
     };
+
+    &::after {
+      transform: scaleX(${props => props.isActive ? '1' : '0.5'});
+      opacity: ${props => props.isActive ? '1' : '0.6'};
+    }
   }
 
   /* Focus states for accessibility */
   &:focus {
     outline: none;
-    box-shadow: inset 0 0 0 2px ${theme.colors.primary[400]}40;
+    box-shadow: 0 0 0 2px ${theme.colors.primary[400]}40;
+    border-radius: ${theme.borderRadius.sm};
   }
 
   /* Active press state */
   &:active {
-    transform: translateX(2px);
+    transform: translateY(1px);
   }
 `;
 
 const TabContent = styled.div`
-  max-width: 800px;
-  margin: 0 auto;
-  width: 100%;
+  height: calc(100vh - 200px); /* Adjust based on header height */
+  overflow-y: auto;
+  padding-right: ${theme.spacing[2]};
+
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: ${theme.colors.neutral[800]};
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${theme.colors.neutral[600]};
+    border-radius: 4px;
+
+    &:hover {
+      background: ${theme.colors.neutral[500]};
+    }
+  }
+
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: ${theme.colors.neutral[600]} ${theme.colors.neutral[800]};
 `;
 
 interface SettingsPageProps {
@@ -141,27 +146,31 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => 
         return <SafeSetupTab network={network} />;
       case 'network':
         return (
-          <Section>
-            <SectionTitle>Network Configuration</SectionTitle>
-            <SectionDescription>
-              View the configuration status of Safe TX Pool contracts across different networks.
-              Properly configured networks enable full transaction functionality including
-              transaction proposals and multi-signature workflows.
-            </SectionDescription>
-            <NetworkConfigStatus />
-          </Section>
+          <div style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: theme.spacing[8] }}>
+            <Section>
+              <SectionTitle>Network Configuration</SectionTitle>
+              <SectionDescription>
+                View the configuration status of Safe TX Pool contracts across different networks.
+                Properly configured networks enable full transaction functionality including
+                transaction proposals and multi-signature workflows.
+              </SectionDescription>
+              <NetworkConfigStatus />
+            </Section>
+          </div>
         );
       case 'about':
         return (
-          <Section>
-            <SectionTitle>About</SectionTitle>
-            <SectionDescription>
-              Vito Safe Wallet Interface provides a modern, user-friendly interface for
-              interacting with Safe (formerly Gnosis Safe) multi-signature wallets.
-              Features include read-only wallet viewing, transaction creation, and
-              multi-network support.
-            </SectionDescription>
-          </Section>
+          <div style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: theme.spacing[8] }}>
+            <Section>
+              <SectionTitle>About</SectionTitle>
+              <SectionDescription>
+                Vito Safe Wallet Interface provides a modern, user-friendly interface for
+                interacting with Safe (formerly Gnosis Safe) multi-signature wallets.
+                Features include read-only wallet viewing, transaction creation, and
+                multi-network support.
+              </SectionDescription>
+            </Section>
+          </div>
         );
       default:
         return null;
@@ -170,48 +179,36 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => 
 
   return (
     <Container>
-      {/* Left Sidebar with Tabs */}
-      <LeftSidebar>
-        <SidebarHeader>
-          <SidebarTitle>Settings</SidebarTitle>
-        </SidebarHeader>
+      <Header>
+        <Heading>Settings</Heading>
+      </Header>
 
-        <TabsContainer>
-          <Tab
-            isActive={activeTab === 'setup'}
-            onClick={() => setActiveTab('setup')}
-          >
-            Setup
-          </Tab>
-          <Tab
-            isActive={activeTab === 'network'}
-            onClick={() => setActiveTab('network')}
-          >
-            Network
-          </Tab>
-          <Tab
-            isActive={activeTab === 'about'}
-            onClick={() => setActiveTab('about')}
-          >
-            About
-          </Tab>
-        </TabsContainer>
-      </LeftSidebar>
+      {/* Tab Navigation */}
+      <TabsContainer>
+        <Tab
+          isActive={activeTab === 'setup'}
+          onClick={() => setActiveTab('setup')}
+        >
+          Setup
+        </Tab>
+        <Tab
+          isActive={activeTab === 'network'}
+          onClick={() => setActiveTab('network')}
+        >
+          Network
+        </Tab>
+        <Tab
+          isActive={activeTab === 'about'}
+          onClick={() => setActiveTab('about')}
+        >
+          About
+        </Tab>
+      </TabsContainer>
 
-      {/* Main Content */}
-      <MainContent>
-        <Header>
-          <Heading>
-            {activeTab === 'setup' && 'Safe Wallet Setup'}
-            {activeTab === 'network' && 'Network Configuration'}
-            {activeTab === 'about' && 'About Vito Wallet'}
-          </Heading>
-        </Header>
-
-        <TabContent>
-          {renderTabContent()}
-        </TabContent>
-      </MainContent>
+      {/* Tab Content with individual scrolling */}
+      <TabContent>
+        {renderTabContent()}
+      </TabContent>
     </Container>
   );
 };

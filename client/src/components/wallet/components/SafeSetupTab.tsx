@@ -10,6 +10,7 @@ import Input from '../../ui/Input';
 const Container = styled.div`
   max-width: 800px;
   margin: 0 auto;
+  padding-bottom: ${theme.spacing[8]}; /* Add bottom padding for better scrolling */
 `;
 
 const Section = styled.div`
