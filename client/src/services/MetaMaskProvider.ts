@@ -34,7 +34,32 @@ export class MetaMaskProvider extends BaseWalletProvider {
       console.log('✅ MetaMask connected successfully');
     } catch (error: any) {
       console.error('❌ MetaMask connection failed:', error);
-      throw new Error(`Failed to connect to MetaMask: ${error.message}`);
+
+      // Clean up on failure
+      this.provider = null;
+      this.signer = null;
+      this.connected = false;
+
+      // Handle specific MetaMask error codes
+      if (error.code === 4001) {
+        // User rejected the request
+        throw new Error('Connection cancelled by user');
+      } else if (error.code === -32002) {
+        // Request already pending
+        throw new Error('MetaMask is already processing a request. Please check MetaMask and try again.');
+      } else if (error.code === -32603) {
+        // Internal error
+        throw new Error('MetaMask internal error. Please try again.');
+      } else if (error.message?.includes('User denied')) {
+        // Alternative user rejection message
+        throw new Error('Connection cancelled by user');
+      } else if (error.message?.includes('Already processing')) {
+        // Already processing
+        throw new Error('MetaMask is busy. Please wait and try again.');
+      } else {
+        // Generic error
+        throw new Error(`Failed to connect to MetaMask: ${error.message || 'Unknown error'}`);
+      }
     }
   }
 

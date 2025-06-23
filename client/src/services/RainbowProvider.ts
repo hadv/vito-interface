@@ -48,7 +48,20 @@ export class RainbowProvider extends BaseWalletProvider {
       console.log('✅ Rainbow Wallet connected successfully');
     } catch (error: any) {
       console.error('❌ Rainbow Wallet connection failed:', error);
-      throw new Error(`Failed to connect to Rainbow Wallet: ${error.message}`);
+
+      // Clean up on failure
+      this.provider = null;
+      this.signer = null;
+      this.connected = false;
+
+      // Handle specific error codes
+      if (error.code === 4001 || error.message?.includes('User denied') || error.message?.includes('User rejected')) {
+        throw new Error('Connection cancelled by user');
+      } else if (error.code === -32002) {
+        throw new Error('Rainbow Wallet is already processing a request. Please check your wallet and try again.');
+      } else {
+        throw new Error(`Failed to connect to Rainbow Wallet: ${error.message || 'Unknown error'}`);
+      }
     }
   }
 
