@@ -16,11 +16,12 @@ import { getRpcUrl } from '../../../contracts/abis';
 import styled from 'styled-components';
 import { theme } from '../../../theme';
 
-// Styled components to match Assets page structure
+// Styled components with internal tab scrolling
 const Container = styled.div`
   padding: 0;
   height: 100%;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 `;
 
 const Header = styled.div`
@@ -99,7 +100,35 @@ const Tab = styled.button<{ isActive: boolean }>`
   }
 `;
 
-const tabContentClasses = "mt-6";
+// Tab content with internal scrolling
+const TabContent = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: ${theme.spacing[6]};
+
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: ${theme.colors.neutral[800]};
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${theme.colors.neutral[600]};
+    border-radius: 4px;
+
+    &:hover {
+      background: ${theme.colors.neutral[500]};
+    }
+  }
+
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: ${theme.colors.neutral[600]} ${theme.colors.neutral[800]};
+`;
 
 
 
@@ -459,7 +488,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
       </TabsContainer>
 
       {/* Tab Content */}
-      <div className={tabContentClasses}>
+      <TabContent>
         {activeTab === 'pending' ? (
           // Pending & Queue tab - transactions from Safe TX pool smart contract
           <>
@@ -554,7 +583,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
             )}
           </>
         )}
-      </div>
+      </TabContent>
 
       {/* Pending Transaction Confirmation Modal */}
       {selectedPendingTx && (
