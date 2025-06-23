@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { theme } from '../../theme';
 import { WalletProviderType } from '../../services/WalletProvider';
 import { WalletProviderFactory } from '../../services/WalletProviderFactory';
@@ -90,7 +90,7 @@ const ModalContent = styled.div`
   box-shadow:
     0 25px 50px -12px rgba(0, 0, 0, 0.25),
     0 0 0 1px rgba(255, 255, 255, 0.05);
-  animation: ${fadeIn} 0.2s ease-out;
+  animation: ${css`${fadeIn} 0.2s ease-out`};
   position: relative;
   margin: auto;
 
@@ -182,7 +182,7 @@ const WalletList = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing[3]};
-  animation: ${slideUp} 0.3s ease-out;
+  animation: ${css`${slideUp} 0.3s ease-out`};
 `;
 
 const WalletOption = styled.button<{ disabled?: boolean; connecting?: boolean }>`
@@ -231,7 +231,7 @@ const WalletOption = styled.button<{ disabled?: boolean; connecting?: boolean }>
     transform: translateY(-1px);
   }
 
-  ${props => props.connecting && `
+  ${props => props.connecting && css`
     &::after {
       content: '';
       position: absolute;
@@ -334,7 +334,7 @@ const LoadingSpinner = styled.div`
   border: 2px solid ${theme.colors.border.primary};
   border-top: 2px solid ${theme.colors.primary[500]};
   border-radius: 50%;
-  animation: ${spin} 1s linear infinite;
+  animation: ${css`${spin} 1s linear infinite`};
   flex-shrink: 0;
 `;
 
@@ -350,7 +350,7 @@ const ErrorMessage = styled.div`
   display: flex;
   align-items: flex-start;
   gap: ${theme.spacing[3]};
-  animation: ${slideUp} 0.3s ease-out;
+  animation: ${css`${slideUp} 0.3s ease-out`};
 
   &::before {
     content: '⚠️';
