@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { theme } from '../../theme';
-import { WalletProviderType, WalletProviderInfo } from '../../services/WalletProvider';
+import { WalletProviderType } from '../../services/WalletProvider';
 import { WalletProviderFactory } from '../../services/WalletProviderFactory';
 
 interface WalletSelectionModalProps {

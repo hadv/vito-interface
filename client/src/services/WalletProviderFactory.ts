@@ -43,19 +43,21 @@ export class WalletProviderFactory {
   }
 
   static async disconnectAll(): Promise<void> {
-    const promises = Array.from(this.providers.values()).map(provider => {
+    const providers = Array.from(this.providers.values());
+    const promises = providers.map(provider => {
       if (provider.isConnected()) {
         return provider.disconnect();
       }
       return Promise.resolve();
     });
-    
+
     await Promise.all(promises);
     this.providers.clear();
   }
 
   static getConnectedProvider(): WalletProvider | null {
-    for (const provider of this.providers.values()) {
+    const providers = Array.from(this.providers.values());
+    for (const provider of providers) {
       if (provider.isConnected()) {
         return provider;
       }
