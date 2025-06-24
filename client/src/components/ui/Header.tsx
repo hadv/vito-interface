@@ -4,6 +4,7 @@ import logo from '../../logo.svg';
 import Badge from './Badge';
 import { walletConnectionService, WalletConnectionState } from '../../services/WalletConnectionService';
 import { useToast } from '../../hooks/useToast';
+import WalletConnectionModal from './WalletConnectionModal';
 
 // Utility function for consistent address truncation
 const truncateAddress = (address: string, startLength: number = 6, endLength: number = 4): string => {
@@ -31,6 +32,7 @@ const Header: React.FC<HeaderProps> = ({
   const [connectionState, setConnectionState] = useState<WalletConnectionState>({ isConnected: false });
   const [isConnectingWallet, setIsConnectingWallet] = useState(false);
   const [showSignerMenu, setShowSignerMenu] = useState(false);
+  const [showWalletModal, setShowWalletModal] = useState(false);
   const toast = useToast();
 
   // Monitor wallet connection state
@@ -46,23 +48,7 @@ const Header: React.FC<HeaderProps> = ({
     return unsubscribe;
   }, []);
 
-  // Handle connecting signer wallet
-  const handleConnectSigner = async () => {
-    setIsConnectingWallet(true);
-    try {
-      await walletConnectionService.connectSignerWallet();
-      toast.success('Wallet Connected', {
-        message: 'Successfully connected signer wallet'
-      });
-    } catch (error: any) {
-      console.error('Failed to connect signer wallet:', error);
-      toast.error('Connection Failed', {
-        message: `Failed to connect signer wallet: ${error.message}`
-      });
-    } finally {
-      setIsConnectingWallet(false);
-    }
-  };
+
 
   // Handle disconnecting signer wallet
   const handleDisconnectSigner = async () => {
@@ -84,16 +70,25 @@ const Header: React.FC<HeaderProps> = ({
   // Handle switching to another signer
   const handleSwitchSigner = async () => {
     setShowSignerMenu(false);
+    setShowWalletModal(true);
+  };
+
+  // Handle wallet selection from modal
+  const handleWalletSelect = async (walletType: string) => {
     setIsConnectingWallet(true);
     try {
-      await walletConnectionService.switchSignerWallet();
-      toast.success('Signer Switched', {
-        message: 'Successfully switched to new signer wallet'
-      });
+      if (walletType === 'metamask') {
+        await walletConnectionService.connectSignerWallet();
+        toast.success('Wallet Connected', {
+          message: 'Successfully connected MetaMask wallet'
+        });
+      } else {
+        throw new Error(`${walletType} is not yet supported`);
+      }
     } catch (error: any) {
-      console.error('Failed to switch signer wallet:', error);
-      toast.error('Switch Failed', {
-        message: `Failed to switch signer wallet: ${error.message}`
+      console.error('Failed to connect wallet:', error);
+      toast.error('Connection Failed', {
+        message: `Failed to connect wallet: ${error.message}`
       });
     } finally {
       setIsConnectingWallet(false);
@@ -181,7 +176,7 @@ const Header: React.FC<HeaderProps> = ({
             ) : (
               /* Connect Button */
               <button
-                onClick={handleConnectSigner}
+                onClick={() => setShowWalletModal(true)}
                 disabled={isConnectingWallet}
                 className={cn(
                   'bg-blue-500 hover:bg-blue-600 text-white',
@@ -442,6 +437,13 @@ const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
       )}
+
+      {/* Wallet Connection Modal */}
+      <WalletConnectionModal
+        isOpen={showWalletModal}
+        onClose={() => setShowWalletModal(false)}
+        onWalletSelect={handleWalletSelect}
+      />
     </header>
   );
 };
