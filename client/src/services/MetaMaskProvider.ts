@@ -23,8 +23,8 @@ export class MetaMaskProvider extends BaseWalletProvider {
     }
 
     try {
-      // Request account access
-      await window.ethereum.request({ method: 'eth_requestAccounts' });
+      // Request account access with timeout
+      await this.requestAccountsWithTimeout(30000); // 30 second timeout
 
       // Create provider and signer
       this.provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -56,11 +56,32 @@ export class MetaMaskProvider extends BaseWalletProvider {
       } else if (error.message?.includes('Already processing')) {
         // Already processing
         throw new Error('MetaMask is busy. Please wait and try again.');
+      } else if (error.message?.includes('timeout')) {
+        // Timeout error
+        throw new Error('Connection timeout. Please try again.');
       } else {
         // Generic error
         throw new Error(`Failed to connect to MetaMask: ${error.message || 'Unknown error'}`);
       }
     }
+  }
+
+  private async requestAccountsWithTimeout(timeoutMs: number): Promise<string[]> {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('MetaMask connection timeout. Please try again.'));
+      }, timeoutMs);
+
+      window.ethereum.request({ method: 'eth_requestAccounts' })
+        .then((accounts: string[]) => {
+          clearTimeout(timeout);
+          resolve(accounts);
+        })
+        .catch((error: any) => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+    });
   }
 
   async disconnect(): Promise<void> {

@@ -45,9 +45,8 @@ export class WalletConnectionService {
    */
   async connectWallet(params: ConnectWalletParams): Promise<WalletConnectionState> {
     try {
-      const readOnlyMode = params.readOnlyMode || false;
-      let userAddress: string | undefined;
-      let isOwner = false;
+      // Safe wallet always starts in read-only mode
+      // User must explicitly connect a signer wallet
 
       // Validate Safe address before attempting to connect
       // Use provided rpcUrl or get default for network
@@ -71,65 +70,33 @@ export class WalletConnectionService {
       // Get Safe info to validate the Safe wallet exists
       const safeInfo = await safeWalletService.getSafeInfo();
 
-      // Only try to connect signer after Safe wallet is validated
-      if (!readOnlyMode) {
-        try {
-          // Check if MetaMask or other wallet is available
-          if (typeof window.ethereum !== 'undefined') {
-            // Request account access
-            await window.ethereum.request({ method: 'eth_requestAccounts' });
+      // Don't automatically connect signer wallet - user must explicitly connect
+      // This prevents automatic MetaMask popups when connecting to Safe wallet
+      console.log('✅ Safe wallet connected in read-only mode. Use "Connect Wallet" to add signer.');
 
-            // Create provider and signer
-            this.provider = new ethers.providers.Web3Provider(window.ethereum);
-            this.signer = this.provider.getSigner();
+      // Safe wallet is always connected in read-only mode initially
+      // User must explicitly connect a signer wallet to enable transactions
 
-            // Get user address
-            userAddress = await this.signer.getAddress();
-
-            // Update Safe Wallet Service with signer
-            await safeWalletService.setSigner(this.signer);
-          }
-        } catch (signerError) {
-          console.warn('Failed to connect signer wallet, continuing in read-only mode:', signerError);
-          // Continue in read-only mode if signer connection fails
-        }
-      }
-
-      // Check if user is owner (only if we have a signer)
-      if (userAddress) {
-        isOwner = await safeWalletService.isOwner(userAddress);
-      }
-
-      // Get signer balance if we have a signer
-      let signerBalance: string | undefined;
-      if (this.signer && userAddress) {
-        const balance = await this.provider!.getBalance(userAddress);
-        signerBalance = ethers.utils.formatEther(balance);
-      }
-
-      // Update state
+      // Update state - always start in read-only mode
       this.state = {
         isConnected: true,
-        address: userAddress,
+        address: undefined, // No signer address initially
         safeAddress: params.safeAddress,
         network: params.network,
         balance: safeInfo.balance,
-        isOwner,
-        signerConnected: !!this.signer,
-        signerAddress: userAddress,
-        signerBalance,
-        readOnlyMode: !this.signer,
+        isOwner: false, // Will be determined when signer connects
+        signerConnected: false, // No signer connected initially
+        signerAddress: undefined,
+        signerBalance: undefined,
+        readOnlyMode: true, // Always start in read-only mode
         error: undefined
       };
 
       // Always remove existing event listeners first
       this.removeEventListeners();
 
-      // Don't set up event listeners in read-only mode to prevent MetaMask interactions
-      // Set up event listeners for account/network changes (only if signer is connected)
-      if (this.signer && !readOnlyMode) {
-        this.setupEventListeners();
-      }
+      // Don't set up event listeners in read-only mode
+      // Event listeners will be set up when user explicitly connects a signer wallet
 
       // Notify listeners
       this.notifyListeners();
