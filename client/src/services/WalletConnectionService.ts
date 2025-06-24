@@ -425,6 +425,20 @@ export class WalletConnectionService {
   }
 
   /**
+   * Get current provider (if connected)
+   */
+  getProvider(): ethers.providers.Web3Provider | null {
+    return this.provider;
+  }
+
+  /**
+   * Get current signer (if connected)
+   */
+  getSigner(): ethers.Signer | null {
+    return this.signer;
+  }
+
+  /**
    * Subscribe to state changes
    */
   subscribe(listener: (state: WalletConnectionState) => void): () => void {

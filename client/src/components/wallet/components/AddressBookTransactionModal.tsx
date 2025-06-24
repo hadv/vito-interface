@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { ethers } from 'ethers';
 import { theme } from '../../../theme';
 import { AddressBookEntry, createAddressBookService } from '../../../services/AddressBookService';
 import { createSafeTxPoolService } from '../../../services/SafeTxPoolService';
@@ -166,10 +165,7 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
 
   // Get current network and initialize services when modal opens
   useEffect(() => {
-    if (isOpen && window.ethereum) {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-
+    if (isOpen) {
       // Get the current network from wallet connection service
       const connectionState = walletConnectionService.getState();
       const network = connectionState.network || 'sepolia'; // Default to sepolia
@@ -177,16 +173,26 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
       console.log('Current network:', network);
       setCurrentNetwork(network);
 
-      // Create network-specific services
-      const addressBookSvc = createAddressBookService(network);
-      const safeTxPoolSvc = createSafeTxPoolService(network);
+      // Only initialize services if we have a connected signer
+      const provider = walletConnectionService.getProvider();
+      const signer = walletConnectionService.getSigner();
 
-      // Initialize services
-      addressBookSvc.initialize(provider, signer);
-      safeTxPoolSvc.setSigner(signer);
+      if (connectionState.signerConnected && provider && signer) {
+        // Create network-specific services
+        const addressBookSvc = createAddressBookService(network);
+        const safeTxPoolSvc = createSafeTxPoolService(network);
 
-      setAddressBookService(addressBookSvc);
-      setSafeTxPoolService(safeTxPoolSvc);
+        // Initialize services with the connected provider and signer
+        addressBookSvc.initialize(provider, signer);
+        safeTxPoolSvc.setSigner(signer);
+
+        setAddressBookService(addressBookSvc);
+        setSafeTxPoolService(safeTxPoolSvc);
+      } else {
+        console.warn('No signer connected - address book transactions require a connected wallet');
+        setAddressBookService(null);
+        setSafeTxPoolService(null);
+      }
     }
   }, [isOpen]);
 
@@ -258,7 +264,14 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
     }
 
     if (!addressBookService || !safeTxPoolService) {
-      showError('Services not initialized. Please try again.');
+      showError('Services not initialized. Please connect your wallet and try again.');
+      return;
+    }
+
+    // Check if signer is connected
+    const connectionState = walletConnectionService.getState();
+    if (!connectionState.signerConnected) {
+      showError('Please connect your wallet to create address book transactions.');
       return;
     }
 
