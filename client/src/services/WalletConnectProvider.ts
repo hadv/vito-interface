@@ -24,6 +24,7 @@ export class WalletConnectProviderImpl extends BaseWalletProvider {
       if (typeof window === 'undefined') return false;
 
       // Check if WalletConnect dependencies are available
+      // Don't actually instantiate anything, just check if the classes exist
       return typeof WalletConnectProvider !== 'undefined' && typeof QRCodeModal !== 'undefined';
     } catch (error) {
       console.warn('WalletConnect availability check failed:', error);

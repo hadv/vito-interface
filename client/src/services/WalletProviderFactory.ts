@@ -5,6 +5,14 @@ import { CoinbaseWalletProvider } from './CoinbaseWalletProvider';
 import { RainbowProvider } from './RainbowProvider';
 import { TrustWalletProvider } from './TrustWalletProvider';
 
+declare global {
+  interface Window {
+    coinbaseWalletExtension?: any;
+    rainbow?: any;
+    trustWallet?: any;
+  }
+}
+
 export class WalletProviderFactory {
   private static providers: Map<WalletProviderType, WalletProvider> = new Map();
 
@@ -32,12 +40,76 @@ export class WalletProviderFactory {
     return availableProviders;
   }
 
+  // Get provider info without creating provider instances
   static getProviderInfo(): WalletProviderInfo[] {
-    return this.getAllProviders().map(provider => provider.info);
+    return [
+      WalletProviderType.METAMASK,
+      WalletProviderType.WALLETCONNECT,
+      WalletProviderType.COINBASE_WALLET,
+      WalletProviderType.RAINBOW,
+      WalletProviderType.TRUST_WALLET
+    ].map(type => this.getProviderInfoByType(type));
   }
 
   static getAvailableProviderInfo(): WalletProviderInfo[] {
-    return this.getAvailableProviders().map(provider => provider.info);
+    return this.getProviderInfo().filter(info => info.isAvailable);
+  }
+
+  // Get provider info without creating the provider instance
+  private static getProviderInfoByType(type: WalletProviderType): WalletProviderInfo {
+    switch (type) {
+      case WalletProviderType.METAMASK:
+        return {
+          type: WalletProviderType.METAMASK,
+          name: 'MetaMask',
+          icon: 'metamask',
+          description: 'Connect using MetaMask browser extension',
+          isAvailable: typeof window !== 'undefined' && typeof window.ethereum !== 'undefined'
+        };
+      case WalletProviderType.WALLETCONNECT:
+        return {
+          type: WalletProviderType.WALLETCONNECT,
+          name: 'WalletConnect',
+          icon: 'walletconnect',
+          description: 'Connect using WalletConnect protocol',
+          isAvailable: true // WalletConnect is available when imported
+        };
+      case WalletProviderType.COINBASE_WALLET:
+        return {
+          type: WalletProviderType.COINBASE_WALLET,
+          name: 'Coinbase Wallet',
+          icon: 'coinbase',
+          description: 'Connect using Coinbase Wallet',
+          isAvailable: typeof window !== 'undefined' && (
+            typeof window.coinbaseWalletExtension !== 'undefined' ||
+            typeof window.ethereum?.isCoinbaseWallet !== 'undefined'
+          )
+        };
+      case WalletProviderType.RAINBOW:
+        return {
+          type: WalletProviderType.RAINBOW,
+          name: 'Rainbow',
+          icon: 'rainbow',
+          description: 'Connect using Rainbow Wallet',
+          isAvailable: typeof window !== 'undefined' && (
+            typeof window.rainbow !== 'undefined' ||
+            typeof window.ethereum?.isRainbow !== 'undefined'
+          )
+        };
+      case WalletProviderType.TRUST_WALLET:
+        return {
+          type: WalletProviderType.TRUST_WALLET,
+          name: 'Trust Wallet',
+          icon: 'trust',
+          description: 'Connect using Trust Wallet',
+          isAvailable: typeof window !== 'undefined' && (
+            typeof window.trustWallet !== 'undefined' ||
+            typeof window.ethereum?.isTrust !== 'undefined'
+          )
+        };
+      default:
+        throw new Error(`Unsupported wallet provider type: ${type}`);
+    }
   }
 
   private static createProvider(type: WalletProviderType): WalletProvider {
