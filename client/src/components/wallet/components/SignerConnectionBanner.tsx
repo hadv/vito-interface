@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
+import { WalletProviderType } from '../../../services/WalletProvider';
 import { theme } from '../../../theme';
+import WalletSelectionModal from '../WalletSelectionModal';
 
 const BannerContainer = styled.div`
   background: ${theme.colors.primary[500]}15;
@@ -95,6 +97,7 @@ interface SignerConnectionBannerProps {
 const SignerConnectionBanner: React.FC<SignerConnectionBannerProps> = ({ className }) => {
   const [connectionState, setConnectionState] = useState<WalletConnectionState>({ isConnected: false });
   const [isConnecting, setIsConnecting] = useState(false);
+  const [showWalletSelection, setShowWalletSelection] = useState(false);
 
   useEffect(() => {
     // Get initial state
@@ -108,13 +111,20 @@ const SignerConnectionBanner: React.FC<SignerConnectionBannerProps> = ({ classNa
     return unsubscribe;
   }, []);
 
-  const handleConnectSigner = async () => {
+  const handleConnectSigner = () => {
+    // Show wallet selection modal instead of automatically connecting to MetaMask
+    setShowWalletSelection(true);
+  };
+
+  const handleWalletSelect = async (providerType: WalletProviderType) => {
     setIsConnecting(true);
     try {
-      await walletConnectionService.connectSignerWallet();
+      await walletConnectionService.connectSignerWalletWithProvider(providerType);
+      setShowWalletSelection(false);
     } catch (error: any) {
       console.error('Failed to connect signer wallet:', error);
-      alert(`Failed to connect signer wallet: ${error.message}`);
+      // Error will be shown by the modal
+      throw error; // Re-throw to let modal handle it
     } finally {
       setIsConnecting(false);
     }
@@ -126,25 +136,34 @@ const SignerConnectionBanner: React.FC<SignerConnectionBannerProps> = ({ classNa
   }
 
   return (
-    <BannerContainer className={className}>
-      <InfoSection>
-        <IconContainer>
-          <WalletIcon />
-        </IconContainer>
-        <TextContainer>
-          <Title>Read-Only Mode</Title>
-          <Description>
-            Connect your wallet to sign transactions and interact with the Safe
-          </Description>
-        </TextContainer>
-      </InfoSection>
-      <ConnectButton 
-        onClick={handleConnectSigner}
-        disabled={isConnecting}
-      >
-        {isConnecting ? 'Connecting...' : 'Connect Wallet'}
-      </ConnectButton>
-    </BannerContainer>
+    <>
+      <BannerContainer className={className}>
+        <InfoSection>
+          <IconContainer>
+            <WalletIcon />
+          </IconContainer>
+          <TextContainer>
+            <Title>Read-Only Mode</Title>
+            <Description>
+              Connect your wallet to sign transactions and interact with the Safe
+            </Description>
+          </TextContainer>
+        </InfoSection>
+        <ConnectButton
+          onClick={handleConnectSigner}
+          disabled={isConnecting}
+        >
+          {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+        </ConnectButton>
+      </BannerContainer>
+
+      {/* Wallet Selection Modal */}
+      <WalletSelectionModal
+        isOpen={showWalletSelection}
+        onClose={() => setShowWalletSelection(false)}
+        onWalletSelect={handleWalletSelect}
+      />
+    </>
   );
 };
 
