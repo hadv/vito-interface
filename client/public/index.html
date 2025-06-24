@@ -32,6 +32,73 @@
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
+
+    <!-- MetaMask Call Interceptor - Debug and Block Unauthorized Calls -->
+    <script>
+      (function() {
+        console.log('🛡️ MetaMask Call Interceptor: Installing...');
+
+        // Store original ethereum object
+        let originalEthereum = null;
+        let allowedCalls = false;
+
+        // Function to enable/disable MetaMask calls
+        window.VITO_ALLOW_METAMASK = function(allow) {
+          console.log('🛡️ MetaMask calls', allow ? 'ENABLED' : 'DISABLED');
+          allowedCalls = allow;
+        };
+
+        // Wait for ethereum to be available
+        function interceptEthereum() {
+          if (window.ethereum && !originalEthereum) {
+            console.log('🛡️ MetaMask detected, installing interceptor...');
+            originalEthereum = window.ethereum;
+
+            // Create proxy to intercept calls
+            window.ethereum = new Proxy(originalEthereum, {
+              get(target, prop) {
+                if (prop === 'request') {
+                  return function(args) {
+                    console.log('🔍 MetaMask call intercepted:', args);
+                    console.trace('🔍 Call stack:');
+
+                    if (!allowedCalls) {
+                      console.error('🚫 BLOCKED: Unauthorized MetaMask call!', args);
+                      console.error('🚫 This call was blocked to prevent unwanted popups');
+                      throw new Error('MetaMask call blocked by Vito interceptor. Use VITO_ALLOW_METAMASK(true) to enable.');
+                    }
+
+                    console.log('✅ ALLOWED: MetaMask call permitted');
+                    return originalEthereum.request(args);
+                  };
+                }
+                return target[prop];
+              }
+            });
+
+            console.log('🛡️ MetaMask interceptor installed successfully');
+          }
+        }
+
+        // Try to intercept immediately
+        interceptEthereum();
+
+        // Also try after DOM loads
+        document.addEventListener('DOMContentLoaded', interceptEthereum);
+
+        // And try periodically in case MetaMask loads later
+        const checkInterval = setInterval(() => {
+          if (window.ethereum && !originalEthereum) {
+            interceptEthereum();
+            clearInterval(checkInterval);
+          }
+        }, 100);
+
+        // Clear interval after 10 seconds
+        setTimeout(() => clearInterval(checkInterval), 10000);
+      })();
+    </script>
+
     <div id="root"></div>
     <!--
       This HTML file is a template.

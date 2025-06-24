@@ -460,20 +460,34 @@ const WalletSelectionModal: React.FC<WalletSelectionModalProps> = ({
   }, [isOpen, connecting, handleClose]);
 
   const handleWalletSelect = async (providerType: WalletProviderType) => {
+    console.log('🔵 WalletSelectionModal: handleWalletSelect called with:', providerType);
+
     // Don't allow selection if already connecting or wallet is not available
     const provider = allProviders.find(p => p.type === providerType);
-    if (connecting || !provider?.isAvailable) return;
+    if (connecting || !provider?.isAvailable) {
+      console.log('🔴 WalletSelectionModal: Blocked - connecting:', connecting, 'available:', provider?.isAvailable);
+      return;
+    }
 
+    console.log('🔵 WalletSelectionModal: Starting connection process');
     setConnecting(providerType);
     setError(null);
 
     try {
+      console.log('🔵 WalletSelectionModal: Calling onWalletSelect callback');
       await onWalletSelect(providerType);
+      console.log('🔵 WalletSelectionModal: Connection successful, closing modal');
       onClose();
     } catch (error: any) {
-      console.error('Failed to connect wallet:', error);
+      console.error('🔴 WalletSelectionModal: Connection failed:', error);
+      console.log('🔴 WalletSelectionModal: Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       setError(error.message || 'Failed to connect wallet');
     } finally {
+      console.log('🔵 WalletSelectionModal: Connection attempt finished');
       setConnecting(null);
     }
   };

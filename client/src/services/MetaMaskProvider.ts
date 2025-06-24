@@ -72,13 +72,29 @@ export class MetaMaskProvider extends BaseWalletProvider {
         reject(new Error('MetaMask connection timeout. Please try again.'));
       }, timeoutMs);
 
+      // Enable MetaMask calls temporarily for this authorized connection
+      if (typeof (window as any).VITO_ALLOW_METAMASK === 'function') {
+        console.log('🔓 Enabling MetaMask calls for authorized connection');
+        (window as any).VITO_ALLOW_METAMASK(true);
+      }
+
       window.ethereum.request({ method: 'eth_requestAccounts' })
         .then((accounts: string[]) => {
           clearTimeout(timeout);
+          // Disable MetaMask calls after successful connection
+          if (typeof (window as any).VITO_ALLOW_METAMASK === 'function') {
+            console.log('🔒 Disabling MetaMask calls after successful connection');
+            (window as any).VITO_ALLOW_METAMASK(false);
+          }
           resolve(accounts);
         })
         .catch((error: any) => {
           clearTimeout(timeout);
+          // Disable MetaMask calls after failed connection
+          if (typeof (window as any).VITO_ALLOW_METAMASK === 'function') {
+            console.log('🔒 Disabling MetaMask calls after failed connection');
+            (window as any).VITO_ALLOW_METAMASK(false);
+          }
           reject(error);
         });
     });
@@ -98,13 +114,33 @@ export class MetaMaskProvider extends BaseWalletProvider {
     }
 
     try {
+      // Enable MetaMask calls temporarily for network switching
+      if (typeof (window as any).VITO_ALLOW_METAMASK === 'function') {
+        console.log('🔓 Enabling MetaMask calls for network switching');
+        (window as any).VITO_ALLOW_METAMASK(true);
+      }
+
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: `0x${chainId.toString(16)}` }],
       });
+
+      // Disable MetaMask calls after network switching
+      if (typeof (window as any).VITO_ALLOW_METAMASK === 'function') {
+        console.log('🔒 Disabling MetaMask calls after network switching');
+        (window as any).VITO_ALLOW_METAMASK(false);
+      }
+
       return true;
     } catch (error: any) {
       console.error('Failed to switch network:', error);
+
+      // Disable MetaMask calls after failed network switching
+      if (typeof (window as any).VITO_ALLOW_METAMASK === 'function') {
+        console.log('🔒 Disabling MetaMask calls after failed network switching');
+        (window as any).VITO_ALLOW_METAMASK(false);
+      }
+
       return false;
     }
   }
@@ -133,9 +169,30 @@ export class MetaMaskProvider extends BaseWalletProvider {
       throw new Error('MetaMask not available');
     }
 
-    await window.ethereum.request({
-      method: 'wallet_requestPermissions',
-      params: [{ eth_accounts: {} }]
-    });
+    try {
+      // Enable MetaMask calls temporarily for permission request
+      if (typeof (window as any).VITO_ALLOW_METAMASK === 'function') {
+        console.log('🔓 Enabling MetaMask calls for permission request');
+        (window as any).VITO_ALLOW_METAMASK(true);
+      }
+
+      await window.ethereum.request({
+        method: 'wallet_requestPermissions',
+        params: [{ eth_accounts: {} }]
+      });
+
+      // Disable MetaMask calls after permission request
+      if (typeof (window as any).VITO_ALLOW_METAMASK === 'function') {
+        console.log('🔒 Disabling MetaMask calls after permission request');
+        (window as any).VITO_ALLOW_METAMASK(false);
+      }
+    } catch (error: any) {
+      // Disable MetaMask calls after failed permission request
+      if (typeof (window as any).VITO_ALLOW_METAMASK === 'function') {
+        console.log('🔒 Disabling MetaMask calls after failed permission request');
+        (window as any).VITO_ALLOW_METAMASK(false);
+      }
+      throw error;
+    }
   }
 }
