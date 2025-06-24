@@ -7,6 +7,7 @@ import EIP712SigningModal from './EIP712SigningModal';
 import { SafeTransactionData, SafeDomain } from '../../../utils/eip712';
 import { safeWalletService } from '../../../services/SafeWalletService';
 import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
+import { WalletProviderType } from '../../../services/WalletProvider';
 import { isSafeTxPoolConfigured } from '../../../contracts/abis';
 import { useToast } from '../../../hooks/useToast';
 import { ErrorHandler } from '../../../utils/errorHandling';
@@ -18,6 +19,7 @@ import { getRpcUrl } from '../../../contracts/abis';
 import AddressDisplay from './AddressDisplay';
 import AddressBookSelector from './AddressBookSelector';
 import ParameterDisplay from './ParameterDisplay';
+import WalletSelectionModal from '../WalletSelectionModal';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -258,6 +260,8 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     txHash: string;
   } | null>(null);
   const [decodedTransaction, setDecodedTransaction] = useState<DecodedTransactionData | null>(null);
+  const [showWalletSelection, setShowWalletSelection] = useState(false);
+  const [, setIsConnectingWallet] = useState(false);
   // const [retryCount, setRetryCount] = useState(0); // Reserved for future retry functionality
 
   // Initialize toast system
@@ -331,16 +335,25 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     decodeTransaction();
   }, [toAddress, amount, preSelectedAsset, connectionState.network]);
 
-  const handleConnectSigner = async () => {
+  const handleConnectSigner = () => {
+    // Show wallet selection modal instead of automatically connecting to MetaMask
+    setShowWalletSelection(true);
+  };
+
+  const handleWalletSelect = async (providerType: WalletProviderType) => {
+    setIsConnectingWallet(true);
     try {
-      await walletConnectionService.connectSignerWallet();
+      await walletConnectionService.connectSignerWalletWithProvider(providerType);
+      setShowWalletSelection(false);
       toast.success('Wallet Connected', {
         message: 'Signer wallet connected successfully'
       });
     } catch (error: any) {
-      const errorDetails = ErrorHandler.classifyError(error);
-      // Only show toast for wallet connection errors, not duplicate in modal
-      toast.walletError(errorDetails.userMessage, handleConnectSigner);
+      // Error will be shown by the modal, just log it
+      console.error('Failed to connect signer wallet:', error);
+      throw error; // Re-throw to let modal handle it
+    } finally {
+      setIsConnectingWallet(false);
     }
   };
 
@@ -866,6 +879,13 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             network={connectionState.network || 'ethereum'}
           />
         )}
+
+        {/* Wallet Selection Modal */}
+        <WalletSelectionModal
+          isOpen={showWalletSelection}
+          onClose={() => setShowWalletSelection(false)}
+          onWalletSelect={handleWalletSelect}
+        />
       </ModalContainer>
     </ModalOverlay>
   );

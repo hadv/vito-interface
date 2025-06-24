@@ -91,23 +91,10 @@ const Header: React.FC<HeaderProps> = ({
     }
   };
 
-  // Handle switching to another signer
-  const handleSwitchSigner = async () => {
+  // Handle switching to another signer - show wallet selection modal instead
+  const handleSwitchSigner = () => {
     setShowSignerMenu(false);
-    setIsConnectingWallet(true);
-    try {
-      await walletConnectionService.switchSignerWallet();
-      toast.success('Signer Switched', {
-        message: 'Successfully switched to new signer wallet'
-      });
-    } catch (error: any) {
-      console.error('Failed to switch signer wallet:', error);
-      toast.error('Switch Failed', {
-        message: `Failed to switch signer wallet: ${error.message}`
-      });
-    } finally {
-      setIsConnectingWallet(false);
-    }
+    setShowWalletSelection(true);
   };
 
   // Click outside handler for signer menu
