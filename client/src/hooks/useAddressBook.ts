@@ -63,18 +63,19 @@ export const useAddressBook = (options: UseAddressBookOptions = {}): UseAddressB
       try {
         const connectionState = walletConnectionService.getState();
 
-        // Always try to set up a provider for read operations
-        if (window.ethereum) {
+        // Only set up provider if signer is already connected AND it's MetaMask
+        // Avoid window.ethereum for WalletConnect to prevent Chrome extension popups
+        if (connectionState.signerConnected && connectionState.walletType === 'metamask' && window.ethereum) {
+          console.log('📚 AddressBook: Setting up provider with MetaMask signer');
           const provider = new ethers.providers.Web3Provider(window.ethereum);
-
-          if (connectionState.signerConnected) {
-            // Initialize with both provider and signer
-            const signer = provider.getSigner();
-            service.initialize(provider, signer);
-          } else {
-            // Initialize with just provider for read-only operations
-            service.initialize(provider);
-          }
+          const signer = provider.getSigner();
+          service.initialize(provider, signer);
+        } else if (connectionState.signerConnected && connectionState.walletType === 'walletconnect') {
+          console.log('📚 AddressBook: WalletConnect detected, skipping window.ethereum to avoid extension popup');
+          // Don't initialize provider for WalletConnect to avoid triggering Chrome extensions
+        } else {
+          console.log('📚 AddressBook: No compatible signer connected, skipping provider setup');
+          // Don't initialize provider to avoid triggering wallet extension popups
         }
       } catch (err: any) {
         console.error('Error updating provider and signer:', err);

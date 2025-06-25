@@ -377,14 +377,16 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
     setIsLoading(true);
     try {
-      // Check if we have a signer available from the wallet connection
-      if (typeof window.ethereum === 'undefined') {
-        throw new Error('No wallet detected. Please connect your wallet first.');
+      // Get the signer from wallet connection service (supports both MetaMask and WalletConnect)
+      const connectionState = walletConnectionService.getState();
+      if (!connectionState.signerConnected) {
+        throw new Error('No wallet connected. Please connect your wallet first.');
       }
 
-      // Create provider and signer
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
+      const signer = walletConnectionService.getSigner();
+      if (!signer) {
+        throw new Error('No signer available. Please connect your wallet first.');
+      }
 
       // Verify the signer address matches the current user
       const signerAddress = await signer.getAddress();
@@ -425,14 +427,16 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
     setIsLoading(true);
     try {
-      // Check if we have a signer available from the wallet connection
-      if (typeof window.ethereum === 'undefined') {
-        throw new Error('No wallet detected. Please connect your wallet first.');
+      // Get the signer from wallet connection service (supports both MetaMask and WalletConnect)
+      const connectionState = walletConnectionService.getState();
+      if (!connectionState.signerConnected) {
+        throw new Error('No wallet connected. Please connect your wallet first.');
       }
 
-      // Create provider and signer
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
+      const signer = walletConnectionService.getSigner();
+      if (!signer) {
+        throw new Error('No signer available. Please connect your wallet first.');
+      }
 
       // Verify the signer address matches the current user
       const signerAddress = await signer.getAddress();

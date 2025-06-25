@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import WalletConnectModal from './WalletConnectModal';
+import { useToast } from '../../hooks/useToast';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -248,16 +250,25 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
   onWalletSelect
 }) => {
   const [isConnecting, setIsConnecting] = useState<string | null>(null);
+  const [showWalletConnectModal, setShowWalletConnectModal] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   const handleWalletSelect = async (walletType: string) => {
     if (isConnecting) return;
-    
+
+    if (walletType === 'walletconnect') {
+      setShowWalletConnectModal(true);
+      return;
+    }
+
     setIsConnecting(walletType);
     try {
       await onWalletSelect(walletType);
       onClose();
     } catch (error) {
       console.error('Failed to connect wallet:', error);
+      // Don't close modal on error, let user try again
     } finally {
       setIsConnecting(null);
     }
@@ -267,6 +278,67 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
     if (e.target === e.currentTarget) {
       onClose();
     }
+  };
+
+  const handleWalletConnectSuccess = async (address: string, provider: any) => {
+    console.log('🎯 WalletConnect Success - FORCING MODAL CLOSE');
+
+    // Prevent other wallet extensions from interfering
+    try {
+      // Disable Phantom wallet popup if it exists
+      const phantomWallet = (window as any).phantom?.solana;
+      if (phantomWallet) {
+        console.log('🚫 Disabling Phantom wallet interference');
+        phantomWallet.disconnect?.();
+      }
+
+      // Prevent MetaMask from auto-connecting
+      if (window.ethereum?.isMetaMask) {
+        console.log('🚫 Preventing MetaMask interference');
+        // Don't trigger MetaMask connection
+      }
+    } catch (extensionError) {
+      console.log('⚠️ Extension interference prevention failed (non-critical):', extensionError);
+    }
+
+    // IMMEDIATELY close both modals - no conditions, no delays
+    setShowWalletConnectModal(false);
+    onClose();
+
+    // Show success message
+    toast.success('Wallet Connected', {
+      message: 'Successfully connected via WalletConnect'
+    });
+
+    console.log('✅ Modals closed, success toast shown');
+
+    // Now integrate with wallet connection service in background
+    try {
+      console.log('🔗 Integrating with wallet connection service...');
+      const { walletConnectionService } = await import('../../services/WalletConnectionService');
+
+      // Check if Safe wallet is connected
+      const currentState = walletConnectionService.getState();
+      console.log('Current wallet state:', currentState);
+
+      if (currentState.isConnected && currentState.safeAddress) {
+        console.log('✅ Safe wallet found, connecting WalletConnect signer...');
+        // Use the new method signature with address and chainId
+        const chainId = currentState.chainId || 11155111; // Default to Sepolia
+        await walletConnectionService.connectWalletConnectSigner(address, chainId);
+        console.log('✅ WalletConnect signer connected to Safe wallet');
+      } else {
+        console.log('⚠️ No Safe wallet connected - WalletConnect works standalone');
+        // For now, just log this - we can enhance later if needed
+      }
+    } catch (error) {
+      console.error('❌ Background integration failed:', error);
+      // Don't show error to user since modal is already closed and toast shown
+    }
+  };
+
+  const handleWalletConnectClose = () => {
+    setShowWalletConnectModal(false);
   };
 
   // Handle keyboard navigation
@@ -372,7 +444,7 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
         </svg>
       ),
       bgColor: 'transparent',
-      available: false
+      available: true
     },
     {
       id: 'ledger',
@@ -413,43 +485,80 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <ModalOverlay isOpen={isOpen} onClick={handleOverlayClick}>
-      <ModalContainer>
-        <LeftSidebar>
-          <SidebarIcon>🔗</SidebarIcon>
-          <SidebarTitle>Connect your wallet</SidebarTitle>
-          <SidebarDescription>
-            Connecting your wallet is like "logging in" to Web3. Select your wallet from the options to get started.
-          </SidebarDescription>
-          <NoWalletLink onClick={() => window.open('https://metamask.io/', '_blank')}>
-            <span>ℹ️</span>
-            I don't have a wallet
-          </NoWalletLink>
-        </LeftSidebar>
+    <>
+      <ModalOverlay isOpen={isOpen} onClick={handleOverlayClick}>
+        <ModalContainer>
+          <LeftSidebar>
+            <SidebarIcon>🔗</SidebarIcon>
+            <SidebarTitle>Connect your wallet</SidebarTitle>
+            <SidebarDescription>
+              Connecting your wallet is like "logging in" to Web3. Select your wallet from the options to get started.
+            </SidebarDescription>
+            <NoWalletLink onClick={() => window.open('https://metamask.io/', '_blank')}>
+              <span>ℹ️</span>
+              I don't have a wallet
+            </NoWalletLink>
+          </LeftSidebar>
 
-        <RightContent>
-          <ModalHeader>
-            <ModalTitle>Available Wallets ({wallets.length})</ModalTitle>
-            <CloseButton onClick={onClose}>&times;</CloseButton>
-          </ModalHeader>
+          <RightContent>
+            <ModalHeader>
+              <ModalTitle>Available Wallets ({wallets.length})</ModalTitle>
+              <CloseButton onClick={onClose}>&times;</CloseButton>
+            </ModalHeader>
 
-          <WalletsGrid>
-            {wallets.map((wallet) => (
-              <WalletOption
-                key={wallet.id}
-                disabled={!wallet.available || isConnecting === wallet.id}
-                onClick={() => wallet.available && handleWalletSelect(wallet.id)}
-              >
-                <WalletIcon bgColor={wallet.bgColor}>{wallet.icon}</WalletIcon>
-                <WalletName>
-                  {isConnecting === wallet.id ? 'Connecting...' : wallet.name}
-                </WalletName>
-              </WalletOption>
-            ))}
-          </WalletsGrid>
-        </RightContent>
-      </ModalContainer>
-    </ModalOverlay>
+            {error && (
+              <div style={{
+                background: '#fee2e2',
+                border: '1px solid #fecaca',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '16px',
+                color: '#dc2626',
+                fontSize: '14px'
+              }}>
+                ❌ {error}
+                <button
+                  onClick={() => setError(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#dc2626',
+                    cursor: 'pointer',
+                    float: 'right',
+                    fontSize: '16px',
+                    padding: '0'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+
+            <WalletsGrid>
+              {wallets.map((wallet) => (
+                <WalletOption
+                  key={wallet.id}
+                  disabled={!wallet.available || isConnecting === wallet.id}
+                  onClick={() => wallet.available && handleWalletSelect(wallet.id)}
+                >
+                  <WalletIcon bgColor={wallet.bgColor}>{wallet.icon}</WalletIcon>
+                  <WalletName>
+                    {isConnecting === wallet.id ? 'Connecting...' : wallet.name}
+                  </WalletName>
+                </WalletOption>
+              ))}
+            </WalletsGrid>
+          </RightContent>
+        </ModalContainer>
+      </ModalOverlay>
+
+      {/* WalletConnect Modal - Render outside main modal to avoid z-index conflicts */}
+      <WalletConnectModal
+        isOpen={showWalletConnectModal}
+        onClose={handleWalletConnectClose}
+        onConnectionSuccess={handleWalletConnectSuccess}
+      />
+    </>
   );
 };
 
