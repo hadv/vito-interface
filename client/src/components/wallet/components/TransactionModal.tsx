@@ -418,20 +418,38 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       });
 
       // Set up for Step 2: Request user to sign
+      console.log('🔐 TRANSACTION MODAL: Transaction created successfully');
+      console.log('📋 Result from createEIP712Transaction:', result);
+      console.log('🔐 TRANSACTION MODAL: Setting up pending transaction for signing');
+
       setPendingTransaction({
         data: result.safeTransactionData,
         domain: result.domain,
         txHash: result.txHash
       });
+
+      console.log('🔐 TRANSACTION MODAL: Setting current step to "signing"');
       setCurrentStep('signing');
+
+      console.log('🔐 TRANSACTION MODAL: Showing EIP712 modal');
       setShowEIP712Modal(true);
 
+      console.log('📱 TRANSACTION MODAL: User should now see signing modal');
       toast.info('Transaction Created', {
         message: 'Please sign the transaction in your wallet'
       });
 
     } catch (error: any) {
+      console.error('❌ TRANSACTION MODAL: Error creating transaction:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
+
       const errorDetails = ErrorHandler.classifyError(error);
+      console.error('❌ Classified error details:', errorDetails);
+
       // Show error in modal for critical validation issues, toast for others
       if (errorDetails.category === 'validation') {
         setError(errorDetails.userMessage);
@@ -449,7 +467,12 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
     try {
       // Step 2: Request user to sign with retry logic
+      console.log('🔐 TRANSACTION MODAL: About to call signEIP712Transaction');
+      console.log('📋 Pending transaction data:', pendingTransaction);
+      console.log('📱 MOBILE WALLET: This should trigger signing now!');
+
       const signature = await errorRecoveryService.retry(async () => {
+        console.log('🔐 RETRY SERVICE: Calling safeWalletService.signEIP712Transaction');
         return await safeWalletService.signEIP712Transaction(
           pendingTransaction.data,
           pendingTransaction.domain

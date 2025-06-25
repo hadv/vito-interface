@@ -173,16 +173,24 @@ export async function signSafeTransaction(
   try {
     const typedData = createSafeTransactionTypedData(domain, txData);
     console.log('📋 Typed data created:', typedData);
+    console.log('🔐 REAL SAFE TRANSACTION SIGNING STARTED');
+    console.log('📱 This should trigger your mobile wallet now!');
 
-    // Method 1: Try to use _signTypedData if available (MetaMask, etc.)
+    // Method 1: Try to use _signTypedData if available (MetaMask, etc.) with timeout
     if ('_signTypedData' in signer) {
       console.log('🔐 Method 1: Using _signTypedData (MetaMask style)...');
       try {
-        const signature = await (signer as any)._signTypedData(
+        // Add timeout to prevent hanging
+        const signPromise = (signer as any)._signTypedData(
           typedData.domain,
           { SafeTx: typedData.types.SafeTx },
           typedData.message
         );
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Method 1 timeout')), 5000) // 5 second timeout
+        );
+
+        const signature = await Promise.race([signPromise, timeoutPromise]);
         console.log('✅ EIP-712 signing successful (method 1)');
         return signature;
       } catch (method1Error: any) {
@@ -191,19 +199,39 @@ export async function signSafeTransaction(
       }
     }
 
-    // Method 2: Try eth_signTypedData_v4 if available
+    // Method 2: Try eth_signTypedData_v4 if available (bypass getAddress to avoid hanging)
     if (signer.provider && 'send' in signer.provider) {
       console.log('🔐 Method 2: Using eth_signTypedData_v4...');
+      console.log('📱 MOBILE WALLET: You should see an EIP-712 signing request now!');
+
       try {
-        const signerAddress = await signer.getAddress();
+        // Get address using eth_accounts (which works) instead of getAddress() (which hangs)
+        console.log('🔐 Method 2: Getting address via eth_accounts...');
+        const accounts = await (signer.provider as any).send('eth_accounts', []);
+
+        if (!accounts || accounts.length === 0) {
+          throw new Error('No accounts available');
+        }
+
+        const signerAddress = accounts[0];
+        console.log('📋 Using address from eth_accounts:', signerAddress);
+
+        console.log('📋 EIP-712 data being sent:', {
+          address: signerAddress,
+          typedData: JSON.stringify(typedData, null, 2)
+        });
+
+        console.log('🔐 Method 2: Sending eth_signTypedData_v4 request...');
         const signature = await (signer.provider as any).send('eth_signTypedData_v4', [
           signerAddress,
           JSON.stringify(typedData)
         ]);
         console.log('✅ EIP-712 signing successful (method 2)');
+        console.log('📋 Signature received:', signature);
         return signature;
       } catch (method2Error: any) {
         console.log('❌ Method 2 failed:', method2Error.message || method2Error);
+        console.log('📱 Mobile wallet may have rejected the EIP-712 signing request');
         // Continue to method 3
       }
     }

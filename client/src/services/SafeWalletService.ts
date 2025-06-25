@@ -435,6 +435,9 @@ export class SafeWalletService {
     domain: SafeDomain;
     txHash: string;
   }> {
+    console.log('🔐 SAFE WALLET SERVICE: createEIP712Transaction called');
+    console.log('📋 Transaction request:', transactionRequest);
+
     this.ensureInitialized();
 
     if (!this.provider) {
@@ -443,7 +446,9 @@ export class SafeWalletService {
 
     try {
       // Get current nonce for the Safe
+      console.log('🔐 SAFE WALLET SERVICE: Getting Safe nonce...');
       const nonce = await this.getNonce();
+      console.log('🔐 SAFE WALLET SERVICE: Got nonce:', nonce);
 
       // Get network info for EIP-712 domain
       const network = await this.provider.getNetwork();
@@ -469,13 +474,26 @@ export class SafeWalletService {
       // Generate EIP-712 transaction hash
       const txHash = await this.getEIP712TransactionHash(safeTransactionData);
 
-      return {
+      console.log('🔐 SAFE WALLET SERVICE: EIP-712 transaction created successfully');
+      console.log('📋 Safe transaction data:', safeTransactionData);
+      console.log('📋 Domain:', domain);
+      console.log('📋 Transaction hash:', txHash);
+
+      const result = {
         safeTransactionData,
         domain,
         txHash
       };
+
+      console.log('🔐 SAFE WALLET SERVICE: Returning result to TransactionModal');
+      return result;
     } catch (error: any) {
-      console.error('Error creating EIP-712 transaction:', error);
+      console.error('❌ SAFE WALLET SERVICE: Error creating EIP-712 transaction:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
 
       // Provide more helpful error messages
       if (error.message.includes('No contract found') || error.message.includes('Invalid Safe contract')) {
@@ -497,6 +515,11 @@ export class SafeWalletService {
     safeTransactionData: SafeTransactionData,
     domain: SafeDomain
   ): Promise<string> {
+    console.log('🔐 SAFE WALLET SERVICE: signEIP712Transaction called');
+    console.log('📋 Transaction data:', safeTransactionData);
+    console.log('📋 Domain:', domain);
+    console.log('📋 Signer available:', !!this.signer);
+
     this.ensureInitialized();
 
     if (!this.signer) {
@@ -505,21 +528,42 @@ export class SafeWalletService {
 
     try {
       console.log('🔐 Starting EIP-712 transaction signing...');
-      console.log('📋 Signer address:', await this.signer.getAddress());
+
+      // Get signer address with timeout
+      try {
+        console.log('🔐 Getting signer address...');
+        const addressPromise = this.signer.getAddress();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('getAddress timeout')), 5000) // 5 second timeout
+        );
+        const signerAddress = await Promise.race([addressPromise, timeoutPromise]);
+        console.log('📋 Signer address:', signerAddress);
+      } catch (error: any) {
+        console.error('❌ Failed to get signer address:', error.message);
+        console.log('⚠️ Proceeding without signer address...');
+      }
+
       console.log('📋 Domain:', domain);
       console.log('📋 Transaction data:', safeTransactionData);
 
-      // Check if signer is on the correct network
-      if (this.signer.provider) {
-        const signerNetwork = await this.signer.provider.getNetwork();
-        if (signerNetwork.chainId !== domain.chainId) {
-          throw new Error(`Network mismatch: Wallet is on chainId ${signerNetwork.chainId} but Safe contract is on chainId ${domain.chainId}. Please switch your wallet to the correct network.`);
-        }
-        console.log(`✅ Network validation passed: chainId ${signerNetwork.chainId}`);
-      }
+      // Skip network validation to avoid WalletConnect hanging issues
+      console.log('🔐 SAFE WALLET SERVICE: Skipping network validation (known to hang with WalletConnect)');
+      console.log('🔐 Expected chainId:', domain.chainId);
+      console.log('⚠️ Proceeding directly to EIP-712 signing...');
 
       // Sign using EIP-712 typed data
+      console.log('🔐 SAFE WALLET SERVICE: About to call signSafeTransaction');
+      console.log('📱 MOBILE WALLET: This should trigger EIP-712 signing now!');
+      console.log('🔐 SAFE WALLET SERVICE: Calling signSafeTransaction with:', {
+        signer: !!this.signer,
+        domain,
+        safeTransactionData
+      });
+
       const signature = await signSafeTransaction(this.signer, domain, safeTransactionData);
+
+      console.log('🔐 SAFE WALLET SERVICE: signSafeTransaction completed');
+      console.log('📋 Received signature:', signature);
 
       console.log('✅ EIP-712 transaction signed successfully');
       console.log('📋 Signature:', signature);
@@ -873,9 +917,61 @@ export class SafeWalletService {
     }
 
     try {
-      return await this.safeContract.isOwner(address);
+      console.log('🔍 Checking if address is Safe owner:', address);
+
+      // Method 1: Try direct isOwner call with timeout
+      try {
+        const isOwnerPromise = this.safeContract.isOwner(address);
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('isOwner call timeout')), 3000)
+        );
+
+        const result = await Promise.race([isOwnerPromise, timeoutPromise]) as boolean;
+        console.log('✅ Direct isOwner call succeeded:', result);
+        return result;
+      } catch (directError) {
+        console.log('❌ Direct isOwner call failed, trying fallback method:', directError);
+      }
+
+      // Method 2: Fallback - Get all owners and check if address is in the list
+      try {
+        console.log('🔄 Fallback: Getting all owners and checking manually...');
+        const ownersPromise = this.safeContract.getOwners();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('getOwners call timeout')), 3000)
+        );
+
+        const owners = await Promise.race([ownersPromise, timeoutPromise]) as string[];
+        const isOwner = owners.map(owner => owner.toLowerCase()).includes(address.toLowerCase());
+        console.log('✅ Fallback owner check completed:', { isOwner, totalOwners: owners.length });
+        return isOwner;
+      } catch (fallbackError) {
+        console.log('❌ Fallback owner check also failed:', fallbackError);
+      }
+
+      // Method 3: Use RPC provider directly as last resort
+      try {
+        console.log('🔄 Last resort: Using RPC provider directly...');
+        const rpcUrl = getRpcUrl(this.config!.network);
+        const rpcProvider = new ethers.providers.JsonRpcProvider(rpcUrl);
+        const rpcContract = new ethers.Contract(this.config!.safeAddress, SAFE_ABI, rpcProvider);
+
+        const rpcIsOwnerPromise = rpcContract.isOwner(address);
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('RPC isOwner call timeout')), 3000)
+        );
+
+        const result = await Promise.race([rpcIsOwnerPromise, timeoutPromise]) as boolean;
+        console.log('✅ RPC owner check completed:', result);
+        return result;
+      } catch (rpcError) {
+        console.log('❌ RPC owner check also failed:', rpcError);
+      }
+
+      console.log('⚠️ All owner check methods failed, returning false');
+      return false;
     } catch (error) {
-      console.error('Error checking owner status:', error);
+      console.error('❌ Unexpected error in isOwner check:', error);
       return false;
     }
   }
@@ -890,21 +986,38 @@ export class SafeWalletService {
       throw new Error('Safe contract not initialized');
     }
 
-    // Method 1: Try direct nonce() call
+    // Method 1: Try direct nonce() call with timeout
     try {
       console.log('🔢 Method 1: Getting Safe nonce via contract.nonce()...');
-      const nonce = await this.safeContract.nonce();
+      console.log('🔢 Using provider for nonce call:', !!this.provider);
+      console.log('🔢 Using signer for nonce call:', !!this.signer);
+
+      // Add timeout to prevent hanging
+      const noncePromise = this.safeContract.nonce();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Nonce call timeout')), 10000) // 10 second timeout
+      );
+
+      const nonce = await Promise.race([noncePromise, timeoutPromise]);
       console.log(`✅ Safe nonce (method 1): ${nonce.toString()}`);
       return nonce.toNumber();
     } catch (error: any) {
       console.log(`❌ Method 1 failed: ${error.message}`);
     }
 
-    // Method 2: Try with fresh contract instance
+    // Method 2: Try with fresh contract instance using read-only provider
     try {
-      console.log('🔢 Method 2: Creating fresh contract instance...');
-      const freshContract = new ethers.Contract(this.config.safeAddress, SAFE_ABI, this.provider);
-      const nonce = await freshContract.nonce();
+      console.log('🔢 Method 2: Creating fresh contract instance with read-only provider...');
+      // Use read-only provider instead of signer provider to avoid WalletConnect issues
+      const readOnlyProvider = new ethers.providers.JsonRpcProvider(getRpcUrl(this.config.network));
+      const freshContract = new ethers.Contract(this.config.safeAddress, SAFE_ABI, readOnlyProvider);
+
+      const noncePromise = freshContract.nonce();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Nonce call timeout')), 10000) // 10 second timeout
+      );
+
+      const nonce = await Promise.race([noncePromise, timeoutPromise]);
       console.log(`✅ Safe nonce (method 2): ${nonce.toString()}`);
       return nonce.toNumber();
     } catch (error: any) {
