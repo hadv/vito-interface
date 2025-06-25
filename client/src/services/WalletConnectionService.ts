@@ -2,7 +2,6 @@ import { ethers } from 'ethers';
 import { safeWalletService, SafeWalletService, SafeWalletConfig } from './SafeWalletService';
 import { getRpcUrl, NETWORK_CONFIGS, SAFE_ABI } from '../contracts/abis';
 import { walletConnectService } from './WalletConnectService';
-import { WalletConnectSigner } from './WalletConnectSigner';
 
 export interface WalletConnectionState {
   isConnected: boolean;

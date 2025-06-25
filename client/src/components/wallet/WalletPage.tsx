@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { ethers } from 'ethers';
-import { createSafeWallet, connectSafeWallet } from '@models/SafeWallet';
-import { walletConnectionService } from '../../services/WalletConnectionService';
 import { theme } from '../../theme';
 
 // Import refactored components
