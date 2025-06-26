@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import WalletPage from './components/wallet/WalletPage';
-import { VitoContainer } from './components/vitoUI';
 import { resolveAddressToEns, isValidEthereumAddress } from './utils';
 import { Button, Input, Card } from './components/ui';
 import { walletConnectionService } from './services/WalletConnectionService';
 import { cn } from './utils/cn';
 import './App.css';
-import { processCommand } from './commands';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import { ToastNotificationContainer } from './components/ui/Toast';
 import { useToast } from './hooks/useToast';
@@ -45,29 +43,7 @@ const welcomeSubtitleClasses = cn(
 
 const inputContainerClasses = 'mb-6 w-full';
 
-const commandsSectionClasses = cn(
-  'mt-8 pt-6 border-t border-gray-800'
-);
 
-const commandsTitleClasses = cn(
-  'text-lg font-semibold text-white mb-4'
-);
-
-const commandsListClasses = 'grid gap-2 text-left';
-
-const commandItemClasses = cn(
-  'flex items-center gap-3 p-2',
-  'rounded-md bg-white/5',
-  'font-mono text-sm'
-);
-
-const commandKeyClasses = cn(
-  'bg-blue-500 text-white',
-  'px-2 py-1 rounded font-medium',
-  'min-w-[24px] text-center'
-);
-
-const commandDescriptionClasses = 'text-gray-300';
 
 // Tailwind classes for overlay
 const getOverlayClasses = (isVisible: boolean) => cn(
@@ -150,23 +126,7 @@ const NoWalletPage = ({ walletAddress, setWalletAddress, onConnect }: {
           Connect Safe Wallet
         </Button>
 
-        <div className={commandsSectionClasses}>
-          <h3 className={commandsTitleClasses}>Keyboard Shortcuts</h3>
-          <div className={commandsListClasses}>
-            <div className={commandItemClasses}>
-              <code className={commandKeyClasses}>:c</code>
-              <span className={commandDescriptionClasses}>Connect to Safe wallet</span>
-            </div>
-            <div className={commandItemClasses}>
-              <code className={commandKeyClasses}>:help</code>
-              <span className={commandDescriptionClasses}>Show help information</span>
-            </div>
-            <div className={commandItemClasses}>
-              <code className={commandKeyClasses}>:</code>
-              <span className={commandDescriptionClasses}>Enter command mode</span>
-            </div>
-          </div>
-        </div>
+
       </Card>
     </div>
   );
@@ -259,26 +219,7 @@ function App() {
 
 
 
-  const handleCommand = (command: string) => {
-    const cmd = command.trim().toLowerCase();
-    console.log('Command received:', cmd);
 
-    // Use the centralized command processor
-    processCommand(cmd, {
-      connectWallet,
-      disconnectWallet: async () => {
-        console.log('Disconnecting wallet');
-        try {
-          await walletConnectionService.disconnectWallet();
-        } catch (error) {
-          console.error('Error disconnecting wallet:', error);
-        }
-        setWalletConnected(false);
-        setWalletAddress('');
-        setEnsName('');
-      }
-    });
-  };
 
   // Toggle network selector
   const toggleNetworkSelector = () => {
@@ -338,25 +279,7 @@ function App() {
     }
   }, [walletConnected]);
 
-  // Add effect to listen for commands from WalletPage
-  useEffect(() => {
-    const handleGlobalCommand = (event: CustomEvent<{ command: string }>) => {
-      const cmd = event.detail.command;
-      console.log('Global command received:', cmd);
-      
-      if (cmd === 'q') {
-        console.log('Disconnecting wallet from global command');
-        setWalletConnected(false);
-        setWalletAddress('');
-        setEnsName('');
-      }
-    };
 
-    window.addEventListener('vito:command', handleGlobalCommand as EventListener);
-    return () => {
-      window.removeEventListener('vito:command', handleGlobalCommand as EventListener);
-    };
-  }, []);
 
   return (
     <ErrorBoundary
@@ -390,22 +313,18 @@ function App() {
       <div className={getOverlayClasses(networkSelectorOpen)} />
       <div className={contentContainerClasses}>
         {walletConnected ? (
-          <VitoContainer onCommand={handleCommand}>
-            <WalletPage
-              walletAddress={walletAddress}
-              ensName={ensName}
-              network={network}
-              isLoadingEns={isLoadingEns}
-            />
-          </VitoContainer>
+          <WalletPage
+            walletAddress={walletAddress}
+            ensName={ensName}
+            network={network}
+            isLoadingEns={isLoadingEns}
+          />
         ) : (
-          <VitoContainer onCommand={handleCommand}>
-            <NoWalletPage
-              walletAddress={walletAddress}
-              setWalletAddress={setWalletAddress}
-              onConnect={connectWallet}
-            />
-          </VitoContainer>
+          <NoWalletPage
+            walletAddress={walletAddress}
+            setWalletAddress={setWalletAddress}
+            onConnect={connectWallet}
+          />
         )}
       </div>
       </div>

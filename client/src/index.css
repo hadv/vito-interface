@@ -47,10 +47,7 @@ code {
     height: -webkit-fill-available;
   }
   
-  /* Move command bar up on mobile to avoid overlap with browser UI */
-  .status-bar, .command-input {
-    bottom: env(safe-area-inset-bottom, 10px) !important;
-  }
+  /* Mobile-specific adjustments */
 }
 
 /* Apply safe area insets (for iOS devices with notches) */

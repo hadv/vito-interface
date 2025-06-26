@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
-import { VitoList } from '@components/vitoUI';
 import { theme } from '../../../theme';
 import { useAddressBook } from '../../../hooks/useAddressBook';
 import { AddressBookEntry } from '../../../services/AddressBookService';
@@ -318,6 +317,8 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
             }}
             disabled={removingAddress === entry.walletAddress}
             loading={removingAddress === entry.walletAddress}
+            data-1p-ignore="true"
+            data-lpignore="true"
           >
             Remove
           </Button>
@@ -522,11 +523,11 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
       )}
 
       <EntriesGrid>
-        <VitoList
-          items={filteredEntries}
-          renderItem={renderAddressBookEntry}
-          onItemEnter={(entry) => console.log(`Selected ${entry.name} (${entry.walletAddress})`)}
-        />
+        {filteredEntries.map((entry, index) => (
+          <div key={entry.walletAddress} onClick={() => console.log(`Selected ${entry.name} (${entry.walletAddress})`)}>
+            {renderAddressBookEntry(entry, false, false)}
+          </div>
+        ))}
       </EntriesGrid>
 
       <AddressBookTransactionModal
