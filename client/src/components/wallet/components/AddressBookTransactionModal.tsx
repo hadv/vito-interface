@@ -174,18 +174,16 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
       console.log('Current network:', network);
       setCurrentNetwork(network);
 
-      // Create network-specific services
+      // Create network-specific services without wallet connection
       const addressBookSvc = createAddressBookService(network);
       const safeTxPoolSvc = createSafeTxPoolService(network);
 
-      // Use existing provider from WalletConnectionService (no new wallet connection)
-      const existingProvider = walletConnectionService.getProvider();
-      if (existingProvider) {
-        // Initialize with existing provider only (no signer to avoid wallet popup)
-        addressBookSvc.initialize(existingProvider);
-        console.log('✅ Services initialized with existing provider');
-      } else {
-        console.log('⚠️ No existing provider found, services will be initialized during submission');
+      // Initialize services with read-only provider (no signer to avoid wallet popup)
+      if (window.ethereum) {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        // Only initialize with provider, no signer to avoid triggering wallet popup
+        addressBookSvc.initialize(provider);
+        // SafeTxPoolService doesn't need initialization here, we'll set signer later
       }
 
       setAddressBookService(addressBookSvc);
@@ -270,19 +268,17 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
     try {
       console.log(`Creating transaction for network: ${currentNetwork}`);
 
-      // Use existing WalletConnect signer instead of creating new connection
-      const existingSigner = walletConnectionService.getSigner();
-      const existingProvider = walletConnectionService.getProvider();
-
-      if (!existingSigner || !existingProvider) {
-        throw new Error('No wallet signer available. Please connect your wallet first.');
+      // Now get the signer only when we need to submit the transaction
+      if (!window.ethereum) {
+        throw new Error('No wallet connection available');
       }
 
-      console.log('✅ Using existing WalletConnect signer (no new wallet popup)');
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
 
-      // Update services with existing signer for transaction submission
-      addressBookService.initialize(existingProvider, existingSigner);
-      safeTxPoolService.setSigner(existingSigner);
+      // Update services with signer for transaction submission
+      addressBookService.initialize(provider, signer);
+      safeTxPoolService.setSigner(signer);
 
       // Convert to checksum address for consistency
       const checksumWalletAddress = toChecksumAddress(walletAddress);
