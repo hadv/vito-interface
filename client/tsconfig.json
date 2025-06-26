@@ -28,8 +28,7 @@
       "@hooks/*": ["src/hooks/*"],
       "@styles/*": ["src/styles/*"],
       "@pages/*": ["src/pages/*"],
-      "@models/*": ["src/models/*"],
-      "@vimUI/*": ["src/components/vimUI/*"]
+      "@models/*": ["src/models/*"]
     }
   },
   "include": [

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
-import { VitoList } from '@components/vitoUI';
 import { formatWalletAddress } from '@utils';
 import OptimizedTransactionsPage from './OptimizedTransactionsPage';
 import EnhancedTransactionsPage from './EnhancedTransactionsPage';
@@ -511,14 +510,16 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                   : "Safe TX pool not available"}
               </div>
             ) : (
-              <VitoList
-                items={pendingTxs}
-                renderItem={renderPendingTxItem}
-                onItemEnter={(tx) => {
-                  // For pending transactions, we could open Safe app or show transaction details
-                  console.log('Pending transaction selected:', tx.txHash);
-                }}
-              />
+              <div>
+                {pendingTxs.map((tx, index) => (
+                  <div key={tx.txHash || index} onClick={() => {
+                    // For pending transactions, we could open Safe app or show transaction details
+                    console.log('Pending transaction selected:', tx.txHash);
+                  }}>
+                    {renderPendingTxItem(tx, false, false)}
+                  </div>
+                ))}
+              </div>
             )}
           </>
         ) : (

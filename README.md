@@ -20,7 +20,6 @@ A secure and efficient application designed to interact with Safe{Wallet} throug
 vito-interface/
 ├── client/                # React frontend
 │   ├── src/
-│   │   ├── commands/      # Command definitions
 │   │   ├── components/    # Reusable UI components
 │   │   ├── hooks/         # Custom React hooks
 │   │   ├── models/        # TypeScript interfaces/types

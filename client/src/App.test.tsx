@@ -9,9 +9,6 @@ jest.mock('./components/wallet/WalletPage', () => {
 });
 
 // Mock other dependencies
-jest.mock('./components/vitoUI', () => ({
-  VitoContainer: ({ children }: any) => <div data-testid="vito-container">{children}</div>
-}));
 
 jest.mock('./utils', () => ({
   resolveAddressToEns: jest.fn(),
@@ -52,9 +49,6 @@ import App from './App';
 test('renders app component', () => {
   render(<App />);
   // App should render the welcome page when no wallet is connected
-  const vitoContainer = screen.getByTestId('vito-container');
-  expect(vitoContainer).toBeInTheDocument();
-
   // Should show the welcome title
   expect(screen.getByText('Vito Safe Wallet')).toBeInTheDocument();
 });

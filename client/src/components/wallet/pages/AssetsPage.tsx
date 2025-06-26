@@ -1,6 +1,5 @@
 import React from 'react';
 import styled from 'styled-components';
-import { VitoList } from '@components/vitoUI';
 import { Asset } from '../types';
 import { theme } from '../../../theme';
 import { Card, Badge } from '../../ui';
@@ -353,14 +352,14 @@ const AssetsPage: React.FC<AssetsPageProps> = ({ assets, isLoading, onSendAsset,
       </Header>
 
       <AssetsGrid>
-        <VitoList
-          items={assets}
-          renderItem={renderAssetItem}
-          onItemEnter={(asset) => {
+        {assets.map((asset, index) => (
+          <div key={asset.address || index} onClick={() => {
             // TODO: Implement asset selection functionality
             console.log(`Selected ${asset.name} (${asset.balance} ${asset.symbol})`);
-          }}
-        />
+          }}>
+            {renderAssetItem(asset, false, false)}
+          </div>
+        ))}
       </AssetsGrid>
     </Container>
   );
