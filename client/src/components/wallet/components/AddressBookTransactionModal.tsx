@@ -166,10 +166,7 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
 
   // Get current network and initialize services when modal opens
   useEffect(() => {
-    if (isOpen && window.ethereum) {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-
+    if (isOpen) {
       // Get the current network from wallet connection service
       const connectionState = walletConnectionService.getState();
       const network = connectionState.network || 'sepolia'; // Default to sepolia
@@ -177,13 +174,17 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
       console.log('Current network:', network);
       setCurrentNetwork(network);
 
-      // Create network-specific services
+      // Create network-specific services without wallet connection
       const addressBookSvc = createAddressBookService(network);
       const safeTxPoolSvc = createSafeTxPoolService(network);
 
-      // Initialize services
-      addressBookSvc.initialize(provider, signer);
-      safeTxPoolSvc.setSigner(signer);
+      // Initialize services with read-only provider (no signer to avoid wallet popup)
+      if (window.ethereum) {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        // Only initialize with provider, no signer to avoid triggering wallet popup
+        addressBookSvc.initialize(provider);
+        // SafeTxPoolService doesn't need initialization here, we'll set signer later
+      }
 
       setAddressBookService(addressBookSvc);
       setSafeTxPoolService(safeTxPoolSvc);
@@ -266,6 +267,18 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
 
     try {
       console.log(`Creating transaction for network: ${currentNetwork}`);
+
+      // Now get the signer only when we need to submit the transaction
+      if (!window.ethereum) {
+        throw new Error('No wallet connection available');
+      }
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+
+      // Update services with signer for transaction submission
+      addressBookService.initialize(provider, signer);
+      safeTxPoolService.setSigner(signer);
 
       // Convert to checksum address for consistency
       const checksumWalletAddress = toChecksumAddress(walletAddress);
@@ -356,6 +369,8 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
               variant="secondary"
               onClick={onClose}
               disabled={isSubmitting}
+              data-1p-ignore="true"
+              data-lpignore="true"
             >
               Cancel
             </Button>
@@ -364,6 +379,8 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
               variant={isRemoving ? "danger" : "primary"}
               disabled={isSubmitting}
               loading={isSubmitting}
+              data-1p-ignore="true"
+              data-lpignore="true"
             >
               {isSubmitting ? 'Creating Transaction...' : isRemoving ? 'Remove Entry' : isEditing ? 'Update Entry' : 'Add Entry'}
             </Button>

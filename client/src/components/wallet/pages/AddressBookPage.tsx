@@ -317,6 +317,8 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
             }}
             disabled={removingAddress === entry.walletAddress}
             loading={removingAddress === entry.walletAddress}
+            data-1p-ignore="true"
+            data-lpignore="true"
           >
             Remove
           </Button>
