@@ -38,6 +38,12 @@ export class WalletConnectionService {
   private listeners: ((state: WalletConnectionState) => void)[] = [];
   private provider: ethers.providers.Web3Provider | ethers.providers.JsonRpcProvider | null = null;
   private signer: ethers.Signer | null = null;
+  private walletConnectUnsubscribe: (() => void) | null = null;
+
+  constructor() {
+    // Set up WalletConnect event listeners for bidirectional disconnection
+    this.setupWalletConnectEventListeners();
+  }
 
   /**
    * Connect to a Safe wallet (can be read-only or with signer)
@@ -565,6 +571,21 @@ export class WalletConnectionService {
    * Disconnect wallet
    */
   async disconnectWallet(): Promise<void> {
+    console.log('🔌 Disconnecting wallet completely, type:', this.state.walletType);
+
+    // If connected via WalletConnect, disconnect the WalletConnect session
+    if (this.state.walletType === 'walletconnect') {
+      try {
+        console.log('🔗 Disconnecting WalletConnect session from app...');
+        await walletConnectService.disconnect();
+        console.log('✅ WalletConnect session disconnected successfully');
+      } catch (error) {
+        console.error('❌ Failed to disconnect WalletConnect session:', error);
+        // Continue with local disconnection even if WalletConnect disconnect fails
+      }
+    }
+
+    // Clear local state
     this.provider = null;
     this.signer = null;
 
@@ -576,12 +597,29 @@ export class WalletConnectionService {
 
     this.removeEventListeners();
     this.notifyListeners();
+
+    console.log('✅ Wallet disconnected completely');
   }
 
   /**
    * Disconnect only the signer wallet (keep Safe wallet connected in read-only mode)
    */
   async disconnectSignerWallet(): Promise<void> {
+    console.log('🔌 Disconnecting signer wallet, type:', this.state.walletType);
+
+    // If connected via WalletConnect, disconnect the WalletConnect session
+    if (this.state.walletType === 'walletconnect') {
+      try {
+        console.log('🔗 Disconnecting WalletConnect session from app...');
+        await walletConnectService.disconnect();
+        console.log('✅ WalletConnect session disconnected successfully');
+      } catch (error) {
+        console.error('❌ Failed to disconnect WalletConnect session:', error);
+        // Continue with local disconnection even if WalletConnect disconnect fails
+      }
+    }
+
+    // Clear local state
     this.provider = null;
     this.signer = null;
 
@@ -596,11 +634,14 @@ export class WalletConnectionService {
       signerAddress: undefined,
       signerBalance: undefined,
       readOnlyMode: true,
-      error: undefined
+      error: undefined,
+      walletType: undefined
     };
 
     this.removeEventListeners();
     this.notifyListeners();
+
+    console.log('✅ Signer wallet disconnected successfully');
   }
 
   /**
@@ -923,6 +964,27 @@ export class WalletConnectionService {
   }
 
   /**
+   * Cleanup method to remove all event listeners
+   */
+  cleanup(): void {
+    console.log('🧹 Cleaning up WalletConnectionService...');
+
+    // Remove WalletConnect event listeners
+    if (this.walletConnectUnsubscribe) {
+      this.walletConnectUnsubscribe();
+      this.walletConnectUnsubscribe = null;
+    }
+
+    // Remove other event listeners
+    this.removeEventListeners();
+
+    // Clear listeners array
+    this.listeners = [];
+
+    console.log('✅ WalletConnectionService cleanup completed');
+  }
+
+  /**
    * Setup event listeners for wallet events
    */
   private setupEventListeners(): void {
@@ -978,6 +1040,106 @@ export class WalletConnectionService {
         console.error('Error reconnecting after network change:', error);
         await this.disconnectWallet();
       }
+    }
+  }
+
+  /**
+   * Setup WalletConnect event listeners for bidirectional disconnection
+   */
+  private setupWalletConnectEventListeners(): void {
+    // Clean up existing listeners
+    if (this.walletConnectUnsubscribe) {
+      this.walletConnectUnsubscribe();
+    }
+
+    // Set up new listeners
+    const handleWalletConnectDisconnection = (data: any) => {
+      console.log('🔌 WalletConnect session disconnected from mobile wallet:', data);
+
+      // Only handle disconnection if we're currently connected via WalletConnect
+      if (this.state.signerConnected && this.state.walletType === 'walletconnect') {
+        console.log('🔄 Updating app state due to mobile wallet disconnection');
+        this.handleWalletConnectDisconnection();
+      }
+    };
+
+    const handleWalletConnectSessionDelete = (data: any) => {
+      console.log('🗑️ WalletConnect session deleted from mobile wallet:', data);
+
+      // Only handle deletion if we're currently connected via WalletConnect
+      if (this.state.signerConnected && this.state.walletType === 'walletconnect') {
+        console.log('🔄 Updating app state due to mobile wallet session deletion');
+        this.handleWalletConnectDisconnection();
+      }
+    };
+
+    const handleWalletConnectSessionExpire = (data: any) => {
+      console.log('⏰ WalletConnect session expired:', data);
+
+      // Only handle expiry if we're currently connected via WalletConnect
+      if (this.state.signerConnected && this.state.walletType === 'walletconnect') {
+        console.log('🔄 Updating app state due to mobile wallet session expiry');
+        this.handleWalletConnectDisconnection();
+      }
+    };
+
+    // Subscribe to WalletConnect events
+    walletConnectService.addEventListener('session_disconnected', handleWalletConnectDisconnection);
+    walletConnectService.addEventListener('session_delete', handleWalletConnectSessionDelete);
+    walletConnectService.addEventListener('session_expire', handleWalletConnectSessionExpire);
+
+    // Store unsubscribe function
+    this.walletConnectUnsubscribe = () => {
+      walletConnectService.removeEventListener('session_disconnected', handleWalletConnectDisconnection);
+      walletConnectService.removeEventListener('session_delete', handleWalletConnectSessionDelete);
+      walletConnectService.removeEventListener('session_expire', handleWalletConnectSessionExpire);
+    };
+  }
+
+  /**
+   * Handle WalletConnect disconnection from mobile wallet
+   */
+  private async handleWalletConnectDisconnection(): Promise<void> {
+    try {
+      console.log('🔄 Handling WalletConnect disconnection from mobile wallet');
+
+      // Clear signer and provider
+      this.provider = null;
+      this.signer = null;
+
+      // Update Safe Wallet Service to remove signer
+      await safeWalletService.setSigner(null);
+
+      // Update state to read-only mode (keep Safe wallet connected)
+      this.state = {
+        ...this.state,
+        address: undefined,
+        isOwner: false,
+        signerConnected: false,
+        signerAddress: undefined,
+        signerBalance: undefined,
+        readOnlyMode: true,
+        error: undefined,
+        walletType: undefined
+      };
+
+      // Remove event listeners
+      this.removeEventListeners();
+
+      // Notify listeners of state change
+      this.notifyListeners();
+
+      console.log('✅ Successfully handled WalletConnect disconnection from mobile wallet');
+    } catch (error) {
+      console.error('❌ Error handling WalletConnect disconnection:', error);
+
+      // Update state with error
+      this.state = {
+        ...this.state,
+        error: 'Failed to handle wallet disconnection'
+      };
+
+      this.notifyListeners();
     }
   }
 

@@ -39,11 +39,13 @@ const Header: React.FC<HeaderProps> = ({
   // Monitor wallet connection state
   useEffect(() => {
     // Get initial state
-    setConnectionState(walletConnectionService.getState());
+    const initialState = walletConnectionService.getState();
+    setConnectionState(initialState);
 
     // Subscribe to state changes
     const unsubscribe = walletConnectionService.subscribe((state) => {
       console.log('Header: Wallet connection state changed:', state);
+      const previousState = connectionState;
       setConnectionState(state);
 
       // Force re-render to ensure UI updates immediately
@@ -55,10 +57,19 @@ const Header: React.FC<HeaderProps> = ({
         console.log('Header: Auto-closing wallet modal due to signer connection');
         setShowWalletModal(false);
       }
+
+      // Show notification when wallet is disconnected from mobile side
+      if (previousState.signerConnected && !state.signerConnected &&
+          previousState.walletType === 'walletconnect' && state.readOnlyMode) {
+        console.log('Header: Detected WalletConnect disconnection from mobile wallet');
+        toast.info('Wallet Disconnected', {
+          message: 'Your mobile wallet has been disconnected. You can still view the Safe wallet in read-only mode.'
+        });
+      }
     });
 
     return unsubscribe;
-  }, [showWalletModal]);
+  }, [showWalletModal, connectionState]);
 
   // Force re-render effect (ensures component updates when forceRender changes)
   useEffect(() => {

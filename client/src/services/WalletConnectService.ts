@@ -58,13 +58,7 @@ export class WalletConnectService {
     callbacks.forEach(callback => callback(data));
   }
 
-  /**
-   * Get the current session topic
-   * @returns The current session topic
-   */
-  public getSessionTopic(): string | null {
-    return this.sessionTopic;
-  }
+
 
   /**
    * Get the dApp session topic
@@ -86,6 +80,8 @@ export class WalletConnectService {
       if (topic === this.sessionTopic) {
         this.sessionTopic = null;
         this.emit('session_delete', { topic });
+        // Also emit generic disconnected event for easier handling
+        this.emit('session_disconnected', { topic, reason: 'deleted' });
       }
     });
 
@@ -95,6 +91,8 @@ export class WalletConnectService {
       if (topic === this.sessionTopic) {
         this.sessionTopic = null;
         this.emit('session_expire', { topic });
+        // Also emit generic disconnected event for easier handling
+        this.emit('session_disconnected', { topic, reason: 'expired' });
       }
     });
 
@@ -337,6 +335,31 @@ export class WalletConnectService {
    */
   public isConnected(): boolean {
     return !!this.sessionTopic && !!this.connectionResult;
+  }
+
+  /**
+   * Get the current session topic
+   */
+  public getSessionTopic(): string | null {
+    return this.sessionTopic;
+  }
+
+  /**
+   * Check if a specific session is still valid
+   */
+  public async isSessionValid(topic?: string): Promise<boolean> {
+    const sessionTopic = topic || this.sessionTopic;
+    if (!sessionTopic || !this.signClient) {
+      return false;
+    }
+
+    try {
+      const session = await this.signClient.session.get(sessionTopic);
+      return session && session.expiry * 1000 > Date.now();
+    } catch (error) {
+      console.log('Session validation failed:', error);
+      return false;
+    }
   }
 
   private connectionResult: any = null;
