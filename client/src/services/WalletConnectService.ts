@@ -80,11 +80,17 @@ export class WalletConnectService {
   private setupWalletConnectListeners(): void {
     if (!this.signClient) return;
 
-    // Handle session deletion
+    // Handle session deletion (when mobile wallet disconnects)
     this.signClient.on('session_delete', ({ topic }: { topic: string }) => {
-      console.log(`WalletConnect session deleted: ${topic}`);
+      console.log(`WalletConnect session deleted by mobile wallet: ${topic}`);
       if (topic === this.sessionTopic) {
         this.sessionTopic = null;
+        // Emit disconnection event to notify the app
+        this.emit('session_disconnected', {
+          topic,
+          reason: 'Mobile wallet disconnected',
+          initiatedBy: 'mobile'
+        });
         this.emit('session_delete', { topic });
       }
     });
@@ -94,6 +100,12 @@ export class WalletConnectService {
       console.log(`WalletConnect session expired: ${topic}`);
       if (topic === this.sessionTopic) {
         this.sessionTopic = null;
+        // Emit disconnection event to notify the app
+        this.emit('session_disconnected', {
+          topic,
+          reason: 'Session expired',
+          initiatedBy: 'system'
+        });
         this.emit('session_expire', { topic });
       }
     });
@@ -102,6 +114,20 @@ export class WalletConnectService {
     this.signClient.on('session_event', (event: any) => {
       console.log('WalletConnect session event:', event);
       this.emit('session_update', event);
+    });
+
+    // Handle session ping (to detect connection status)
+    this.signClient.on('session_ping', ({ topic }: { topic: string }) => {
+      console.log(`WalletConnect session ping: ${topic}`);
+      // Respond to ping to maintain connection
+      if (topic === this.sessionTopic) {
+        this.signClient.respond({
+          topic,
+          response: { id: Date.now(), result: true, jsonrpc: '2.0' }
+        }).catch((error: any) => {
+          console.error('Failed to respond to ping:', error);
+        });
+      }
     });
   }
 
@@ -245,27 +271,70 @@ export class WalletConnectService {
 
   /**
    * Disconnect active WalletConnect session
+   * @param reason Optional reason for disconnection
    */
-  public async disconnect(): Promise<void> {
+  public async disconnect(reason?: string): Promise<void> {
     if (!this.signClient || !this.sessionTopic) {
-      throw new Error('No WalletConnect session to disconnect');
+      console.log('No WalletConnect session to disconnect');
+      return;
     }
 
     try {
+      console.log('Disconnecting WalletConnect session from app...');
+
       await this.signClient.disconnect({
         topic: this.sessionTopic,
         reason: {
           code: 6000,
-          message: 'User disconnected'
+          message: reason || 'User disconnected from app'
         }
       });
 
       // Reset the session topic
+      const disconnectedTopic = this.sessionTopic;
       this.sessionTopic = null;
-      this.emit('session_disconnected', null);
+
+      // Emit disconnection event
+      this.emit('session_disconnected', {
+        topic: disconnectedTopic,
+        reason: reason || 'User disconnected from app',
+        initiatedBy: 'app'
+      });
+
+      console.log('WalletConnect session disconnected successfully');
     } catch (error) {
       console.error('WalletConnect disconnection failed:', error);
-      throw error;
+      // Even if disconnect fails, clear the session topic to prevent stuck state
+      this.sessionTopic = null;
+      this.emit('session_disconnected', {
+        reason: 'Disconnect failed, clearing session',
+        initiatedBy: 'app',
+        error: error
+      });
+    }
+  }
+
+  /**
+   * Check if WalletConnect is currently connected
+   */
+  public isConnected(): boolean {
+    return !!this.sessionTopic && !!this.signClient;
+  }
+
+  /**
+   * Get current session info if connected
+   */
+  public async getSessionInfo(): Promise<any | null> {
+    if (!this.signClient || !this.sessionTopic) {
+      return null;
+    }
+
+    try {
+      const session = await this.signClient.session.get(this.sessionTopic);
+      return session;
+    } catch (error) {
+      console.error('Failed to get session info:', error);
+      return null;
     }
   }
 
@@ -330,13 +399,6 @@ export class WalletConnectService {
    */
   public getConnectedAddress(): string | null {
     return this.connectionResult?.address || null;
-  }
-
-  /**
-   * Check if WalletConnect is connected
-   */
-  public isConnected(): boolean {
-    return !!this.sessionTopic && !!this.connectionResult;
   }
 
   private connectionResult: any = null;

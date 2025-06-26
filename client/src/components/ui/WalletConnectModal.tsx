@@ -216,6 +216,26 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
       }
     };
 
+    // Listen for session disconnection events
+    const sessionDisconnectedHandler = (data: any) => {
+      console.log('WalletConnect session disconnected in modal:', data);
+
+      // Update modal state to reflect disconnection
+      setState(prev => ({
+        ...prev,
+        isConnected: false,
+        error: data?.reason || 'Wallet disconnected'
+      }));
+
+      // If modal is open and wallet disconnected from mobile, show appropriate message
+      if (data?.initiatedBy === 'mobile') {
+        setState(prev => ({
+          ...prev,
+          error: 'Mobile wallet disconnected. Please reconnect.'
+        }));
+      }
+    };
+
     // Also listen for QR code generation
     const qrGeneratedHandler = async (data: any) => {
       console.log('QR code generated:', data);
@@ -241,6 +261,7 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
     };
 
     walletConnectService.addEventListener('session_connected', sessionConnectedHandler);
+    walletConnectService.addEventListener('session_disconnected', sessionDisconnectedHandler);
     walletConnectService.addEventListener('qr_generated', qrGeneratedHandler);
 
     // Initialize connection when modal opens
@@ -248,6 +269,7 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
 
     return () => {
       walletConnectService.removeEventListener('session_connected', sessionConnectedHandler);
+      walletConnectService.removeEventListener('session_disconnected', sessionDisconnectedHandler);
       walletConnectService.removeEventListener('qr_generated', qrGeneratedHandler);
     };
   }, [isOpen, onConnectionSuccess, onClose]);
