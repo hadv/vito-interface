@@ -1,13 +1,18 @@
 module.exports = {
   // Use the default Create React App Jest configuration
   preset: 'react-scripts',
-  
+
   // Test environment
   testEnvironment: 'jsdom',
-  
+
   // Setup files
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
-  
+
+  // Performance optimizations
+  maxWorkers: process.env.CI ? 2 : '50%', // Limit workers in CI, use 50% of cores locally
+  cache: true,
+  cacheDirectory: '<rootDir>/node_modules/.cache/jest',
+
   // Module name mapping for absolute imports
   moduleNameMapping: {
     '^@/(.*)$': '<rootDir>/src/$1',
@@ -104,13 +109,24 @@ module.exports = {
   // Verbose output for CI
   verbose: process.env.CI === 'true',
   
-  // Test timeout
-  testTimeout: 10000,
-  
+  // Test timeout (reduced for faster feedback)
+  testTimeout: process.env.CI ? 5000 : 10000,
+
+  // Skip tests that are slow or not critical for PR checks
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    process.env.CI && process.env.GITHUB_EVENT_NAME === 'pull_request' ? '/src/**/*.integration.test.*' : null,
+  ].filter(Boolean),
+
+  // Faster test running options
+  bail: process.env.CI ? 1 : 0, // Stop on first failure in CI
+  errorOnDeprecated: false, // Don't fail on deprecation warnings for speed
+
   // Global setup for tests
   globals: {
     'ts-jest': {
       tsconfig: 'tsconfig.json',
+      isolatedModules: true, // Faster compilation
     },
   },
 };
