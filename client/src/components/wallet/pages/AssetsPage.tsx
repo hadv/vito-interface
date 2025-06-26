@@ -353,7 +353,7 @@ const AssetsPage: React.FC<AssetsPageProps> = ({ assets, isLoading, onSendAsset,
 
       <AssetsGrid>
         {assets.map((asset, index) => (
-          <div key={asset.address || index} onClick={() => {
+          <div key={asset.contractAddress || asset.symbol || index} onClick={() => {
             // TODO: Implement asset selection functionality
             console.log(`Selected ${asset.name} (${asset.balance} ${asset.symbol})`);
           }}>
