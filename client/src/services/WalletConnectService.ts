@@ -525,19 +525,96 @@ export class WalletConnectService {
   }
 
   /**
-   * Generate QR code canvas for the WalletConnect URI
+   * Generate QR code canvas for the WalletConnect URI with blue theme and centered logo
    * @param canvas Canvas element to render QR code on
    * @param uri WalletConnect URI
    */
   public static async generateQrCode(canvas: HTMLCanvasElement, uri: string): Promise<void> {
+    // Generate QR code with blue theme
     await QRCode.toCanvas(canvas, uri, {
       width: 300,
       margin: 2,
       color: {
-        dark: '#000000',
+        dark: '#3b82f6', // Blue color instead of black
         light: '#ffffff'
       }
     });
+
+    // Add WalletConnect logo in the center
+    await this.addWalletConnectLogo(canvas);
+  }
+
+  /**
+   * Add WalletConnect logo in the center of the QR code
+   * @param canvas Canvas element with QR code
+   */
+  private static async addWalletConnectLogo(canvas: HTMLCanvasElement): Promise<void> {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const logoSize = 60; // Size of the logo background
+    const logoRadius = 8; // Rounded corners
+
+    // Create white background with rounded corners for the logo
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    this.drawRoundedRect(ctx, centerX - logoSize / 2, centerY - logoSize / 2, logoSize, logoSize, logoRadius);
+    ctx.fill();
+
+    // Add a subtle border
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Draw WalletConnect logo
+    this.drawWalletConnectIcon(ctx, centerX, centerY, 32);
+  }
+
+  /**
+   * Draw rounded rectangle (fallback for browsers that don't support roundRect)
+   */
+  private static drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {
+    if (typeof (ctx as any).roundRect === 'function') {
+      // Use native roundRect if available
+      (ctx as any).roundRect(x, y, width, height, radius);
+    } else {
+      // Fallback implementation
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+    }
+  }
+
+  /**
+   * Draw WalletConnect icon at specified position
+   * @param ctx Canvas 2D context
+   * @param centerX Center X position
+   * @param centerY Center Y position
+   * @param size Size of the icon
+   */
+  private static drawWalletConnectIcon(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, size: number): void {
+    const scale = size / 40; // Scale factor based on original 40x25 viewBox
+    const offsetX = centerX - (40 * scale) / 2;
+    const offsetY = centerY - (25 * scale) / 2;
+
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = '#3b99fc'; // WalletConnect blue
+
+    // WalletConnect logo path (official SVG path from WalletConnect)
+    const path = new Path2D('m8.19180572 4.83416816c6.52149658-6.38508884 17.09493158-6.38508884 23.61642788 0l.7848727.76845565c.3260748.31925442.3260748.83686816 0 1.15612272l-2.6848927 2.62873374c-.1630375.15962734-.4273733.15962734-.5904108 0l-1.0800779-1.05748639c-4.5495589-4.45439756-11.9258514-4.45439756-16.4754105 0l-1.1566741 1.13248068c-.1630376.15962721-.4273735.15962721-.5904108 0l-2.68489263-2.62873375c-.32607483-.31925456-.32607483-.83686829 0-1.15612272zm29.16903948 5.43649934 2.3895596 2.3395862c.3260732.319253.3260751.8368636.0000041 1.1561187l-10.7746894 10.5494845c-.3260726.3192568-.8547443.3192604-1.1808214.0000083-.0000013-.0000013-.0000029-.0000029-.0000042-.0000043l-7.6472191-7.4872762c-.0815187-.0798136-.2136867-.0798136-.2952053 0-.0000006.0000005-.000001.000001-.0000015.0000014l-7.6470562 7.4872708c-.3260715.3192576-.8547434.319263-1.1808215.0000116-.0000019-.0000018-.0000039-.0000037-.0000059-.0000058l-10.7749893-10.5496247c-.32607469-.3192544-.32607469-.8368682 0-1.1561226l2.38956395-2.3395823c.3260747-.31925446.85474652-.31925446 1.18082136 0l7.64733029 7.4873809c.0815188.0798136.2136866.0798136.2952054 0 .0000012-.0000012.0000023-.0000023.0000035-.0000032l7.6469471-7.4873777c.3260673-.31926181.8547392-.31927378 1.1808214-.0000267.0000046.0000045.0000091.000009.0000135.0000135l7.6473203 7.4873909c.0815186.0798135.2136866.0798135.2952053 0l7.6471967-7.4872433c.3260748-.31925458.8547465-.31925458 1.1808213 0z');
+    ctx.fill(path);
+
+    ctx.restore();
   }
 
   // Adapter methods for compatibility with existing UI
