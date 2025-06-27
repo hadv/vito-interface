@@ -20,6 +20,14 @@ When a user disconnects from their mobile wallet (e.g., by closing the wallet ap
 2. `WalletConnectService` receives the event and emits `session_disconnected` with `initiatedBy: 'mobile'`
 3. `WalletConnectionService` listens for these events and calls `handleMobileWalletDisconnection()`
 4. App state is updated to read-only mode, clearing signer information
+5. Connection state is verified and cleaned up properly
+
+#### Enhanced Features:
+- **Automatic cleanup**: Session state is properly cleared when mobile wallet disconnects
+- **Connection verification**: Periodic checks (every 30 seconds) ensure stale connections are detected
+- **Error handling**: Robust error handling during disconnection cleanup
+- **State synchronization**: App state is properly synchronized with WalletConnect state
+- **Force cleanup**: Emergency cleanup method available for stuck connections
 
 #### Code Location:
 - **WalletConnectService**: `setupWalletConnectListeners()` method handles WalletConnect events
@@ -33,12 +41,21 @@ When a user disconnects from the app (e.g., clicking "Disconnect" button), the f
 1. User clicks disconnect button in the UI
 2. `WalletConnectionService.disconnectSignerWallet()` is called
 3. If wallet type is 'walletconnect', `WalletConnectService.disconnect()` is called
-4. WalletConnect sends disconnect message to mobile wallet
-5. App state is updated to read-only mode
+4. WalletConnect sends disconnect message to mobile wallet with retry logic
+5. Connection verification ensures disconnection was successful
+6. App state is updated to read-only mode
+7. If disconnection fails, force cleanup is performed
+
+#### Enhanced Features:
+- **Retry logic**: Up to 3 retry attempts with 1-second delays for failed disconnections
+- **Timeout protection**: 10-second timeout prevents hanging disconnect operations
+- **Verification**: Post-disconnect verification ensures the session was properly terminated
+- **Force cleanup**: If all retries fail, local state is forcibly cleaned up
+- **Better logging**: Detailed logging for debugging disconnection issues
 
 #### Code Location:
 - **WalletConnectionService**: `disconnectSignerWallet()` method checks wallet type and calls WalletConnect disconnect
-- **WalletConnectService**: `disconnect()` method sends disconnect message to mobile wallet
+- **WalletConnectService**: `disconnect()` method sends disconnect message to mobile wallet with enhanced error handling
 
 ### 3. Event Listeners Setup
 
@@ -150,6 +167,26 @@ Enable browser console to see detailed logs:
 - `WalletConnect session disconnected:` - Disconnection events
 - `Mobile wallet disconnected, updating app state...` - Mobile-initiated disconnection
 - `WalletConnect disconnected from app` - App-initiated disconnection
+- `Disconnecting WalletConnect session from app... (attempt X/Y)` - Retry attempts
+- `Connection verification failed` - Stale connection detection
+- `Force cleaning up all wallet connections...` - Emergency cleanup
+
+### Enhanced Testing Features
+
+The improved implementation includes additional testing capabilities:
+
+```javascript
+// Test disconnection functionality
+const result = await walletConnectService.testDisconnection();
+console.log(result.success ? 'Test passed' : 'Test failed', result.message);
+
+// Verify connection status
+const isConnected = await walletConnectService.verifyConnection();
+console.log('Connection verified:', isConnected);
+
+// Emergency cleanup (if needed)
+await walletConnectionService.forceCleanupConnections();
+```
 
 ## Future Enhancements
 

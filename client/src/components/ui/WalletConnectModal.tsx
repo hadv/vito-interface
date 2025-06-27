@@ -189,7 +189,14 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      // Cancel any pending connections and reset state when modal is closed
+      walletConnectService.cancelPendingConnection();
+      return;
+    }
+
+    // Reset state when modal opens
+    setState({ isConnected: false });
 
     // Subscribe to WalletConnect state changes
     const sessionConnectedHandler = async (data: any) => {
@@ -227,12 +234,25 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
         error: data?.reason || 'Wallet disconnected'
       }));
 
-      // If modal is open and wallet disconnected from mobile, show appropriate message
+      // Handle different disconnection scenarios
       if (data?.initiatedBy === 'mobile') {
         setState(prev => ({
           ...prev,
           error: 'Mobile wallet disconnected. Please reconnect.'
         }));
+        console.log('Mobile wallet disconnected, modal updated');
+      } else if (data?.initiatedBy === 'app') {
+        setState(prev => ({
+          ...prev,
+          error: 'Disconnected from app'
+        }));
+        console.log('App-initiated disconnection, modal updated');
+      } else if (data?.initiatedBy === 'system') {
+        setState(prev => ({
+          ...prev,
+          error: 'Session expired. Please reconnect.'
+        }));
+        console.log('System disconnection (expired), modal updated');
       }
     };
 
@@ -265,7 +285,10 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
     walletConnectService.addEventListener('qr_generated', qrGeneratedHandler);
 
     // Initialize connection when modal opens
-    initializeConnection();
+    // Force new connection if modal was reopened or if there's an existing session
+    const shouldForceNew = walletConnectService.isConnectingState() || walletConnectService.isConnected();
+    console.log('WalletConnect modal opened, forcing new connection:', shouldForceNew);
+    initializeConnection(shouldForceNew);
 
     return () => {
       walletConnectService.removeEventListener('session_connected', sessionConnectedHandler);
@@ -274,10 +297,14 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
     };
   }, [isOpen, onConnectionSuccess, onClose]);
 
-  const initializeConnection = async () => {
+  const initializeConnection = async (forceNew: boolean = false) => {
     try {
+      console.log('Initializing WalletConnect connection...', forceNew ? '(forcing new)' : '');
+      setState(prev => ({ ...prev, error: undefined, uri: undefined }));
+
       // Initialize WalletConnect with Sepolia chain ID (default)
-      await walletConnectService.initialize(11155111);
+      // Force new connection if this is a retry or modal was reopened
+      await walletConnectService.initialize(11155111, forceNew);
     } catch (error) {
       console.error('Failed to initialize WalletConnect:', error);
       setState(prev => ({ ...prev, error: 'Failed to initialize WalletConnect' }));
@@ -293,7 +320,8 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
   };
 
   const handleRetry = () => {
-    initializeConnection();
+    console.log('Retrying WalletConnect connection...');
+    initializeConnection(true); // Force new connection on retry
   };
 
   if (!isOpen) return null;

@@ -84,7 +84,12 @@ export class WalletConnectService {
     this.signClient.on('session_delete', ({ topic }: { topic: string }) => {
       console.log(`WalletConnect session deleted by mobile wallet: ${topic}`);
       if (topic === this.sessionTopic) {
+        console.log('Mobile wallet initiated disconnection, cleaning up app state...');
+
+        // Clear session state
         this.sessionTopic = null;
+        this.connectionResult = null;
+
         // Emit disconnection event to notify the app
         this.emit('session_disconnected', {
           topic,
@@ -92,6 +97,8 @@ export class WalletConnectService {
           initiatedBy: 'mobile'
         });
         this.emit('session_delete', { topic });
+
+        console.log('Mobile wallet disconnection cleanup completed');
       }
     });
 
@@ -99,7 +106,12 @@ export class WalletConnectService {
     this.signClient.on('session_expire', ({ topic }: { topic: string }) => {
       console.log(`WalletConnect session expired: ${topic}`);
       if (topic === this.sessionTopic) {
+        console.log('WalletConnect session expired, cleaning up app state...');
+
+        // Clear session state
         this.sessionTopic = null;
+        this.connectionResult = null;
+
         // Emit disconnection event to notify the app
         this.emit('session_disconnected', {
           topic,
@@ -107,6 +119,8 @@ export class WalletConnectService {
           initiatedBy: 'system'
         });
         this.emit('session_expire', { topic });
+
+        console.log('Session expiry cleanup completed');
       }
     });
 
@@ -134,9 +148,33 @@ export class WalletConnectService {
   /**
    * Initialize WalletConnect with the selected chain ID
    * @param chainId Network chain ID
+   * @param forceNew Force a new connection even if one is in progress
    * @returns Promise that resolves when initialization is complete
    */
-  public async initialize(chainId: number): Promise<void> {
+  public async initialize(chainId: number, forceNew: boolean = false): Promise<void> {
+    // If forcing new connection, reset the connecting flag and clean up existing state
+    if (forceNew) {
+      console.log('Forcing new WalletConnect connection...');
+      this.isConnecting = false;
+
+      // If there's an existing session, clean it up first
+      if (this.sessionTopic) {
+        console.log('Cleaning up existing session before forcing new connection...');
+        try {
+          if (this.signClient) {
+            await this.signClient.disconnect({
+              topic: this.sessionTopic,
+              reason: { code: 6000, message: 'Forcing new connection' }
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to disconnect existing session, continuing with cleanup:', error);
+        }
+        this.sessionTopic = null;
+        this.connectionResult = null;
+      }
+    }
+
     // Prevent duplicate connection attempts by checking if already connecting
     if (this.isConnecting) {
       console.log('Wallet connection already in progress, ignoring duplicate request');
@@ -147,8 +185,8 @@ export class WalletConnectService {
       // Set connecting flag to prevent duplicate requests
       this.isConnecting = true;
 
-      // If there's an active session, verify it's still valid
-      if (this.sessionTopic && this.signClient) {
+      // If there's an active session, verify it's still valid (unless forcing new)
+      if (this.sessionTopic && this.signClient && !forceNew) {
         try {
           const session = await this.signClient.session.get(this.sessionTopic);
           if (session && session.expiry * 1000 > Date.now()) {
@@ -272,17 +310,22 @@ export class WalletConnectService {
   /**
    * Disconnect active WalletConnect session
    * @param reason Optional reason for disconnection
+   * @param retryCount Number of retry attempts (internal use)
    */
-  public async disconnect(reason?: string): Promise<void> {
+  public async disconnect(reason?: string, retryCount: number = 0): Promise<void> {
     if (!this.signClient || !this.sessionTopic) {
       console.log('No WalletConnect session to disconnect');
       return;
     }
 
-    try {
-      console.log('Disconnecting WalletConnect session from app...');
+    const maxRetries = 3;
+    const retryDelay = 1000; // 1 second
 
-      await this.signClient.disconnect({
+    try {
+      console.log(`Disconnecting WalletConnect session from app... (attempt ${retryCount + 1}/${maxRetries + 1})`);
+
+      // Add timeout to prevent hanging
+      const disconnectPromise = this.signClient.disconnect({
         topic: this.sessionTopic,
         reason: {
           code: 6000,
@@ -290,9 +333,18 @@ export class WalletConnectService {
         }
       });
 
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Disconnect timeout')), 10000)
+      );
+
+      await Promise.race([disconnectPromise, timeoutPromise]);
+
       // Reset the session topic
       const disconnectedTopic = this.sessionTopic;
       this.sessionTopic = null;
+
+      // Clear connection result
+      this.connectionResult = null;
 
       // Emit disconnection event
       this.emit('session_disconnected', {
@@ -303,11 +355,24 @@ export class WalletConnectService {
 
       console.log('WalletConnect session disconnected successfully');
     } catch (error) {
-      console.error('WalletConnect disconnection failed:', error);
-      // Even if disconnect fails, clear the session topic to prevent stuck state
+      console.error(`WalletConnect disconnection failed (attempt ${retryCount + 1}):`, error);
+
+      // Retry if we haven't exceeded max retries
+      if (retryCount < maxRetries) {
+        console.log(`Retrying disconnection in ${retryDelay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        return this.disconnect(reason, retryCount + 1);
+      }
+
+      // If all retries failed, force cleanup
+      console.warn('All disconnect attempts failed, forcing cleanup...');
+      const disconnectedTopic = this.sessionTopic;
       this.sessionTopic = null;
+      this.connectionResult = null;
+
       this.emit('session_disconnected', {
-        reason: 'Disconnect failed, clearing session',
+        topic: disconnectedTopic,
+        reason: 'Disconnect failed after retries, forcing cleanup',
         initiatedBy: 'app',
         error: error
       });
@@ -319,6 +384,127 @@ export class WalletConnectService {
    */
   public isConnected(): boolean {
     return !!this.sessionTopic && !!this.signClient;
+  }
+
+  /**
+   * Reset connection state (useful when modal is closed without connecting)
+   */
+  public resetConnectionState(): void {
+    console.log('Resetting WalletConnect connection state...');
+    this.isConnecting = false;
+    // Don't clear sessionTopic or signClient as they represent actual connections
+  }
+
+  /**
+   * Check if currently in connecting state
+   */
+  public isConnectingState(): boolean {
+    return this.isConnecting;
+  }
+
+  /**
+   * Cancel any pending connection attempts
+   */
+  public cancelPendingConnection(): void {
+    console.log('Canceling pending WalletConnect connection...');
+    this.isConnecting = false;
+    // Note: We don't disconnect actual sessions, just reset the connecting state
+  }
+
+  /**
+   * Force disconnect and cleanup all WalletConnect state
+   * Used when switching wallets to ensure clean state
+   */
+  public async forceDisconnectAndCleanup(): Promise<void> {
+    console.log('Force disconnecting and cleaning up WalletConnect...');
+
+    try {
+      // If there's an active session, disconnect it
+      if (this.sessionTopic && this.signClient) {
+        await this.disconnect('Switching to different wallet');
+      }
+    } catch (error) {
+      console.error('Error during force disconnect:', error);
+    }
+
+    // Force cleanup regardless of disconnect success
+    this.sessionTopic = null;
+    this.connectionResult = null;
+    this.isConnecting = false;
+
+    console.log('WalletConnect force cleanup completed');
+  }
+
+  /**
+   * Verify connection status by checking session validity
+   */
+  public async verifyConnection(): Promise<boolean> {
+    if (!this.signClient || !this.sessionTopic) {
+      return false;
+    }
+
+    try {
+      const session = await this.signClient.session.get(this.sessionTopic);
+      if (!session || session.expiry * 1000 <= Date.now()) {
+        console.log('WalletConnect session is expired or invalid');
+        // Clean up expired session
+        this.sessionTopic = null;
+        this.connectionResult = null;
+        this.emit('session_disconnected', {
+          reason: 'Session expired during verification',
+          initiatedBy: 'system'
+        });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Failed to verify WalletConnect session:', error);
+      // Clean up invalid session
+      this.sessionTopic = null;
+      this.connectionResult = null;
+      this.emit('session_disconnected', {
+        reason: 'Session verification failed',
+        initiatedBy: 'system',
+        error
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Test bidirectional disconnection functionality
+   */
+  public async testDisconnection(): Promise<{ success: boolean; message: string }> {
+    if (!this.isConnected()) {
+      return { success: false, message: 'No active WalletConnect session to test' };
+    }
+
+    try {
+      console.log('Testing WalletConnect disconnection...');
+
+      // Attempt to disconnect
+      await this.disconnect('Testing disconnection functionality');
+
+      // Verify disconnection
+      const isStillConnected = await this.verifyConnection();
+
+      if (isStillConnected) {
+        return {
+          success: false,
+          message: 'Disconnection test failed - session still active'
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Disconnection test successful - session properly terminated'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Disconnection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
   }
 
   /**
