@@ -42,6 +42,9 @@ export class WalletConnectionService {
   constructor() {
     // Set up WalletConnect event listeners for mobile wallet disconnections
     this.setupWalletConnectEventListeners();
+
+    // Set up periodic connection verification for WalletConnect
+    this.setupConnectionVerification();
   }
 
   /**
@@ -85,38 +88,82 @@ export class WalletConnectionService {
   }
 
   /**
+   * Set up periodic connection verification for WalletConnect
+   */
+  private setupConnectionVerification(): void {
+    // Check connection status every 30 seconds for WalletConnect
+    setInterval(async () => {
+      if (this.state.walletType === 'walletconnect' && this.state.signerConnected) {
+        try {
+          const isConnected = await walletConnectService.verifyConnection();
+          if (!isConnected) {
+            console.log('WalletConnect connection verification failed, handling disconnection...');
+            await this.handleMobileWalletDisconnection('Connection verification failed');
+          }
+        } catch (error) {
+          console.error('Error during connection verification:', error);
+        }
+      }
+    }, 30000); // 30 seconds
+  }
+
+  /**
    * Handle mobile wallet disconnection
    */
   private async handleMobileWalletDisconnection(reason: string): Promise<void> {
     console.log(`Handling mobile wallet disconnection: ${reason}`);
 
-    // Clear provider and signer
-    this.provider = null;
-    this.signer = null;
+    try {
+      // Clear provider and signer
+      this.provider = null;
+      this.signer = null;
 
-    // Update Safe Wallet Service to remove signer
-    await safeWalletService.setSigner(null);
+      // Update Safe Wallet Service to remove signer
+      await safeWalletService.setSigner(null);
 
-    // Update state to read-only mode
-    this.state = {
-      ...this.state,
-      address: undefined,
-      isOwner: false,
-      signerConnected: false,
-      signerAddress: undefined,
-      signerBalance: undefined,
-      readOnlyMode: true,
-      walletType: undefined,
-      error: undefined
-    };
+      // Update state to read-only mode
+      this.state = {
+        ...this.state,
+        address: undefined,
+        isOwner: false,
+        signerConnected: false,
+        signerAddress: undefined,
+        signerBalance: undefined,
+        readOnlyMode: true,
+        walletType: undefined,
+        error: undefined
+      };
 
-    // Remove event listeners
-    this.removeEventListeners();
+      // Remove event listeners
+      this.removeEventListeners();
 
-    // Notify all listeners of the state change
-    this.notifyListeners();
+      // Verify WalletConnect is properly cleaned up
+      if (walletConnectService.isConnected()) {
+        console.log('WalletConnect still shows as connected, verifying...');
+        const isStillConnected = await walletConnectService.verifyConnection();
+        if (isStillConnected) {
+          console.warn('WalletConnect verification shows connection still active, this may indicate a sync issue');
+        }
+      }
 
-    console.log('Mobile wallet disconnection handled, switched to read-only mode');
+      // Notify all listeners of the state change
+      this.notifyListeners();
+
+      console.log('Mobile wallet disconnection handled, switched to read-only mode');
+    } catch (error) {
+      console.error('Error during mobile wallet disconnection handling:', error);
+
+      // Force state cleanup even if there were errors
+      this.state = {
+        ...this.state,
+        signerConnected: false,
+        readOnlyMode: true,
+        walletType: undefined,
+        error: `Disconnection error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+
+      this.notifyListeners();
+    }
   }
 
   /**
@@ -662,22 +709,41 @@ export class WalletConnectionService {
    * Disconnect only the signer wallet (keep Safe wallet connected in read-only mode)
    */
   async disconnectSignerWallet(): Promise<void> {
+    console.log('Disconnecting signer wallet...');
+
     // If WalletConnect is connected, disconnect it properly
     if (this.state.walletType === 'walletconnect' && walletConnectService.isConnected()) {
       try {
+        console.log('Disconnecting WalletConnect session...');
         await walletConnectService.disconnect('User disconnected from app');
         console.log('WalletConnect disconnected from app');
+
+        // Verify disconnection was successful
+        const isStillConnected = await walletConnectService.verifyConnection();
+        if (isStillConnected) {
+          console.warn('WalletConnect still shows as connected after disconnect attempt');
+          // Force cleanup
+          await this.handleMobileWalletDisconnection('Forced cleanup after failed disconnect');
+          return;
+        }
       } catch (error) {
         console.error('Failed to disconnect WalletConnect:', error);
+        // Continue with local cleanup even if WalletConnect disconnect failed
       }
     }
 
+    // Clear local state
     this.provider = null;
     this.signer = null;
 
-    // Update Safe Wallet Service to remove signer
-    await safeWalletService.setSigner(null);
+    try {
+      // Update Safe Wallet Service to remove signer
+      await safeWalletService.setSigner(null);
+    } catch (error) {
+      console.error('Failed to update Safe Wallet Service:', error);
+    }
 
+    // Update state to read-only mode
     this.state = {
       ...this.state,
       address: undefined,
@@ -690,8 +756,60 @@ export class WalletConnectionService {
       error: undefined
     };
 
+    // Remove event listeners
     this.removeEventListeners();
+
+    // Notify all listeners of the state change
     this.notifyListeners();
+
+    console.log('Signer wallet disconnected successfully, switched to read-only mode');
+  }
+
+  /**
+   * Force cleanup of all wallet connections (emergency cleanup)
+   */
+  async forceCleanupConnections(): Promise<void> {
+    console.log('Force cleaning up all wallet connections...');
+
+    try {
+      // Force disconnect WalletConnect if it's connected
+      if (walletConnectService.isConnected()) {
+        try {
+          await walletConnectService.disconnect('Force cleanup');
+        } catch (error) {
+          console.error('Failed to force disconnect WalletConnect:', error);
+        }
+      }
+
+      // Clear all local state
+      this.provider = null;
+      this.signer = null;
+
+      // Update Safe Wallet Service
+      try {
+        await safeWalletService.setSigner(null);
+      } catch (error) {
+        console.error('Failed to clear Safe Wallet Service signer:', error);
+      }
+
+      // Reset state
+      this.state = {
+        isConnected: false,
+        signerConnected: false,
+        readOnlyMode: false
+      };
+
+      // Remove all event listeners
+      this.removeEventListeners();
+
+      // Notify listeners
+      this.notifyListeners();
+
+      console.log('Force cleanup completed');
+    } catch (error) {
+      console.error('Error during force cleanup:', error);
+      throw error;
+    }
   }
 
   /**

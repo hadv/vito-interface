@@ -227,12 +227,25 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
         error: data?.reason || 'Wallet disconnected'
       }));
 
-      // If modal is open and wallet disconnected from mobile, show appropriate message
+      // Handle different disconnection scenarios
       if (data?.initiatedBy === 'mobile') {
         setState(prev => ({
           ...prev,
           error: 'Mobile wallet disconnected. Please reconnect.'
         }));
+        console.log('Mobile wallet disconnected, modal updated');
+      } else if (data?.initiatedBy === 'app') {
+        setState(prev => ({
+          ...prev,
+          error: 'Disconnected from app'
+        }));
+        console.log('App-initiated disconnection, modal updated');
+      } else if (data?.initiatedBy === 'system') {
+        setState(prev => ({
+          ...prev,
+          error: 'Session expired. Please reconnect.'
+        }));
+        console.log('System disconnection (expired), modal updated');
       }
     };
 

@@ -84,7 +84,12 @@ export class WalletConnectService {
     this.signClient.on('session_delete', ({ topic }: { topic: string }) => {
       console.log(`WalletConnect session deleted by mobile wallet: ${topic}`);
       if (topic === this.sessionTopic) {
+        console.log('Mobile wallet initiated disconnection, cleaning up app state...');
+
+        // Clear session state
         this.sessionTopic = null;
+        this.connectionResult = null;
+
         // Emit disconnection event to notify the app
         this.emit('session_disconnected', {
           topic,
@@ -92,6 +97,8 @@ export class WalletConnectService {
           initiatedBy: 'mobile'
         });
         this.emit('session_delete', { topic });
+
+        console.log('Mobile wallet disconnection cleanup completed');
       }
     });
 
@@ -99,7 +106,12 @@ export class WalletConnectService {
     this.signClient.on('session_expire', ({ topic }: { topic: string }) => {
       console.log(`WalletConnect session expired: ${topic}`);
       if (topic === this.sessionTopic) {
+        console.log('WalletConnect session expired, cleaning up app state...');
+
+        // Clear session state
         this.sessionTopic = null;
+        this.connectionResult = null;
+
         // Emit disconnection event to notify the app
         this.emit('session_disconnected', {
           topic,
@@ -107,6 +119,8 @@ export class WalletConnectService {
           initiatedBy: 'system'
         });
         this.emit('session_expire', { topic });
+
+        console.log('Session expiry cleanup completed');
       }
     });
 
@@ -272,17 +286,22 @@ export class WalletConnectService {
   /**
    * Disconnect active WalletConnect session
    * @param reason Optional reason for disconnection
+   * @param retryCount Number of retry attempts (internal use)
    */
-  public async disconnect(reason?: string): Promise<void> {
+  public async disconnect(reason?: string, retryCount: number = 0): Promise<void> {
     if (!this.signClient || !this.sessionTopic) {
       console.log('No WalletConnect session to disconnect');
       return;
     }
 
-    try {
-      console.log('Disconnecting WalletConnect session from app...');
+    const maxRetries = 3;
+    const retryDelay = 1000; // 1 second
 
-      await this.signClient.disconnect({
+    try {
+      console.log(`Disconnecting WalletConnect session from app... (attempt ${retryCount + 1}/${maxRetries + 1})`);
+
+      // Add timeout to prevent hanging
+      const disconnectPromise = this.signClient.disconnect({
         topic: this.sessionTopic,
         reason: {
           code: 6000,
@@ -290,9 +309,18 @@ export class WalletConnectService {
         }
       });
 
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Disconnect timeout')), 10000)
+      );
+
+      await Promise.race([disconnectPromise, timeoutPromise]);
+
       // Reset the session topic
       const disconnectedTopic = this.sessionTopic;
       this.sessionTopic = null;
+
+      // Clear connection result
+      this.connectionResult = null;
 
       // Emit disconnection event
       this.emit('session_disconnected', {
@@ -303,11 +331,24 @@ export class WalletConnectService {
 
       console.log('WalletConnect session disconnected successfully');
     } catch (error) {
-      console.error('WalletConnect disconnection failed:', error);
-      // Even if disconnect fails, clear the session topic to prevent stuck state
+      console.error(`WalletConnect disconnection failed (attempt ${retryCount + 1}):`, error);
+
+      // Retry if we haven't exceeded max retries
+      if (retryCount < maxRetries) {
+        console.log(`Retrying disconnection in ${retryDelay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        return this.disconnect(reason, retryCount + 1);
+      }
+
+      // If all retries failed, force cleanup
+      console.warn('All disconnect attempts failed, forcing cleanup...');
+      const disconnectedTopic = this.sessionTopic;
       this.sessionTopic = null;
+      this.connectionResult = null;
+
       this.emit('session_disconnected', {
-        reason: 'Disconnect failed, clearing session',
+        topic: disconnectedTopic,
+        reason: 'Disconnect failed after retries, forcing cleanup',
         initiatedBy: 'app',
         error: error
       });
@@ -319,6 +360,78 @@ export class WalletConnectService {
    */
   public isConnected(): boolean {
     return !!this.sessionTopic && !!this.signClient;
+  }
+
+  /**
+   * Verify connection status by checking session validity
+   */
+  public async verifyConnection(): Promise<boolean> {
+    if (!this.signClient || !this.sessionTopic) {
+      return false;
+    }
+
+    try {
+      const session = await this.signClient.session.get(this.sessionTopic);
+      if (!session || session.expiry * 1000 <= Date.now()) {
+        console.log('WalletConnect session is expired or invalid');
+        // Clean up expired session
+        this.sessionTopic = null;
+        this.connectionResult = null;
+        this.emit('session_disconnected', {
+          reason: 'Session expired during verification',
+          initiatedBy: 'system'
+        });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Failed to verify WalletConnect session:', error);
+      // Clean up invalid session
+      this.sessionTopic = null;
+      this.connectionResult = null;
+      this.emit('session_disconnected', {
+        reason: 'Session verification failed',
+        initiatedBy: 'system',
+        error
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Test bidirectional disconnection functionality
+   */
+  public async testDisconnection(): Promise<{ success: boolean; message: string }> {
+    if (!this.isConnected()) {
+      return { success: false, message: 'No active WalletConnect session to test' };
+    }
+
+    try {
+      console.log('Testing WalletConnect disconnection...');
+
+      // Attempt to disconnect
+      await this.disconnect('Testing disconnection functionality');
+
+      // Verify disconnection
+      const isStillConnected = await this.verifyConnection();
+
+      if (isStillConnected) {
+        return {
+          success: false,
+          message: 'Disconnection test failed - session still active'
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Disconnection test successful - session properly terminated'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Disconnection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
   }
 
   /**
