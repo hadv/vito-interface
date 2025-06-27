@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { AddressBookService, AddressBookEntry } from '../services/AddressBookService';
 import { createAddressBookService } from '../services/AddressBookService';
-import { walletConnectionService } from '../services/WalletConnectionService';
+import { useWallet } from '../contexts/WalletContext';
 import { useToast } from './useToast';
 
 interface UseAddressBookOptions {
@@ -27,13 +27,14 @@ interface UseAddressBookReturn {
 
 export const useAddressBook = (options: UseAddressBookOptions = {}): UseAddressBookReturn => {
   const { network = 'ethereum', safeAddress, autoRefresh = true } = options;
-  
+
   const [entries, setEntries] = useState<AddressBookEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [service, setService] = useState<AddressBookService | null>(null);
-  
+
   const { success, error: showError } = useToast();
+  const { state: walletState } = useWallet();
 
   // Initialize service
   useEffect(() => {
@@ -61,21 +62,14 @@ export const useAddressBook = (options: UseAddressBookOptions = {}): UseAddressB
 
     const updateProviderAndSigner = () => {
       try {
-        const connectionState = walletConnectionService.getState();
-
         // Only set up provider if signer is already connected AND it's MetaMask
         // Avoid window.ethereum for WalletConnect to prevent Chrome extension popups
-        if (connectionState.signerConnected && connectionState.walletType === 'metamask' && window.ethereum) {
-          console.log('📚 AddressBook: Setting up provider with MetaMask signer');
+        if (walletState.signerConnected && walletState.walletType === 'metamask' && window.ethereum) {
           const provider = new ethers.providers.Web3Provider(window.ethereum);
           const signer = provider.getSigner();
           service.initialize(provider, signer);
-        } else if (connectionState.signerConnected && connectionState.walletType === 'walletconnect') {
-          console.log('📚 AddressBook: WalletConnect detected, skipping window.ethereum to avoid extension popup');
+        } else if (walletState.signerConnected && walletState.walletType === 'walletconnect') {
           // Don't initialize provider for WalletConnect to avoid triggering Chrome extensions
-        } else {
-          console.log('📚 AddressBook: No compatible signer connected, skipping provider setup');
-          // Don't initialize provider to avoid triggering wallet extension popups
         }
       } catch (err: any) {
         console.error('Error updating provider and signer:', err);
@@ -84,12 +78,7 @@ export const useAddressBook = (options: UseAddressBookOptions = {}): UseAddressB
     };
 
     updateProviderAndSigner();
-
-    // Listen for connection state changes
-    const unsubscribe = walletConnectionService.subscribe(updateProviderAndSigner);
-
-    return unsubscribe;
-  }, [service]);
+  }, [service, walletState.signerConnected, walletState.walletType]);
 
   const loadEntries = useCallback(async () => {
     if (!service || !safeAddress) {

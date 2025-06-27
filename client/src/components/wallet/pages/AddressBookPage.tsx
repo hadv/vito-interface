@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import styled from 'styled-components';
 import { theme } from '../../../theme';
 import { useAddressBook } from '../../../hooks/useAddressBook';
@@ -8,7 +8,7 @@ import Button from '../../ui/Button';
 import Input from '../../ui/Input';
 import AddressBookTransactionModal from '../components/AddressBookTransactionModal';
 import AddressDisplay from '../components/AddressDisplay';
-import { walletConnectionService } from '../../../services/WalletConnectionService';
+import { useWallet } from '../../../contexts/WalletContext';
 
 const Container = styled.div`
   padding: 0;
@@ -47,7 +47,9 @@ const SearchContainer = styled.div`
   max-width: 500px;
 `;
 
-const AddButton = styled(Button)`
+const AddButton = styled(Button).withConfig({
+  shouldForwardProp: (prop) => !['isDisconnected'].includes(prop),
+})<{ isDisconnected?: boolean }>`
   background: linear-gradient(135deg, #10b981, #059669);
   color: white;
   border: none;
@@ -66,6 +68,7 @@ const AddButton = styled(Button)`
   border: 1px solid rgba(16, 185, 129, 0.4);
   position: relative;
   overflow: hidden;
+  opacity: ${props => props.isDisconnected ? 0.5 : 1};
 
   &::before {
     content: '';
@@ -78,7 +81,7 @@ const AddButton = styled(Button)`
     transition: left 0.5s ease;
   }
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: linear-gradient(135deg, #059669, #047857);
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
@@ -89,9 +92,22 @@ const AddButton = styled(Button)`
     }
   }
 
-  &:active {
+  &:active:not(:disabled) {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  &:disabled {
+    background: linear-gradient(135deg, #6b7280, #4b5563);
+    color: #9ca3af;
+    cursor: not-allowed;
+    box-shadow: 0 2px 6px rgba(107, 114, 128, 0.2);
+    border-color: rgba(107, 114, 128, 0.3);
+    transform: none;
+
+    &::before {
+      display: none;
+    }
   }
 `;
 
@@ -216,6 +232,12 @@ const EntryActions = styled.div`
   margin-left: ${theme.spacing[4]};
 `;
 
+const DisconnectedButton = styled(Button).withConfig({
+  shouldForwardProp: (prop) => !['isDisconnected'].includes(prop),
+})<{ isDisconnected?: boolean }>`
+  opacity: ${props => props.isDisconnected ? 0.5 : 1};
+`;
+
 interface AddressBookPageProps {
   network?: string;
 }
@@ -226,23 +248,9 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
   const [modalOperation, setModalOperation] = useState<'add' | 'remove'>('add');
   const [editingEntry, setEditingEntry] = useState<AddressBookEntry | null>(null);
   const [removingAddress, setRemovingAddress] = useState<string | null>(null);
-
-  // Get current Safe address from wallet connection service
-  const [safeAddress, setSafeAddress] = useState<string | null>(null);
-
-  useEffect(() => {
-    const updateSafeAddress = () => {
-      const connectionState = walletConnectionService.getConnectionState();
-      setSafeAddress(connectionState.safeAddress || null);
-    };
-
-    updateSafeAddress();
-
-    // Listen for connection state changes
-    const unsubscribe = walletConnectionService.onConnectionStateChange(updateSafeAddress);
-
-    return unsubscribe;
-  }, []);
+  // Use centralized wallet connection context
+  const { state: walletState, showWalletModal } = useWallet();
+  const safeAddress = walletState.safeAddress || null;
 
   const {
     entries,
@@ -297,7 +305,7 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
           </EntryAddressContainer>
         </EntryInfo>
         <EntryActions>
-          <Button
+          <DisconnectedButton
             variant="secondary"
             size="sm"
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
@@ -305,10 +313,11 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
               handleEditEntry(entry);
             }}
             disabled={removingAddress === entry.walletAddress}
+            isDisconnected={!walletState.signerConnected}
           >
             Edit
-          </Button>
-          <Button
+          </DisconnectedButton>
+          <DisconnectedButton
             variant="danger"
             size="sm"
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
@@ -317,29 +326,48 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
             }}
             disabled={removingAddress === entry.walletAddress}
             loading={removingAddress === entry.walletAddress}
+            isDisconnected={!walletState.signerConnected}
             data-1p-ignore="true"
             data-lpignore="true"
           >
             Remove
-          </Button>
+          </DisconnectedButton>
         </EntryActions>
       </EntryItem>
     </AddressBookEntryCard>
   );
 
   const handleAddEntry = () => {
+    // Check if signer is connected
+    if (!walletState.signerConnected) {
+      showWalletModal();
+      return;
+    }
+
     setEditingEntry(null);
     setModalOperation('add');
     setIsModalOpen(true);
   };
 
   const handleEditEntry = (entry: AddressBookEntry) => {
+    // Check if signer is connected
+    if (!walletState.signerConnected) {
+      showWalletModal();
+      return;
+    }
+
     setEditingEntry(entry);
     setModalOperation('add');
     setIsModalOpen(true);
   };
 
   const handleRemoveEntry = (entry: AddressBookEntry) => {
+    // Check if signer is connected
+    if (!walletState.signerConnected) {
+      showWalletModal();
+      return;
+    }
+
     setEditingEntry(entry);
     setModalOperation('remove');
     setIsModalOpen(true);
@@ -355,6 +383,8 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
     setEditingEntry(null);
     setRemovingAddress(null);
   };
+
+
 
   if (!safeAddress) {
     return (
@@ -430,7 +460,10 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
             />
           </SearchContainer>
-          <AddButton onClick={handleAddEntry}>
+          <AddButton
+            onClick={handleAddEntry}
+            isDisconnected={!walletState.signerConnected}
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path d="M12 5V19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -485,7 +518,10 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
           />
         </SearchContainer>
-        <AddButton onClick={handleAddEntry}>
+        <AddButton
+          onClick={handleAddEntry}
+          isDisconnected={!walletState.signerConnected}
+        >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path d="M12 5V19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -539,6 +575,8 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
         editEntry={editingEntry}
         existingAddresses={existingAddresses}
       />
+
+
     </Container>
   );
 };

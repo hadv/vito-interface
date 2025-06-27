@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { walletConnectionService } from '../../../services/WalletConnectionService';
+import { useWallet } from '../../../contexts/WalletContext';
 import { theme } from '../../../theme';
 
 const BannerContainer = styled.div`
@@ -77,28 +77,16 @@ const NetworkSwitchingBanner: React.FC<NetworkSwitchingBannerProps> = ({
   className
 }) => {
   const [isNetworkSwitching, setIsNetworkSwitching] = useState(false);
+  const { state: walletState } = useWallet();
 
   useEffect(() => {
-    // Get initial state
-    const currentState = walletConnectionService.getState();
-
-    // Subscribe to state changes
-    const unsubscribe = walletConnectionService.subscribe((state) => {
-      // Check if we're in the middle of a network switch
-      if (targetNetwork && state.network !== targetNetwork && state.isConnected) {
-        setIsNetworkSwitching(true);
-      } else {
-        setIsNetworkSwitching(false);
-      }
-    });
-
-    // Check initial state
-    if (targetNetwork && currentState.network !== targetNetwork && currentState.isConnected) {
+    // Check if we're in the middle of a network switch
+    if (targetNetwork && walletState.network !== targetNetwork && walletState.isConnected) {
       setIsNetworkSwitching(true);
+    } else {
+      setIsNetworkSwitching(false);
     }
-
-    return unsubscribe;
-  }, [targetNetwork]);
+  }, [targetNetwork, walletState.network, walletState.isConnected]);
 
   // Only show banner if we're switching networks
   if (!isNetworkSwitching || !targetNetwork) {

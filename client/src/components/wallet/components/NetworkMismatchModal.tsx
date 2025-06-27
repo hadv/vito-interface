@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { theme } from '../../../theme';
 import { NETWORK_CONFIGS } from '../../../contracts/abis';
-import { walletConnectionService } from '../../../services/WalletConnectionService';
+import { useWallet } from '../../../contexts/WalletContext';
 
 interface NetworkMismatchModalProps {
   isOpen: boolean;
@@ -172,6 +172,7 @@ const NetworkMismatchModal: React.FC<NetworkMismatchModalProps> = ({
 }) => {
   const [isSwitching, setIsSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { switchChain } = useWallet();
 
   const currentConfig = NETWORK_CONFIGS[currentNetwork as keyof typeof NETWORK_CONFIGS];
   const requiredConfig = NETWORK_CONFIGS[requiredNetwork as keyof typeof NETWORK_CONFIGS];
@@ -181,15 +182,16 @@ const NetworkMismatchModal: React.FC<NetworkMismatchModalProps> = ({
     setError(null);
 
     try {
-      const result = await walletConnectionService.checkAndSwitchNetwork(requiredNetwork);
-      
-      if (result.switched) {
-        console.log('✅ Network switched successfully');
-        onNetworkSwitch?.();
-        onClose();
-      } else {
-        setError(result.error || 'Failed to switch network');
+      // Get the chain ID for the required network
+      const chainId = requiredConfig?.chainId;
+      if (!chainId) {
+        throw new Error(`Chain ID not found for network: ${requiredNetwork}`);
       }
+
+      await switchChain(chainId);
+
+      onNetworkSwitch?.();
+      onClose();
     } catch (error: any) {
       console.error('Error switching network:', error);
       setError(error.message || 'Failed to switch network');

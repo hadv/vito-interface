@@ -4,10 +4,11 @@ import { ethers } from 'ethers';
 import { theme } from '../../../theme';
 import { AddressBookEntry, createAddressBookService } from '../../../services/AddressBookService';
 import { createSafeTxPoolService } from '../../../services/SafeTxPoolService';
-import { walletConnectionService } from '../../../services/WalletConnectionService';
+import { useWallet } from '../../../contexts/WalletContext';
 import { toChecksumAddress, isValidAddress, isZeroAddress } from '../../../utils/addressUtils';
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
+import WalletModal from '../../ui/WalletModal';
 import { useToast } from '../../../hooks/useToast';
 
 const ModalOverlay = styled.div`
@@ -159,7 +160,9 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
   const [currentNetwork, setCurrentNetwork] = useState<string>('sepolia');
   const [addressBookService, setAddressBookService] = useState<any>(null);
   const [safeTxPoolService, setSafeTxPoolService] = useState<any>(null);
+  const [showWalletModal, setShowWalletModal] = useState(false);
   const { success, error: showError } = useToast();
+  const { state: walletState, connectSigner, showWalletModal: showWalletConnectionModal } = useWallet();
 
   const isEditing = Boolean(editEntry);
   const isRemoving = operation === 'remove';
@@ -167,23 +170,24 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
   // Get current network and initialize services when modal opens
   useEffect(() => {
     if (isOpen) {
-      // Get the current network from wallet connection service
-      const connectionState = walletConnectionService.getState();
-      const network = connectionState.network || 'sepolia'; // Default to sepolia
+      // Get the current network from wallet state
+      const network = walletState.network || 'sepolia'; // Default to sepolia
 
-      console.log('Current network:', network);
       setCurrentNetwork(network);
 
       // Create network-specific services without wallet connection
       const addressBookSvc = createAddressBookService(network);
       const safeTxPoolSvc = createSafeTxPoolService(network);
 
-      // Initialize services with read-only provider (no signer to avoid wallet popup)
-      if (window.ethereum) {
+      // Only initialize services with provider if MetaMask is connected
+      // Avoid window.ethereum for WalletConnect to prevent Chrome extension popups
+      if (walletState.signerConnected && walletState.walletType === 'metamask' && window.ethereum) {
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         // Only initialize with provider, no signer to avoid triggering wallet popup
         addressBookSvc.initialize(provider);
         // SafeTxPoolService doesn't need initialization here, we'll set signer later
+      } else if (walletState.signerConnected && walletState.walletType === 'walletconnect') {
+        // Don't initialize provider for WalletConnect to avoid triggering Chrome extensions
       }
 
       setAddressBookService(addressBookSvc);
@@ -205,6 +209,13 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
       setIsSubmitting(false);
     }
   }, [isOpen, editEntry]);
+
+  // Listen for wallet connection changes to close the wallet modal
+  useEffect(() => {
+    if (walletState.signerConnected && showWalletModal) {
+      setShowWalletModal(false);
+    }
+  }, [walletState.signerConnected, showWalletModal]);
 
   const validateForm = (): boolean => {
     let isValid = true;
@@ -268,13 +279,30 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
     try {
       console.log(`Creating transaction for network: ${currentNetwork}`);
 
-      // Now get the signer only when we need to submit the transaction
-      if (!window.ethereum) {
-        throw new Error('No wallet connection available');
+      // Check if signer wallet is connected
+      if (!walletState.signerConnected) {
+        setShowWalletModal(true);
+        return;
       }
 
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
+      let provider: ethers.providers.Provider;
+      let signer: ethers.Signer;
+
+      if (walletState.walletType === 'metamask') {
+        // Use MetaMask provider
+        if (!window.ethereum) {
+          throw new Error('MetaMask not available');
+        }
+        const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
+        provider = web3Provider;
+        signer = (web3Provider as ethers.providers.Web3Provider).getSigner();
+      } else if (walletState.walletType === 'walletconnect') {
+        // For WalletConnect, we'll need to get the provider from the wallet service
+        // This is a simplified approach - in production you might want to use the wallet client directly
+        throw new Error('WalletConnect transaction creation not yet implemented in new system');
+      } else {
+        throw new Error(`Unsupported wallet type: ${walletState.walletType}`);
+      }
 
       // Update services with signer for transaction submission
       addressBookService.initialize(provider, signer);
@@ -317,6 +345,8 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
       setIsSubmitting(false);
     }
   };
+
+
 
   if (!isOpen) return null;
 
@@ -387,6 +417,12 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
           </ButtonGroup>
         </form>
       </ModalContent>
+
+      {/* Wallet Connection Modal */}
+      <WalletModal
+        isOpen={showWalletModal}
+        onClose={() => setShowWalletModal(false)}
+      />
     </ModalOverlay>
   );
 };

@@ -1,6 +1,6 @@
 import { safeWalletService } from '../services/SafeWalletService';
 import { transactionService } from '../services/TransactionService';
-import { walletConnectionService } from '../services/WalletConnectionService';
+import { walletService } from '../services/WalletService';
 
 export interface WalletAccount {
   address: string;
@@ -53,9 +53,9 @@ export interface SafeWallet {
  */
 export const createSafeWallet = async (): Promise<SafeWallet> => {
   try {
-    const connectionState = walletConnectionService.getState();
+    const walletState = walletService.getState();
 
-    if (!connectionState.isConnected || !connectionState.safeAddress) {
+    if (!walletState.isConnected || !walletState.safeAddress) {
       throw new Error('Safe wallet not connected');
     }
 
@@ -188,8 +188,8 @@ export const connectSafeWallet = async (
   network: string = 'ethereum'
 ): Promise<void> => {
   try {
-    await walletConnectionService.connectWallet({
-      safeAddress,
+    await walletService.connect({
+      safeAddress: safeAddress as `0x${string}`,
       network,
       readOnlyMode: true  // Always use read-only mode to prevent MetaMask popup
     });
@@ -204,7 +204,7 @@ export const connectSafeWallet = async (
  */
 export const disconnectSafeWallet = async (): Promise<void> => {
   try {
-    await walletConnectionService.disconnectWallet();
+    await walletService.disconnect();
   } catch (error) {
     console.error('Error disconnecting from Safe wallet:', error);
     throw error;

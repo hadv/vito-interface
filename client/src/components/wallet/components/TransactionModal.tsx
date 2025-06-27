@@ -6,7 +6,7 @@ import { isValidEthereumAddress } from '../../../utils/ens';
 import EIP712SigningModal from './EIP712SigningModal';
 import { SafeTransactionData, SafeDomain } from '../../../utils/eip712';
 import { safeWalletService } from '../../../services/SafeWalletService';
-import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
+import { useWallet } from '../../../contexts/WalletContext';
 import { isSafeTxPoolConfigured } from '../../../contracts/abis';
 import { useToast } from '../../../hooks/useToast';
 import { ErrorHandler } from '../../../utils/errorHandling';
@@ -251,7 +251,6 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   const [success, setSuccess] = useState(''); // Keep for success messages
   const [currentStep, setCurrentStep] = useState<'form' | 'signing' | 'proposing'>('form');
   const [showEIP712Modal, setShowEIP712Modal] = useState(false);
-  const [connectionState, setConnectionState] = useState<WalletConnectionState>({ isConnected: false });
   const [pendingTransaction, setPendingTransaction] = useState<{
     data: SafeTransactionData;
     domain: SafeDomain;
@@ -262,17 +261,9 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
   // Initialize toast system
   const toast = useToast();
+  const { state: walletState, connectSigner } = useWallet();
 
-  // Subscribe to wallet connection state changes
-  useEffect(() => {
-    setConnectionState(walletConnectionService.getState());
-
-    const unsubscribe = walletConnectionService.subscribe((state) => {
-      setConnectionState(state);
-    });
-
-    return unsubscribe;
-  }, []);
+  // Wallet state is now managed by the context, no need for separate subscription
 
   // Decode transaction data when inputs change
   useEffect(() => {
@@ -284,7 +275,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
       try {
         // Initialize decoder with current network
-        const network = connectionState.network || 'ethereum';
+        const network = walletState.network || 'ethereum';
         const rpcUrl = getRpcUrl(network);
         const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
         const tokenService = new TokenService(provider, network);
@@ -329,11 +320,11 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     };
 
     decodeTransaction();
-  }, [toAddress, amount, preSelectedAsset, connectionState.network]);
+  }, [toAddress, amount, preSelectedAsset, walletState.network]);
 
   const handleConnectSigner = async () => {
     try {
-      await walletConnectionService.connectSignerWallet();
+      await connectSigner('metamask'); // Default to MetaMask for now
       toast.success('Wallet Connected', {
         message: 'Signer wallet connected successfully'
       });
@@ -366,14 +357,14 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     }
 
     // Check if signer is connected
-    if (!connectionState.signerConnected) {
+    if (!walletState.signerConnected) {
       setError('Please connect your wallet to sign transactions');
       return;
     }
 
     // Check if Safe TX Pool is configured for the current network
-    if (!isSafeTxPoolConfigured(connectionState.network || 'ethereum')) {
-      setError(`Safe TX Pool contract is not configured for ${connectionState.network}. Please configure the contract address to enable transactions.`);
+    if (!isSafeTxPoolConfigured(walletState.network || 'ethereum')) {
+      setError(`Safe TX Pool contract is not configured for ${walletState.network}. Please configure the contract address to enable transactions.`);
       return;
     }
 
@@ -643,7 +634,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
               onChange={setToAddress}
               placeholder="Select from address book or enter address..."
               disabled={isLoading}
-              network={connectionState.network || 'ethereum'}
+              network={walletState.network || 'ethereum'}
               safeAddress={fromAddress}
             />
           </FormGroup>
@@ -717,7 +708,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                 <DetailValue>
                   <AddressDisplay
                     address={toAddress}
-                    network={connectionState.network || 'ethereum'}
+                    network={walletState.network || 'ethereum'}
                     truncate={true}
                     truncateLength={6}
                   />
@@ -742,7 +733,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                     <DetailValue>
                       <AddressDisplay
                         address={decodedTransaction.details.token.address}
-                        network={connectionState.network || 'ethereum'}
+                        network={walletState.network || 'ethereum'}
                         truncate={true}
                         truncateLength={6}
                       />
@@ -756,7 +747,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                 <div style={{ marginBottom: '16px' }}>
                   <ParameterDisplay
                     parameters={decodedTransaction.details.decodedInputs}
-                    network={connectionState.network || 'ethereum'}
+                    network={walletState.network || 'ethereum'}
                     compact={true}
                   />
                 </div>
@@ -836,7 +827,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             >
               Cancel
             </Button>
-            {!connectionState.signerConnected ? (
+            {!walletState.signerConnected ? (
               <Button
                 type="button"
                 variant="primary"
@@ -886,7 +877,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             safeAddress={pendingTransaction.domain.verifyingContract}
             chainId={pendingTransaction.domain.chainId}
             decodedTransaction={decodedTransaction}
-            network={connectionState.network || 'ethereum'}
+            network={walletState.network || 'ethereum'}
           />
         )}
       </ModalContainer>

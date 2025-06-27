@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { ethers } from 'ethers';
 import { SafeTxPoolTransaction } from '../../../services/SafeTxPoolService';
 import { SafeWalletService } from '../../../services/SafeWalletService';
-import { walletConnectionService } from '../../../services/WalletConnectionService';
+import { useWallet } from '../../../contexts/WalletContext';
 import { formatWalletAddress } from '../../../utils';
 import { useToast } from '../../../hooks/useToast';
 import { toChecksumAddress, addressInArray, formatChecksumAddress } from '../../../utils/addressUtils';
@@ -257,6 +257,7 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
   const [canUserSign, setCanUserSign] = useState(false);
   const [decodedTransaction, setDecodedTransaction] = useState<DecodedTransactionData | null>(null);
   const toast = useToast();
+  const { state: walletState } = useWallet();
 
   useEffect(() => {
     if (isOpen) {
@@ -364,8 +365,7 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
   const getCurrentUserAddress = async () => {
     try {
-      const state = walletConnectionService.getState();
-      const address = state.address;
+      const address = walletState.signerAddress;
       setCurrentUserAddress(address || null);
     } catch (error) {
       console.error('Error getting current user address:', error);
@@ -377,15 +377,18 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
     setIsLoading(true);
     try {
-      // Get the signer from wallet connection service (supports both MetaMask and WalletConnect)
-      const connectionState = walletConnectionService.getState();
-      if (!connectionState.signerConnected) {
+      // Check if wallet is connected
+      if (!walletState.signerConnected) {
         throw new Error('No wallet connected. Please connect your wallet first.');
       }
 
-      const signer = walletConnectionService.getSigner();
-      if (!signer) {
-        throw new Error('No signer available. Please connect your wallet first.');
+      // For now, we'll use MetaMask directly. In production, you'd want to use the wallet client from ViemWalletService
+      let signer: ethers.Signer;
+      if (walletState.walletType === 'metamask' && window.ethereum) {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+      } else {
+        throw new Error('Wallet type not supported for signing in this implementation');
       }
 
       // Verify the signer address matches the current user
@@ -427,15 +430,18 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
 
     setIsLoading(true);
     try {
-      // Get the signer from wallet connection service (supports both MetaMask and WalletConnect)
-      const connectionState = walletConnectionService.getState();
-      if (!connectionState.signerConnected) {
+      // Check if wallet is connected
+      if (!walletState.signerConnected) {
         throw new Error('No wallet connected. Please connect your wallet first.');
       }
 
-      const signer = walletConnectionService.getSigner();
-      if (!signer) {
-        throw new Error('No signer available. Please connect your wallet first.');
+      // For now, we'll use MetaMask directly. In production, you'd want to use the wallet client from ViemWalletService
+      let signer: ethers.Signer;
+      if (walletState.walletType === 'metamask' && window.ethereum) {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+      } else {
+        throw new Error('Wallet type not supported for signing in this implementation');
       }
 
       // Verify the signer address matches the current user

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
+import { useWallet } from '../../../contexts/WalletContext';
 import { theme } from '../../../theme';
 
 const BannerContainer = styled.div`
@@ -93,25 +93,13 @@ interface SignerConnectionBannerProps {
 }
 
 const SignerConnectionBanner: React.FC<SignerConnectionBannerProps> = ({ className }) => {
-  const [connectionState, setConnectionState] = useState<WalletConnectionState>({ isConnected: false });
   const [isConnecting, setIsConnecting] = useState(false);
-
-  useEffect(() => {
-    // Get initial state
-    setConnectionState(walletConnectionService.getState());
-
-    // Subscribe to state changes
-    const unsubscribe = walletConnectionService.subscribe((state) => {
-      setConnectionState(state);
-    });
-
-    return unsubscribe;
-  }, []);
+  const { state: walletState, connectSigner } = useWallet();
 
   const handleConnectSigner = async () => {
     setIsConnecting(true);
     try {
-      await walletConnectionService.connectSignerWallet();
+      await connectSigner('metamask'); // Default to MetaMask
     } catch (error: any) {
       console.error('Failed to connect signer wallet:', error);
       alert(`Failed to connect signer wallet: ${error.message}`);
@@ -121,7 +109,7 @@ const SignerConnectionBanner: React.FC<SignerConnectionBannerProps> = ({ classNa
   };
 
   // Only show banner if Safe is connected but signer is not
-  if (!connectionState.isConnected || connectionState.signerConnected || !connectionState.readOnlyMode) {
+  if (!walletState.isConnected || walletState.signerConnected || !walletState.readOnlyMode) {
     return null;
   }
 

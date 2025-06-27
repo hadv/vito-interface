@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import WalletPage from './components/wallet/WalletPage';
 import { resolveAddressToEns, isValidEthereumAddress } from './utils';
 import { Button, Input, Card } from './components/ui';
-import { walletConnectionService } from './services/WalletConnectionService';
 import { cn } from './utils/cn';
 import './App.css';
 import ErrorBoundary from './components/ui/ErrorBoundary';
@@ -10,6 +9,8 @@ import { ToastNotificationContainer } from './components/ui/Toast';
 import { useToast } from './hooks/useToast';
 import { ErrorHandler } from './utils/errorHandling';
 import Header from './components/ui/Header';
+import { WalletProvider, useWallet } from './contexts/WalletContext';
+import WalletModal from './components/ui/WalletModal';
 
 // Tailwind classes for app container
 const appContainerClasses = cn(
@@ -132,21 +133,23 @@ const NoWalletPage = ({ walletAddress, setWalletAddress, onConnect }: {
   );
 };
 
-function App() {
+// Inner component that uses the wallet context
+function AppContent() {
   const [network, setNetwork] = useState('ethereum');
-  const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState('');
   const [ensName, setEnsName] = useState('');
   const [isLoadingEns, setIsLoadingEns] = useState(false);
-  const [networkSelectorOpen, setNetworkSelectorOpen] = useState(false);
-  const [isNetworkSwitching, setIsNetworkSwitching] = useState(false);
-  // Remove redundant error state - using toast system instead
-  // const [error, setError] = useState<string | null>(null);
-
-  // Initialize toast system
   const toast = useToast();
+  const { state, connectSafe, isModalOpen, hideWalletModal } = useWallet();
 
-
+  // Update local state when wallet state changes
+  useEffect(() => {
+    if (state.safeAddress) {
+      setWalletAddress(state.safeAddress);
+    } else if (!state.isConnected) {
+      setWalletAddress('');
+    }
+  }, [state.isConnected, state.safeAddress]);
 
   // Network change is handled by selectNetwork function in the UI
 
@@ -155,7 +158,7 @@ function App() {
     let isMounted = true;
     
     const resolveEns = async () => {
-      if (!walletConnected || !walletAddress) return;
+      if (!state.isConnected || !walletAddress) return;
       
       setIsLoadingEns(true);
       try {
@@ -180,23 +183,19 @@ function App() {
     return () => {
       isMounted = false;
     };
-  }, [walletAddress, network, walletConnected]);
+  }, [state.isConnected, walletAddress, network]);
 
   // Auto-dismiss error logic removed - using toast system instead
 
   const connectWallet = async () => {
     if (walletAddress.trim() && isValidEthereumAddress(walletAddress)) {
       try {
-        console.log(`Connecting to Safe wallet: ${walletAddress} on network: ${network}`);
-
-        // Connect in read-only mode by default - user can connect signer later
-        await walletConnectionService.connectWallet({
-          safeAddress: walletAddress,
+        await connectSafe({
+          safeAddress: walletAddress as `0x${string}`,
           network: network,
           readOnlyMode: true
         });
 
-        setWalletConnected(true);
         toast.success('Wallet Connected', {
           message: `Successfully connected to Safe wallet on ${network}`
         });
@@ -221,98 +220,31 @@ function App() {
 
 
 
-  // Toggle network selector
-  const toggleNetworkSelector = () => {
-    console.log('Toggle network selector clicked, isNetworkSwitching:', isNetworkSwitching, 'current state:', networkSelectorOpen);
-    if (!isNetworkSwitching) {
-      setNetworkSelectorOpen(!networkSelectorOpen);
-    }
-  };
-
   // Handle network selection
-  const selectNetwork = async (selectedNetwork: string) => {
-    console.log(`Network selection clicked: ${selectedNetwork}, current: ${network}`);
-    const previousNetwork = network;
+  const selectNetwork = (selectedNetwork: string) => {
     setNetwork(selectedNetwork);
-    setNetworkSelectorOpen(false);
-
-    // If wallet is connected, switch the network for the connected wallet
-    if (walletConnected && walletAddress) {
-      setIsNetworkSwitching(true);
-      try {
-        console.log(`Switching network from ${previousNetwork} to ${selectedNetwork} for wallet: ${walletAddress}`);
-
-        await walletConnectionService.switchNetwork(selectedNetwork);
-
-        console.log(`Successfully switched to ${selectedNetwork}`);
-      } catch (error: any) {
-        console.error('Failed to switch network:', error);
-        // Revert network selection on error
-        setNetwork(previousNetwork);
-        toast.networkError(selectedNetwork, () => selectNetwork(selectedNetwork));
-      } finally {
-        setIsNetworkSwitching(false);
-      }
-    } else {
-      console.log(`Network changed to ${selectedNetwork} (no wallet connected)`);
-    }
   };
 
-  // Add click outside handler
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (networkSelectorOpen && !(event.target as Element).closest('.network-selector')) {
-        setNetworkSelectorOpen(false);
-      }
-    };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [networkSelectorOpen]);
-
-  // Add an effect to handle wallet disconnection
-  useEffect(() => {
-    if (!walletConnected) {
-      console.log('Wallet connection state changed to disconnected');
-    }
-  }, [walletConnected]);
 
 
 
   return (
-    <ErrorBoundary
-      onError={(error, errorInfo) => {
-        console.error('App Error Boundary caught error:', error, errorInfo);
-        toast.error('Application Error', {
-          message: 'An unexpected error occurred. The page will reload automatically.',
-          duration: 8000
-        });
-      }}
-    >
-      <div className={appContainerClasses}>
-      {/* Old error notification removed - using toast system instead */}
-
+    <div className={appContainerClasses}>
       <Header
         network={network}
-        networkSelectorOpen={networkSelectorOpen}
-        isNetworkSwitching={isNetworkSwitching}
-        walletConnected={walletConnected}
-        onToggleNetworkSelector={toggleNetworkSelector}
+        walletConnected={state.isConnected}
         onSelectNetwork={selectNetwork}
       />
 
-        {/* Toast Notifications - Positioned below header */}
-        <ToastNotificationContainer
-          toasts={toast.toasts}
-          onClose={toast.removeToast}
-          style={{ top: '80px' }}
-        />
+      <ToastNotificationContainer
+        toasts={toast.toasts}
+        onClose={toast.removeToast}
+        style={{ top: '80px' }}
+      />
 
-      <div className={getOverlayClasses(networkSelectorOpen)} />
       <div className={contentContainerClasses}>
-        {walletConnected ? (
+        {state.isConnected ? (
           <WalletPage
             walletAddress={walletAddress}
             ensName={ensName}
@@ -327,7 +259,23 @@ function App() {
           />
         )}
       </div>
-      </div>
+
+      <WalletModal isOpen={isModalOpen} onClose={hideWalletModal} />
+    </div>
+  );
+}
+
+// Main App component with providers
+function App() {
+  return (
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error('App Error Boundary caught error:', error, errorInfo);
+      }}
+    >
+      <WalletProvider>
+        <AppContent />
+      </WalletProvider>
     </ErrorBoundary>
   );
 }
