@@ -152,10 +152,27 @@ export class WalletConnectService {
    * @returns Promise that resolves when initialization is complete
    */
   public async initialize(chainId: number, forceNew: boolean = false): Promise<void> {
-    // If forcing new connection, reset the connecting flag
+    // If forcing new connection, reset the connecting flag and clean up existing state
     if (forceNew) {
       console.log('Forcing new WalletConnect connection...');
       this.isConnecting = false;
+
+      // If there's an existing session, clean it up first
+      if (this.sessionTopic) {
+        console.log('Cleaning up existing session before forcing new connection...');
+        try {
+          if (this.signClient) {
+            await this.signClient.disconnect({
+              topic: this.sessionTopic,
+              reason: { code: 6000, message: 'Forcing new connection' }
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to disconnect existing session, continuing with cleanup:', error);
+        }
+        this.sessionTopic = null;
+        this.connectionResult = null;
+      }
     }
 
     // Prevent duplicate connection attempts by checking if already connecting
@@ -392,6 +409,30 @@ export class WalletConnectService {
     console.log('Canceling pending WalletConnect connection...');
     this.isConnecting = false;
     // Note: We don't disconnect actual sessions, just reset the connecting state
+  }
+
+  /**
+   * Force disconnect and cleanup all WalletConnect state
+   * Used when switching wallets to ensure clean state
+   */
+  public async forceDisconnectAndCleanup(): Promise<void> {
+    console.log('Force disconnecting and cleaning up WalletConnect...');
+
+    try {
+      // If there's an active session, disconnect it
+      if (this.sessionTopic && this.signClient) {
+        await this.disconnect('Switching to different wallet');
+      }
+    } catch (error) {
+      console.error('Error during force disconnect:', error);
+    }
+
+    // Force cleanup regardless of disconnect success
+    this.sessionTopic = null;
+    this.connectionResult = null;
+    this.isConnecting = false;
+
+    console.log('WalletConnect force cleanup completed');
   }
 
   /**

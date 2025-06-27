@@ -87,6 +87,18 @@ const Header: React.FC<HeaderProps> = ({
   // Handle switching to another signer
   const handleSwitchSigner = async () => {
     setShowSignerMenu(false);
+
+    try {
+      console.log('Switching signer wallet, forcefully disconnecting current wallet...');
+      // Force disconnect the current signer wallet to clean up any existing sessions
+      // This is especially important for WalletConnect to ensure clean state
+      await walletConnectionService.disconnectSignerWallet(true);
+      console.log('Current signer wallet forcefully disconnected, opening wallet selection modal...');
+    } catch (error) {
+      console.error('Failed to disconnect current signer wallet:', error);
+      // Continue to show modal even if disconnect fails
+    }
+
     setShowWalletModal(true);
   };
 

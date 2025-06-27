@@ -707,24 +707,31 @@ export class WalletConnectionService {
 
   /**
    * Disconnect only the signer wallet (keep Safe wallet connected in read-only mode)
+   * @param forceful Whether to force cleanup (used when switching wallets)
    */
-  async disconnectSignerWallet(): Promise<void> {
-    console.log('Disconnecting signer wallet...');
+  async disconnectSignerWallet(forceful: boolean = false): Promise<void> {
+    console.log('Disconnecting signer wallet...', forceful ? '(forceful)' : '');
 
     // If WalletConnect is connected, disconnect it properly
-    if (this.state.walletType === 'walletconnect' && walletConnectService.isConnected()) {
+    if (this.state.walletType === 'walletconnect') {
       try {
-        console.log('Disconnecting WalletConnect session...');
-        await walletConnectService.disconnect('User disconnected from app');
-        console.log('WalletConnect disconnected from app');
+        if (forceful) {
+          // Force disconnect and cleanup when switching wallets
+          console.log('Force disconnecting WalletConnect for wallet switch...');
+          await walletConnectService.forceDisconnectAndCleanup();
+        } else if (walletConnectService.isConnected()) {
+          console.log('Disconnecting WalletConnect session...');
+          await walletConnectService.disconnect('User disconnected from app');
+          console.log('WalletConnect disconnected from app');
 
-        // Verify disconnection was successful
-        const isStillConnected = await walletConnectService.verifyConnection();
-        if (isStillConnected) {
-          console.warn('WalletConnect still shows as connected after disconnect attempt');
-          // Force cleanup
-          await this.handleMobileWalletDisconnection('Forced cleanup after failed disconnect');
-          return;
+          // Verify disconnection was successful
+          const isStillConnected = await walletConnectService.verifyConnection();
+          if (isStillConnected) {
+            console.warn('WalletConnect still shows as connected after disconnect attempt');
+            // Force cleanup
+            await this.handleMobileWalletDisconnection('Forced cleanup after failed disconnect');
+            return;
+          }
         }
       } catch (error) {
         console.error('Failed to disconnect WalletConnect:', error);

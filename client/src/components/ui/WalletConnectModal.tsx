@@ -285,8 +285,9 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
     walletConnectService.addEventListener('qr_generated', qrGeneratedHandler);
 
     // Initialize connection when modal opens
-    // Force new connection if modal was reopened
-    const shouldForceNew = walletConnectService.isConnectingState();
+    // Force new connection if modal was reopened or if there's an existing session
+    const shouldForceNew = walletConnectService.isConnectingState() || walletConnectService.isConnected();
+    console.log('WalletConnect modal opened, forcing new connection:', shouldForceNew);
     initializeConnection(shouldForceNew);
 
     return () => {
