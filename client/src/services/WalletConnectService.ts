@@ -148,9 +148,16 @@ export class WalletConnectService {
   /**
    * Initialize WalletConnect with the selected chain ID
    * @param chainId Network chain ID
+   * @param forceNew Force a new connection even if one is in progress
    * @returns Promise that resolves when initialization is complete
    */
-  public async initialize(chainId: number): Promise<void> {
+  public async initialize(chainId: number, forceNew: boolean = false): Promise<void> {
+    // If forcing new connection, reset the connecting flag
+    if (forceNew) {
+      console.log('Forcing new WalletConnect connection...');
+      this.isConnecting = false;
+    }
+
     // Prevent duplicate connection attempts by checking if already connecting
     if (this.isConnecting) {
       console.log('Wallet connection already in progress, ignoring duplicate request');
@@ -161,8 +168,8 @@ export class WalletConnectService {
       // Set connecting flag to prevent duplicate requests
       this.isConnecting = true;
 
-      // If there's an active session, verify it's still valid
-      if (this.sessionTopic && this.signClient) {
+      // If there's an active session, verify it's still valid (unless forcing new)
+      if (this.sessionTopic && this.signClient && !forceNew) {
         try {
           const session = await this.signClient.session.get(this.sessionTopic);
           if (session && session.expiry * 1000 > Date.now()) {
@@ -360,6 +367,31 @@ export class WalletConnectService {
    */
   public isConnected(): boolean {
     return !!this.sessionTopic && !!this.signClient;
+  }
+
+  /**
+   * Reset connection state (useful when modal is closed without connecting)
+   */
+  public resetConnectionState(): void {
+    console.log('Resetting WalletConnect connection state...');
+    this.isConnecting = false;
+    // Don't clear sessionTopic or signClient as they represent actual connections
+  }
+
+  /**
+   * Check if currently in connecting state
+   */
+  public isConnectingState(): boolean {
+    return this.isConnecting;
+  }
+
+  /**
+   * Cancel any pending connection attempts
+   */
+  public cancelPendingConnection(): void {
+    console.log('Canceling pending WalletConnect connection...');
+    this.isConnecting = false;
+    // Note: We don't disconnect actual sessions, just reset the connecting state
   }
 
   /**

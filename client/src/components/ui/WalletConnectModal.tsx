@@ -189,7 +189,14 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      // Cancel any pending connections and reset state when modal is closed
+      walletConnectService.cancelPendingConnection();
+      return;
+    }
+
+    // Reset state when modal opens
+    setState({ isConnected: false });
 
     // Subscribe to WalletConnect state changes
     const sessionConnectedHandler = async (data: any) => {
@@ -278,7 +285,9 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
     walletConnectService.addEventListener('qr_generated', qrGeneratedHandler);
 
     // Initialize connection when modal opens
-    initializeConnection();
+    // Force new connection if modal was reopened
+    const shouldForceNew = walletConnectService.isConnectingState();
+    initializeConnection(shouldForceNew);
 
     return () => {
       walletConnectService.removeEventListener('session_connected', sessionConnectedHandler);
@@ -287,10 +296,14 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
     };
   }, [isOpen, onConnectionSuccess, onClose]);
 
-  const initializeConnection = async () => {
+  const initializeConnection = async (forceNew: boolean = false) => {
     try {
+      console.log('Initializing WalletConnect connection...', forceNew ? '(forcing new)' : '');
+      setState(prev => ({ ...prev, error: undefined, uri: undefined }));
+
       // Initialize WalletConnect with Sepolia chain ID (default)
-      await walletConnectService.initialize(11155111);
+      // Force new connection if this is a retry or modal was reopened
+      await walletConnectService.initialize(11155111, forceNew);
     } catch (error) {
       console.error('Failed to initialize WalletConnect:', error);
       setState(prev => ({ ...prev, error: 'Failed to initialize WalletConnect' }));
@@ -306,7 +319,8 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
   };
 
   const handleRetry = () => {
-    initializeConnection();
+    console.log('Retrying WalletConnect connection...');
+    initializeConnection(true); // Force new connection on retry
   };
 
   if (!isOpen) return null;
