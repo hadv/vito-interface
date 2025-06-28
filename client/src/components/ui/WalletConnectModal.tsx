@@ -185,8 +185,11 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
   onConnectionSuccess
 }) => {
   const [state, setState] = useState<WalletConnectState>({ isConnected: false });
-  const [isConnecting] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [timeoutCountdown, setTimeoutCountdown] = useState<number | null>(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -256,11 +259,56 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
       }
     };
 
+    // Listen for timeout events
+    const sessionTimeoutHandler = (data: any) => {
+      console.log('WalletConnect session timeout:', data);
+      setIsConnecting(false);
+      setTimeoutCountdown(null);
+      setConnectionError(data.error?.message || 'Connection timeout. Please try again.');
+
+      // Clear any countdown interval
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+    };
+
+    // Listen for cancellation events
+    const sessionCancelledHandler = (data: any) => {
+      console.log('WalletConnect session cancelled:', data);
+      setIsConnecting(false);
+      setTimeoutCountdown(null);
+      setConnectionError(null);
+
+      // Clear any countdown interval
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+    };
+
     // Also listen for QR code generation
     const qrGeneratedHandler = async (data: any) => {
       console.log('QR code generated:', data);
       if (data.uri) {
         setState(prev => ({ ...prev, uri: data.uri }));
+        setIsConnecting(true);
+        setConnectionError(null);
+
+        // Start countdown timer (60 seconds)
+        setTimeoutCountdown(60);
+        countdownIntervalRef.current = setInterval(() => {
+          setTimeoutCountdown(prev => {
+            if (prev === null || prev <= 1) {
+              if (countdownIntervalRef.current) {
+                clearInterval(countdownIntervalRef.current);
+                countdownIntervalRef.current = null;
+              }
+              return null;
+            }
+            return prev - 1;
+          });
+        }, 1000);
 
         // Wait a bit for the canvas to be rendered, then generate QR code
         setTimeout(async () => {
@@ -282,6 +330,8 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
 
     walletConnectService.addEventListener('session_connected', sessionConnectedHandler);
     walletConnectService.addEventListener('session_disconnected', sessionDisconnectedHandler);
+    walletConnectService.addEventListener('session_timeout', sessionTimeoutHandler);
+    walletConnectService.addEventListener('session_cancelled', sessionCancelledHandler);
     walletConnectService.addEventListener('qr_generated', qrGeneratedHandler);
 
     // Initialize connection when modal opens
@@ -291,8 +341,16 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
     initializeConnection(shouldForceNew);
 
     return () => {
+      // Clear countdown interval on cleanup
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+
       walletConnectService.removeEventListener('session_connected', sessionConnectedHandler);
       walletConnectService.removeEventListener('session_disconnected', sessionDisconnectedHandler);
+      walletConnectService.removeEventListener('session_timeout', sessionTimeoutHandler);
+      walletConnectService.removeEventListener('session_cancelled', sessionCancelledHandler);
       walletConnectService.removeEventListener('qr_generated', qrGeneratedHandler);
     };
   }, [isOpen, onConnectionSuccess, onClose]);
@@ -302,9 +360,9 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
       console.log('Initializing WalletConnect connection...', forceNew ? '(forcing new)' : '');
       setState(prev => ({ ...prev, error: undefined, uri: undefined }));
 
-      // Initialize WalletConnect with Sepolia chain ID (default)
+      // Initialize WalletConnect with Sepolia chain ID (default) and 60-second timeout
       // Force new connection if this is a retry or modal was reopened
-      await walletConnectService.initialize(11155111, forceNew);
+      await walletConnectService.initialize(11155111, forceNew, 60000);
     } catch (error) {
       console.error('Failed to initialize WalletConnect:', error);
       setState(prev => ({ ...prev, error: 'Failed to initialize WalletConnect' }));
@@ -321,7 +379,23 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
 
   const handleRetry = () => {
     console.log('Retrying WalletConnect connection...');
+    setConnectionError(null);
+    setTimeoutCountdown(null);
     initializeConnection(true); // Force new connection on retry
+  };
+
+  const handleCancel = () => {
+    console.log('Cancelling WalletConnect connection...');
+    walletConnectService.cancelPendingConnection();
+    setIsConnecting(false);
+    setTimeoutCountdown(null);
+    setConnectionError(null);
+
+    // Clear countdown interval
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
   };
 
   if (!isOpen) return null;
@@ -348,12 +422,12 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
             )}
           </QRCodeContainer>
 
-          {state.error ? (
+          {(state.error || connectionError) ? (
             <StatusContainer>
               <StatusText type="error">
-                ⚠️ {state.error}
+                ⚠️ {connectionError || state.error}
               </StatusText>
-              {state.error.includes('Project ID') && (
+              {(state.error?.includes('Project ID') || connectionError?.includes('Project ID')) && (
                 <div style={{
                   marginTop: '15px',
                   padding: '15px',
@@ -371,6 +445,25 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
                     <li>Add <code style={{ backgroundColor: '#e2e8f0', padding: '2px 4px', borderRadius: '4px' }}>REACT_APP_WALLETCONNECT_PROJECT_ID=your-id</code> to .env.local</li>
                     <li>Restart the development server</li>
                   </ol>
+                </div>
+              )}
+              {(connectionError?.includes('timeout') || connectionError?.includes('interference')) && (
+                <div style={{
+                  marginTop: '15px',
+                  padding: '15px',
+                  backgroundColor: '#fef3c7',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  color: '#92400e',
+                  textAlign: 'left'
+                }}>
+                  <strong style={{ color: '#78350f' }}>Troubleshooting Tips:</strong>
+                  <ul style={{ marginTop: '8px', paddingLeft: '20px' }}>
+                    <li>If you have multiple wallet extensions (MetaMask, Phantom, etc.), try disabling conflicting ones</li>
+                    <li>Make sure your mobile wallet app is open and ready to scan</li>
+                    <li>Check your internet connection</li>
+                    <li>Try refreshing the page and connecting again</li>
+                  </ul>
                 </div>
               )}
               <RetryButton onClick={handleRetry}>
@@ -392,8 +485,25 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
           ) : isConnecting ? (
             <StatusContainer>
               <StatusText type="loading">
-                🔄 Opening WalletConnect modal...
+                🔄 Waiting for wallet connection...
+                {timeoutCountdown && (
+                  <div style={{ marginTop: '8px', fontSize: '14px', color: '#64748b' }}>
+                    Timeout in {timeoutCountdown} seconds
+                  </div>
+                )}
               </StatusText>
+              {isConnecting && (
+                <RetryButton
+                  onClick={handleCancel}
+                  style={{
+                    backgroundColor: '#ef4444',
+                    borderColor: '#dc2626',
+                    marginTop: '12px'
+                  }}
+                >
+                  Cancel Connection
+                </RetryButton>
+              )}
             </StatusContainer>
           ) : state.isConnected ? (
             <StatusContainer>
@@ -410,7 +520,23 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
                 }
               </InstructionText>
 
-
+              {/* Extension interference warning */}
+              {typeof window !== 'undefined' && (
+                (window as any).phantom?.solana ||
+                (window.ethereum?.isMetaMask && (window as any).phantom)
+              ) && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '12px',
+                  backgroundColor: '#fef3c7',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  color: '#92400e',
+                  textAlign: 'center'
+                }}>
+                  ⚠️ Multiple wallet extensions detected. If connection fails, try disabling conflicting extensions.
+                </div>
+              )}
             </>
           )}
         </ModalBody>

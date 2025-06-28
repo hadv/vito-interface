@@ -149,9 +149,10 @@ export class WalletConnectService {
    * Initialize WalletConnect with the selected chain ID
    * @param chainId Network chain ID
    * @param forceNew Force a new connection even if one is in progress
+   * @param timeoutMs Connection timeout in milliseconds (default: 60 seconds)
    * @returns Promise that resolves when initialization is complete
    */
-  public async initialize(chainId: number, forceNew: boolean = false): Promise<void> {
+  public async initialize(chainId: number, forceNew: boolean = false, timeoutMs: number = 60000): Promise<void> {
     // If forcing new connection, reset the connecting flag and clean up existing state
     if (forceNew) {
       console.log('Forcing new WalletConnect connection...');
@@ -232,8 +233,17 @@ export class WalletConnectService {
       // Return the connection URI and QR code data
       this.emit('qr_generated', { uri: connectResult.uri });
 
-      // Wait for approval
-      const session = await connectResult.approval();
+      // Wait for approval with timeout to prevent hanging
+      console.log(`Waiting for WalletConnect approval with ${timeoutMs}ms timeout...`);
+
+      const approvalPromise = connectResult.approval();
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`WalletConnect connection timeout after ${timeoutMs / 1000} seconds. This may be caused by wallet extension interference (e.g., Phantom blocking MetaMask). Please try again or disable conflicting extensions.`));
+        }, timeoutMs);
+      });
+
+      const session = await Promise.race([approvalPromise, timeoutPromise]);
       this.sessionTopic = session.topic;
 
       // Get the connected address
@@ -246,13 +256,20 @@ export class WalletConnectService {
         session
       };
 
+      console.log('WalletConnect connection successful!');
       // Emit successful connection event
       this.emit('session_connected', { address: account, session });
     } catch (error: unknown) {
       // Clear session state on error
       this.sessionTopic = null;
       console.error('WalletConnect initialization failed:', error);
-      this.emit('session_error', { error });
+
+      // Emit specific error types for better UX
+      if (error instanceof Error && error.message.includes('timeout')) {
+        this.emit('session_timeout', { error, timeoutMs });
+      } else {
+        this.emit('session_error', { error });
+      }
     } finally {
       // Reset connecting flag
       this.isConnecting = false;
@@ -408,6 +425,10 @@ export class WalletConnectService {
   public cancelPendingConnection(): void {
     console.log('Canceling pending WalletConnect connection...');
     this.isConnecting = false;
+
+    // Emit cancellation event for UI updates
+    this.emit('session_cancelled', { reason: 'User cancelled connection' });
+
     // Note: We don't disconnect actual sessions, just reset the connecting state
   }
 
@@ -633,7 +654,7 @@ export class WalletConnectService {
   }
 
   public async initializeConnection(): Promise<void> {
-    await this.initialize(11155111); // Default to Sepolia
+    await this.initialize(11155111, false, 60000); // Default to Sepolia with 60-second timeout
   }
 
   public getConnectionResult(): any {
