@@ -594,12 +594,6 @@ export class WalletConnectionService {
       throw new Error('Safe wallet must be connected first');
     }
 
-    // Declare variables outside try block for proper cleanup
-    let originalPhantomEthereum: any;
-    let originalPhantomSolana: any;
-    let phantomBackup: any = {};
-    let originalWindowEthereum: any;
-
     try {
       console.log('🔗 User explicitly requested signer wallet connection');
 
@@ -608,67 +602,19 @@ export class WalletConnectionService {
         throw new Error('No wallet detected. Please install MetaMask or another Web3 wallet.');
       }
 
-      // Aggressive Phantom interference prevention
-      console.log('🛡️ Implementing Phantom interference prevention...');
-
-      // Temporarily disable Phantom's ethereum provider if it exists
-      originalPhantomEthereum = (window as any).phantom?.ethereum;
-      if (originalPhantomEthereum) {
-        console.log('🚫 Temporarily disabling Phantom ethereum provider');
-        delete (window as any).phantom.ethereum;
-      }
-
-      // Store original Phantom solana methods that might interfere
-      originalPhantomSolana = (window as any).phantom?.solana;
-      if (originalPhantomSolana) {
-        console.log('🚫 Backing up and disabling Phantom solana methods');
-        phantomBackup.connect = originalPhantomSolana.connect;
-        phantomBackup.request = originalPhantomSolana.request;
-        phantomBackup.signTransaction = originalPhantomSolana.signTransaction;
-
-        // Replace with no-op functions
-        originalPhantomSolana.connect = () => Promise.reject(new Error('Phantom temporarily disabled'));
-        originalPhantomSolana.request = () => Promise.reject(new Error('Phantom temporarily disabled'));
-        originalPhantomSolana.signTransaction = () => Promise.reject(new Error('Phantom temporarily disabled'));
-      }
-
-      // Detect and use MetaMask specifically to avoid any remaining interference
+      // Detect and use MetaMask specifically to avoid Phantom interference
       let provider = window.ethereum;
 
       // If multiple wallets are installed, try to use MetaMask specifically
       if (window.ethereum.providers && Array.isArray(window.ethereum.providers)) {
-        const metamaskProvider = window.ethereum.providers.find((p: any) => p.isMetaMask && !p.isPhantom);
+        const metamaskProvider = window.ethereum.providers.find((p: any) => p.isMetaMask);
         if (metamaskProvider) {
           provider = metamaskProvider;
-          console.log('🎯 Using MetaMask provider specifically (from providers array)');
+          console.log('🎯 Using MetaMask provider specifically');
         }
-      } else if (window.ethereum.isMetaMask && !(window.ethereum as any).isPhantom) {
+      } else if (window.ethereum.isMetaMask) {
         provider = window.ethereum;
-        console.log('🎯 Using MetaMask provider directly');
-      }
-
-      // Additional check to ensure we're not using Phantom
-      if ((provider as any).isPhantom) {
-        console.error('❌ Detected Phantom provider, searching for MetaMask...');
-        // Try to find MetaMask in window.ethereum.providers
-        if (window.ethereum.providers) {
-          const metamaskProvider = window.ethereum.providers.find((p: any) => p.isMetaMask && !p.isPhantom);
-          if (metamaskProvider) {
-            provider = metamaskProvider;
-            console.log('✅ Found and using MetaMask provider');
-          } else {
-            throw new Error('MetaMask not found. Please ensure MetaMask is installed and enabled.');
-          }
-        } else {
-          throw new Error('MetaMask not found. Please ensure MetaMask is installed and enabled.');
-        }
-      }
-
-      // Final protection: Temporarily override window.ethereum to point to MetaMask only
-      originalWindowEthereum = window.ethereum;
-      if (provider !== window.ethereum) {
-        console.log('🛡️ Temporarily overriding window.ethereum with MetaMask provider');
-        (window as any).ethereum = provider;
+        console.log('🎯 Using MetaMask provider');
       }
 
       // Check and switch network if needed
@@ -678,41 +624,8 @@ export class WalletConnectionService {
       }
 
       console.log('📱 Requesting wallet account access (user initiated)...');
-
-      // Additional protection: Temporarily disable all Phantom event listeners
-      const phantomEventListeners: any[] = [];
-      if ((window as any).phantom?.solana?._events) {
-        const events = (window as any).phantom.solana._events;
-        Object.keys(events).forEach(eventName => {
-          if (events[eventName]) {
-            phantomEventListeners.push({ eventName, listeners: [...events[eventName]] });
-            events[eventName] = []; // Clear listeners temporarily
-          }
-        });
-        console.log('🚫 Temporarily disabled Phantom event listeners');
-      }
-
-      try {
-        // Request account access from the specific provider with timeout
-        const requestPromise = provider.request({ method: 'eth_requestAccounts' });
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('MetaMask request timeout - possible Phantom interference')), 30000);
-        });
-
-        await Promise.race([requestPromise, timeoutPromise]);
-        console.log('✅ MetaMask account access granted');
-
-      } finally {
-        // Restore Phantom event listeners
-        phantomEventListeners.forEach(({ eventName, listeners }) => {
-          if ((window as any).phantom?.solana?._events) {
-            (window as any).phantom.solana._events[eventName] = listeners;
-          }
-        });
-        if (phantomEventListeners.length > 0) {
-          console.log('🔄 Restored Phantom event listeners');
-        }
-      }
+      // Request account access from the specific provider
+      await provider.request({ method: 'eth_requestAccounts' });
 
       // Create provider and signer using the specific provider
       this.provider = new ethers.providers.Web3Provider(provider);
@@ -747,26 +660,6 @@ export class WalletConnectionService {
       // Set up event listeners for account/network changes
       this.setupEventListeners();
 
-      // Restore Phantom functionality after successful MetaMask connection
-      console.log('✅ MetaMask connection successful, restoring Phantom functionality...');
-
-      // Restore original window.ethereum
-      if (originalWindowEthereum && window.ethereum !== originalWindowEthereum) {
-        (window as any).ethereum = originalWindowEthereum;
-        console.log('🔄 Original window.ethereum restored');
-      }
-
-      if (originalPhantomEthereum) {
-        (window as any).phantom.ethereum = originalPhantomEthereum;
-        console.log('🔄 Phantom ethereum provider restored');
-      }
-      if (originalPhantomSolana && phantomBackup.connect) {
-        originalPhantomSolana.connect = phantomBackup.connect;
-        originalPhantomSolana.request = phantomBackup.request;
-        originalPhantomSolana.signTransaction = phantomBackup.signTransaction;
-        console.log('🔄 Phantom solana methods restored');
-      }
-
       // Notify listeners
       this.notifyListeners();
 
@@ -785,26 +678,6 @@ export class WalletConnectionService {
         errorMessage = error.message;
       }
 
-      // Restore Phantom functionality even on error
-      console.log('❌ MetaMask connection failed, restoring Phantom functionality...');
-
-      // Restore original window.ethereum
-      if (originalWindowEthereum && window.ethereum !== originalWindowEthereum) {
-        (window as any).ethereum = originalWindowEthereum;
-        console.log('🔄 Original window.ethereum restored');
-      }
-
-      if (originalPhantomEthereum) {
-        (window as any).phantom.ethereum = originalPhantomEthereum;
-        console.log('🔄 Phantom ethereum provider restored');
-      }
-      if (originalPhantomSolana && phantomBackup.connect) {
-        originalPhantomSolana.connect = phantomBackup.connect;
-        originalPhantomSolana.request = phantomBackup.request;
-        originalPhantomSolana.signTransaction = phantomBackup.signTransaction;
-        console.log('🔄 Phantom solana methods restored');
-      }
-
       this.state = {
         ...this.state,
         error: errorMessage
@@ -812,24 +685,6 @@ export class WalletConnectionService {
 
       this.notifyListeners();
       throw new Error(errorMessage);
-    } finally {
-      // Ensure everything is always restored, even if something unexpected happens
-      if (originalWindowEthereum && window.ethereum !== originalWindowEthereum) {
-        (window as any).ethereum = originalWindowEthereum;
-        console.log('🔄 Final cleanup: Original window.ethereum restored');
-      }
-
-      if (typeof originalPhantomEthereum !== 'undefined' && (window as any).phantom && !((window as any).phantom.ethereum)) {
-        (window as any).phantom.ethereum = originalPhantomEthereum;
-        console.log('🔄 Final cleanup: Phantom ethereum provider restored');
-      }
-
-      if (typeof originalPhantomSolana !== 'undefined' && phantomBackup.connect && originalPhantomSolana.connect.toString().includes('temporarily disabled')) {
-        originalPhantomSolana.connect = phantomBackup.connect;
-        originalPhantomSolana.request = phantomBackup.request;
-        originalPhantomSolana.signTransaction = phantomBackup.signTransaction;
-        console.log('🔄 Final cleanup: Phantom solana methods restored');
-      }
     }
   }
 
