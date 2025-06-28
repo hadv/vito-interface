@@ -48,7 +48,9 @@ import App from './App';
 
 test('renders app component', () => {
   render(<App />);
-  // App should render the welcome page when no wallet is connected
-  // Should show the welcome title
-  expect(screen.getByText('Vito Safe Wallet')).toBeInTheDocument();
+  // App should render the AddSafeAccountPage when no wallet is connected
+  // Should show the header with Vito branding
+  expect(screen.getByText('Vito')).toBeInTheDocument();
+  // Should show the main page title
+  expect(screen.getByText('Add existing Safe Account')).toBeInTheDocument();
 });

@@ -87,7 +87,9 @@ const NetworkSelector = styled.div`
   position: relative;
 `;
 
-const NetworkButton = styled.button<{ isOpen: boolean }>`
+const NetworkButton = styled.button.withConfig({
+  shouldForwardProp: (prop) => prop !== 'isOpen',
+})<{ isOpen: boolean }>`
   width: 100%;
   height: 64px;
   background: transparent;
