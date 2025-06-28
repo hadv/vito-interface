@@ -5,6 +5,7 @@ import Badge from './Badge';
 import { walletConnectionService, WalletConnectionState } from '../../services/WalletConnectionService';
 import { useToast } from '../../hooks/useToast';
 import WalletConnectionModal from './WalletConnectionModal';
+import SocialLoginModal from './SocialLoginModal';
 
 // Utility function for consistent address truncation
 const truncateAddress = (address: string, startLength: number = 6, endLength: number = 4): string => {
@@ -35,6 +36,7 @@ const Header: React.FC<HeaderProps> = ({
   const [isConnectingWallet, setIsConnectingWallet] = useState(false);
   const [showSignerMenu, setShowSignerMenu] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [showSocialLoginModal, setShowSocialLoginModal] = useState(false);
   const [forceRender, setForceRender] = useState(0); // Force re-render counter
   const toast = useToast();
 
@@ -120,11 +122,9 @@ const Header: React.FC<HeaderProps> = ({
           message: 'Successfully connected via WalletConnect'
         });
       } else if (walletType === 'web3auth') {
-        // Web3Auth connection is handled by the SocialLoginModal
-        // This is called after successful connection
-        toast.success('Wallet Connected', {
-          message: 'Successfully connected via Social Login'
-        });
+        // Open social login modal
+        setShowSocialLoginModal(true);
+        return; // Don't proceed with normal wallet connection
       } else {
         throw new Error(`${walletType} is not yet supported`);
       }
@@ -150,6 +150,40 @@ const Header: React.FC<HeaderProps> = ({
     } finally {
       setIsConnectingWallet(false);
     }
+  };
+
+  // Handle social login success
+  const handleSocialLoginSuccess = async (address: string, provider: string) => {
+    console.log('🎯 Header: Social Login Success');
+
+    // Close social login modal
+    setShowSocialLoginModal(false);
+
+    // Show success message
+    toast.success('Social Login Successful', {
+      message: `Successfully connected with ${provider}`
+    });
+
+    // Integrate with wallet connection service
+    try {
+      const { walletConnectionService } = await import('../../services/WalletConnectionService');
+      const currentState = walletConnectionService.getState();
+
+      if (currentState.isConnected && currentState.safeAddress) {
+        console.log('✅ Safe wallet found, connecting Web3Auth signer...');
+        await walletConnectionService.connectWeb3AuthSigner(address, provider);
+        console.log('✅ Web3Auth signer connected to Safe wallet');
+      } else {
+        console.log('⚠️ No Safe wallet connected - Web3Auth works standalone');
+      }
+    } catch (error) {
+      console.error('❌ Background integration failed:', error);
+    }
+  };
+
+  // Handle social login modal close
+  const handleSocialLoginClose = () => {
+    setShowSocialLoginModal(false);
   };
 
   // Click outside handler for signer menu
@@ -517,6 +551,13 @@ const Header: React.FC<HeaderProps> = ({
           setShowWalletModal(false);
         }}
         onWalletSelect={handleWalletSelect}
+      />
+
+      {/* Social Login Modal - Rendered at Header level to avoid z-index conflicts */}
+      <SocialLoginModal
+        isOpen={showSocialLoginModal}
+        onClose={handleSocialLoginClose}
+        onSuccess={handleSocialLoginSuccess}
       />
     </header>
   );
