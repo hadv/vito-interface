@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import WalletConnectModal from './WalletConnectModal';
+import SocialLoginModal from './SocialLoginModal';
 import { useToast } from '../../hooks/useToast';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
@@ -251,6 +252,7 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
 }) => {
   const [isConnecting, setIsConnecting] = useState<string | null>(null);
   const [showWalletConnectModal, setShowWalletConnectModal] = useState(false);
+  const [showSocialLoginModal, setShowSocialLoginModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
 
@@ -262,8 +264,10 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
       return;
     }
 
-    // Web3Auth is now handled at Header level
-    // No need to handle it here
+    if (walletType === 'web3auth') {
+      setShowSocialLoginModal(true);
+      return;
+    }
 
     setIsConnecting(walletType);
     try {
@@ -344,7 +348,46 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
     setShowWalletConnectModal(false);
   };
 
-  // Social login is now handled at Header level
+  const handleSocialLoginSuccess = async (address: string, provider: string) => {
+    console.log('🎯 Social Login Success - FORCING MODAL CLOSE');
+
+    // IMMEDIATELY close both modals
+    setShowSocialLoginModal(false);
+    onClose();
+
+    // Show success message
+    toast.success('Social Login Successful', {
+      message: `Successfully connected with ${provider}`
+    });
+
+    console.log('✅ Modals closed, success toast shown');
+
+    // Now integrate with wallet connection service in background
+    try {
+      console.log('🔗 Integrating with wallet connection service...');
+      const { walletConnectionService } = await import('../../services/WalletConnectionService');
+
+      // Check if Safe wallet is connected
+      const currentState = walletConnectionService.getState();
+      console.log('Current wallet state:', currentState);
+
+      if (currentState.isConnected && currentState.safeAddress) {
+        console.log('✅ Safe wallet found, connecting Web3Auth signer...');
+        await walletConnectionService.connectWeb3AuthSigner(address, provider);
+        console.log('✅ Web3Auth signer connected to Safe wallet');
+      } else {
+        console.log('⚠️ No Safe wallet connected - Web3Auth works standalone');
+        // For now, just log this - we can enhance later if needed
+      }
+    } catch (error) {
+      console.error('❌ Background integration failed:', error);
+      // Don't show error to user since modal is already closed and toast shown
+    }
+  };
+
+  const handleSocialLoginClose = () => {
+    setShowSocialLoginModal(false);
+  };
 
   // Handle keyboard navigation
   React.useEffect(() => {
@@ -578,7 +621,12 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
         onConnectionSuccess={handleWalletConnectSuccess}
       />
 
-      {/* Social Login Modal is now handled at Header level */}
+      {/* Social Login Modal - Render outside main modal like WalletConnect */}
+      <SocialLoginModal
+        isOpen={showSocialLoginModal}
+        onClose={handleSocialLoginClose}
+        onSuccess={handleSocialLoginSuccess}
+      />
     </>
   );
 };
