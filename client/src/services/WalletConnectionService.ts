@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import { safeWalletService, SafeWalletService, SafeWalletConfig } from './SafeWalletService';
 import { getRpcUrl, NETWORK_CONFIGS, SAFE_ABI } from '../contracts/abis';
 import { walletConnectService } from './WalletConnectService';
+import { web3AuthService } from './Web3AuthService';
 
 export interface WalletConnectionState {
   isConnected: boolean;
@@ -18,7 +19,7 @@ export interface WalletConnectionState {
   readOnlyMode?: boolean;
   chainId?: number;
   // Track wallet type for proper icon display
-  walletType?: 'metamask' | 'walletconnect' | 'ledger' | 'privatekey';
+  walletType?: 'metamask' | 'walletconnect' | 'ledger' | 'privatekey' | 'web3auth';
 }
 
 export interface ConnectWalletParams {
@@ -689,6 +690,78 @@ export class WalletConnectionService {
   }
 
   /**
+   * Connect Web3Auth signer wallet to an already connected Safe wallet
+   */
+  async connectWeb3AuthSigner(address: string, socialProvider: string): Promise<WalletConnectionState> {
+    console.log('🔗 Connecting Web3Auth signer with social login');
+    console.log('📋 Address:', address, 'Provider:', socialProvider);
+
+    if (!this.state.isConnected || !this.state.safeAddress) {
+      throw new Error('Safe wallet must be connected first');
+    }
+
+    if (!web3AuthService.isConnected()) {
+      throw new Error('Web3Auth session not available');
+    }
+
+    try {
+      // Get Web3Auth provider and signer
+      const web3AuthProvider = web3AuthService.getEthersProvider();
+      const web3AuthSigner = web3AuthService.getEthersSigner();
+
+      if (!web3AuthProvider || !web3AuthSigner) {
+        throw new Error('Failed to get Web3Auth provider or signer');
+      }
+
+      // Set the provider and signer
+      this.provider = web3AuthProvider;
+      this.signer = web3AuthSigner;
+
+      // Get signer balance
+      const signerBalance = await this.provider.getBalance(address);
+      const formattedSignerBalance = ethers.utils.formatEther(signerBalance);
+
+      // Update Safe Wallet Service with signer
+      await safeWalletService.setSigner(this.signer);
+
+      // Check if user is owner
+      const isOwner = await safeWalletService.isOwner(address);
+
+      // Update state
+      this.state = {
+        ...this.state,
+        address,
+        isOwner,
+        signerConnected: true,
+        signerAddress: address,
+        signerBalance: formattedSignerBalance,
+        readOnlyMode: false,
+        error: undefined,
+        walletType: 'web3auth'
+      };
+
+      // Don't set up event listeners for Web3Auth as it handles its own session management
+
+      // Notify listeners
+      this.notifyListeners();
+
+      console.log('✅ Web3Auth signer connected successfully');
+      return this.state;
+    } catch (error: any) {
+      const errorMessage = error.message || 'Failed to connect Web3Auth signer';
+      console.error('❌ Web3Auth signer connection failed:', errorMessage);
+
+      this.state = {
+        ...this.state,
+        error: errorMessage
+      };
+
+      this.notifyListeners();
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
    * Disconnect wallet
    */
   async disconnectWallet(): Promise<void> {
@@ -712,7 +785,7 @@ export class WalletConnectionService {
   async disconnectSignerWallet(forceful: boolean = false): Promise<void> {
     console.log('Disconnecting signer wallet...', forceful ? '(forceful)' : '');
 
-    // If WalletConnect is connected, disconnect it properly
+    // Handle specific wallet type disconnections
     if (this.state.walletType === 'walletconnect') {
       try {
         if (forceful) {
@@ -736,6 +809,15 @@ export class WalletConnectionService {
       } catch (error) {
         console.error('Failed to disconnect WalletConnect:', error);
         // Continue with local cleanup even if WalletConnect disconnect failed
+      }
+    } else if (this.state.walletType === 'web3auth') {
+      try {
+        console.log('Disconnecting Web3Auth session...');
+        await web3AuthService.disconnect();
+        console.log('Web3Auth disconnected successfully');
+      } catch (error) {
+        console.error('Failed to disconnect Web3Auth:', error);
+        // Continue with local cleanup even if Web3Auth disconnect failed
       }
     }
 

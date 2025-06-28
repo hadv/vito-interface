@@ -119,6 +119,12 @@ const Header: React.FC<HeaderProps> = ({
         toast.success('Wallet Connected', {
           message: 'Successfully connected via WalletConnect'
         });
+      } else if (walletType === 'web3auth') {
+        // Web3Auth connection is handled by the SocialLoginModal
+        // This is called after successful connection
+        toast.success('Wallet Connected', {
+          message: 'Successfully connected via Social Login'
+        });
       } else {
         throw new Error(`${walletType} is not yet supported`);
       }
@@ -327,7 +333,8 @@ const Header: React.FC<HeaderProps> = ({
                     </div>
                     <div className="flex-1">
                       <div className="text-white font-semibold text-sm">
-                        {connectionState.walletType === 'walletconnect' ? 'WalletConnect' : 'MetaMask'}
+                        {connectionState.walletType === 'walletconnect' ? 'WalletConnect' :
+                         connectionState.walletType === 'web3auth' ? 'Social Login' : 'MetaMask'}
                       </div>
                       <div className="text-gray-400 text-xs">Connected</div>
                     </div>
