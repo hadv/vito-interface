@@ -15,8 +15,9 @@ const ModalOverlay = styled.div<{ isOpen: boolean }>`
   align-items: center;
   justify-content: center;
   z-index: 1050;
-  padding: 32px 20px;
+  padding: 20px;
   box-sizing: border-box;
+  overflow-y: auto;
 `;
 
 const ModalContainer = styled.div`
@@ -25,11 +26,24 @@ const ModalContainer = styled.div`
   border-radius: 16px;
   width: 100%;
   max-width: 500px;
-  max-height: calc(100vh - 64px);
+  max-height: calc(100vh - 40px);
+  min-height: auto;
   overflow: hidden;
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
+  margin: auto;
+
+  /* Ensure modal is always visible on small screens */
+  @media (max-height: 600px) {
+    max-height: calc(100vh - 20px);
+    margin: 10px auto;
+  }
+
+  @media (max-height: 500px) {
+    max-height: calc(100vh - 10px);
+    margin: 5px auto;
+  }
 `;
 
 const ModalHeader = styled.div`
@@ -38,6 +52,16 @@ const ModalHeader = styled.div`
   align-items: center;
   padding: 32px;
   border-bottom: 1px solid #334155;
+  flex-shrink: 0; /* Prevent header from shrinking */
+
+  /* Adjust padding for smaller screens */
+  @media (max-height: 600px) {
+    padding: 24px;
+  }
+
+  @media (max-height: 500px) {
+    padding: 20px;
+  }
 `;
 
 const ModalTitle = styled.h2`
@@ -77,9 +101,19 @@ const CloseButton = styled.button`
 `;
 
 const ModalBody = styled.div`
-  padding: 32px;
+  padding: 24px 32px 32px 32px;
   flex: 1;
   overflow-y: auto;
+  min-height: 0; /* Allow flex child to shrink */
+
+  /* Adjust padding for smaller screens */
+  @media (max-height: 600px) {
+    padding: 20px 24px 24px 24px;
+  }
+
+  @media (max-height: 500px) {
+    padding: 16px 20px 20px 20px;
+  }
 `;
 
 const Description = styled.p`
@@ -88,12 +122,32 @@ const Description = styled.p`
   line-height: 1.6;
   margin: 0 0 32px 0;
   text-align: center;
+
+  /* Adjust spacing for smaller screens */
+  @media (max-height: 600px) {
+    margin: 0 0 24px 0;
+    font-size: 15px;
+  }
+
+  @media (max-height: 500px) {
+    margin: 0 0 20px 0;
+    font-size: 14px;
+  }
 `;
 
 const ProvidersGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
+
+  /* Adjust gap for smaller screens */
+  @media (max-height: 600px) {
+    gap: 12px;
+  }
+
+  @media (max-height: 500px) {
+    gap: 10px;
+  }
 `;
 
 const ProviderButton = styled.button<{ disabled?: boolean }>`
@@ -119,6 +173,17 @@ const ProviderButton = styled.button<{ disabled?: boolean }>`
   &:active {
     transform: ${props => props.disabled ? 'none' : 'translateY(0)'};
   }
+
+  /* Adjust padding for smaller screens */
+  @media (max-height: 600px) {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  @media (max-height: 500px) {
+    padding: 14px;
+    gap: 12px;
+  }
 `;
 
 const ProviderIcon = styled.div`
@@ -130,6 +195,19 @@ const ProviderIcon = styled.div`
   justify-content: center;
   font-size: 24px;
   flex-shrink: 0;
+
+  /* Adjust size for smaller screens */
+  @media (max-height: 600px) {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+
+  @media (max-height: 500px) {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
 `;
 
 const ProviderInfo = styled.div`

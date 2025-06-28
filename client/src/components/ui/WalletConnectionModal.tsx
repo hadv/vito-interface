@@ -411,6 +411,31 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
 
   const wallets = [
     {
+      id: 'web3auth',
+      name: 'Social Login',
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <defs>
+            <linearGradient id="web3authGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#0364FF"/>
+              <stop offset="100%" stopColor="#0052CC"/>
+            </linearGradient>
+          </defs>
+          <rect width="32" height="32" rx="8" fill="url(#web3authGradient)"/>
+          <g transform="translate(4, 4)">
+            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <circle cx="6" cy="6" r="1.5" fill="white"/>
+            <circle cx="18" cy="6" r="1.5" fill="white"/>
+            <circle cx="12" cy="18" r="1.5" fill="white"/>
+          </g>
+        </svg>
+      ),
+      bgColor: 'transparent',
+      available: true
+    },
+    {
       id: 'metamask',
       name: 'MetaMask',
       icon: (
@@ -444,31 +469,6 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
           <path d="M29.3333 15.9531L22.7778 14.0469L24.8333 17.2969L21.8889 23.2188L25.5889 23.1719H31.5556L29.3333 15.9531Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
           <path d="M9.22223 14.0469L2.66667 15.9531L0.453125 23.1719H6.41112L10.1111 23.2188L7.16668 17.2969L9.22223 14.0469Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
           <path d="M17.8889 17.6406L18.3889 10.2969L20.2278 4.82812H11.7722L13.6111 10.2969L14.1111 17.6406L14.3333 19.9688L14.3333 25.2969H17.6667L17.6667 19.9688L17.8889 17.6406Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      ),
-      bgColor: 'transparent',
-      available: true
-    },
-    {
-      id: 'web3auth',
-      name: 'Social Login',
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-          <defs>
-            <linearGradient id="web3authGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#0364FF"/>
-              <stop offset="100%" stopColor="#0052CC"/>
-            </linearGradient>
-          </defs>
-          <rect width="32" height="32" rx="8" fill="url(#web3authGradient)"/>
-          <g transform="translate(4, 4)">
-            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <circle cx="6" cy="6" r="1.5" fill="white"/>
-            <circle cx="18" cy="6" r="1.5" fill="white"/>
-            <circle cx="12" cy="18" r="1.5" fill="white"/>
-          </g>
         </svg>
       ),
       bgColor: 'transparent',
