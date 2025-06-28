@@ -14,7 +14,7 @@ const ModalOverlay = styled.div<{ isOpen: boolean }>`
   display: ${props => props.isOpen ? 'flex' : 'none'};
   align-items: center;
   justify-content: center;
-  z-index: 1050;
+  z-index: 1100;
   padding: 20px;
   box-sizing: border-box;
   overflow-y: auto;
