@@ -8,7 +8,7 @@ interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, '
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   variant?: 'default' | 'filled' | 'outlined';
-  inputSize?: 'sm' | 'md' | 'lg';
+  inputSize?: 'sm' | 'md' | 'lg' | 'xl';
   fullWidth?: boolean;
 }
 
@@ -33,61 +33,67 @@ const getInputWrapperClasses = (
     hasRightIcon && 'pr-10'
   ];
 
-  // Size classes
+  // Size classes - made bigger and wider
   const sizeClasses = {
-    sm: 'h-9',
-    md: 'h-11',
-    lg: 'h-13'
+    sm: 'h-10',
+    md: 'h-12',
+    lg: 'h-14',
+    xl: 'h-16'
   };
 
   // MODERN ATTRACTIVE INPUTS
   const variantClasses = {
     default: [
       'bg-white/10 border-white/20 rounded-2xl backdrop-blur-sm',
-      'focus-within:border-blue-400 focus-within:bg-blue-500/10',
-      'focus-within:shadow-lg focus-within:shadow-blue-500/20',
+      'focus-within:border-[#12D66F]',
+      'focus-within:shadow-[0_0_0_4px_rgba(18,214,111,0.3)]',
       'hover:border-white/30 hover:bg-white/15',
       'transition-all duration-300 ease-out',
       hasError ? 'border-red-400 focus-within:border-red-400 focus-within:shadow-red-500/20' : ''
     ],
     filled: [
       'bg-white/15 border-transparent rounded-2xl backdrop-blur-sm',
-      'focus-within:border-blue-400 focus-within:bg-blue-500/15',
-      'focus-within:shadow-lg focus-within:shadow-blue-500/20',
+      'focus-within:border-[#12D66F]',
+      'focus-within:shadow-[0_0_0_4px_rgba(18,214,111,0.3)]',
       'hover:bg-white/20',
       'transition-all duration-300 ease-out',
       hasError ? 'border-red-400 focus-within:border-red-400 bg-red-500/15' : ''
     ],
     outlined: [
       'bg-transparent border-white/30 rounded-2xl',
-      'focus-within:border-blue-400 focus-within:bg-blue-500/5',
-      'focus-within:shadow-lg focus-within:shadow-blue-500/20',
+      'focus-within:border-[#12D66F]',
+      'focus-within:shadow-[0_0_0_4px_rgba(18,214,111,0.3)]',
       'hover:border-white/40',
       'transition-all duration-300 ease-out',
       hasError ? 'border-red-400 focus-within:border-red-400' : ''
     ]
   };
 
-  // Modern glowing focus ring
-  const focusClasses = hasError
-    ? 'focus-within:ring-4 focus-within:ring-red-400/30'
-    : 'focus-within:ring-4 focus-within:ring-blue-400/30';
-
   return cn(
     baseClasses,
     sizeClasses[inputSize],
-    variantClasses[variant],
-    focusClasses
+    variantClasses[variant]
   );
 };
 
-const getInputClasses = () => cn(
-  'flex-1 bg-transparent border-0 outline-none',
-  'text-white text-xl font-bold font-sans',
-  'placeholder:text-slate-300 placeholder:font-semibold',
-  'disabled:opacity-50 disabled:cursor-not-allowed',
-  'px-6 py-1'
-);
+const getInputClasses = (inputSize: InputProps['inputSize'] = 'md') => {
+  const baseClasses = [
+    'flex-1 bg-transparent border-0 outline-none focus:outline-none focus:ring-0',
+    'text-white font-medium font-sans',
+    'placeholder:text-gray-400 placeholder:font-normal',
+    'disabled:opacity-50 disabled:cursor-not-allowed'
+  ];
+
+  // Size-specific text and padding
+  const sizeClasses = {
+    sm: 'text-sm px-4 py-2',
+    md: 'text-base px-5 py-3',
+    lg: 'text-lg px-6 py-4',
+    xl: 'text-xl px-7 py-5'
+  };
+
+  return cn(baseClasses, sizeClasses[inputSize]);
+};
 
 const getIconClasses = (position: 'left' | 'right') => cn(
   'absolute flex items-center justify-center',
@@ -134,7 +140,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
 
         <input
           ref={ref}
-          className={getInputClasses()}
+          className={getInputClasses(inputSize)}
           {...props}
         />
 

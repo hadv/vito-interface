@@ -19,6 +19,7 @@ interface HeaderProps {
   walletConnected: boolean;
   onToggleNetworkSelector: () => void;
   onSelectNetwork: (network: string) => void;
+  onLogoClick?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -27,7 +28,8 @@ const Header: React.FC<HeaderProps> = ({
   isNetworkSwitching,
   walletConnected,
   onToggleNetworkSelector,
-  onSelectNetwork
+  onSelectNetwork,
+  onLogoClick
 }) => {
   const [connectionState, setConnectionState] = useState<WalletConnectionState>({ isConnected: false });
   const [isConnectingWallet, setIsConnectingWallet] = useState(false);
@@ -172,7 +174,8 @@ const Header: React.FC<HeaderProps> = ({
   );
 
   const logoClasses = cn(
-    'h-8 w-8 transition-transform duration-300 hover:scale-110'
+    'h-8 w-8 transition-transform duration-300 hover:scale-110',
+    onLogoClick ? 'cursor-pointer' : ''
   );
 
   const appNameClasses = cn(
@@ -183,7 +186,7 @@ const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className={headerClasses}>
-      <div className={logoContainerClasses}>
+      <div className={logoContainerClasses} onClick={onLogoClick} style={{ cursor: onLogoClick ? 'pointer' : 'default' }}>
         <img src={logo} alt="Vito Logo" className={logoClasses} />
         <h1 className={appNameClasses}>Vito</h1>
       </div>
@@ -439,8 +442,9 @@ const Header: React.FC<HeaderProps> = ({
             )}
           </div>
         )}
-        
-        {/* Network Selector */}
+
+        {/* Network Selector - Only show when wallet is connected */}
+        {walletConnected && (
         <div className="relative network-selector">
           <div
             className={`bg-white/10 text-white border-2 border-gray-700 rounded-lg px-4 py-2 h-10 cursor-pointer font-medium text-sm flex items-center capitalize transition-all duration-200 backdrop-blur-md hover:bg-white/20 hover:border-gray-500 hover:shadow-lg active:scale-95 ${networkSelectorOpen ? 'bg-white/20 border-gray-500 shadow-lg ring-2 ring-blue-500/30' : ''}`}
@@ -462,10 +466,11 @@ const Header: React.FC<HeaderProps> = ({
             )}
           </div>
         </div>
+        )}
       </div>
 
-      {/* Network Selector Dropdown */}
-      {networkSelectorOpen && (
+      {/* Network Selector Dropdown - Only show when wallet is connected */}
+      {walletConnected && networkSelectorOpen && (
         <div className="fixed top-20 right-6 bg-gray-900/95 border border-gray-600 rounded-xl w-48 z-[9999] shadow-2xl backdrop-blur-lg overflow-hidden network-selector">
           <div
             className={`px-4 py-3 cursor-pointer text-sm font-medium capitalize transition-all duration-200 flex items-center gap-2 hover:bg-gray-800 hover:text-white ${network === 'ethereum' ? 'bg-blue-500/20 text-blue-400 border-l-2 border-blue-500' : 'text-gray-300'}`}
