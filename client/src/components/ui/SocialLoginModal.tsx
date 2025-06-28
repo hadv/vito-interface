@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { web3AuthService, SocialProvider } from '../../services/Web3AuthService';
 import { useToast } from '../../hooks/useToast';
+import Portal from './Portal';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -14,7 +15,7 @@ const ModalOverlay = styled.div<{ isOpen: boolean }>`
   display: ${props => props.isOpen ? 'flex' : 'none'};
   align-items: center;
   justify-content: center;
-  z-index: 1100;
+  z-index: 1000;
   padding: 20px;
   box-sizing: border-box;
   overflow-y: auto;
@@ -340,7 +341,8 @@ const SocialLoginModal: React.FC<SocialLoginModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <ModalOverlay isOpen={isOpen} onClick={handleOverlayClick}>
+    <Portal>
+      <ModalOverlay isOpen={isOpen} onClick={handleOverlayClick}>
       <ModalContainer>
         <ModalHeader>
           <ModalTitle>
@@ -387,6 +389,7 @@ const SocialLoginModal: React.FC<SocialLoginModalProps> = ({
         </ModalBody>
       </ModalContainer>
     </ModalOverlay>
+    </Portal>
   );
 };
 
