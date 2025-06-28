@@ -28,6 +28,30 @@ html, body {
   background: transparent;
 }
 
+/* Remove all browser default focus styles */
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible,
+button:focus,
+button:focus-visible,
+a:focus,
+a:focus-visible,
+div[role="button"]:focus,
+div[role="button"]:focus-visible,
+div[role="tab"]:focus,
+div[role="tab"]:focus-visible,
+span[role="button"]:focus,
+span[role="button"]:focus-visible,
+[tabindex]:focus,
+[tabindex]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: inherit !important;
+}
+
 /* Code styling */
 code {
   font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;

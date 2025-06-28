@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import WalletPage from './components/wallet/WalletPage';
+import AddSafeAccountPage from './components/wallet/pages/AddSafeAccountPage';
 import { resolveAddressToEns, isValidEthereumAddress } from './utils';
-import { Button, Input, Card } from './components/ui';
 import { walletConnectionService } from './services/WalletConnectionService';
 import { cn } from './utils/cn';
 import './App.css';
@@ -23,26 +23,6 @@ const appContainerClasses = cn(
 
 const contentContainerClasses = 'flex-1 overflow-hidden relative p-0 m-0';
 
-// Tailwind classes for welcome page
-const welcomeContainerClasses = cn(
-  'flex flex-col items-center justify-center',
-  'min-h-[calc(100vh-4rem)] p-8 text-center'
-);
-
-const welcomeCardClasses = 'max-w-2xl w-full text-center';
-
-const welcomeTitleClasses = cn(
-  'text-4xl font-bold mb-4',
-  'bg-gradient-to-br from-blue-400 to-purple-400',
-  'bg-clip-text text-transparent'
-);
-
-const welcomeSubtitleClasses = cn(
-  'text-lg text-gray-300 mb-8 leading-relaxed'
-);
-
-const inputContainerClasses = 'mb-6 w-full';
-
 
 
 // Tailwind classes for overlay
@@ -52,85 +32,12 @@ const getOverlayClasses = (isVisible: boolean) => cn(
   isVisible ? 'block opacity-100' : 'hidden opacity-0'
 );
 
-const NoWalletPage = ({ walletAddress, setWalletAddress, onConnect }: {
-  walletAddress: string;
-  setWalletAddress: (address: string) => void;
-  onConnect: () => void;
-}) => {
-  const [isValidAddress, setIsValidAddress] = useState(true);
-
-  // Validate wallet address
-  const validateAddress = (address: string) => {
-    if (!address) {
-      setIsValidAddress(true);
-      return;
-    }
-
-    setIsValidAddress(isValidEthereumAddress(address));
-  };
-
-  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newAddress = e.target.value;
-    setWalletAddress(newAddress);
-    validateAddress(newAddress);
-  };
-
-  return (
-    <div className={welcomeContainerClasses}>
-      <Card variant="glass" padding="xl" className={welcomeCardClasses}>
-        <h1 className={welcomeTitleClasses}>Vito Safe Wallet</h1>
-        <p className={welcomeSubtitleClasses}>
-          Secure multi-signature wallet interface for Ethereum and EVM networks.
-          Connect your Safe wallet to manage assets, transactions, and settings.
-        </p>
-
-        <div className={inputContainerClasses}>
-          <Input
-            label="Safe Wallet Address"
-            placeholder="Enter your Safe wallet address (0x...)"
-            value={walletAddress}
-            onChange={handleAddressChange}
-            error={!isValidAddress ? 'Please enter a valid Ethereum address' : undefined}
-            variant="outlined"
-            inputSize="lg"
-            fullWidth
-            autoComplete="off"
-            data-1p-ignore="true"
-            data-lpignore="true"
-            data-form-type="other"
-            leftIcon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            }
-          />
-        </div>
-
-        <Button
-          variant="primary"
-          size="lg"
-          fullWidth
-          onClick={onConnect}
-          disabled={!walletAddress || !isValidAddress}
-          data-1p-ignore="true"
-          data-lpignore="true"
-          rightIcon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M12 5L19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          }
-        >
-          Connect Safe Wallet
-        </Button>
-
-
-      </Card>
-    </div>
-  );
-};
+// Interface for Safe Account data
+interface SafeAccountData {
+  name: string;
+  network: string;
+  address: string;
+}
 
 function App() {
   const [network, setNetwork] = useState('ethereum');
@@ -184,21 +91,30 @@ function App() {
 
   // Auto-dismiss error logic removed - using toast system instead
 
-  const connectWallet = async () => {
-    if (walletAddress.trim() && isValidEthereumAddress(walletAddress)) {
+  const connectWallet = async (safeData?: SafeAccountData) => {
+    const addressToConnect = safeData?.address || walletAddress;
+    const networkToConnect = safeData?.network || network;
+
+    if (addressToConnect.trim() && isValidEthereumAddress(addressToConnect)) {
       try {
-        console.log(`Connecting to Safe wallet: ${walletAddress} on network: ${network}`);
+        console.log(`Connecting to Safe wallet: ${addressToConnect} on network: ${networkToConnect}`);
+
+        // Update state with the new data
+        if (safeData) {
+          setWalletAddress(safeData.address);
+          setNetwork(safeData.network);
+        }
 
         // Connect in read-only mode by default - user can connect signer later
         await walletConnectionService.connectWallet({
-          safeAddress: walletAddress,
-          network: network,
+          safeAddress: addressToConnect,
+          network: networkToConnect,
           readOnlyMode: true
         });
 
         setWalletConnected(true);
         toast.success('Wallet Connected', {
-          message: `Successfully connected to Safe wallet on ${network}`
+          message: `Successfully connected to Safe wallet "${safeData?.name || 'Safe'}" on ${networkToConnect}`
         });
       } catch (error: any) {
         console.error('Failed to connect to Safe wallet:', error);
@@ -207,13 +123,37 @@ function App() {
           message: errorDetails.userMessage,
           action: {
             label: 'Retry',
-            onClick: connectWallet
+            onClick: () => connectWallet(safeData)
           }
         });
       }
     } else {
       const errorMsg = 'Please enter a valid Safe wallet address';
       toast.error('Invalid Address', { message: errorMsg });
+    }
+  };
+
+  const handleLogoClick = async () => {
+    if (walletConnected) {
+      try {
+        // Disconnect the Safe wallet and any connected signer
+        await walletConnectionService.disconnectWallet();
+
+        // Reset state to initial values
+        setWalletConnected(false);
+        setWalletAddress('');
+        setEnsName('');
+        setIsLoadingEns(false);
+
+        toast.success('Disconnected', {
+          message: 'Successfully disconnected from Safe wallet'
+        });
+      } catch (error: any) {
+        console.error('Failed to disconnect:', error);
+        toast.error('Disconnection Failed', {
+          message: 'Failed to disconnect from Safe wallet'
+        });
+      }
     }
   };
 
@@ -301,6 +241,7 @@ function App() {
         walletConnected={walletConnected}
         onToggleNetworkSelector={toggleNetworkSelector}
         onSelectNetwork={selectNetwork}
+        onLogoClick={handleLogoClick}
       />
 
         {/* Toast Notifications - Positioned below header */}
@@ -320,9 +261,7 @@ function App() {
             isLoadingEns={isLoadingEns}
           />
         ) : (
-          <NoWalletPage
-            walletAddress={walletAddress}
-            setWalletAddress={setWalletAddress}
+          <AddSafeAccountPage
             onConnect={connectWallet}
           />
         )}
