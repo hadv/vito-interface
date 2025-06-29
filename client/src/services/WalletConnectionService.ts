@@ -700,14 +700,15 @@ export class WalletConnectionService {
       throw new Error('Safe wallet must be connected first');
     }
 
-    if (!web3AuthService.isConnected()) {
+    const web3AuthState = web3AuthService.getState();
+    if (!web3AuthState.isConnected) {
       throw new Error('Web3Auth session not available');
     }
 
     try {
       // Get Web3Auth provider and signer
-      const web3AuthProvider = web3AuthService.getEthersProvider();
-      const web3AuthSigner = web3AuthService.getEthersSigner();
+      const web3AuthProvider = web3AuthService.getProvider();
+      const web3AuthSigner = web3AuthService.getSigner();
 
       if (!web3AuthProvider || !web3AuthSigner) {
         throw new Error('Failed to get Web3Auth provider or signer');
@@ -718,7 +719,7 @@ export class WalletConnectionService {
       this.signer = web3AuthSigner;
 
       // Get signer balance
-      const signerBalance = await this.provider.getBalance(address);
+      const signerBalance = await this.provider!.getBalance(web3AuthState.address!);
       const formattedSignerBalance = ethers.utils.formatEther(signerBalance);
 
       // Update Safe Wallet Service with signer

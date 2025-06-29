@@ -1,10 +1,16 @@
 import { ethers } from 'ethers';
-import { googleOAuthService, GoogleOAuthState } from './GoogleOAuthService';
 
 export interface Web3AuthState {
   isConnected: boolean;
   isConnecting: boolean;
-  user?: any;
+  user?: {
+    email: string;
+    name: string;
+    profileImage: string;
+    typeOfLogin: string;
+    verifier: string;
+    verifierId: string;
+  };
   provider?: ethers.providers.Web3Provider;
   address?: string;
   socialProvider?: string;
@@ -18,210 +24,236 @@ export interface SocialProvider {
   loginProvider: string;
 }
 
+// Web3Auth Global Types
+declare global {
+  interface Window {
+    Web3auth: any;
+  }
+}
+
 /**
  * Web3Auth Service for Social Login Integration
- * Simplified implementation for production readiness
- * TODO: Replace with full Web3Auth SDK when dependency conflicts are resolved
+ * Uses Web3Auth SDK via CDN to avoid dependency conflicts
  */
 export class Web3AuthService {
   private provider: ethers.providers.Web3Provider | null = null;
   private signer: ethers.Signer | null = null;
+  private web3auth: any = null;
+  
   private state: Web3AuthState = {
     isConnected: false,
-    isConnecting: false
+    isConnecting: false,
   };
+  
   private listeners: ((state: Web3AuthState) => void)[] = [];
 
   constructor() {
-    // Initialize Google OAuth service
-    this.initializeGoogleOAuth();
-    console.log('🚀 Web3AuthService initialized with Google OAuth integration');
+    this.initializeWeb3Auth();
+    console.log('🚀 Web3AuthService initialized with Web3Auth SDK');
   }
 
-  // Initialize Google OAuth integration
-  private async initializeGoogleOAuth(): Promise<void> {
+  // Initialize Web3Auth SDK via CDN
+  private async initializeWeb3Auth(): Promise<void> {
     try {
-      // Subscribe to Google OAuth state changes
-      googleOAuthService.subscribe((googleState: GoogleOAuthState) => {
-        this.handleGoogleOAuthStateChange(googleState);
+      const clientId = process.env.REACT_APP_WEB3AUTH_CLIENT_ID;
+
+      if (!clientId) {
+        console.warn('⚠️ Web3Auth Client ID not found in environment variables');
+        return;
+      }
+
+      // Load Web3Auth SDK from CDN
+      await this.loadWeb3AuthSDK();
+
+      // Initialize Web3Auth
+      this.web3auth = new window.Web3auth.Web3Auth({
+        clientId,
+        web3AuthNetwork: window.Web3auth.WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
+        chainConfig: {
+          chainNamespace: window.Web3auth.CHAIN_NAMESPACES.EIP155,
+          chainId: "0x1", // Ethereum Mainnet
+          rpcTarget: "https://rpc.ankr.com/eth",
+          displayName: "Ethereum Mainnet",
+          blockExplorerUrl: "https://etherscan.io",
+          ticker: "ETH",
+          tickerName: "Ethereum",
+        },
+        uiConfig: {
+          appName: "Vito Interface",
+          appUrl: window.location.origin,
+          theme: {
+            primary: "#3b82f6",
+          },
+          mode: "light",
+          defaultLanguage: "en",
+          loginGridCol: 3,
+          primaryButton: "externalLogin",
+        },
       });
 
-      // Initialize Google OAuth
-      await googleOAuthService.initialize();
+      await this.web3auth.initModal();
+      console.log('✅ Web3Auth initialized successfully');
+
+      // Check if user is already connected
+      if (this.web3auth.connected) {
+        await this.handleExistingConnection();
+      }
+
     } catch (error) {
-      console.error('❌ Failed to initialize Google OAuth:', error);
+      console.error('❌ Failed to initialize Web3Auth:', error);
+      this.updateState({
+        error: 'Failed to initialize Web3Auth. Please check your configuration.'
+      });
     }
   }
 
-  // Handle Google OAuth state changes
-  private handleGoogleOAuthStateChange(googleState: GoogleOAuthState): void {
-    if (googleState.isAuthenticated && googleState.user && googleState.wallet) {
-      // Update Web3Auth state with Google OAuth data
+  // Load Web3Auth SDK from CDN
+  private loadWeb3AuthSDK(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Check if already loaded
+      if (window.Web3auth) {
+        resolve();
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/@web3auth/modal@10/dist/modal.umd.min.js';
+      script.async = true;
+      script.defer = true;
+
+      script.onload = () => {
+        // Wait a bit for the Web3Auth object to be available
+        setTimeout(() => {
+          if (window.Web3auth) {
+            resolve();
+          } else {
+            reject(new Error('Web3Auth SDK failed to load'));
+          }
+        }, 100);
+      };
+
+      script.onerror = () => {
+        reject(new Error('Failed to load Web3Auth SDK script'));
+      };
+
+      document.head.appendChild(script);
+    });
+  }
+
+  // Handle existing connection on page load
+  private async handleExistingConnection(): Promise<void> {
+    try {
+      if (!this.web3auth || !this.web3auth.connected) return;
+
+      const web3authProvider = this.web3auth.provider;
+      if (!web3authProvider) return;
+
+      // Get user info
+      const user = await this.web3auth.getUserInfo();
+
+      // Create ethers provider
+      const ethersProvider = new ethers.providers.Web3Provider(web3authProvider as any);
+      const signer = ethersProvider.getSigner();
+      const address = await signer.getAddress();
+
+      this.provider = ethersProvider;
+      this.signer = signer;
+
       this.updateState({
         isConnected: true,
         isConnecting: false,
         user: {
-          id: googleState.user.id,
-          email: googleState.user.email,
-          name: googleState.user.name,
-          profileImage: googleState.user.picture,
+          email: user.email || '',
+          name: user.name || '',
+          profileImage: user.profileImage || '',
+          typeOfLogin: user.typeOfLogin || '',
+          verifier: user.verifier || '',
+          verifierId: user.verifierId || '',
         },
-        provider: googleOAuthService.getProvider() || undefined,
-        address: googleState.wallet.address,
-        socialProvider: 'google',
+        provider: ethersProvider,
+        address,
+        socialProvider: user.typeOfLogin,
         error: undefined,
       });
-    } else if (googleState.error) {
-      this.updateState({
-        isConnected: false,
-        isConnecting: false,
-        error: googleState.error || undefined,
-      });
-    } else if (googleState.isLoading) {
-      this.updateState({
-        isConnecting: true,
-        error: undefined,
-      });
-    }
-  }
 
-  /**
-   * Real Google OAuth integration
-   */
-  private async authenticateWithGoogle(): Promise<{ address: string; user: any }> {
-    try {
-      // Check if Google OAuth is configured
-      if (!googleOAuthService.isConfigured()) {
-        throw new Error('Google OAuth is not configured. Please set REACT_APP_GOOGLE_CLIENT_ID in your environment variables.');
-      }
-
-      // Trigger Google OAuth sign-in
-      await googleOAuthService.signIn();
-
-      // Wait for authentication to complete
-      return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('Google OAuth timeout'));
-        }, 30000); // 30 second timeout
-
-        const unsubscribe = googleOAuthService.subscribe((state) => {
-          if (state.isAuthenticated && state.user && state.wallet) {
-            clearTimeout(timeout);
-            unsubscribe();
-            resolve({
-              address: state.wallet.address,
-              user: {
-                id: state.user.id,
-                email: state.user.email,
-                name: state.user.name,
-                profileImage: state.user.picture,
-              },
-            });
-          } else if (state.error) {
-            clearTimeout(timeout);
-            unsubscribe();
-            reject(new Error(state.error));
-          }
-        });
-      });
+      console.log('✅ Existing Web3Auth connection restored');
     } catch (error) {
-      console.error('❌ Google OAuth authentication failed:', error);
-      throw error;
+      console.error('❌ Failed to handle existing connection:', error);
     }
   }
 
-  /**
-   * Fallback demo login for non-Google providers
-   */
-  private async simulateSocialLogin(provider: string): Promise<{ address: string; user: any }> {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Generate a demo wallet for the social login
-    const wallet = ethers.Wallet.createRandom();
-    const address = wallet.address;
-
-    // Create mock user data
-    const user = {
-      email: `user@${provider}.com`,
-      name: `${provider.charAt(0).toUpperCase() + provider.slice(1)} User`,
-      profileImage: `https://ui-avatars.com/api/?name=${provider}&background=3b82f6&color=fff`,
-      typeOfLogin: provider,
-      verifier: provider,
-      verifierId: `${provider}_${Date.now()}`,
-    };
-
-    return { address, user };
-  }
-
-  /**
-   * Connect with a specific social provider
-   */
+  // Connect with social provider
   async connectWithSocial(loginProvider: string): Promise<Web3AuthState> {
-    if (this.state.isConnecting) {
-      throw new Error('Connection already in progress');
-    }
-
-    this.updateState({ isConnecting: true, error: undefined });
-
     try {
-      console.log(`🔗 Connecting with ${loginProvider}...`);
-
-      let address: string;
-      let user: any;
-
-      // Use real Google OAuth for Google provider, fallback to demo for others
-      if (loginProvider === 'google') {
-        const result = await this.authenticateWithGoogle();
-        address = result.address;
-        user = result.user;
-
-        // Set provider from Google OAuth service
-        this.provider = googleOAuthService.getProvider();
-        this.signer = this.provider?.getSigner() || null;
-      } else {
-        // Fallback to demo implementation for other providers
-        const result = await this.simulateSocialLogin(loginProvider);
-        address = result.address;
-        user = result.user;
+      if (!this.web3auth) {
+        throw new Error('Web3Auth not initialized');
       }
+
+      this.updateState({ isConnecting: true, error: undefined });
+
+      console.log(`🔗 Connecting with ${loginProvider} via Web3Auth...`);
+
+      // Connect with Web3Auth
+      const web3authProvider = await this.web3auth.connectTo(window.Web3auth.WALLET_ADAPTERS.OPENLOGIN, {
+        loginProvider: loginProvider,
+      });
+
+      if (!web3authProvider) {
+        throw new Error('Failed to connect with Web3Auth');
+      }
+
+      // Get user info
+      const user = await this.web3auth.getUserInfo();
+
+      // Create ethers provider
+      const ethersProvider = new ethers.providers.Web3Provider(web3authProvider as any);
+      const signer = ethersProvider.getSigner();
+      const address = await signer.getAddress();
+
+      this.provider = ethersProvider;
+      this.signer = signer;
 
       this.updateState({
         isConnected: true,
         isConnecting: false,
-        user,
-        provider: this.provider || undefined,
+        user: {
+          email: user.email || '',
+          name: user.name || '',
+          profileImage: user.profileImage || '',
+          typeOfLogin: user.typeOfLogin || '',
+          verifier: user.verifier || '',
+          verifierId: user.verifierId || '',
+        },
+        provider: ethersProvider,
         address,
         socialProvider: loginProvider,
-        error: undefined
+        error: undefined,
       });
 
       console.log(`✅ Successfully connected with ${loginProvider}`);
-      console.log(`📧 User: ${user.email}`);
-      console.log(`🔑 Address: ${address}`);
+      console.log('👤 User info:', user);
+      console.log('🔑 Wallet address:', address);
 
       return this.state;
     } catch (error: any) {
       console.error(`❌ Failed to connect with ${loginProvider}:`, error);
-      const errorMessage = error.message || `Failed to connect with ${loginProvider}`;
+
       this.updateState({
         isConnecting: false,
-        error: errorMessage
+        error: error.message || `Failed to connect with ${loginProvider}`,
       });
-      throw new Error(errorMessage);
+
+      throw error;
     }
   }
 
-  /**
-   * Disconnect from Web3Auth
-   */
+  // Disconnect from Web3Auth
   async disconnect(): Promise<void> {
     try {
       console.log('🔌 Disconnecting Web3Auth...');
 
-      // If connected via Google OAuth, sign out from Google
-      if (this.state.socialProvider === 'google') {
-        await googleOAuthService.signOut();
+      if (this.web3auth && this.web3auth.connected) {
+        await this.web3auth.logout();
       }
 
       this.provider = null;
@@ -234,74 +266,57 @@ export class Web3AuthService {
         provider: undefined,
         address: undefined,
         socialProvider: undefined,
-        error: undefined
+        error: undefined,
       });
 
-      console.log('✅ Successfully disconnected from Web3Auth');
-    } catch (error) {
-      console.error('❌ Failed to disconnect from Web3Auth:', error);
+      console.log('✅ Web3Auth disconnected successfully');
+    } catch (error: any) {
+      console.error('❌ Failed to disconnect Web3Auth:', error);
       throw error;
     }
   }
 
-  /**
-   * Get current state
-   */
+  // Get current state
   getState(): Web3AuthState {
     return { ...this.state };
   }
 
-  /**
-   * Get ethers provider
-   */
-  getEthersProvider(): ethers.providers.Web3Provider | null {
+  // Get provider
+  getProvider(): ethers.providers.Web3Provider | null {
     return this.provider;
   }
 
-  /**
-   * Get ethers signer
-   */
-  getEthersSigner(): ethers.Signer | null {
+  // Get signer
+  getSigner(): ethers.Signer | null {
     return this.signer;
   }
 
-  /**
-   * Subscribe to state changes
-   */
-  subscribe(callback: (state: Web3AuthState) => void): () => void {
-    this.listeners.push(callback);
+  // Subscribe to state changes
+  subscribe(listener: (state: Web3AuthState) => void): () => void {
+    this.listeners.push(listener);
     return () => {
-      this.listeners = this.listeners.filter(listener => listener !== callback);
+      const index = this.listeners.indexOf(listener);
+      if (index > -1) {
+        this.listeners.splice(index, 1);
+      }
     };
   }
 
-  /**
-   * Update state and notify listeners
-   */
+  // Update state and notify listeners
   private updateState(updates: Partial<Web3AuthState>): void {
     this.state = { ...this.state, ...updates };
     this.listeners.forEach(listener => listener(this.state));
   }
 
-  /**
-   * Check if Web3Auth is initialized
-   */
-  isInitialized(): boolean {
-    return true; // Always initialized in simplified version
+  // Check if Web3Auth is configured
+  isConfigured(): boolean {
+    const clientId = process.env.REACT_APP_WEB3AUTH_CLIENT_ID;
+    return !!clientId && clientId !== 'your-web3auth-client-id-here';
   }
 
-  /**
-   * Check if currently connected
-   */
-  isConnected(): boolean {
-    return this.state.isConnected;
-  }
-
-  /**
-   * Check if currently connecting
-   */
-  isConnecting(): boolean {
-    return this.state.isConnecting;
+  // Check if Web3Auth is ready
+  isReady(): boolean {
+    return !!this.web3auth;
   }
 }
 
