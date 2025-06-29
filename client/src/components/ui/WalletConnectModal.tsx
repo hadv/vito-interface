@@ -261,6 +261,11 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
   const [showCopied, setShowCopied] = useState(false);
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Debug state changes
+  useEffect(() => {
+    console.log('WalletConnect modal state changed:', state);
+  }, [state]);
+
   useEffect(() => {
     if (!isOpen) {
       // Cancel any pending connections and reset state when modal is closed
@@ -392,7 +397,7 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
       walletConnectService.removeEventListener('session_disconnected', sessionDisconnectedHandler);
       walletConnectService.removeEventListener('qr_generated', qrGeneratedHandler);
     };
-  }, [isOpen, onConnectionSuccess, onClose]);
+  }, [isOpen]); // Only depend on isOpen to prevent unnecessary re-renders
 
   const copyToClipboard = async () => {
     if (!state.uri) return;
