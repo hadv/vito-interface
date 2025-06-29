@@ -277,7 +277,12 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
 
       if (data.address && data.session) {
         try {
-          // Get the chain ID from the session
+          // Get the chain ID from the session with proper error handling
+          if (!data.session.namespaces?.eip155?.chains || data.session.namespaces.eip155.chains.length === 0) {
+            console.error('No chains found in session namespaces:', data.session.namespaces);
+            throw new Error('No chains found in WalletConnect session');
+          }
+
           const chainId = data.session.namespaces.eip155.chains[0].split(':')[1];
           const numericChainId = parseInt(chainId);
 
