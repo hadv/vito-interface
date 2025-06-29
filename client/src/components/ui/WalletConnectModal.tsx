@@ -397,6 +397,7 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
       walletConnectService.removeEventListener('session_disconnected', sessionDisconnectedHandler);
       walletConnectService.removeEventListener('qr_generated', qrGeneratedHandler);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]); // Only depend on isOpen to prevent unnecessary re-renders
 
   const copyToClipboard = async () => {
