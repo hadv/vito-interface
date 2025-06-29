@@ -1,8 +1,5 @@
 import { ethers } from 'ethers';
-import { Web3Auth } from '@web3auth/modal';
-import { CHAIN_NAMESPACES, WEB3AUTH_NETWORK } from '@web3auth/base';
-import { EthereumPrivateKeyProvider } from '@web3auth/ethereum-provider';
-import { OpenloginAdapter } from '@web3auth/openlogin-adapter';
+import { Web3Auth, WEB3AUTH_NETWORK } from '@web3auth/modal';
 
 export interface Web3AuthState {
   isConnected: boolean;
@@ -83,60 +80,15 @@ export class Web3AuthService {
         throw new Error('Web3Auth Client ID not configured');
       }
 
-      console.log('🔄 Initializing Web3Auth with npm packages...');
+      console.log('🔄 Initializing Web3Auth...');
 
-      // Create the private key provider
-      const privateKeyProvider = new EthereumPrivateKeyProvider({
-        config: {
-          chainConfig: {
-            chainNamespace: CHAIN_NAMESPACES.EIP155,
-            chainId: "0x1", // Ethereum Mainnet
-            rpcTarget: "https://rpc.ankr.com/eth",
-            displayName: "Ethereum Mainnet",
-            blockExplorerUrl: "https://etherscan.io",
-            ticker: "ETH",
-            tickerName: "Ethereum",
-          },
-        },
-      });
-
-      // Initialize Web3Auth
+      // Initialize Web3Auth with the correct API
       this.web3auth = new Web3Auth({
         clientId,
         web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
-        privateKeyProvider,
-        uiConfig: {
-          appName: "Vito Interface",
-          appUrl: window.location.origin,
-          theme: {
-            primary: "#3b82f6",
-          },
-          mode: "light",
-          defaultLanguage: "en",
-          loginGridCol: 3,
-          primaryButton: "externalLogin",
-        },
       });
 
-      // Configure OpenLogin adapter
-      const openloginAdapter = new OpenloginAdapter({
-        privateKeyProvider,
-        adapterSettings: {
-          uxMode: "popup",
-          whiteLabel: {
-            appName: "Vito Interface",
-            appUrl: window.location.origin,
-            logoLight: "https://web3auth.io/images/web3authlog.png",
-            logoDark: "https://web3auth.io/images/web3authlogodark.png",
-            defaultLanguage: "en",
-            mode: "light",
-          },
-        },
-      });
-
-      this.web3auth.configureAdapter(openloginAdapter);
-
-      await this.web3auth.initModal();
+      await this.web3auth.init();
       this.isInitialized = true;
       console.log('✅ Web3Auth initialized successfully');
 
@@ -214,8 +166,8 @@ export class Web3AuthService {
       console.log(`🔗 Connecting with ${loginProvider} via Web3Auth...`);
 
       // Connect with Web3Auth using the correct API
-      const web3authProvider = await this.web3auth.connectTo("openlogin", {
-        loginProvider: loginProvider,
+      const web3authProvider = await this.web3auth.connectTo("auth", {
+        authConnection: loginProvider,
       });
 
       if (!web3authProvider) {
