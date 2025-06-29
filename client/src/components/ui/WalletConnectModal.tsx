@@ -171,6 +171,78 @@ const RetryButton = styled.button`
   }
 `;
 
+const CopyUriContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+`;
+
+const CopyUriButton = styled.button`
+  background: transparent;
+  border: 1px solid #3b82f6;
+  color: #3b82f6;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+
+  &:hover {
+    background: #3b82f6;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+`;
+
+const CopyFeedback = styled.div`
+  position: absolute;
+  bottom: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  color: #10b981;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  animation: fadeOut 1.5s ease-in-out;
+
+  @keyframes fadeOut {
+    0% { opacity: 1; }
+    70% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+`;
+
+// Copy Icon Component
+const CopyIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="2" fill="none"/>
+    <path d="M5 15H4C2.89543 15 2 14.1046 2 13V4C2 2.89543 2.89543 2 4 2H13C14.1046 2 15 2.89543 15 4V5" stroke="currentColor" strokeWidth="2"/>
+  </svg>
+);
+
 
 
 interface WalletConnectModalProps {
@@ -186,7 +258,13 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
 }) => {
   const [state, setState] = useState<WalletConnectState>({ isConnected: false });
   const [isConnecting] = useState(false);
+  const [showCopied, setShowCopied] = useState(false);
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Debug state changes
+  useEffect(() => {
+    console.log('WalletConnect modal state changed:', state);
+  }, [state]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -204,9 +282,28 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
 
       if (data.address && data.session) {
         try {
-          // Get the chain ID from the session
-          const chainId = data.session.namespaces.eip155.chains[0].split(':')[1];
-          const numericChainId = parseInt(chainId);
+          console.log('Session data received:', data.session);
+          console.log('Session namespaces:', data.session.namespaces);
+          console.log('EIP155 namespace:', data.session.namespaces?.eip155);
+
+          // Get the chain ID from the session with proper error handling
+          let numericChainId: number;
+
+          if (data.session.namespaces?.eip155?.chains && data.session.namespaces.eip155.chains.length > 0) {
+            // Extract chain ID from chains array
+            const chainId = data.session.namespaces.eip155.chains[0].split(':')[1];
+            numericChainId = parseInt(chainId);
+            console.log('Chain ID extracted from chains array:', numericChainId);
+          } else if (data.session.namespaces?.eip155?.accounts && data.session.namespaces.eip155.accounts.length > 0) {
+            // Fallback: extract chain ID from accounts array
+            const accountString = data.session.namespaces.eip155.accounts[0];
+            const chainId = accountString.split(':')[1];
+            numericChainId = parseInt(chainId);
+            console.log('Chain ID extracted from accounts array:', numericChainId);
+          } else {
+            console.error('No chains or accounts found in session namespaces:', data.session.namespaces);
+            throw new Error('No chains or accounts found in WalletConnect session');
+          }
 
           console.log('Connecting WalletConnect signer with chain ID:', numericChainId);
 
@@ -258,17 +355,20 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
 
     // Also listen for QR code generation
     const qrGeneratedHandler = async (data: any) => {
-      console.log('QR code generated:', data);
+      console.log('QR code generated event received:', data);
       if (data.uri) {
+        console.log('Setting URI in state:', data.uri);
         setState(prev => ({ ...prev, uri: data.uri }));
 
         // Wait a bit for the canvas to be rendered, then generate QR code
         setTimeout(async () => {
+          console.log('Attempting to render QR code on canvas');
+          console.log('Canvas ref current:', qrCanvasRef.current);
           if (qrCanvasRef.current) {
             try {
               console.log('Generating QR code on canvas for URI:', data.uri);
               await WalletConnectService.generateQrCode(qrCanvasRef.current, data.uri);
-              console.log('QR code generated successfully');
+              console.log('QR code generated successfully on canvas');
             } catch (error) {
               console.error('Failed to generate QR code:', error);
               setState(prev => ({ ...prev, error: 'Failed to generate QR code' }));
@@ -285,9 +385,11 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
     walletConnectService.addEventListener('qr_generated', qrGeneratedHandler);
 
     // Initialize connection when modal opens
-    // Force new connection if modal was reopened or if there's an existing session
-    const shouldForceNew = walletConnectService.isConnectingState() || walletConnectService.isConnected();
-    console.log('WalletConnect modal opened, forcing new connection:', shouldForceNew);
+    // Only force new connection if there's already an active session or connection in progress
+    const shouldForceNew = walletConnectService.isConnected();
+    console.log('WalletConnect modal opened, initializing connection', shouldForceNew ? '(forcing new)' : '');
+
+    // Let WalletConnect service handle duplicate prevention with its isConnecting flag
     initializeConnection(shouldForceNew);
 
     return () => {
@@ -295,7 +397,33 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
       walletConnectService.removeEventListener('session_disconnected', sessionDisconnectedHandler);
       walletConnectService.removeEventListener('qr_generated', qrGeneratedHandler);
     };
-  }, [isOpen, onConnectionSuccess, onClose]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]); // Only depend on isOpen to prevent unnecessary re-renders
+
+  const copyToClipboard = async () => {
+    if (!state.uri) return;
+
+    try {
+      await navigator.clipboard.writeText(state.uri);
+      setShowCopied(true);
+      setTimeout(() => setShowCopied(false), 1500);
+    } catch (error) {
+      console.error('Failed to copy URI to clipboard:', error);
+      // Fallback for older browsers
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = state.uri;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        setShowCopied(true);
+        setTimeout(() => setShowCopied(false), 1500);
+      } catch (fallbackError) {
+        console.error('Fallback copy method also failed:', fallbackError);
+      }
+    }
+  };
 
   const initializeConnection = async (forceNew: boolean = false) => {
     try {
@@ -347,6 +475,16 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
               <LoadingSpinner>Generating QR Code...</LoadingSpinner>
             )}
           </QRCodeContainer>
+
+          {state.uri && (
+            <CopyUriContainer>
+              <CopyUriButton onClick={copyToClipboard} disabled={!state.uri}>
+                <CopyIcon />
+                Copy URI
+                {showCopied && <CopyFeedback>Copied!</CopyFeedback>}
+              </CopyUriButton>
+            </CopyUriContainer>
+          )}
 
           {state.error ? (
             <StatusContainer>

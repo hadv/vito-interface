@@ -236,8 +236,27 @@ export class WalletConnectService {
       const session = await connectResult.approval();
       this.sessionTopic = session.topic;
 
-      // Get the connected address
-      const account = session.namespaces.eip155.accounts[0].split(':')[2];
+      console.log('WalletConnect session approved:', session);
+      console.log('Session namespaces:', session.namespaces);
+      console.log('EIP155 namespace details:', session.namespaces?.eip155);
+
+      // Get the connected address with proper error handling
+      let account: string;
+
+      if (!session.namespaces?.eip155?.accounts || session.namespaces.eip155.accounts.length === 0) {
+        console.error('No accounts found in session namespaces:', session.namespaces);
+        throw new Error('No accounts found in WalletConnect session');
+      }
+
+      try {
+        const accountString = session.namespaces.eip155.accounts[0];
+        console.log('Full account string:', accountString);
+        account = accountString.split(':')[2];
+        console.log('Extracted account address:', account);
+      } catch (error) {
+        console.error('Failed to extract account from session:', session.namespaces.eip155.accounts[0]);
+        throw new Error('Invalid account format in WalletConnect session');
+      }
 
       // Store connection result for compatibility
       this.connectionResult = {

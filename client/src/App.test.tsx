@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import App from './App';
 
 // Mock the WalletPage component to avoid module resolution issues
 jest.mock('./components/wallet/WalletPage', () => {
@@ -44,7 +45,7 @@ jest.mock('./components/ui', () => ({
   )
 }));
 
-import App from './App';
+
 
 test('renders app component', () => {
   render(<App />);

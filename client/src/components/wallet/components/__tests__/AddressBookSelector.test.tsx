@@ -76,9 +76,9 @@ describe('AddressBookSelector', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Alice')).toBeInTheDocument();
-      expect(screen.getByText('Bob')).toBeInTheDocument();
-      expect(screen.getByText('Charlie')).toBeInTheDocument();
     });
+    expect(screen.getByText('Bob')).toBeInTheDocument();
+    expect(screen.getByText('Charlie')).toBeInTheDocument();
   });
 
   it('calls onChange when an entry is selected', async () => {
@@ -89,9 +89,11 @@ describe('AddressBookSelector', () => {
     fireEvent.click(selectorButton);
 
     await waitFor(() => {
-      const aliceEntry = screen.getByText('Alice');
-      fireEvent.click(aliceEntry);
+      expect(screen.getByText('Alice')).toBeInTheDocument();
     });
+
+    const aliceEntry = screen.getByText('Alice');
+    fireEvent.click(aliceEntry);
 
     expect(mockOnChange).toHaveBeenCalledWith('0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b1');
   });
@@ -103,15 +105,17 @@ describe('AddressBookSelector', () => {
     fireEvent.click(selectorButton);
 
     await waitFor(() => {
-      const searchInput = screen.getByPlaceholderText('Search address book...');
-      fireEvent.change(searchInput, { target: { value: 'Alice' } });
+      expect(screen.getByPlaceholderText('Search address book...')).toBeInTheDocument();
     });
+
+    const searchInput = screen.getByPlaceholderText('Search address book...');
+    fireEvent.change(searchInput, { target: { value: 'Alice' } });
 
     await waitFor(() => {
       expect(screen.getByText('Alice')).toBeInTheDocument();
-      expect(screen.queryByText('Bob')).not.toBeInTheDocument();
-      expect(screen.queryByText('Charlie')).not.toBeInTheDocument();
     });
+    expect(screen.queryByText('Bob')).not.toBeInTheDocument();
+    expect(screen.queryByText('Charlie')).not.toBeInTheDocument();
   });
 
   it('shows manual input section', async () => {
@@ -122,8 +126,8 @@ describe('AddressBookSelector', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Or enter address manually')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('0x...')).toBeInTheDocument();
     });
+    expect(screen.getByPlaceholderText('0x...')).toBeInTheDocument();
   });
 
   it('handles manual address input', async () => {
@@ -134,10 +138,12 @@ describe('AddressBookSelector', () => {
     fireEvent.click(selectorButton);
 
     await waitFor(() => {
-      const manualInput = screen.getByPlaceholderText('0x...');
-      fireEvent.change(manualInput, { 
-        target: { value: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b9' } 
-      });
+      expect(screen.getByPlaceholderText('0x...')).toBeInTheDocument();
+    });
+
+    const manualInput = screen.getByPlaceholderText('0x...');
+    fireEvent.change(manualInput, {
+      target: { value: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b9' }
     });
 
     expect(mockOnChange).toHaveBeenCalledWith('0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b9');
