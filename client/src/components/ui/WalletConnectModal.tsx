@@ -259,17 +259,26 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
   const [state, setState] = useState<WalletConnectState>({ isConnected: false });
   const [isConnecting] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (!isOpen) {
       // Cancel any pending connections and reset state when modal is closed
       walletConnectService.cancelPendingConnection();
+      setHasInitialized(false);
+      return;
+    }
+
+    // Prevent double initialization (React StrictMode causes double execution)
+    if (hasInitialized) {
+      console.log('WalletConnect already initialized, skipping duplicate initialization');
       return;
     }
 
     // Reset state when modal opens
     setState({ isConnected: false });
+    setHasInitialized(true);
 
     // Subscribe to WalletConnect state changes
     const sessionConnectedHandler = async (data: any) => {
@@ -387,7 +396,7 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
       walletConnectService.removeEventListener('session_disconnected', sessionDisconnectedHandler);
       walletConnectService.removeEventListener('qr_generated', qrGeneratedHandler);
     };
-  }, [isOpen, onConnectionSuccess, onClose]);
+  }, [isOpen, hasInitialized, onConnectionSuccess, onClose]);
 
   const copyToClipboard = async () => {
     if (!state.uri) return;
