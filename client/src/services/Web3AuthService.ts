@@ -202,10 +202,8 @@ export class Web3AuthService {
       } catch (error) {
         console.log(`❌ Failed to load from CDN ${i + 1}: ${error}`);
         if (i === urls.length - 1) {
-          // If all CDNs fail, fall back to demo mode
-          console.log('🔄 All CDNs failed, falling back to demo mode...');
-          this.initializeDemoMode();
-          return;
+          // If all CDNs fail, throw error
+          throw new Error('Failed to load Web3Auth SDK from all CDN sources');
         }
       }
     }
@@ -238,65 +236,6 @@ export class Web3AuthService {
     });
   }
 
-  // Initialize demo mode when Web3Auth CDN fails
-  private initializeDemoMode(): void {
-    console.log('🎭 Initializing Web3Auth demo mode...');
-
-    // Create a mock Web3Auth object for demo purposes
-    window.Web3auth = {
-      Web3Auth: class MockWeb3Auth {
-        constructor(config: any) {
-          console.log('🎭 Mock Web3Auth initialized with config:', config);
-        }
-
-        async initModal() {
-          console.log('🎭 Mock Web3Auth modal initialized');
-        }
-
-        async connectTo(adapter: string, options: any) {
-          console.log(`🎭 Mock connecting to ${adapter} with options:`, options);
-
-          // Simulate authentication delay
-          await new Promise(resolve => setTimeout(resolve, 2000));
-
-          // Return a mock provider
-          return {
-            request: async ({ method, params }: any) => {
-              if (method === 'eth_accounts') {
-                return ['0x742d35Cc6634C0532925a3b8D0C9C0E3C5d5c8eA']; // Demo address
-              }
-              if (method === 'eth_chainId') {
-                return '0x1'; // Ethereum mainnet
-              }
-              throw new Error(`Mock provider: ${method} not implemented`);
-            }
-          };
-        }
-
-        async getUserInfo() {
-          return {
-            email: `demo@${Date.now()}.com`,
-            name: 'Demo User',
-            profileImage: 'https://via.placeholder.com/100',
-            typeOfLogin: 'google',
-            verifier: 'google',
-            verifierId: `demo_${Date.now()}`,
-          };
-        }
-
-        async logout() {
-          console.log('🎭 Mock logout');
-        }
-
-        get connected() {
-          return false; // Always false for demo
-        }
-      }
-    };
-
-    console.log('✅ Demo mode initialized successfully');
-  }
-
   // Handle existing connection on page load
   private async handleExistingConnection(): Promise<void> {
     try {
@@ -323,13 +262,13 @@ export class Web3AuthService {
           email: user.email || '',
           name: user.name || '',
           profileImage: user.profileImage || '',
-          typeOfLogin: user.typeOfLogin || '',
-          verifier: user.verifier || '',
-          verifierId: user.verifierId || '',
+          typeOfLogin: (user as any).typeOfLogin || '',
+          verifier: (user as any).verifier || '',
+          verifierId: (user as any).verifierId || '',
         },
         provider: ethersProvider,
         address,
-        socialProvider: user.typeOfLogin,
+        socialProvider: (user as any).typeOfLogin,
         error: undefined,
       });
 
@@ -356,7 +295,7 @@ export class Web3AuthService {
 
       console.log(`🔗 Connecting with ${loginProvider} via Web3Auth...`);
 
-      // Connect with Web3Auth
+      // Connect with Web3Auth using the correct API
       const web3authProvider = await this.web3auth.connectTo("openlogin", {
         loginProvider: loginProvider,
       });
@@ -383,9 +322,9 @@ export class Web3AuthService {
           email: user.email || '',
           name: user.name || '',
           profileImage: user.profileImage || '',
-          typeOfLogin: user.typeOfLogin || '',
-          verifier: user.verifier || '',
-          verifierId: user.verifierId || '',
+          typeOfLogin: (user as any).typeOfLogin || '',
+          verifier: (user as any).verifier || '',
+          verifierId: (user as any).verifierId || '',
         },
         provider: ethersProvider,
         address,
