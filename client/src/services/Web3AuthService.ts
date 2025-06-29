@@ -1,4 +1,8 @@
 import { ethers } from 'ethers';
+import { Web3Auth } from '@web3auth/modal';
+import { CHAIN_NAMESPACES, WEB3AUTH_NETWORK } from '@web3auth/base';
+import { EthereumPrivateKeyProvider } from '@web3auth/ethereum-provider';
+import { OpenloginAdapter } from '@web3auth/openlogin-adapter';
 
 export interface Web3AuthState {
   isConnected: boolean;
@@ -24,23 +28,16 @@ export interface SocialProvider {
   loginProvider: string;
 }
 
-// Web3Auth Global Types
-declare global {
-  interface Window {
-    Web3auth: any;
-    Web3AuthModal: any;
-    Web3Auth: any;
-  }
-}
+// Web3Auth types are now imported from npm packages
 
 /**
  * Web3Auth Service for Social Login Integration
- * Uses Web3Auth SDK via CDN to avoid dependency conflicts
+ * Uses Web3Auth SDK via npm packages for reliable integration
  */
 export class Web3AuthService {
   private provider: ethers.providers.Web3Provider | null = null;
   private signer: ethers.Signer | null = null;
-  private web3auth: any = null;
+  private web3auth: Web3Auth | null = null;
   private isInitialized = false;
   private isInitializing = false;
   private initializationPromise: Promise<void> | null = null;
@@ -86,51 +83,28 @@ export class Web3AuthService {
         throw new Error('Web3Auth Client ID not configured');
       }
 
-      console.log('🔄 Loading Web3Auth SDK...');
-      // Load Web3Auth SDK from CDN
-      await this.loadWeb3AuthSDK();
+      console.log('🔄 Initializing Web3Auth with npm packages...');
 
-      console.log('🔄 Initializing Web3Auth...');
-      console.log('Available Web3Auth objects:', {
-        Web3AuthModal: typeof window.Web3AuthModal,
-        Web3auth: typeof window.Web3auth,
-        Web3Auth: typeof window.Web3Auth
+      // Create the private key provider
+      const privateKeyProvider = new EthereumPrivateKeyProvider({
+        config: {
+          chainConfig: {
+            chainNamespace: CHAIN_NAMESPACES.EIP155,
+            chainId: "0x1", // Ethereum Mainnet
+            rpcTarget: "https://rpc.ankr.com/eth",
+            displayName: "Ethereum Mainnet",
+            blockExplorerUrl: "https://etherscan.io",
+            ticker: "ETH",
+            tickerName: "Ethereum",
+          },
+        },
       });
 
-      // Try different possible Web3Auth constructors
-      let Web3AuthConstructor = null;
-
-      if (window.Web3AuthModal) {
-        Web3AuthConstructor = window.Web3AuthModal;
-        console.log('✅ Using window.Web3AuthModal');
-      } else if (window.Web3auth && window.Web3auth.Web3Auth) {
-        Web3AuthConstructor = window.Web3auth.Web3Auth;
-        console.log('✅ Using window.Web3auth.Web3Auth');
-      } else if (window.Web3auth) {
-        Web3AuthConstructor = window.Web3auth;
-        console.log('✅ Using window.Web3auth');
-      } else if (window.Web3Auth) {
-        Web3AuthConstructor = window.Web3Auth;
-        console.log('✅ Using window.Web3Auth');
-      }
-
-      if (!Web3AuthConstructor) {
-        const availableKeys = Object.keys(window).filter(key => key.toLowerCase().includes('web3'));
-        throw new Error(`Web3Auth constructor not found. Available Web3 objects: ${availableKeys.join(', ')}`);
-      }
-
-      this.web3auth = new Web3AuthConstructor({
+      // Initialize Web3Auth
+      this.web3auth = new Web3Auth({
         clientId,
-        web3AuthNetwork: "sapphire_mainnet", // Use string instead of enum
-        chainConfig: {
-          chainNamespace: "eip155",
-          chainId: "0x1", // Ethereum Mainnet
-          rpcTarget: "https://rpc.ankr.com/eth",
-          displayName: "Ethereum Mainnet",
-          blockExplorerUrl: "https://etherscan.io",
-          ticker: "ETH",
-          tickerName: "Ethereum",
-        },
+        web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
+        privateKeyProvider,
         uiConfig: {
           appName: "Vito Interface",
           appUrl: window.location.origin,
@@ -143,6 +117,24 @@ export class Web3AuthService {
           primaryButton: "externalLogin",
         },
       });
+
+      // Configure OpenLogin adapter
+      const openloginAdapter = new OpenloginAdapter({
+        privateKeyProvider,
+        adapterSettings: {
+          uxMode: "popup",
+          whiteLabel: {
+            appName: "Vito Interface",
+            appUrl: window.location.origin,
+            logoLight: "https://web3auth.io/images/web3authlog.png",
+            logoDark: "https://web3auth.io/images/web3authlogodark.png",
+            defaultLanguage: "en",
+            mode: "light",
+          },
+        },
+      });
+
+      this.web3auth.configureAdapter(openloginAdapter);
 
       await this.web3auth.initModal();
       this.isInitialized = true;
@@ -160,80 +152,6 @@ export class Web3AuthService {
       });
       throw error;
     }
-  }
-
-  // Load Web3Auth SDK from CDN
-  private async loadWeb3AuthSDK(): Promise<void> {
-    // Check if already loaded
-    if (window.Web3AuthModal || window.Web3auth) {
-      console.log('✅ Web3Auth SDK already loaded');
-      return;
-    }
-
-    console.log('🔄 Loading Web3Auth SDK from CDN...');
-
-    // Try multiple CDN URLs in sequence
-    const cdnUrls = [
-      'https://cdn.jsdelivr.net/npm/@web3auth/modal@8/dist/modal.umd.min.js',
-      'https://cdn.jsdelivr.net/npm/@web3auth/modal@7/dist/modal.umd.min.js',
-      'https://unpkg.com/@web3auth/modal@8/dist/modal.umd.min.js',
-      'https://unpkg.com/@web3auth/modal@7/dist/modal.umd.min.js'
-    ];
-
-    await this.tryLoadingFromCDNs(cdnUrls);
-  }
-
-  // Try loading Web3Auth from multiple CDN sources
-  private async tryLoadingFromCDNs(urls: string[]): Promise<void> {
-    for (let i = 0; i < urls.length; i++) {
-      const url = urls[i];
-      console.log(`🔄 Trying CDN ${i + 1}/${urls.length}: ${url}`);
-
-      try {
-        await this.loadScriptFromURL(url);
-
-        // Check if Web3Auth objects are available
-        if (window.Web3AuthModal || window.Web3auth || window.Web3Auth) {
-          console.log('✅ Web3Auth SDK loaded successfully from:', url);
-          return;
-        } else {
-          console.log(`⚠️ Script loaded but no Web3Auth objects found from: ${url}`);
-        }
-      } catch (error) {
-        console.log(`❌ Failed to load from CDN ${i + 1}: ${error}`);
-        if (i === urls.length - 1) {
-          // If all CDNs fail, throw error
-          throw new Error('Failed to load Web3Auth SDK from all CDN sources');
-        }
-      }
-    }
-  }
-
-  // Load script from specific URL
-  private loadScriptFromURL(url: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = url;
-      script.async = true;
-      script.defer = true;
-
-      script.onload = () => {
-        console.log(`📦 Script loaded from: ${url}`);
-        // Wait a bit for the objects to be available
-        setTimeout(() => {
-          console.log('Available Web3 objects:', Object.keys(window).filter(key =>
-            key.toLowerCase().includes('web3')
-          ));
-          resolve();
-        }, 500);
-      };
-
-      script.onerror = () => {
-        reject(new Error(`Failed to load script from ${url}`));
-      };
-
-      document.head.appendChild(script);
-    });
   }
 
   // Handle existing connection on page load
