@@ -3,11 +3,6 @@ import styled from 'styled-components';
 import { walletConnectService, WalletConnectState, WalletConnectService } from '../../services/WalletConnectService';
 import { walletConnectionService } from '../../services/WalletConnectionService';
 
-// Global flag to prevent React StrictMode double execution
-// This persists across component re-mounts and effect re-runs
-let isInitializing = false;
-let lastInitializationTime = 0;
-
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
   top: 0;
@@ -384,33 +379,13 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
     walletConnectService.addEventListener('session_disconnected', sessionDisconnectedHandler);
     walletConnectService.addEventListener('qr_generated', qrGeneratedHandler);
 
-    // Initialize connection when modal opens (prevent React StrictMode double execution)
-    const now = Date.now();
-    const timeSinceLastInit = now - lastInitializationTime;
+    // Initialize connection when modal opens
+    // Only force new connection if there's already an active session or connection in progress
+    const shouldForceNew = walletConnectService.isConnected();
+    console.log('WalletConnect modal opened, initializing connection', shouldForceNew ? '(forcing new)' : '');
 
-    // Prevent double initialization using global flag and timing
-    if (!isInitializing && timeSinceLastInit > 50) {
-      isInitializing = true;
-      lastInitializationTime = now;
-
-      console.log('WalletConnect modal opened, initializing connection');
-      // Force new connection if modal was reopened or if there's an existing session
-      const shouldForceNew = walletConnectService.isConnectingState() || walletConnectService.isConnected();
-
-      // Use setTimeout to allow state to settle
-      setTimeout(() => {
-        initializeConnection(shouldForceNew);
-        // Reset flag after initialization completes
-        setTimeout(() => {
-          isInitializing = false;
-        }, 1000);
-      }, 10);
-    } else {
-      console.log('WalletConnect initialization skipped - already initializing or too soon:', {
-        isInitializing,
-        timeSinceLastInit
-      });
-    }
+    // Let WalletConnect service handle duplicate prevention with its isConnecting flag
+    initializeConnection(shouldForceNew);
 
     return () => {
       walletConnectService.removeEventListener('session_connected', sessionConnectedHandler);
