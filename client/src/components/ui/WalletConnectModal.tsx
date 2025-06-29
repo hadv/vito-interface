@@ -171,6 +171,78 @@ const RetryButton = styled.button`
   }
 `;
 
+const CopyUriContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+`;
+
+const CopyUriButton = styled.button`
+  background: transparent;
+  border: 1px solid #3b82f6;
+  color: #3b82f6;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+
+  &:hover {
+    background: #3b82f6;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+`;
+
+const CopyFeedback = styled.div`
+  position: absolute;
+  bottom: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  color: #10b981;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  animation: fadeOut 1.5s ease-in-out;
+
+  @keyframes fadeOut {
+    0% { opacity: 1; }
+    70% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+`;
+
+// Copy Icon Component
+const CopyIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="2" fill="none"/>
+    <path d="M5 15H4C2.89543 15 2 14.1046 2 13V4C2 2.89543 2.89543 2 4 2H13C14.1046 2 15 2.89543 15 4V5" stroke="currentColor" strokeWidth="2"/>
+  </svg>
+);
+
 
 
 interface WalletConnectModalProps {
@@ -186,6 +258,7 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
 }) => {
   const [state, setState] = useState<WalletConnectState>({ isConnected: false });
   const [isConnecting] = useState(false);
+  const [showCopied, setShowCopied] = useState(false);
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -297,6 +370,31 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
     };
   }, [isOpen, onConnectionSuccess, onClose]);
 
+  const copyToClipboard = async () => {
+    if (!state.uri) return;
+
+    try {
+      await navigator.clipboard.writeText(state.uri);
+      setShowCopied(true);
+      setTimeout(() => setShowCopied(false), 1500);
+    } catch (error) {
+      console.error('Failed to copy URI to clipboard:', error);
+      // Fallback for older browsers
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = state.uri;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        setShowCopied(true);
+        setTimeout(() => setShowCopied(false), 1500);
+      } catch (fallbackError) {
+        console.error('Fallback copy method also failed:', fallbackError);
+      }
+    }
+  };
+
   const initializeConnection = async (forceNew: boolean = false) => {
     try {
       console.log('Initializing WalletConnect connection...', forceNew ? '(forcing new)' : '');
@@ -347,6 +445,16 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
               <LoadingSpinner>Generating QR Code...</LoadingSpinner>
             )}
           </QRCodeContainer>
+
+          {state.uri && (
+            <CopyUriContainer>
+              <CopyUriButton onClick={copyToClipboard} disabled={!state.uri}>
+                <CopyIcon />
+                Copy URI
+                {showCopied && <CopyFeedback>Copied!</CopyFeedback>}
+              </CopyUriButton>
+            </CopyUriContainer>
+          )}
 
           {state.error ? (
             <StatusContainer>
