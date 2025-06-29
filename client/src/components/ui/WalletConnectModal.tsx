@@ -270,15 +270,8 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
       return;
     }
 
-    // Prevent double initialization (React StrictMode causes double execution)
-    if (hasInitialized) {
-      console.log('WalletConnect already initialized, skipping duplicate initialization');
-      return;
-    }
-
     // Reset state when modal opens
     setState({ isConnected: false });
-    setHasInitialized(true);
 
     // Subscribe to WalletConnect state changes
     const sessionConnectedHandler = async (data: any) => {
@@ -385,11 +378,16 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
     walletConnectService.addEventListener('session_disconnected', sessionDisconnectedHandler);
     walletConnectService.addEventListener('qr_generated', qrGeneratedHandler);
 
-    // Initialize connection when modal opens
-    // Force new connection if modal was reopened or if there's an existing session
-    const shouldForceNew = walletConnectService.isConnectingState() || walletConnectService.isConnected();
-    console.log('WalletConnect modal opened, forcing new connection:', shouldForceNew);
-    initializeConnection(shouldForceNew);
+    // Initialize connection when modal opens (prevent double initialization)
+    if (!hasInitialized) {
+      // Force new connection if modal was reopened or if there's an existing session
+      const shouldForceNew = walletConnectService.isConnectingState() || walletConnectService.isConnected();
+      console.log('WalletConnect modal opened, forcing new connection:', shouldForceNew);
+      setHasInitialized(true);
+      initializeConnection(shouldForceNew);
+    } else {
+      console.log('WalletConnect already initialized, skipping duplicate initialization');
+    }
 
     return () => {
       walletConnectService.removeEventListener('session_connected', sessionConnectedHandler);
