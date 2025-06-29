@@ -309,10 +309,21 @@ const SocialLoginModal: React.FC<SocialLoginModalProps> = ({
     try {
       console.log(`🔗 Connecting with ${provider.name}...`);
 
-      // Show specific loading message for Web3Auth social login
-      toast.info('Web3Auth Social Login', {
-        message: `Connecting with ${provider.name}...`
-      });
+      // Check if Web3Auth is ready
+      const initStatus = web3AuthService.getInitializationStatus();
+      if (!initStatus.isInitialized && !initStatus.isInitializing) {
+        toast.info('Web3Auth Initialization', {
+          message: 'Initializing Web3Auth SDK...'
+        });
+      } else if (initStatus.isInitializing) {
+        toast.info('Web3Auth Initialization', {
+          message: 'Web3Auth SDK is initializing, please wait...'
+        });
+      } else {
+        toast.info('Web3Auth Social Login', {
+          message: `Connecting with ${provider.name}...`
+        });
+      }
 
       const result = await web3AuthService.connectWithSocial(provider.loginProvider);
 
@@ -334,11 +345,15 @@ const SocialLoginModal: React.FC<SocialLoginModalProps> = ({
 
       // Provide specific error messages for common Web3Auth issues
       if (errorMessage.includes('not initialized')) {
-        errorMessage = 'Web3Auth is not configured. Please check your environment variables.';
+        errorMessage = 'Web3Auth failed to initialize. Please check your environment variables and try again.';
+      } else if (errorMessage.includes('not configured')) {
+        errorMessage = 'Web3Auth is not configured. Please set REACT_APP_WEB3AUTH_CLIENT_ID in your environment variables.';
       } else if (errorMessage.includes('User closed the modal')) {
         errorMessage = 'Authentication was cancelled. Please try again.';
       } else if (errorMessage.includes('popup')) {
         errorMessage = 'Authentication popup was blocked. Please allow popups and try again.';
+      } else if (errorMessage.includes('failed to load')) {
+        errorMessage = 'Failed to load Web3Auth SDK. Please check your internet connection and try again.';
       }
 
       toast.error('Connection Failed', {

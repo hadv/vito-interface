@@ -39,32 +39,56 @@ export class Web3AuthService {
   private provider: ethers.providers.Web3Provider | null = null;
   private signer: ethers.Signer | null = null;
   private web3auth: any = null;
-  
+  private isInitialized = false;
+  private isInitializing = false;
+  private initializationPromise: Promise<void> | null = null;
+
   private state: Web3AuthState = {
     isConnected: false,
     isConnecting: false,
   };
-  
+
   private listeners: ((state: Web3AuthState) => void)[] = [];
 
   constructor() {
-    this.initializeWeb3Auth();
     console.log('🚀 Web3AuthService initialized with Web3Auth SDK');
+    // Don't initialize immediately, wait for first use
   }
 
   // Initialize Web3Auth SDK via CDN
   private async initializeWeb3Auth(): Promise<void> {
+    // Prevent multiple initialization attempts
+    if (this.isInitialized || this.isInitializing) {
+      if (this.initializationPromise) {
+        await this.initializationPromise;
+      }
+      return;
+    }
+
+    this.isInitializing = true;
+    this.initializationPromise = this._doInitialization();
+
+    try {
+      await this.initializationPromise;
+    } finally {
+      this.isInitializing = false;
+    }
+  }
+
+  private async _doInitialization(): Promise<void> {
     try {
       const clientId = process.env.REACT_APP_WEB3AUTH_CLIENT_ID;
 
       if (!clientId) {
         console.warn('⚠️ Web3Auth Client ID not found in environment variables');
-        return;
+        throw new Error('Web3Auth Client ID not configured');
       }
 
+      console.log('🔄 Loading Web3Auth SDK...');
       // Load Web3Auth SDK from CDN
       await this.loadWeb3AuthSDK();
 
+      console.log('🔄 Initializing Web3Auth...');
       // Initialize Web3Auth
       this.web3auth = new window.Web3auth.Web3Auth({
         clientId,
@@ -92,6 +116,7 @@ export class Web3AuthService {
       });
 
       await this.web3auth.initModal();
+      this.isInitialized = true;
       console.log('✅ Web3Auth initialized successfully');
 
       // Check if user is already connected
@@ -104,6 +129,7 @@ export class Web3AuthService {
       this.updateState({
         error: 'Failed to initialize Web3Auth. Please check your configuration.'
       });
+      throw error;
     }
   }
 
@@ -112,27 +138,36 @@ export class Web3AuthService {
     return new Promise((resolve, reject) => {
       // Check if already loaded
       if (window.Web3auth) {
+        console.log('✅ Web3Auth SDK already loaded');
         resolve();
         return;
       }
 
+      console.log('🔄 Loading Web3Auth SDK from CDN...');
       const script = document.createElement('script');
       script.src = 'https://cdn.jsdelivr.net/npm/@web3auth/modal@10/dist/modal.umd.min.js';
       script.async = true;
       script.defer = true;
 
       script.onload = () => {
+        console.log('📦 Web3Auth SDK script loaded, waiting for initialization...');
         // Wait a bit for the Web3Auth object to be available
-        setTimeout(() => {
+        let attempts = 0;
+        const checkInterval = setInterval(() => {
+          attempts++;
           if (window.Web3auth) {
+            clearInterval(checkInterval);
+            console.log('✅ Web3Auth SDK ready');
             resolve();
-          } else {
-            reject(new Error('Web3Auth SDK failed to load'));
+          } else if (attempts > 50) { // 5 seconds timeout
+            clearInterval(checkInterval);
+            reject(new Error('Web3Auth SDK failed to initialize after loading'));
           }
         }, 100);
       };
 
       script.onerror = () => {
+        console.error('❌ Failed to load Web3Auth SDK script');
         reject(new Error('Failed to load Web3Auth SDK script'));
       };
 
@@ -185,6 +220,12 @@ export class Web3AuthService {
   // Connect with social provider
   async connectWithSocial(loginProvider: string): Promise<Web3AuthState> {
     try {
+      // Ensure Web3Auth is initialized before attempting connection
+      if (!this.isInitialized) {
+        console.log('🔄 Web3Auth not initialized, initializing now...');
+        await this.initializeWeb3Auth();
+      }
+
       if (!this.web3auth) {
         throw new Error('Web3Auth not initialized');
       }
@@ -316,7 +357,15 @@ export class Web3AuthService {
 
   // Check if Web3Auth is ready
   isReady(): boolean {
-    return !!this.web3auth;
+    return this.isInitialized && !!this.web3auth;
+  }
+
+  // Get initialization status
+  getInitializationStatus(): { isInitialized: boolean; isInitializing: boolean } {
+    return {
+      isInitialized: this.isInitialized,
+      isInitializing: this.isInitializing,
+    };
   }
 }
 
