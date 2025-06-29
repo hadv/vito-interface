@@ -259,12 +259,14 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
   const [state, setState] = useState<WalletConnectState>({ isConnected: false });
   const [isConnecting] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
+  const initializationRef = useRef<boolean>(false);
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (!isOpen) {
       // Cancel any pending connections and reset state when modal is closed
       walletConnectService.cancelPendingConnection();
+      initializationRef.current = false; // Reset initialization flag when modal closes
       return;
     }
 
@@ -379,11 +381,16 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
     walletConnectService.addEventListener('session_disconnected', sessionDisconnectedHandler);
     walletConnectService.addEventListener('qr_generated', qrGeneratedHandler);
 
-    // Initialize connection when modal opens
-    // Force new connection if modal was reopened or if there's an existing session
-    const shouldForceNew = walletConnectService.isConnectingState() || walletConnectService.isConnected();
-    console.log('WalletConnect modal opened, forcing new connection:', shouldForceNew);
-    initializeConnection(shouldForceNew);
+    // Initialize connection when modal opens (prevent double initialization with ref)
+    if (!initializationRef.current) {
+      initializationRef.current = true;
+      // Force new connection if modal was reopened or if there's an existing session
+      const shouldForceNew = walletConnectService.isConnectingState() || walletConnectService.isConnected();
+      console.log('WalletConnect modal opened, forcing new connection:', shouldForceNew);
+      initializeConnection(shouldForceNew);
+    } else {
+      console.log('WalletConnect initialization already in progress, skipping duplicate call');
+    }
 
     return () => {
       walletConnectService.removeEventListener('session_connected', sessionConnectedHandler);
