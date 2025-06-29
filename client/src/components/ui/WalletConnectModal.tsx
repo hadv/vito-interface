@@ -3,6 +3,11 @@ import styled from 'styled-components';
 import { walletConnectService, WalletConnectState, WalletConnectService } from '../../services/WalletConnectService';
 import { walletConnectionService } from '../../services/WalletConnectionService';
 
+// Global flag to prevent React StrictMode double execution
+// This persists across component re-mounts and effect re-runs
+let isInitializing = false;
+let lastInitializationTime = 0;
+
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
   top: 0;
@@ -259,7 +264,6 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
   const [state, setState] = useState<WalletConnectState>({ isConnected: false });
   const [isConnecting] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
-  const initializationCancelledRef = useRef<boolean>(false);
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -381,25 +385,34 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
     walletConnectService.addEventListener('qr_generated', qrGeneratedHandler);
 
     // Initialize connection when modal opens (prevent React StrictMode double execution)
-    initializationCancelledRef.current = false;
+    const now = Date.now();
+    const timeSinceLastInit = now - lastInitializationTime;
 
-    // Use setTimeout to allow React StrictMode cleanup to run first
-    const timeoutId = setTimeout(() => {
-      if (!initializationCancelledRef.current) {
-        // Force new connection if modal was reopened or if there's an existing session
-        const shouldForceNew = walletConnectService.isConnectingState() || walletConnectService.isConnected();
-        console.log('WalletConnect modal opened, forcing new connection:', shouldForceNew);
+    // Prevent double initialization using global flag and timing
+    if (!isInitializing && timeSinceLastInit > 50) {
+      isInitializing = true;
+      lastInitializationTime = now;
+
+      console.log('WalletConnect modal opened, initializing connection');
+      // Force new connection if modal was reopened or if there's an existing session
+      const shouldForceNew = walletConnectService.isConnectingState() || walletConnectService.isConnected();
+
+      // Use setTimeout to allow state to settle
+      setTimeout(() => {
         initializeConnection(shouldForceNew);
-      } else {
-        console.log('WalletConnect initialization cancelled by cleanup (React StrictMode)');
-      }
-    }, 0);
+        // Reset flag after initialization completes
+        setTimeout(() => {
+          isInitializing = false;
+        }, 1000);
+      }, 10);
+    } else {
+      console.log('WalletConnect initialization skipped - already initializing or too soon:', {
+        isInitializing,
+        timeSinceLastInit
+      });
+    }
 
     return () => {
-      // Cancel pending initialization to prevent React StrictMode double execution
-      initializationCancelledRef.current = true;
-      clearTimeout(timeoutId);
-
       walletConnectService.removeEventListener('session_connected', sessionConnectedHandler);
       walletConnectService.removeEventListener('session_disconnected', sessionDisconnectedHandler);
       walletConnectService.removeEventListener('qr_generated', qrGeneratedHandler);
