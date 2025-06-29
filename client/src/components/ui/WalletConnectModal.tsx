@@ -259,14 +259,12 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
   const [state, setState] = useState<WalletConnectState>({ isConnected: false });
   const [isConnecting] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
-  const [hasInitialized, setHasInitialized] = useState(false);
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (!isOpen) {
       // Cancel any pending connections and reset state when modal is closed
       walletConnectService.cancelPendingConnection();
-      setHasInitialized(false);
       return;
     }
 
@@ -352,17 +350,20 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
 
     // Also listen for QR code generation
     const qrGeneratedHandler = async (data: any) => {
-      console.log('QR code generated:', data);
+      console.log('QR code generated event received:', data);
       if (data.uri) {
+        console.log('Setting URI in state:', data.uri);
         setState(prev => ({ ...prev, uri: data.uri }));
 
         // Wait a bit for the canvas to be rendered, then generate QR code
         setTimeout(async () => {
+          console.log('Attempting to render QR code on canvas');
+          console.log('Canvas ref current:', qrCanvasRef.current);
           if (qrCanvasRef.current) {
             try {
               console.log('Generating QR code on canvas for URI:', data.uri);
               await WalletConnectService.generateQrCode(qrCanvasRef.current, data.uri);
-              console.log('QR code generated successfully');
+              console.log('QR code generated successfully on canvas');
             } catch (error) {
               console.error('Failed to generate QR code:', error);
               setState(prev => ({ ...prev, error: 'Failed to generate QR code' }));
@@ -378,23 +379,18 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
     walletConnectService.addEventListener('session_disconnected', sessionDisconnectedHandler);
     walletConnectService.addEventListener('qr_generated', qrGeneratedHandler);
 
-    // Initialize connection when modal opens (prevent double initialization)
-    if (!hasInitialized) {
-      // Force new connection if modal was reopened or if there's an existing session
-      const shouldForceNew = walletConnectService.isConnectingState() || walletConnectService.isConnected();
-      console.log('WalletConnect modal opened, forcing new connection:', shouldForceNew);
-      setHasInitialized(true);
-      initializeConnection(shouldForceNew);
-    } else {
-      console.log('WalletConnect already initialized, skipping duplicate initialization');
-    }
+    // Initialize connection when modal opens
+    // Force new connection if modal was reopened or if there's an existing session
+    const shouldForceNew = walletConnectService.isConnectingState() || walletConnectService.isConnected();
+    console.log('WalletConnect modal opened, forcing new connection:', shouldForceNew);
+    initializeConnection(shouldForceNew);
 
     return () => {
       walletConnectService.removeEventListener('session_connected', sessionConnectedHandler);
       walletConnectService.removeEventListener('session_disconnected', sessionDisconnectedHandler);
       walletConnectService.removeEventListener('qr_generated', qrGeneratedHandler);
     };
-  }, [isOpen, hasInitialized, onConnectionSuccess, onClose]);
+  }, [isOpen, onConnectionSuccess, onClose]);
 
   const copyToClipboard = async () => {
     if (!state.uri) return;
