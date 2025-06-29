@@ -28,6 +28,7 @@ export interface SocialProvider {
 declare global {
   interface Window {
     Web3auth: any;
+    Web3AuthModal: any;
   }
 }
 
@@ -89,12 +90,18 @@ export class Web3AuthService {
       await this.loadWeb3AuthSDK();
 
       console.log('🔄 Initializing Web3Auth...');
-      // Initialize Web3Auth
-      this.web3auth = new window.Web3auth.Web3Auth({
+      // Initialize Web3Auth using the correct global object
+      const Web3AuthConstructor = window.Web3AuthModal || window.Web3auth?.Web3Auth || window.Web3auth;
+
+      if (!Web3AuthConstructor) {
+        throw new Error('Web3Auth constructor not found in global scope');
+      }
+
+      this.web3auth = new Web3AuthConstructor({
         clientId,
-        web3AuthNetwork: window.Web3auth.WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
+        web3AuthNetwork: "sapphire_mainnet", // Use string instead of enum
         chainConfig: {
-          chainNamespace: window.Web3auth.CHAIN_NAMESPACES.EIP155,
+          chainNamespace: "eip155",
           chainId: "0x1", // Ethereum Mainnet
           rpcTarget: "https://rpc.ankr.com/eth",
           displayName: "Ethereum Mainnet",
@@ -137,7 +144,7 @@ export class Web3AuthService {
   private loadWeb3AuthSDK(): Promise<void> {
     return new Promise((resolve, reject) => {
       // Check if already loaded
-      if (window.Web3auth) {
+      if (window.Web3AuthModal || window.Web3auth) {
         console.log('✅ Web3Auth SDK already loaded');
         resolve();
         return;
@@ -145,7 +152,8 @@ export class Web3AuthService {
 
       console.log('🔄 Loading Web3Auth SDK from CDN...');
       const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@web3auth/modal@10/dist/modal.umd.min.js';
+      // Use the correct Web3Auth Modal CDN URL
+      script.src = 'https://cdn.jsdelivr.net/npm/@web3auth/modal@8/dist/modal.umd.min.js';
       script.async = true;
       script.defer = true;
 
@@ -155,12 +163,20 @@ export class Web3AuthService {
         let attempts = 0;
         const checkInterval = setInterval(() => {
           attempts++;
-          if (window.Web3auth) {
+          console.log(`🔍 Checking for Web3Auth objects (attempt ${attempts}/50)...`);
+          console.log('Available objects:', {
+            Web3AuthModal: !!window.Web3AuthModal,
+            Web3auth: !!window.Web3auth,
+            windowKeys: Object.keys(window).filter(key => key.toLowerCase().includes('web3'))
+          });
+
+          if (window.Web3AuthModal || window.Web3auth) {
             clearInterval(checkInterval);
             console.log('✅ Web3Auth SDK ready');
             resolve();
           } else if (attempts > 50) { // 5 seconds timeout
             clearInterval(checkInterval);
+            console.error('❌ Available window objects:', Object.keys(window).filter(key => key.toLowerCase().includes('web3')));
             reject(new Error('Web3Auth SDK failed to initialize after loading'));
           }
         }, 100);
@@ -235,7 +251,7 @@ export class Web3AuthService {
       console.log(`🔗 Connecting with ${loginProvider} via Web3Auth...`);
 
       // Connect with Web3Auth
-      const web3authProvider = await this.web3auth.connectTo(window.Web3auth.WALLET_ADAPTERS.OPENLOGIN, {
+      const web3authProvider = await this.web3auth.connectTo("openlogin", {
         loginProvider: loginProvider,
       });
 
