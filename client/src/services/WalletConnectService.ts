@@ -238,6 +238,7 @@ export class WalletConnectService {
 
       console.log('WalletConnect session approved:', session);
       console.log('Session namespaces:', session.namespaces);
+      console.log('EIP155 namespace details:', session.namespaces?.eip155);
 
       // Get the connected address with proper error handling
       let account: string;
@@ -248,7 +249,9 @@ export class WalletConnectService {
       }
 
       try {
-        account = session.namespaces.eip155.accounts[0].split(':')[2];
+        const accountString = session.namespaces.eip155.accounts[0];
+        console.log('Full account string:', accountString);
+        account = accountString.split(':')[2];
         console.log('Extracted account address:', account);
       } catch (error) {
         console.error('Failed to extract account from session:', session.namespaces.eip155.accounts[0]);

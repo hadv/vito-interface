@@ -277,14 +277,28 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
 
       if (data.address && data.session) {
         try {
-          // Get the chain ID from the session with proper error handling
-          if (!data.session.namespaces?.eip155?.chains || data.session.namespaces.eip155.chains.length === 0) {
-            console.error('No chains found in session namespaces:', data.session.namespaces);
-            throw new Error('No chains found in WalletConnect session');
-          }
+          console.log('Session data received:', data.session);
+          console.log('Session namespaces:', data.session.namespaces);
+          console.log('EIP155 namespace:', data.session.namespaces?.eip155);
 
-          const chainId = data.session.namespaces.eip155.chains[0].split(':')[1];
-          const numericChainId = parseInt(chainId);
+          // Get the chain ID from the session with proper error handling
+          let numericChainId: number;
+
+          if (data.session.namespaces?.eip155?.chains && data.session.namespaces.eip155.chains.length > 0) {
+            // Extract chain ID from chains array
+            const chainId = data.session.namespaces.eip155.chains[0].split(':')[1];
+            numericChainId = parseInt(chainId);
+            console.log('Chain ID extracted from chains array:', numericChainId);
+          } else if (data.session.namespaces?.eip155?.accounts && data.session.namespaces.eip155.accounts.length > 0) {
+            // Fallback: extract chain ID from accounts array
+            const accountString = data.session.namespaces.eip155.accounts[0];
+            const chainId = accountString.split(':')[1];
+            numericChainId = parseInt(chainId);
+            console.log('Chain ID extracted from accounts array:', numericChainId);
+          } else {
+            console.error('No chains or accounts found in session namespaces:', data.session.namespaces);
+            throw new Error('No chains or accounts found in WalletConnect session');
+          }
 
           console.log('Connecting WalletConnect signer with chain ID:', numericChainId);
 
