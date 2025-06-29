@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { googleOAuthService, GoogleOAuthState } from './GoogleOAuthService';
 
 export interface Web3AuthState {
   isConnected: boolean;
@@ -32,12 +33,105 @@ export class Web3AuthService {
   private listeners: ((state: Web3AuthState) => void)[] = [];
 
   constructor() {
-    console.log('🔧 Web3Auth Service initialized (simplified implementation)');
+    // Initialize Google OAuth service
+    this.initializeGoogleOAuth();
+    console.log('🚀 Web3AuthService initialized with Google OAuth integration');
+  }
+
+  // Initialize Google OAuth integration
+  private async initializeGoogleOAuth(): Promise<void> {
+    try {
+      // Subscribe to Google OAuth state changes
+      googleOAuthService.subscribe((googleState: GoogleOAuthState) => {
+        this.handleGoogleOAuthStateChange(googleState);
+      });
+
+      // Initialize Google OAuth
+      await googleOAuthService.initialize();
+    } catch (error) {
+      console.error('❌ Failed to initialize Google OAuth:', error);
+    }
+  }
+
+  // Handle Google OAuth state changes
+  private handleGoogleOAuthStateChange(googleState: GoogleOAuthState): void {
+    if (googleState.isAuthenticated && googleState.user && googleState.wallet) {
+      // Update Web3Auth state with Google OAuth data
+      this.updateState({
+        isConnected: true,
+        isConnecting: false,
+        user: {
+          id: googleState.user.id,
+          email: googleState.user.email,
+          name: googleState.user.name,
+          profileImage: googleState.user.picture,
+        },
+        provider: googleOAuthService.getProvider() || undefined,
+        address: googleState.wallet.address,
+        socialProvider: 'google',
+        error: undefined,
+      });
+    } else if (googleState.error) {
+      this.updateState({
+        isConnected: false,
+        isConnecting: false,
+        error: googleState.error || undefined,
+      });
+    } else if (googleState.isLoading) {
+      this.updateState({
+        isConnecting: true,
+        error: undefined,
+      });
+    }
   }
 
   /**
-   * Simulate social login for demo purposes
-   * TODO: Replace with actual Web3Auth integration
+   * Real Google OAuth integration
+   */
+  private async authenticateWithGoogle(): Promise<{ address: string; user: any }> {
+    try {
+      // Check if Google OAuth is configured
+      if (!googleOAuthService.isConfigured()) {
+        throw new Error('Google OAuth is not configured. Please set REACT_APP_GOOGLE_CLIENT_ID in your environment variables.');
+      }
+
+      // Trigger Google OAuth sign-in
+      await googleOAuthService.signIn();
+
+      // Wait for authentication to complete
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Google OAuth timeout'));
+        }, 30000); // 30 second timeout
+
+        const unsubscribe = googleOAuthService.subscribe((state) => {
+          if (state.isAuthenticated && state.user && state.wallet) {
+            clearTimeout(timeout);
+            unsubscribe();
+            resolve({
+              address: state.wallet.address,
+              user: {
+                id: state.user.id,
+                email: state.user.email,
+                name: state.user.name,
+                profileImage: state.user.picture,
+              },
+            });
+          } else if (state.error) {
+            clearTimeout(timeout);
+            unsubscribe();
+            reject(new Error(state.error));
+          }
+        });
+      });
+    } catch (error) {
+      console.error('❌ Google OAuth authentication failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fallback demo login for non-Google providers
    */
   private async simulateSocialLogin(provider: string): Promise<{ address: string; user: any }> {
     // Simulate API call delay
@@ -57,41 +151,6 @@ export class Web3AuthService {
       verifierId: `${provider}_${Date.now()}`,
     };
 
-    // Create a provider connected to Sepolia testnet
-    const rpcProvider = new ethers.providers.JsonRpcProvider('https://rpc.sepolia.org');
-
-    // Connect the wallet to the provider
-    const connectedWallet = wallet.connect(rpcProvider);
-
-    // Create Web3Provider wrapper
-    const web3Provider = new ethers.providers.Web3Provider({
-      request: async ({ method, params }: any) => {
-        if (method === 'eth_accounts') {
-          return [address];
-        }
-        if (method === 'eth_chainId') {
-          return '0xaa36a7'; // Sepolia
-        }
-        if (method === 'personal_sign') {
-          const [message] = params;
-          return await connectedWallet.signMessage(ethers.utils.arrayify(message));
-        }
-        if (method === 'eth_signTypedData_v4') {
-          const [, typedData] = params;
-          return await connectedWallet._signTypedData(
-            typedData.domain,
-            typedData.types,
-            typedData.message
-          );
-        }
-        // Delegate other calls to the RPC provider
-        return await rpcProvider.send(method, params);
-      }
-    } as any);
-
-    this.provider = web3Provider;
-    this.signer = web3Provider.getSigner();
-
     return { address, user };
   }
 
@@ -108,8 +167,24 @@ export class Web3AuthService {
     try {
       console.log(`🔗 Connecting with ${loginProvider}...`);
 
-      // Simulate social login (replace with actual Web3Auth integration)
-      const { address, user } = await this.simulateSocialLogin(loginProvider);
+      let address: string;
+      let user: any;
+
+      // Use real Google OAuth for Google provider, fallback to demo for others
+      if (loginProvider === 'google') {
+        const result = await this.authenticateWithGoogle();
+        address = result.address;
+        user = result.user;
+
+        // Set provider from Google OAuth service
+        this.provider = googleOAuthService.getProvider();
+        this.signer = this.provider?.getSigner() || null;
+      } else {
+        // Fallback to demo implementation for other providers
+        const result = await this.simulateSocialLogin(loginProvider);
+        address = result.address;
+        user = result.user;
+      }
 
       this.updateState({
         isConnected: true,
@@ -143,6 +218,11 @@ export class Web3AuthService {
   async disconnect(): Promise<void> {
     try {
       console.log('🔌 Disconnecting Web3Auth...');
+
+      // If connected via Google OAuth, sign out from Google
+      if (this.state.socialProvider === 'google') {
+        await googleOAuthService.signOut();
+      }
 
       this.provider = null;
       this.signer = null;

@@ -308,14 +308,21 @@ const SocialLoginModal: React.FC<SocialLoginModalProps> = ({
     setConnectingProvider(provider.id);
     try {
       console.log(`🔗 Connecting with ${provider.name}...`);
-      
+
+      // Show specific loading message for Google OAuth
+      if (provider.id === 'google') {
+        toast.info('Google OAuth', {
+          message: 'Opening Google sign-in popup...'
+        });
+      }
+
       const result = await web3AuthService.connectWithSocial(provider.loginProvider);
-      
+
       if (result.isConnected && result.address) {
         console.log(`✅ Successfully connected with ${provider.name}`);
         onSuccess(result.address, provider.id);
         onClose();
-        
+
         toast.success('Social Login Successful', {
           message: `Successfully connected with ${provider.name}`
         });
@@ -324,8 +331,22 @@ const SocialLoginModal: React.FC<SocialLoginModalProps> = ({
       }
     } catch (error: any) {
       console.error(`❌ Failed to connect with ${provider.name}:`, error);
+
+      let errorMessage = error.message || `Failed to connect with ${provider.name}`;
+
+      // Provide specific error messages for common Google OAuth issues
+      if (provider.id === 'google') {
+        if (errorMessage.includes('not configured')) {
+          errorMessage = 'Google OAuth is not configured. Please check your environment variables.';
+        } else if (errorMessage.includes('timeout')) {
+          errorMessage = 'Google sign-in timed out. Please try again.';
+        } else if (errorMessage.includes('popup')) {
+          errorMessage = 'Google sign-in popup was blocked. Please allow popups and try again.';
+        }
+      }
+
       toast.error('Connection Failed', {
-        message: error.message || `Failed to connect with ${provider.name}`
+        message: errorMessage
       });
     } finally {
       setConnectingProvider(null);
