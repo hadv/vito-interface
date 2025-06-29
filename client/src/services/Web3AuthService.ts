@@ -29,6 +29,7 @@ declare global {
   interface Window {
     Web3auth: any;
     Web3AuthModal: any;
+    Web3Auth: any;
   }
 }
 
@@ -90,11 +91,32 @@ export class Web3AuthService {
       await this.loadWeb3AuthSDK();
 
       console.log('🔄 Initializing Web3Auth...');
-      // Initialize Web3Auth using the correct global object
-      const Web3AuthConstructor = window.Web3AuthModal || window.Web3auth?.Web3Auth || window.Web3auth;
+      console.log('Available Web3Auth objects:', {
+        Web3AuthModal: typeof window.Web3AuthModal,
+        Web3auth: typeof window.Web3auth,
+        Web3Auth: typeof window.Web3Auth
+      });
+
+      // Try different possible Web3Auth constructors
+      let Web3AuthConstructor = null;
+
+      if (window.Web3AuthModal) {
+        Web3AuthConstructor = window.Web3AuthModal;
+        console.log('✅ Using window.Web3AuthModal');
+      } else if (window.Web3auth && window.Web3auth.Web3Auth) {
+        Web3AuthConstructor = window.Web3auth.Web3Auth;
+        console.log('✅ Using window.Web3auth.Web3Auth');
+      } else if (window.Web3auth) {
+        Web3AuthConstructor = window.Web3auth;
+        console.log('✅ Using window.Web3auth');
+      } else if (window.Web3Auth) {
+        Web3AuthConstructor = window.Web3Auth;
+        console.log('✅ Using window.Web3Auth');
+      }
 
       if (!Web3AuthConstructor) {
-        throw new Error('Web3Auth constructor not found in global scope');
+        const availableKeys = Object.keys(window).filter(key => key.toLowerCase().includes('web3'));
+        throw new Error(`Web3Auth constructor not found. Available Web3 objects: ${availableKeys.join(', ')}`);
       }
 
       this.web3auth = new Web3AuthConstructor({
@@ -152,8 +174,8 @@ export class Web3AuthService {
 
       console.log('🔄 Loading Web3Auth SDK from CDN...');
       const script = document.createElement('script');
-      // Use the correct Web3Auth Modal CDN URL
-      script.src = 'https://cdn.jsdelivr.net/npm/@web3auth/modal@8/dist/modal.umd.min.js';
+      // Use the official Web3Auth CDN URL
+      script.src = 'https://cdn.jsdelivr.net/npm/@web3auth/modal@7/dist/modal.umd.min.js';
       script.async = true;
       script.defer = true;
 
