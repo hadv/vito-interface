@@ -236,6 +236,14 @@ const WalletName = styled.span`
   text-align: center;
 `;
 
+const WalletDescription = styled.span`
+  color: #9CA3AF;
+  font-size: 12px;
+  font-weight: 400;
+  text-align: center;
+  margin-top: 2px;
+`;
+
 
 
 interface WalletConnectionModalProps {
@@ -471,24 +479,21 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
     },
     {
       id: 'web3auth',
-      name: 'Google',
+      name: 'Web3Auth',
+      description: 'Social Login (Google, Twitter, etc.)',
       icon: (
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
           <defs>
-            <linearGradient id="googleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#4285F4"/>
-              <stop offset="25%" stopColor="#EA4335"/>
-              <stop offset="50%" stopColor="#FBBC05"/>
-              <stop offset="75%" stopColor="#34A853"/>
-              <stop offset="100%" stopColor="#4285F4"/>
+            <linearGradient id="web3authGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#0364FF"/>
+              <stop offset="100%" stopColor="#0052CC"/>
             </linearGradient>
           </defs>
-          <rect width="32" height="32" rx="8" fill="white"/>
-          <g transform="translate(6, 6)">
-            <path d="M19.6 10.23c0-.82-.1-1.42-.25-2.05H10v3.72h5.5c-.15.96-.74 2.31-2.04 3.22v2.45h3.16c1.89-1.73 2.98-4.3 2.98-7.34z" fill="#4285F4"/>
-            <path d="M10 20c2.7 0 4.94-.89 6.6-2.53l-3.14-2.45c-.86.58-1.96.92-3.46.92-2.65 0-4.9-1.8-5.71-4.22H1.1v2.52C2.8 17.6 6.2 20 10 20z" fill="#34A853"/>
-            <path d="M4.29 11.72c-.22-.58-.35-1.2-.35-1.72 0-.52.13-1.14.35-1.72V5.76H1.1C.4 7.16 0 8.54 0 10s.4 2.84 1.1 4.24l3.19-2.52z" fill="#FBBC05"/>
-            <path d="M10 3.98c1.5 0 2.54.64 3.14 1.18l2.36-2.36C14.94.98 12.7 0 10 0 6.2 0 2.8 2.4 1.1 5.76l3.19 2.52C5.1 5.78 7.35 3.98 10 3.98z" fill="#EA4335"/>
+          <rect width="32" height="32" rx="8" fill="url(#web3authGradient)"/>
+          <g transform="translate(8, 8)">
+            <path d="M8 0L0 4.5v7L8 16l8-4.5v-7L8 0z" fill="white" fillOpacity="0.9"/>
+            <path d="M8 3L3 5.5v5L8 13l5-2.5v-5L8 3z" fill="white"/>
+            <circle cx="8" cy="8" r="2" fill="url(#web3authGradient)"/>
           </g>
         </svg>
       ),
@@ -560,6 +565,11 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
                   <WalletName>
                     {isConnecting === wallet.id ? 'Connecting...' : wallet.name}
                   </WalletName>
+                  {(wallet as any).description && (
+                    <WalletDescription>
+                      {(wallet as any).description}
+                    </WalletDescription>
+                  )}
                 </WalletOption>
               ))}
             </WalletsGrid>
