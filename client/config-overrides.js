@@ -26,10 +26,21 @@ module.exports = override(
       "os": require.resolve("os-browserify/browser")
     }
   }),
-  addWebpackPlugin(
-    new webpack.ProvidePlugin({
-      Buffer: ['buffer', 'Buffer'],
-      process: 'process/browser',
-    })
-  )
+  (config) => {
+    // Add ProvidePlugin for global polyfills
+    config.plugins.push(
+      new webpack.ProvidePlugin({
+        Buffer: ['buffer', 'Buffer'],
+        process: 'process/browser',
+      })
+    );
+
+    // Ensure proper module resolution
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      buffer: require.resolve('buffer'),
+    };
+
+    return config;
+  }
 );

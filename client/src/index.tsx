@@ -1,3 +1,6 @@
+// Import polyfills first, before any other imports
+import './polyfills';
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
