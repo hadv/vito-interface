@@ -21,7 +21,7 @@ export const SUPPORTED_CHAINS = {
   ethereum: {
     chainNamespace: "eip155",
     chainId: "0x1", // Ethereum Mainnet
-    rpcTarget: "https://mainnet.infura.io/v3/YOUR_INFURA_KEY",
+    rpcTarget: "https://ethereum.publicnode.com",
     displayName: "Ethereum Mainnet",
     blockExplorer: "https://etherscan.io",
     ticker: "ETH",
@@ -30,7 +30,7 @@ export const SUPPORTED_CHAINS = {
   sepolia: {
     chainNamespace: "eip155",
     chainId: "0xaa36a7", // Sepolia Testnet
-    rpcTarget: "https://sepolia.infura.io/v3/YOUR_INFURA_KEY",
+    rpcTarget: "https://ethereum-sepolia.publicnode.com",
     displayName: "Sepolia Testnet",
     blockExplorer: "https://sepolia.etherscan.io",
     ticker: "ETH",

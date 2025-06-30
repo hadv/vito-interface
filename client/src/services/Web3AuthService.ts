@@ -11,6 +11,7 @@ import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
 import { ethers } from "ethers";
 import {
   WEB3AUTH_CLIENT_ID,
+  WEB3AUTH_NETWORK_TYPE,
   getChainConfigByNetwork
 } from "../config/web3auth";
 
@@ -62,9 +63,10 @@ export class Web3AuthService {
   private async initializeWeb3Auth(): Promise<void> {
     try {
       console.log('🔐 Initializing Web3Auth Modal...');
-      console.log('📋 Web3Auth Client ID:', WEB3AUTH_CLIENT_ID ? 'Configured' : 'Missing');
+      console.log('📋 Web3Auth Client ID:', WEB3AUTH_CLIENT_ID ? `Configured (${WEB3AUTH_CLIENT_ID.substring(0, 10)}...)` : 'Missing');
       console.log('🌐 Environment:', process.env.NODE_ENV);
       console.log('🔗 Origin:', typeof window !== 'undefined' ? window.location.origin : 'SSR');
+      console.log('🌐 Network:', WEB3AUTH_NETWORK_TYPE);
 
       // Check if Web3Auth Client ID is configured
       if (!WEB3AUTH_CLIENT_ID || WEB3AUTH_CLIENT_ID.trim() === '') {
@@ -88,6 +90,7 @@ Current value: "${WEB3AUTH_CLIENT_ID}"
 
       // Create Ethereum provider
       const chainConfig = getChainConfigByNetwork('sepolia');
+      console.log('⛓️ Chain Config:', chainConfig);
       const ethereumProvider = new EthereumPrivateKeyProvider({
         config: {
           chainConfig: {
