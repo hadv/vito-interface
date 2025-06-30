@@ -1,4 +1,5 @@
-const { override, addWebpackAlias, addWebpackResolve } = require('customize-cra');
+const { override, addWebpackAlias, addWebpackResolve, addWebpackPlugin } = require('customize-cra');
+const webpack = require('webpack');
 const path = require('path');
 
 module.exports = override(
@@ -24,5 +25,11 @@ module.exports = override(
       "path": require.resolve("path-browserify"),
       "os": require.resolve("os-browserify/browser")
     }
-  })
+  }),
+  addWebpackPlugin(
+    new webpack.ProvidePlugin({
+      Buffer: ['buffer', 'Buffer'],
+      process: 'process/browser',
+    })
+  )
 );
