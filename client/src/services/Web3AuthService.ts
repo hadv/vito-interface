@@ -91,6 +91,8 @@ Current value: "${WEB3AUTH_CLIENT_ID}"
       // Create Ethereum provider
       const chainConfig = getChainConfigByNetwork('sepolia');
       console.log('⛓️ Chain Config:', chainConfig);
+      console.log('🌐 RPC URL:', chainConfig.rpcTarget);
+      console.log('🔑 Using Infura:', chainConfig.rpcTarget.includes('infura.io') ? 'Yes' : 'No (Public RPC)');
       const ethereumProvider = new EthereumPrivateKeyProvider({
         config: {
           chainConfig: {
