@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import WalletConnectModal from './WalletConnectModal';
+import Web3AuthSetupInstructions from './Web3AuthSetupInstructions';
 import { useToast } from '../../hooks/useToast';
+import { WEB3AUTH_CLIENT_ID } from '../../config/web3auth';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -259,6 +261,7 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
 }) => {
   const [isConnecting, setIsConnecting] = useState<string | null>(null);
   const [showWalletConnectModal, setShowWalletConnectModal] = useState(false);
+  const [showWeb3AuthSetup, setShowWeb3AuthSetup] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
 
@@ -267,6 +270,12 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
 
     if (walletType === 'walletconnect') {
       setShowWalletConnectModal(true);
+      return;
+    }
+
+    // Check Web3Auth configuration
+    if (walletType === 'web3auth' && (!WEB3AUTH_CLIENT_ID || WEB3AUTH_CLIENT_ID.trim() === '')) {
+      setShowWeb3AuthSetup(true);
       return;
     }
 
@@ -583,6 +592,15 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
         onClose={handleWalletConnectClose}
         onConnectionSuccess={handleWalletConnectSuccess}
       />
+
+      {/* Web3Auth Setup Instructions Modal */}
+      {showWeb3AuthSetup && (
+        <ModalOverlay isOpen={showWeb3AuthSetup} onClick={() => setShowWeb3AuthSetup(false)}>
+          <ModalContainer onClick={(e) => e.stopPropagation()}>
+            <Web3AuthSetupInstructions onClose={() => setShowWeb3AuthSetup(false)} />
+          </ModalContainer>
+        </ModalOverlay>
+      )}
     </>
   );
 };

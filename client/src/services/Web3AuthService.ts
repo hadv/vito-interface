@@ -56,6 +56,29 @@ export class Web3AuthService {
   private async initializeWeb3Auth(): Promise<void> {
     try {
       console.log('🔐 Initializing Web3Auth Modal...');
+      console.log('📋 Web3Auth Client ID:', WEB3AUTH_CLIENT_ID ? 'Configured' : 'Missing');
+      console.log('🌐 Environment:', process.env.NODE_ENV);
+      console.log('🔗 Origin:', typeof window !== 'undefined' ? window.location.origin : 'SSR');
+
+      // Check if Web3Auth Client ID is configured
+      if (!WEB3AUTH_CLIENT_ID || WEB3AUTH_CLIENT_ID.trim() === '') {
+        const errorMessage = `
+🚨 Web3Auth Client ID is not configured!
+
+To fix this:
+1. Visit https://dashboard.web3auth.io/
+2. Create a new project
+3. Copy your Client ID
+4. Create a .env.local file in the client directory
+5. Add: REACT_APP_WEB3AUTH_CLIENT_ID=your-client-id-here
+6. Restart the development server
+
+Current value: "${WEB3AUTH_CLIENT_ID}"
+        `.trim();
+
+        console.error(errorMessage);
+        throw new Error('Web3Auth Client ID is not configured. Please check the console for setup instructions.');
+      }
 
       // Create Ethereum provider
       const chainConfig = getChainConfigByNetwork('sepolia');
@@ -96,10 +119,13 @@ export class Web3AuthService {
       });
 
       // Initialize the modal
+      console.log('🔄 Initializing Web3Auth modal...');
       await this.web3auth.initModal();
+      console.log('✅ Web3Auth modal initialized');
 
       // Check if user is already logged in
       if (this.web3auth.connected) {
+        console.log('👤 User already connected, updating state...');
         await this.updateUserState();
       }
 
@@ -107,9 +133,22 @@ export class Web3AuthService {
       console.log('✅ Web3Auth Modal initialized successfully');
       this.notifyListeners();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to initialize Web3Auth Modal:', error);
-      this.state.error = 'Failed to initialize Web3Auth Modal';
+      console.error('📋 Error details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
+
+      let errorMessage = 'Failed to initialize Web3Auth Modal';
+      if (error.message?.includes('Invalid client id')) {
+        errorMessage = 'Invalid Web3Auth Client ID. Please check your configuration.';
+      } else if (error.message?.includes('network')) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      }
+
+      this.state.error = errorMessage;
       this.notifyListeners();
     }
   }
@@ -149,21 +188,32 @@ export class Web3AuthService {
    */
   public async connectWithGoogle(): Promise<Web3AuthState> {
     if (!this.web3auth) {
-      throw new Error('Web3Auth not initialized');
+      throw new Error('Web3Auth not initialized. Please check your configuration.');
+    }
+
+    if (!this.state.isInitialized) {
+      throw new Error('Web3Auth is still initializing. Please wait and try again.');
     }
 
     try {
       console.log('🔐 Connecting with Web3Auth Modal...');
+      console.log('📋 Web3Auth status:', {
+        connected: this.web3auth.connected,
+        status: this.web3auth.status
+      });
 
       // Connect using Web3Auth modal
       const provider = await this.web3auth.connect();
 
       if (!provider) {
-        throw new Error('Failed to get provider from Web3Auth');
+        throw new Error('Failed to get provider from Web3Auth. Connection was cancelled or failed.');
       }
+
+      console.log('✅ Provider received from Web3Auth');
 
       // Create ethers provider
       this.provider = new ethers.providers.Web3Provider(provider as any);
+      console.log('✅ Ethers provider created');
 
       // Update user state
       await this.updateUserState();
@@ -173,7 +223,21 @@ export class Web3AuthService {
 
     } catch (error: any) {
       console.error('❌ Web3Auth connection failed:', error);
-      const errorMessage = error.message || 'Failed to connect with Web3Auth';
+      console.error('📋 Error details:', {
+        message: error.message,
+        code: error.code,
+        name: error.name
+      });
+
+      let errorMessage = 'Failed to connect with Web3Auth';
+      if (error.message?.includes('User closed the modal')) {
+        errorMessage = 'Connection cancelled by user';
+      } else if (error.message?.includes('Failed to login with auth')) {
+        errorMessage = 'Authentication failed. Please check your Web3Auth configuration.';
+      } else if (error.message?.includes('Invalid client id')) {
+        errorMessage = 'Invalid Web3Auth Client ID. Please check your configuration.';
+      }
+
       this.state.error = errorMessage;
       this.notifyListeners();
       throw new Error(errorMessage);

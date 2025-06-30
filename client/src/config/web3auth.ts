@@ -9,7 +9,7 @@ import { WEB3AUTH_NETWORK } from "@web3auth/base";
 
 // Web3Auth Client ID - Get this from Web3Auth Dashboard
 // Create a project at https://dashboard.web3auth.io/
-export const WEB3AUTH_CLIENT_ID = process.env.REACT_APP_WEB3AUTH_CLIENT_ID || 'BNJiiG6wVmiMMzApYoCbfD2xU0xxh3cp-t94tgKdwWEuf8Z5DOufWs4SnYiTqdqdA6-pTReQkaiI6z-y9rHxTIM';
+export const WEB3AUTH_CLIENT_ID = process.env.REACT_APP_WEB3AUTH_CLIENT_ID || '';
 
 // Web3Auth Network Configuration
 export const WEB3AUTH_NETWORK_TYPE = process.env.NODE_ENV === 'production'
