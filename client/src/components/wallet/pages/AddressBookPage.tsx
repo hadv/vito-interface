@@ -8,7 +8,8 @@ import Button from '../../ui/Button';
 import Input from '../../ui/Input';
 import AddressBookTransactionModal from '../components/AddressBookTransactionModal';
 import AddressDisplay from '../components/AddressDisplay';
-import { walletConnectionService } from '../../../services/WalletConnectionService';
+import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
+import WalletConnectionModal from '../../ui/WalletConnectionModal';
 
 const Container = styled.div`
   padding: 0;
@@ -227,19 +228,22 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
   const [editingEntry, setEditingEntry] = useState<AddressBookEntry | null>(null);
   const [removingAddress, setRemovingAddress] = useState<string | null>(null);
 
-  // Get current Safe address from wallet connection service
+  // Get current Safe address and wallet connection state
   const [safeAddress, setSafeAddress] = useState<string | null>(null);
+  const [connectionState, setConnectionState] = useState<WalletConnectionState>({ isConnected: false });
+  const [showWalletModal, setShowWalletModal] = useState(false);
 
   useEffect(() => {
-    const updateSafeAddress = () => {
-      const connectionState = walletConnectionService.getConnectionState();
-      setSafeAddress(connectionState.safeAddress || null);
+    const updateConnectionState = () => {
+      const state = walletConnectionService.getConnectionState();
+      setSafeAddress(state.safeAddress || null);
+      setConnectionState(state);
     };
 
-    updateSafeAddress();
+    updateConnectionState();
 
     // Listen for connection state changes
-    const unsubscribe = walletConnectionService.onConnectionStateChange(updateSafeAddress);
+    const unsubscribe = walletConnectionService.onConnectionStateChange(updateConnectionState);
 
     return unsubscribe;
   }, []);
@@ -304,7 +308,9 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
               e.stopPropagation();
               handleEditEntry(entry);
             }}
-            disabled={removingAddress === entry.walletAddress}
+            disabled={removingAddress === entry.walletAddress || !isSignerConnected}
+            allowClickWhenDisabled={!isSignerConnected}
+            className={!isSignerConnected ? 'opacity-50' : ''}
           >
             Edit
           </Button>
@@ -315,8 +321,10 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
               e.stopPropagation();
               handleRemoveEntry(entry);
             }}
-            disabled={removingAddress === entry.walletAddress}
+            disabled={removingAddress === entry.walletAddress || !isSignerConnected}
             loading={removingAddress === entry.walletAddress}
+            allowClickWhenDisabled={!isSignerConnected && removingAddress !== entry.walletAddress}
+            className={!isSignerConnected ? 'opacity-50' : ''}
             data-1p-ignore="true"
             data-lpignore="true"
           >
@@ -327,22 +335,40 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
     </AddressBookEntryCard>
   );
 
+  // Check if signer wallet is connected
+  const isSignerConnected = connectionState.signerConnected && !connectionState.readOnlyMode;
+
+  // Handle wallet connection requirement
+  const handleWalletConnectionRequired = (action: () => void) => {
+    if (isSignerConnected) {
+      action();
+    } else {
+      setShowWalletModal(true);
+    }
+  };
+
   const handleAddEntry = () => {
-    setEditingEntry(null);
-    setModalOperation('add');
-    setIsModalOpen(true);
+    handleWalletConnectionRequired(() => {
+      setEditingEntry(null);
+      setModalOperation('add');
+      setIsModalOpen(true);
+    });
   };
 
   const handleEditEntry = (entry: AddressBookEntry) => {
-    setEditingEntry(entry);
-    setModalOperation('add');
-    setIsModalOpen(true);
+    handleWalletConnectionRequired(() => {
+      setEditingEntry(entry);
+      setModalOperation('add');
+      setIsModalOpen(true);
+    });
   };
 
   const handleRemoveEntry = (entry: AddressBookEntry) => {
-    setEditingEntry(entry);
-    setModalOperation('remove');
-    setIsModalOpen(true);
+    handleWalletConnectionRequired(() => {
+      setEditingEntry(entry);
+      setModalOperation('remove');
+      setIsModalOpen(true);
+    });
   };
 
   const handleTransactionCreated = () => {
@@ -354,6 +380,24 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
     setIsModalOpen(false);
     setEditingEntry(null);
     setRemovingAddress(null);
+  };
+
+  // Handle wallet selection from modal
+  const handleWalletSelect = async (walletType: string) => {
+    try {
+      if (walletType === 'metamask') {
+        await walletConnectionService.connectSignerWallet();
+      } else if (walletType === 'walletconnect') {
+        // WalletConnect connection is handled by the WalletConnectModal
+        // This is called after successful connection
+      } else if (walletType === 'web3auth') {
+        await walletConnectionService.connectWeb3AuthSigner();
+      }
+      setShowWalletModal(false);
+    } catch (error) {
+      console.error('Failed to connect wallet:', error);
+      // Keep modal open on error
+    }
   };
 
   if (!safeAddress) {
@@ -430,7 +474,12 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
             />
           </SearchContainer>
-          <AddButton onClick={handleAddEntry}>
+          <AddButton
+            onClick={handleAddEntry}
+            disabled={!isSignerConnected}
+            allowClickWhenDisabled={!isSignerConnected}
+            className={!isSignerConnected ? 'opacity-50' : ''}
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path d="M12 5V19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -485,7 +534,12 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
           />
         </SearchContainer>
-        <AddButton onClick={handleAddEntry}>
+        <AddButton
+          onClick={handleAddEntry}
+          disabled={!isSignerConnected}
+          allowClickWhenDisabled={!isSignerConnected}
+          className={!isSignerConnected ? 'opacity-50' : ''}
+        >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path d="M12 5V19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -538,6 +592,13 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
         safeAddress={safeAddress}
         editEntry={editingEntry}
         existingAddresses={existingAddresses}
+      />
+
+      {/* Wallet Connection Modal */}
+      <WalletConnectionModal
+        isOpen={showWalletModal}
+        onClose={() => setShowWalletModal(false)}
+        onWalletSelect={handleWalletSelect}
       />
     </Container>
   );
