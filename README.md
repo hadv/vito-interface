@@ -100,35 +100,41 @@ npm run build
 
 The Vito interface supports Web3Auth-style social login using Google OAuth, allowing users to connect using their Google accounts with deterministic wallet generation.
 
-### 1. Configure Google OAuth
+### 1. Set up Web3Auth Dashboard (REQUIRED)
+
+1. Visit the [Web3Auth Dashboard](https://dashboard.web3auth.io/)
+2. Sign up or log in to your account
+3. Create a new project
+4. Copy your **Web3Auth Client ID** from the project dashboard
+5. In your Web3Auth project, go to "Social Connections"
+6. Configure Google OAuth:
+   - Click on Google connection settings
+   - You can either:
+     - **Option A**: Use Web3Auth's default Google configuration (recommended)
+     - **Option B**: Use your own Google OAuth Client ID (advanced)
+
+### 2. Optional: Configure Custom Google OAuth (Advanced)
+
+Only needed if you want to use your own Google OAuth configuration:
 
 1. Go to the [Google Cloud Console](https://console.developers.google.com/)
 2. Create a new project or select an existing one
 3. Enable the Google Identity Services API
 4. Go to "Credentials" and create an OAuth 2.0 Client ID
 5. Set the application type to "Web application"
-6. Add your domain to "Authorized JavaScript origins":
-   - For development: `http://localhost:3000`
-   - For production: `https://yourdomain.com`
+6. Add `https://auth.web3auth.io/auth` to "Authorized redirect URIs"
 7. Copy your **Google Client ID**
-
-### 2. Optional: Set up Web3Auth Dashboard (for future Web3Auth integration)
-
-1. Visit the [Web3Auth Dashboard](https://dashboard.web3auth.io/)
-2. Sign up or log in to your account
-3. Create a new project
-4. Copy your **Client ID** from the project dashboard
-5. Configure Google OAuth in the dashboard using your Google Client ID
+8. Add it to your Web3Auth Dashboard under Social Connections
 
 ### 3. Update Environment Variables
 
 Copy the `.env.example` file to `.env.local` in the client directory and update:
 
 ```bash
-# Web3Auth Configuration (optional for future integration)
+# Web3Auth Configuration (REQUIRED)
 REACT_APP_WEB3AUTH_CLIENT_ID=your-web3auth-client-id-here
 
-# Google OAuth Configuration (required)
+# Google OAuth Configuration (optional - for fallback methods only)
 REACT_APP_GOOGLE_CLIENT_ID=your-google-oauth-client-id-here
 ```
 
