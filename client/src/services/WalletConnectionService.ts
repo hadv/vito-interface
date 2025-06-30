@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import { safeWalletService, SafeWalletService, SafeWalletConfig } from './SafeWalletService';
 import { getRpcUrl, NETWORK_CONFIGS, SAFE_ABI } from '../contracts/abis';
 import { walletConnectService } from './WalletConnectService';
+import { web3AuthService } from './Web3AuthService';
 
 export interface WalletConnectionState {
   isConnected: boolean;
@@ -18,7 +19,7 @@ export interface WalletConnectionState {
   readOnlyMode?: boolean;
   chainId?: number;
   // Track wallet type for proper icon display
-  walletType?: 'metamask' | 'walletconnect' | 'ledger' | 'privatekey';
+  walletType?: 'metamask' | 'walletconnect' | 'ledger' | 'privatekey' | 'web3auth';
 }
 
 export interface ConnectWalletParams {
@@ -689,6 +690,84 @@ export class WalletConnectionService {
   }
 
   /**
+   * Connect signer wallet using Web3Auth (Google OAuth)
+   */
+  async connectWeb3AuthSigner(): Promise<WalletConnectionState> {
+    if (!this.state.isConnected || !this.state.safeAddress) {
+      throw new Error('Safe wallet must be connected first');
+    }
+
+    try {
+      console.log('🔐 Connecting Web3Auth signer...');
+
+      // Connect with Google OAuth through Web3Auth
+      // Note: This will be handled by the Web3Auth hooks in the UI components
+      // For now, we'll use the existing Web3Auth service as fallback
+      const web3AuthState = await web3AuthService.connectWithGoogle();
+
+      if (!web3AuthState.isConnected || !web3AuthState.address) {
+        throw new Error('Failed to connect with Web3Auth');
+      }
+
+      // Get Web3Auth provider and signer
+      const web3AuthProvider = web3AuthService.getEthereumProvider();
+      const web3AuthSigner = web3AuthService.getSigner();
+
+      if (!web3AuthProvider || !web3AuthSigner) {
+        throw new Error('Failed to get Web3Auth provider or signer');
+      }
+
+      // Set provider and signer
+      this.provider = web3AuthProvider;
+      this.signer = web3AuthSigner;
+
+      // Get user address and balance
+      const userAddress = web3AuthState.address;
+      const signerBalance = await web3AuthService.getBalance();
+
+      // Update Safe Wallet Service with signer
+      await safeWalletService.setSigner(this.signer);
+
+      // Check if user is owner
+      const isOwner = await safeWalletService.isOwner(userAddress);
+
+      // Update state
+      this.state = {
+        ...this.state,
+        address: userAddress,
+        isOwner,
+        signerConnected: true,
+        signerAddress: userAddress,
+        signerBalance: signerBalance || '0.0',
+        readOnlyMode: false,
+        error: undefined,
+        walletType: 'web3auth'
+      };
+
+      console.log('✅ Web3Auth signer connected successfully');
+      console.log('👤 User:', web3AuthState.user?.email);
+      console.log('📍 Address:', userAddress);
+      console.log('💰 Balance:', signerBalance);
+
+      // Notify listeners
+      this.notifyListeners();
+
+      return this.state;
+
+    } catch (error: any) {
+      console.error('❌ Failed to connect Web3Auth signer:', error);
+      const errorMessage = error.message || 'Failed to connect Web3Auth signer';
+      this.state = {
+        ...this.state,
+        error: errorMessage
+      };
+
+      this.notifyListeners();
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
    * Disconnect wallet
    */
   async disconnectWallet(): Promise<void> {
@@ -736,6 +815,18 @@ export class WalletConnectionService {
       } catch (error) {
         console.error('Failed to disconnect WalletConnect:', error);
         // Continue with local cleanup even if WalletConnect disconnect failed
+      }
+    }
+
+    // If Web3Auth is connected, disconnect it properly
+    if (this.state.walletType === 'web3auth') {
+      try {
+        console.log('Disconnecting Web3Auth session...');
+        await web3AuthService.disconnect();
+        console.log('Web3Auth disconnected successfully');
+      } catch (error) {
+        console.error('Failed to disconnect Web3Auth:', error);
+        // Continue with local cleanup even if Web3Auth disconnect failed
       }
     }
 

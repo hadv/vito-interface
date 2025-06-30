@@ -119,6 +119,11 @@ const Header: React.FC<HeaderProps> = ({
         toast.success('Wallet Connected', {
           message: 'Successfully connected via WalletConnect'
         });
+      } else if (walletType === 'web3auth') {
+        await walletConnectionService.connectWeb3AuthSigner();
+        toast.success('Wallet Connected', {
+          message: 'Successfully connected with Google account'
+        });
       } else {
         throw new Error(`${walletType} is not yet supported`);
       }
@@ -290,6 +295,22 @@ const Header: React.FC<HeaderProps> = ({
                         <svg width="32" height="20" viewBox="0 0 40 25" fill="none" className="flex-shrink-0">
                           <path d="m8.19180572 4.83416816c6.52149658-6.38508884 17.09493158-6.38508884 23.61642788 0l.7848727.76845565c.3260748.31925442.3260748.83686816 0 1.15612272l-2.6848927 2.62873374c-.1630375.15962734-.4273733.15962734-.5904108 0l-1.0800779-1.05748639c-4.5495589-4.45439756-11.9258514-4.45439756-16.4754105 0l-1.1566741 1.13248068c-.1630376.15962721-.4273735.15962721-.5904108 0l-2.68489263-2.62873375c-.32607483-.31925456-.32607483-.83686829 0-1.15612272zm29.16903948 5.43649934 2.3895596 2.3395862c.3260732.319253.3260751.8368636.0000041 1.1561187l-10.7746894 10.5494845c-.3260726.3192568-.8547443.3192604-1.1808214.0000083-.0000013-.0000013-.0000029-.0000029-.0000042-.0000043l-7.6472191-7.4872762c-.0815187-.0798136-.2136867-.0798136-.2952053 0-.0000006.0000005-.000001.000001-.0000015.0000014l-7.6470562 7.4872708c-.3260715.3192576-.8547434.319263-1.1808215.0000116-.0000019-.0000018-.0000039-.0000037-.0000059-.0000058l-10.7749893-10.5496247c-.32607469-.3192544-.32607469-.8368682 0-1.1561226l2.38956395-2.3395823c.3260747-.31925446.85474652-.31925446 1.18082136 0l7.64733029 7.4873809c.0815188.0798136.2136866.0798136.2952054 0 .0000012-.0000012.0000023-.0000023.0000035-.0000032l7.6469471-7.4873777c.3260673-.31926181.8547392-.31927378 1.1808214-.0000267.0000046.0000045.0000091.000009.0000135.0000135l7.6473203 7.4873909c.0815186.0798135.2136866.0798135.2952053 0l7.6471967-7.4872433c.3260748-.31925458.8547465-.31925458 1.1808213 0z" fill="#3b99fc"/>
                         </svg>
+                      ) : connectionState.walletType === 'web3auth' ? (
+                        // Web3Auth Icon
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="flex-shrink-0">
+                          <defs>
+                            <linearGradient id="web3authGradientHeader" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#0364FF"/>
+                              <stop offset="100%" stopColor="#0052CC"/>
+                            </linearGradient>
+                          </defs>
+                          <rect width="32" height="32" rx="8" fill="url(#web3authGradientHeader)"/>
+                          <g transform="translate(8, 8)">
+                            <path d="M8 0L0 4.5v7L8 16l8-4.5v-7L8 0z" fill="white" fillOpacity="0.9"/>
+                            <path d="M8 3L3 5.5v5L8 13l5-2.5v-5L8 3z" fill="white"/>
+                            <circle cx="8" cy="8" r="2" fill="url(#web3authGradientHeader)"/>
+                          </g>
+                        </svg>
                       ) : (
                         // MetaMask Icon (default)
                         <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="flex-shrink-0">
@@ -327,7 +348,8 @@ const Header: React.FC<HeaderProps> = ({
                     </div>
                     <div className="flex-1">
                       <div className="text-white font-semibold text-sm">
-                        {connectionState.walletType === 'walletconnect' ? 'WalletConnect' : 'MetaMask'}
+                        {connectionState.walletType === 'walletconnect' ? 'WalletConnect' :
+                         connectionState.walletType === 'web3auth' ? 'Web3Auth' : 'MetaMask'}
                       </div>
                       <div className="text-gray-400 text-xs">Connected</div>
                     </div>

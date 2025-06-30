@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import WalletConnectModal from './WalletConnectModal';
+import Web3AuthSetupInstructions from './Web3AuthSetupInstructions';
 import { useToast } from '../../hooks/useToast';
+import { WEB3AUTH_CLIENT_ID } from '../../config/web3auth';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -236,6 +238,14 @@ const WalletName = styled.span`
   text-align: center;
 `;
 
+const WalletDescription = styled.span`
+  color: #9CA3AF;
+  font-size: 12px;
+  font-weight: 400;
+  text-align: center;
+  margin-top: 2px;
+`;
+
 
 
 interface WalletConnectionModalProps {
@@ -251,6 +261,7 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
 }) => {
   const [isConnecting, setIsConnecting] = useState<string | null>(null);
   const [showWalletConnectModal, setShowWalletConnectModal] = useState(false);
+  const [showWeb3AuthSetup, setShowWeb3AuthSetup] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
 
@@ -259,6 +270,12 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
 
     if (walletType === 'walletconnect') {
       setShowWalletConnectModal(true);
+      return;
+    }
+
+    // Check Web3Auth configuration
+    if (walletType === 'web3auth' && (!WEB3AUTH_CLIENT_ID || WEB3AUTH_CLIENT_ID.trim() === '')) {
+      setShowWeb3AuthSetup(true);
       return;
     }
 
@@ -362,6 +379,29 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
   }, [isOpen, onClose]);
 
   const wallets = [
+    {
+      id: 'web3auth',
+      name: 'Web3Auth',
+      description: 'Social Login (Google, Twitter, etc.)',
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <defs>
+            <linearGradient id="web3authGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#0364FF"/>
+              <stop offset="100%" stopColor="#0052CC"/>
+            </linearGradient>
+          </defs>
+          <rect width="32" height="32" rx="8" fill="url(#web3authGradient)"/>
+          <g transform="translate(8, 8)">
+            <path d="M8 0L0 4.5v7L8 16l8-4.5v-7L8 0z" fill="white" fillOpacity="0.9"/>
+            <path d="M8 3L3 5.5v5L8 13l5-2.5v-5L8 3z" fill="white"/>
+            <circle cx="8" cy="8" r="2" fill="url(#web3authGradient)"/>
+          </g>
+        </svg>
+      ),
+      bgColor: 'transparent',
+      available: true
+    },
     {
       id: 'metamask',
       name: 'MetaMask',
@@ -534,6 +574,11 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
                   <WalletName>
                     {isConnecting === wallet.id ? 'Connecting...' : wallet.name}
                   </WalletName>
+                  {(wallet as any).description && (
+                    <WalletDescription>
+                      {(wallet as any).description}
+                    </WalletDescription>
+                  )}
                 </WalletOption>
               ))}
             </WalletsGrid>
@@ -547,6 +592,15 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
         onClose={handleWalletConnectClose}
         onConnectionSuccess={handleWalletConnectSuccess}
       />
+
+      {/* Web3Auth Setup Instructions Modal */}
+      {showWeb3AuthSetup && (
+        <ModalOverlay isOpen={showWeb3AuthSetup} onClick={() => setShowWeb3AuthSetup(false)}>
+          <ModalContainer onClick={(e) => e.stopPropagation()}>
+            <Web3AuthSetupInstructions onClose={() => setShowWeb3AuthSetup(false)} />
+          </ModalContainer>
+        </ModalOverlay>
+      )}
     </>
   );
 };

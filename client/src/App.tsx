@@ -10,6 +10,7 @@ import { ToastNotificationContainer } from './components/ui/Toast';
 import { useToast } from './hooks/useToast';
 import { ErrorHandler } from './utils/errorHandling';
 import Header from './components/ui/Header';
+import Web3AuthProvider from './components/providers/Web3AuthProvider';
 
 // Tailwind classes for app container
 const appContainerClasses = cn(
@@ -222,16 +223,17 @@ function App() {
 
 
   return (
-    <ErrorBoundary
-      onError={(error, errorInfo) => {
-        console.error('App Error Boundary caught error:', error, errorInfo);
-        toast.error('Application Error', {
-          message: 'An unexpected error occurred. The page will reload automatically.',
-          duration: 8000
-        });
-      }}
-    >
-      <div className={appContainerClasses}>
+    <Web3AuthProvider>
+      <ErrorBoundary
+        onError={(error, errorInfo) => {
+          console.error('App Error Boundary caught error:', error, errorInfo);
+          toast.error('Application Error', {
+            message: 'An unexpected error occurred. The page will reload automatically.',
+            duration: 8000
+          });
+        }}
+      >
+        <div className={appContainerClasses}>
       {/* Old error notification removed - using toast system instead */}
 
       <Header
@@ -266,8 +268,9 @@ function App() {
           />
         )}
       </div>
-      </div>
-    </ErrorBoundary>
+        </div>
+      </ErrorBoundary>
+    </Web3AuthProvider>
   );
 }
 
