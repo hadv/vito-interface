@@ -47,7 +47,13 @@ export class Web3AuthService {
   private listeners: ((state: Web3AuthState) => void)[] = [];
 
   constructor() {
-    this.initializeWeb3Auth();
+    // Only initialize if Web3Auth Client ID is configured
+    if (WEB3AUTH_CLIENT_ID && WEB3AUTH_CLIENT_ID.trim() !== '') {
+      this.initializeWeb3Auth();
+    } else {
+      console.warn('🚨 Web3Auth Client ID not configured. Skipping initialization.');
+      this.state.error = 'Web3Auth Client ID not configured';
+    }
   }
 
   /**
@@ -512,6 +518,13 @@ Current value: "${WEB3AUTH_CLIENT_ID}"
   }
 
 
+
+  /**
+   * Check if Web3Auth is properly configured
+   */
+  public isConfigured(): boolean {
+    return !!(WEB3AUTH_CLIENT_ID && WEB3AUTH_CLIENT_ID.trim() !== '');
+  }
 
   /**
    * Get current state
