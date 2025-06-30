@@ -380,6 +380,29 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
 
   const wallets = [
     {
+      id: 'web3auth',
+      name: 'Web3Auth',
+      description: 'Social Login (Google, Twitter, etc.)',
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <defs>
+            <linearGradient id="web3authGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#0364FF"/>
+              <stop offset="100%" stopColor="#0052CC"/>
+            </linearGradient>
+          </defs>
+          <rect width="32" height="32" rx="8" fill="url(#web3authGradient)"/>
+          <g transform="translate(8, 8)">
+            <path d="M8 0L0 4.5v7L8 16l8-4.5v-7L8 0z" fill="white" fillOpacity="0.9"/>
+            <path d="M8 3L3 5.5v5L8 13l5-2.5v-5L8 3z" fill="white"/>
+            <circle cx="8" cy="8" r="2" fill="url(#web3authGradient)"/>
+          </g>
+        </svg>
+      ),
+      bgColor: 'transparent',
+      available: true
+    },
+    {
       id: 'metamask',
       name: 'MetaMask',
       icon: (
@@ -485,29 +508,6 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
       ),
       bgColor: 'transparent',
       available: false
-    },
-    {
-      id: 'web3auth',
-      name: 'Web3Auth',
-      description: 'Social Login (Google, Twitter, etc.)',
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-          <defs>
-            <linearGradient id="web3authGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#0364FF"/>
-              <stop offset="100%" stopColor="#0052CC"/>
-            </linearGradient>
-          </defs>
-          <rect width="32" height="32" rx="8" fill="url(#web3authGradient)"/>
-          <g transform="translate(8, 8)">
-            <path d="M8 0L0 4.5v7L8 16l8-4.5v-7L8 0z" fill="white" fillOpacity="0.9"/>
-            <path d="M8 3L3 5.5v5L8 13l5-2.5v-5L8 3z" fill="white"/>
-            <circle cx="8" cy="8" r="2" fill="url(#web3authGradient)"/>
-          </g>
-        </svg>
-      ),
-      bgColor: 'transparent',
-      available: true
     }
   ];
 
