@@ -119,6 +119,11 @@ const Header: React.FC<HeaderProps> = ({
         toast.success('Wallet Connected', {
           message: 'Successfully connected via WalletConnect'
         });
+      } else if (walletType === 'web3auth') {
+        await walletConnectionService.connectWeb3AuthSigner();
+        toast.success('Wallet Connected', {
+          message: 'Successfully connected with Google account'
+        });
       } else {
         throw new Error(`${walletType} is not yet supported`);
       }
