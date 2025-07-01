@@ -13,6 +13,7 @@ interface ButtonProps {
   onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   type?: 'button' | 'submit' | 'reset';
   className?: string;
+  allowClickWhenDisabled?: boolean; // Allow clicks even when disabled (for wallet connection)
 }
 
 const getButtonClasses = (
@@ -20,7 +21,8 @@ const getButtonClasses = (
   size: ButtonProps['size'] = 'md',
   fullWidth: boolean = false,
   disabled: boolean = false,
-  loading: boolean = false
+  loading: boolean = false,
+  allowClickWhenDisabled: boolean = false
 ) => {
   const baseClasses = [
     'inline-flex items-center justify-center gap-2',
@@ -28,7 +30,8 @@ const getButtonClasses = (
     'transition-all duration-200 ease-out',
     'focus-visible:outline-2 focus-visible:outline-blue-400 focus-visible:outline-offset-2',
     fullWidth && 'w-full',
-    (disabled || loading) && 'opacity-50 cursor-not-allowed pointer-events-none'
+    (disabled || loading) && !allowClickWhenDisabled && 'opacity-50 cursor-not-allowed pointer-events-none',
+    (disabled || loading) && allowClickWhenDisabled && 'cursor-pointer'
   ];
 
   // Clean, proportional sizes
@@ -94,14 +97,15 @@ const Button: React.FC<ButtonProps> = ({
   onClick,
   type = 'button',
   className,
+  allowClickWhenDisabled = false,
   ...props
 }) => {
-  const buttonClasses = getButtonClasses(variant, size, fullWidth, disabled, loading);
+  const buttonClasses = getButtonClasses(variant, size, fullWidth, disabled, loading, allowClickWhenDisabled);
 
   return (
     <button
       className={cn(buttonClasses, className)}
-      disabled={disabled || loading}
+      disabled={allowClickWhenDisabled ? false : (disabled || loading)}
       onClick={onClick}
       type={type}
       {...props}

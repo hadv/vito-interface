@@ -7,6 +7,8 @@ import Button from '../../ui/Button';
 import AddSignerModal from './AddSignerModal';
 import RemoveSignerModal from './RemoveSignerModal';
 import UpdateThresholdModal from './UpdateThresholdModal';
+import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
+import WalletConnectionModal from '../../ui/WalletConnectionModal';
 
 const Container = styled.div`
   max-width: 800px;
@@ -191,6 +193,25 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
   const [signerToRemove, setSignerToRemove] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Wallet connection state
+  const [connectionState, setConnectionState] = useState<WalletConnectionState>({ isConnected: false });
+  const [showWalletModal, setShowWalletModal] = useState(false);
+
+  // Monitor wallet connection state
+  useEffect(() => {
+    const updateConnectionState = () => {
+      const state = walletConnectionService.getConnectionState();
+      setConnectionState(state);
+    };
+
+    updateConnectionState();
+
+    // Listen for connection state changes
+    const unsubscribe = walletConnectionService.onConnectionStateChange(updateConnectionState);
+
+    return unsubscribe;
+  }, []);
+
   useEffect(() => {
     const loadSafeInfo = async () => {
       try {
@@ -218,9 +239,53 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
     }
   }, [successMessage]);
 
+  // Check if signer wallet is connected
+  const isSignerConnected = connectionState.signerConnected && !connectionState.readOnlyMode;
+
+  // Handle wallet connection requirement
+  const handleWalletConnectionRequired = (action: () => void) => {
+    if (isSignerConnected) {
+      action();
+    } else {
+      setShowWalletModal(true);
+    }
+  };
+
   const handleRemoveSignerClick = (ownerAddress: string) => {
-    setSignerToRemove(ownerAddress);
-    setShowRemoveSignerModal(true);
+    handleWalletConnectionRequired(() => {
+      setSignerToRemove(ownerAddress);
+      setShowRemoveSignerModal(true);
+    });
+  };
+
+  const handleAddSignerClick = () => {
+    handleWalletConnectionRequired(() => {
+      setShowAddSignerModal(true);
+    });
+  };
+
+  const handleUpdateThresholdClick = () => {
+    handleWalletConnectionRequired(() => {
+      setShowUpdateThresholdModal(true);
+    });
+  };
+
+  // Handle wallet selection from modal
+  const handleWalletSelect = async (walletType: string) => {
+    try {
+      if (walletType === 'metamask') {
+        await walletConnectionService.connectSignerWallet();
+      } else if (walletType === 'walletconnect') {
+        // WalletConnect connection is handled by the WalletConnectModal
+        // This is called after successful connection
+      } else if (walletType === 'web3auth') {
+        await walletConnectionService.connectWeb3AuthSigner();
+      }
+      setShowWalletModal(false);
+    } catch (error) {
+      console.error('Failed to connect wallet:', error);
+      // Keep modal open on error
+    }
   };
 
   const handleModalSuccess = (message: string) => {
@@ -320,7 +385,9 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
                   variant="danger"
                   size="sm"
                   onClick={() => handleRemoveSignerClick(owner)}
-                  disabled={safeInfo.owners.length <= 1}
+                  disabled={safeInfo.owners.length <= 1 || !isSignerConnected}
+                  allowClickWhenDisabled={!isSignerConnected && safeInfo.owners.length > 1}
+                  className={!isSignerConnected ? 'opacity-50' : ''}
                 >
                   Remove
                 </RemoveButton>
@@ -333,7 +400,10 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
           <ActionRow>
             <Button
               variant="primary"
-              onClick={() => setShowAddSignerModal(true)}
+              onClick={handleAddSignerClick}
+              disabled={!isSignerConnected}
+              allowClickWhenDisabled={!isSignerConnected}
+              className={!isSignerConnected ? 'opacity-50' : ''}
             >
               Add Signer
             </Button>
@@ -366,7 +436,10 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
           <ActionRow>
             <Button
               variant="secondary"
-              onClick={() => setShowUpdateThresholdModal(true)}
+              onClick={handleUpdateThresholdClick}
+              disabled={!isSignerConnected}
+              allowClickWhenDisabled={!isSignerConnected}
+              className={!isSignerConnected ? 'opacity-50' : ''}
             >
               Update Threshold
             </Button>
@@ -419,6 +492,13 @@ const SafeSetupTab: React.FC<SafeSetupTabProps> = ({ network }) => {
         network={network}
         safeAddress={safeInfo.address}
         onSuccess={handleModalSuccess}
+      />
+
+      {/* Wallet Connection Modal */}
+      <WalletConnectionModal
+        isOpen={showWalletModal}
+        onClose={() => setShowWalletModal(false)}
+        onWalletSelect={handleWalletSelect}
       />
     </Container>
   );
