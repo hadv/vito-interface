@@ -5,6 +5,8 @@ import Badge from './Badge';
 import { walletConnectionService, WalletConnectionState } from '../../services/WalletConnectionService';
 import { useToast } from '../../hooks/useToast';
 import WalletConnectionModal from './WalletConnectionModal';
+import DAppConnectionModal from './DAppConnectionModal';
+import { dAppWalletConnectService } from '../../services/DAppWalletConnectService';
 
 // Utility function for consistent address truncation
 const truncateAddress = (address: string, startLength: number = 6, endLength: number = 4): string => {
@@ -35,6 +37,7 @@ const Header: React.FC<HeaderProps> = ({
   const [isConnectingWallet, setIsConnectingWallet] = useState(false);
   const [showSignerMenu, setShowSignerMenu] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [showDAppModal, setShowDAppModal] = useState(false);
   const [forceRender, setForceRender] = useState(0); // Force re-render counter
   const toast = useToast();
 
@@ -151,6 +154,22 @@ const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  // Handle dApp connection
+  const handleDAppConnect = async (pairingCode: string) => {
+    try {
+      await dAppWalletConnectService.connectDApp(pairingCode);
+      toast.success('dApp Connected', {
+        message: 'Successfully connected to dApp via WalletConnect'
+      });
+    } catch (error: any) {
+      console.error('Failed to connect dApp:', error);
+      toast.error('dApp Connection Failed', {
+        message: error.message || 'Failed to connect to dApp'
+      });
+      throw error; // Re-throw so modal can handle it
+    }
+  };
+
   // Click outside handler for signer menu
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -196,19 +215,44 @@ const Header: React.FC<HeaderProps> = ({
         <h1 className={appNameClasses}>Vito</h1>
       </div>
       
-      <div className="flex items-center gap-3">
+      <div className="flex items-center h-full">
+        {/* dApp Connection Button - Only show when Safe wallet is connected */}
+        {walletConnected && connectionState.isConnected && (
+          <div className="h-full flex items-center px-4 relative">
+            <div className="absolute left-0 w-px bg-gray-600" style={{ top: 0, bottom: 0, height: '100%' }}></div>
+            <button
+              onClick={() => setShowDAppModal(true)}
+              title="WalletConnect"
+              className="w-8 h-8 flex items-center justify-center hover:bg-gray-700/50 transition-colors rounded"
+            >
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="#3a99fb"
+                focusable="false"
+                aria-hidden="true"
+              >
+                <path d="M6.09442 8.34459C9.35599 5.21847 14.644 5.21847 17.9056 8.34459L18.2981 8.72082C18.4612 8.87713 18.4612 9.13055 18.2981 9.28686L16.9554 10.5739C16.8738 10.652 16.7416 10.652 16.6601 10.5739L16.1199 10.0561C13.8445 7.87528 10.1555 7.87528 7.88012 10.0561L7.30164 10.6106C7.2201 10.6887 7.0879 10.6887 7.00636 10.6106L5.66357 9.32358C5.50049 9.16727 5.50049 8.91385 5.66357 8.75754L6.09442 8.34459ZM20.6826 11.0063L21.8777 12.1517C22.0408 12.308 22.0408 12.5615 21.8777 12.7178L16.489 17.8828C16.3259 18.0391 16.0615 18.0391 15.8984 17.8828C15.8984 17.8828 15.8984 17.8828 15.8984 17.8828L12.0739 14.217C12.0331 14.1779 11.967 14.1779 11.9262 14.217C11.9262 14.217 11.9262 14.217 11.9262 14.217L8.10172 17.8828C7.93865 18.0391 7.67424 18.0391 7.51116 17.8828C7.51116 17.8828 7.51117 17.8828 7.51116 17.8828L2.12231 12.7177C1.95923 12.5614 1.95923 12.308 2.12231 12.1517L3.31739 11.0062C3.48047 10.8499 3.74487 10.8499 3.90795 11.0062L7.73258 14.672C7.77335 14.7111 7.83945 14.7111 7.88022 14.672C7.88022 14.672 7.88022 14.672 7.88022 14.672L11.7047 11.0062C11.8677 10.8499 12.1321 10.8499 12.2952 11.0062C12.2952 11.0062 12.2952 11.0062 12.2952 11.0062L16.1198 14.672C16.1606 14.7111 16.2267 14.7111 16.2675 14.672L20.0921 11.0063C20.2551 10.85 20.5195 10.85 20.6826 11.0063Z"></path>
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* Signer Wallet Status */}
         {walletConnected && connectionState.isConnected && (
-          <div className="relative signer-menu" style={{ zIndex: 1000 }}>
+          <div className="relative signer-menu h-full flex items-center px-4" style={{ zIndex: 1000 }}>
+            <div className="absolute left-0 w-px bg-gray-600" style={{ top: 0, bottom: 0, height: '100%' }}></div>
             {connectionState.signerConnected ? (
               /* Connected Signer Display */
               <button
                 onClick={() => setShowSignerMenu(!showSignerMenu)}
                 className={cn(
-                  'bg-green-500/20 border border-green-500/30 text-green-400',
-                  'px-4 py-2 rounded-lg font-medium text-sm',
+                  'bg-green-500/20 text-green-400',
+                  'px-4 py-2 font-medium text-sm',
                   'transition-all duration-200 flex items-center gap-2',
-                  'hover:bg-green-500/30 hover:border-green-500/50',
+                  'hover:bg-green-500/30',
                   'hover:shadow-lg active:scale-95'
                 )}
                 title="Manage connected signer wallet"
@@ -467,9 +511,10 @@ const Header: React.FC<HeaderProps> = ({
 
         {/* Network Selector - Only show when wallet is connected */}
         {walletConnected && (
-        <div className="relative network-selector">
+        <div className="relative network-selector h-full flex items-center px-4">
+          <div className="absolute left-0 w-px bg-gray-600" style={{ top: 0, bottom: 0, height: '100%' }}></div>
           <div
-            className={`bg-white/10 text-white border-2 border-gray-700 rounded-lg px-4 py-2 h-10 cursor-pointer font-medium text-sm flex items-center capitalize transition-all duration-200 backdrop-blur-md hover:bg-white/20 hover:border-gray-500 hover:shadow-lg active:scale-95 ${networkSelectorOpen ? 'bg-white/20 border-gray-500 shadow-lg ring-2 ring-blue-500/30' : ''}`}
+            className={`text-white px-4 py-2 h-full cursor-pointer font-medium text-base flex items-center capitalize transition-all duration-200 hover:bg-white/10 ${networkSelectorOpen ? 'bg-white/10' : ''}`}
             onClick={onToggleNetworkSelector}
             title="Click to switch network"
             data-1p-ignore="true"
@@ -488,6 +533,44 @@ const Header: React.FC<HeaderProps> = ({
             )}
           </div>
         </div>
+        )}
+
+        {/* Connect Button - Only show when no wallet is connected */}
+        {!walletConnected && (
+          <div className="h-full flex items-center px-4 relative">
+            <div className="absolute left-0 w-px bg-gray-600" style={{ top: 0, bottom: 0, height: '100%' }}></div>
+            <button
+              onClick={() => setShowWalletModal(true)}
+              disabled={isConnectingWallet}
+              className={cn(
+                'bg-blue-500 hover:bg-blue-600 text-white',
+                'px-4 py-2 rounded-lg font-medium text-sm',
+                'transition-all duration-200 flex items-center gap-2',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+                'hover:shadow-lg active:scale-95'
+              )}
+              title="Connect wallet"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              type="button"
+            >
+              {isConnectingWallet ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M21 12V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M3 10H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M7 15H7.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Connect
+                </>
+              )}
+            </button>
+          </div>
         )}
       </div>
 
@@ -532,6 +615,13 @@ const Header: React.FC<HeaderProps> = ({
           setShowWalletModal(false);
         }}
         onWalletSelect={handleWalletSelect}
+      />
+
+      {/* dApp Connection Modal */}
+      <DAppConnectionModal
+        isOpen={showDAppModal}
+        onClose={() => setShowDAppModal(false)}
+        onConnect={handleDAppConnect}
       />
     </header>
   );
