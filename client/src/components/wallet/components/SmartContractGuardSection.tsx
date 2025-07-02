@@ -150,7 +150,16 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
 
   // Subscribe to wallet connection state
   useEffect(() => {
-    const unsubscribe = walletConnectionService.subscribe(setConnectionState);
+    const updateConnectionState = () => {
+      const state = walletConnectionService.getConnectionState();
+      setConnectionState(state);
+    };
+
+    // Get initial state
+    updateConnectionState();
+
+    // Listen for connection state changes
+    const unsubscribe = walletConnectionService.subscribe(updateConnectionState);
     return unsubscribe;
   }, []);
 
