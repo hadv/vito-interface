@@ -49,7 +49,7 @@ const ModalTitle = styled.h2`
 `;
 
 const SecurityIcon = styled.div`
-  color: #10b981;
+  color: #0ea5e9;
   font-size: 24px;
 `;
 
@@ -82,7 +82,7 @@ const SigningInfo = styled.div`
 `;
 
 const InfoTitle = styled.h3`
-  color: #10b981;
+  color: #0ea5e9;
   font-size: 18px;
   font-weight: 700;
   margin: 0 0 8px 0;
@@ -277,7 +277,7 @@ const EIP712SigningModal: React.FC<EIP712SigningModalProps> = ({
           {decodedTransaction && (
             <DetailRow>
               <DetailLabel>Transaction Type:</DetailLabel>
-              <DetailValue style={{ color: '#10b981', fontWeight: 'bold' }}>
+              <DetailValue style={{ color: '#0ea5e9', fontWeight: 'bold' }}>
                 {decodedTransaction.description}
               </DetailValue>
             </DetailRow>
@@ -339,7 +339,7 @@ const EIP712SigningModal: React.FC<EIP712SigningModalProps> = ({
               {decodedTransaction.details.formattedAmount && (
                 <DetailRow>
                   <DetailLabel>Token Amount:</DetailLabel>
-                  <DetailValue style={{ color: '#10b981', fontWeight: 'bold' }}>
+                  <DetailValue style={{ color: '#0ea5e9', fontWeight: 'bold' }}>
                     {decodedTransaction.details.formattedAmount}
                   </DetailValue>
                 </DetailRow>
@@ -363,7 +363,7 @@ const EIP712SigningModal: React.FC<EIP712SigningModalProps> = ({
                 <DetailLabel>Function:</DetailLabel>
                 <DetailValue>
                   {decodedTransaction?.type === 'ERC20_TRANSFER' ? (
-                    <span style={{ color: '#10b981' }}>ERC-20 Transfer Function</span>
+                    <span style={{ color: '#0ea5e9' }}>ERC-20 Transfer Function</span>
                   ) : decodedTransaction?.type === 'CONTRACT_CALL' ? (
                     <span style={{ color: '#3b82f6' }}>Contract Interaction</span>
                   ) : (

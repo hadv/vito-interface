@@ -121,7 +121,7 @@ const AssetActions = styled.div`
 
 const SendButton = styled.button`
   padding: ${theme.spacing[3]} ${theme.spacing[6]};
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
   color: white;
   border: none;
   border-radius: ${theme.borderRadius.lg};
@@ -135,8 +135,8 @@ const SendButton = styled.button`
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-  border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+  border: 1px solid rgba(14, 165, 233, 0.4);
   position: relative;
   overflow: hidden;
 
@@ -153,10 +153,10 @@ const SendButton = styled.button`
   }
 
   &:hover {
-    background: linear-gradient(135deg, #059669, #047857);
+    background: linear-gradient(135deg, #0284c7, #0369a1);
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-    border-color: rgba(16, 185, 129, 0.6);
+    box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
+    border-color: rgba(14, 165, 233, 0.6);
 
     &::before {
       left: 100%;
@@ -165,7 +165,7 @@ const SendButton = styled.button`
 
   &:active {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
   }
 
   &:disabled {

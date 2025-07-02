@@ -141,7 +141,7 @@ const SignersList = styled.div`
 `;
 
 const SignerBadge = styled.span`
-  background: #10b981;
+  background: #0ea5e9;
   color: #ffffff;
   padding: 4px 8px;
   border-radius: 4px;
@@ -158,7 +158,7 @@ const ProgressBar = styled.div`
 `;
 
 const ProgressFill = styled.div<{ progress: number }>`
-  background: linear-gradient(90deg, #10b981, #059669);
+  background: linear-gradient(90deg, #0ea5e9, #0284c7);
   height: 100%;
   width: ${props => props.progress}%;
   transition: width 0.3s ease;
@@ -520,7 +520,7 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
             {decodedTransaction && (
               <DetailRow>
                 <DetailLabel>Transaction Type:</DetailLabel>
-                <DetailValue style={{ color: '#10b981', fontWeight: 'bold' }}>
+                <DetailValue style={{ color: '#0ea5e9', fontWeight: 'bold' }}>
                   {decodedTransaction.description}
                 </DetailValue>
               </DetailRow>
@@ -590,7 +590,7 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
                   <DetailLabel>Function:</DetailLabel>
                   <DetailValue>
                     {decodedTransaction?.type === 'ERC20_TRANSFER' ? (
-                      <span style={{ color: '#10b981' }}>ERC-20 Transfer Function</span>
+                      <span style={{ color: '#0ea5e9' }}>ERC-20 Transfer Function</span>
                     ) : decodedTransaction?.type === 'CONTRACT_CALL' ? (
                       <span style={{ color: '#3b82f6' }}>
                         {decodedTransaction.details.methodName || 'Contract Interaction'}

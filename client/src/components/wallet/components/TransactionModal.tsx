@@ -83,7 +83,7 @@ const StepBadge = styled.div<{ active: boolean; completed: boolean }>`
   font-size: 16px;
   font-weight: 700;
   background: ${props =>
-    props.completed ? '#10b981' :
+    props.completed ? '#0ea5e9' :
     props.active ? '#3b82f6' :
     '#64748b'
   };
