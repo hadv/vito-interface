@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { theme } from '../../../theme';
 import NetworkConfigStatus from '../components/NetworkConfigStatus';
 import SafeSetupTab from '../components/SafeSetupTab';
+import SmartContractGuardSection from '../components/SmartContractGuardSection';
 
 const Container = styled.div`
   padding: 0;
@@ -138,12 +139,14 @@ interface SettingsPageProps {
 }
 
 const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => {
-  const [activeTab, setActiveTab] = useState<'setup' | 'network' | 'about'>('setup');
+  const [activeTab, setActiveTab] = useState<'setup' | 'security' | 'network' | 'about'>('setup');
 
   const renderTabContent = () => {
     switch (activeTab) {
       case 'setup':
         return <SafeSetupTab network={network} />;
+      case 'security':
+        return <SmartContractGuardSection network={network} />;
       case 'network':
         return (
           <div style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: theme.spacing[8] }}>
@@ -190,6 +193,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => 
           onClick={() => setActiveTab('setup')}
         >
           Setup
+        </Tab>
+        <Tab
+          isActive={activeTab === 'security'}
+          onClick={() => setActiveTab('security')}
+        >
+          Security
         </Tab>
         <Tab
           isActive={activeTab === 'network'}

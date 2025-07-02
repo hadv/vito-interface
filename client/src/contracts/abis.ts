@@ -314,6 +314,29 @@ export const SAFE_ABI = [
     "inputs": [
       {"name": "threshold", "type": "uint256", "indexed": false}
     ]
+  },
+  // Guard management functions
+  {
+    "type": "function",
+    "name": "setGuard",
+    "inputs": [{"name": "guard", "type": "address"}],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getGuard",
+    "inputs": [],
+    "outputs": [{"name": "", "type": "address"}],
+    "stateMutability": "view"
+  },
+  // Guard events
+  {
+    "type": "event",
+    "name": "ChangedGuard",
+    "inputs": [
+      {"name": "guard", "type": "address", "indexed": true}
+    ]
   }
 ];
 
