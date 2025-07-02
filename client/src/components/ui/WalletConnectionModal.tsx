@@ -93,6 +93,33 @@ const RightContent = styled.div`
   min-height: 0;
 `;
 
+const ErrorMessage = styled.div`
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  color: #dc2626;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  button {
+    background: none;
+    border: none;
+    color: #dc2626;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0;
+    margin-left: 12px;
+
+    &:hover {
+      opacity: 0.7;
+    }
+  }
+`;
+
 const ModalHeader = styled.div`
   display: flex;
   justify-content: space-between;
@@ -265,8 +292,39 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
 
+  // Reset connection state when modal opens/closes
+  React.useEffect(() => {
+    if (!isOpen) {
+      setIsConnecting(null);
+      setError(null);
+    }
+  }, [isOpen]);
+
+  // Add timeout mechanism to prevent stuck connecting state
+  React.useEffect(() => {
+    if (isConnecting) {
+      const timeout = setTimeout(() => {
+        console.warn(`Connection timeout for ${isConnecting}, resetting state`);
+        setIsConnecting(null);
+        setError('Connection timeout. Please try again.');
+      }, 30000); // 30 second timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [isConnecting]);
+
   const handleWalletSelect = async (walletType: string) => {
-    if (isConnecting) return;
+    // Allow switching between wallet types even if currently connecting
+    // This fixes the stuck "connecting..." state issue
+    if (isConnecting === walletType) {
+      // If clicking the same wallet that's connecting, cancel and reset
+      setIsConnecting(null);
+      setError('Connection cancelled. You can try again.');
+      return;
+    }
+
+    // Clear any previous errors when selecting a new wallet
+    setError(null);
 
     if (walletType === 'walletconnect') {
       setShowWalletConnectModal(true);
@@ -283,8 +341,20 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
     try {
       await onWalletSelect(walletType);
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to connect wallet:', error);
+
+      // Set user-friendly error message
+      let errorMessage = 'Failed to connect wallet';
+      if (error.code === 4001) {
+        errorMessage = 'Connection cancelled by user';
+      } else if (error.code === -32002) {
+        errorMessage = 'Connection request already pending. Please check your wallet.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      setError(errorMessage);
       // Don't close modal on error, let user try again
     } finally {
       setIsConnecting(null);
@@ -536,43 +606,33 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
             </ModalHeader>
 
             {error && (
-              <div style={{
-                background: '#fee2e2',
-                border: '1px solid #fecaca',
-                borderRadius: '8px',
-                padding: '12px',
-                marginBottom: '16px',
-                color: '#dc2626',
-                fontSize: '14px'
-              }}>
-                ❌ {error}
-                <button
-                  onClick={() => setError(null)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#dc2626',
-                    cursor: 'pointer',
-                    float: 'right',
-                    fontSize: '16px',
-                    padding: '0'
-                  }}
-                >
-                  ×
-                </button>
-              </div>
+              <ErrorMessage>
+                <span>❌ {error}</span>
+                <button onClick={() => setError(null)}>×</button>
+              </ErrorMessage>
             )}
 
             <WalletsGrid>
               {wallets.map((wallet) => (
                 <WalletOption
                   key={wallet.id}
-                  disabled={!wallet.available || isConnecting === wallet.id}
+                  disabled={!wallet.available}
                   onClick={() => wallet.available && handleWalletSelect(wallet.id)}
+                  style={{
+                    opacity: !wallet.available ? 0.5 : 1,
+                    cursor: !wallet.available ? 'not-allowed' : 'pointer'
+                  }}
                 >
                   <WalletIcon bgColor={wallet.bgColor}>{wallet.icon}</WalletIcon>
                   <WalletName>
-                    {isConnecting === wallet.id ? 'Connecting...' : wallet.name}
+                    {isConnecting === wallet.id ? (
+                      <>
+                        Connecting...
+                        <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                          Click to cancel
+                        </div>
+                      </>
+                    ) : wallet.name}
                   </WalletName>
                   {(wallet as any).description && (
                     <WalletDescription>
