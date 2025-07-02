@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { theme } from '../../../theme';
 import { SafeGuardService } from '../../../services/SafeGuardService';
+import { safeWalletService } from '../../../services/SafeWalletService';
 import Button from '../../ui/Button';
 import AddressDisplay from './AddressDisplay';
 
@@ -227,6 +228,20 @@ const GuardConfirmationModal: React.FC<GuardConfirmationModalProps> = ({
       if (!basicValidation.isValid) {
         setValidationResult(basicValidation);
         return;
+      }
+
+      // Advanced contract validation
+      const provider = safeWalletService.getProvider();
+      if (provider) {
+        const contractValidation = await SafeGuardService.validateGuardContract(guardAddress, provider);
+        if (!contractValidation.isValid) {
+          setValidationResult({
+            isValid: false,
+            error: contractValidation.error || 'Contract validation failed',
+            warnings: contractValidation.warnings
+          });
+          return;
+        }
       }
 
       // Security validation

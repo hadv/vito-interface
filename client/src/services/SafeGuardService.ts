@@ -96,23 +96,67 @@ export class SafeGuardService {
       }
 
       // Try to check if it implements the Guard interface
-      // This is a basic check - we try to call supportsInterface with the Guard interface ID
+      // Check for required Guard methods: checkTransaction and checkAfterExecution
       try {
         const guardInterface = new ethers.utils.Interface([
-          'function supportsInterface(bytes4 interfaceId) view returns (bool)'
+          'function checkTransaction(address to, uint256 value, bytes data, uint8 operation, uint256 safeTxGas, uint256 baseGas, uint256 gasPrice, address gasToken, address refundReceiver, bytes signatures, address msgSender) view',
+          'function checkAfterExecution(bytes32 txHash, bool success) view'
         ]);
 
-        // Guard interface ID (ERC165)
-        const guardInterfaceId = '0x945b8148'; // bytes4(keccak256("Guard"))
-
         const contract = new ethers.Contract(address, guardInterface, provider);
-        const supportsGuardInterface = await contract.supportsInterface(guardInterfaceId);
 
-        if (!supportsGuardInterface) {
-          warnings.push('Contract may not implement the Guard interface. Ensure it has checkTransaction() and checkAfterExecution() methods.');
+        // Try to call checkTransaction with dummy data to see if method exists
+        try {
+          await contract.callStatic.checkTransaction(
+            ethers.constants.AddressZero, // to
+            0, // value
+            '0x', // data
+            0, // operation
+            0, // safeTxGas
+            0, // baseGas
+            0, // gasPrice
+            ethers.constants.AddressZero, // gasToken
+            ethers.constants.AddressZero, // refundReceiver
+            '0x', // signatures
+            ethers.constants.AddressZero // msgSender
+          );
+
+          // If we get here, the method exists (even if it reverts, that's expected)
+        } catch (error: any) {
+          // Check if error is due to missing method vs execution revert
+          if (error.message.includes('function selector was not recognized') ||
+              error.message.includes('no matching function') ||
+              (error.code === 'CALL_EXCEPTION' && error.reason === 'function selector was not recognized')) {
+            return {
+              isValid: false,
+              error: 'Contract does not implement the Guard interface. Missing checkTransaction() method.'
+            };
+          }
+          // If it's a revert or other execution error, the method exists
         }
+
+        // Try checkAfterExecution method
+        try {
+          await contract.callStatic.checkAfterExecution(
+            ethers.constants.HashZero, // txHash
+            true // success
+          );
+        } catch (error: any) {
+          if (error.message.includes('function selector was not recognized') ||
+              error.message.includes('no matching function') ||
+              (error.code === 'CALL_EXCEPTION' && error.reason === 'function selector was not recognized')) {
+            return {
+              isValid: false,
+              error: 'Contract does not implement the Guard interface. Missing checkAfterExecution() method.'
+            };
+          }
+        }
+
       } catch (error) {
-        warnings.push('Unable to verify Guard interface implementation. Please ensure the contract implements the required Guard methods.');
+        return {
+          isValid: false,
+          error: `Failed to verify Guard interface: ${error instanceof Error ? error.message : 'Unknown error'}`
+        };
       }
 
       return { isValid: true, warnings };

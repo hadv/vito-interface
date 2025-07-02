@@ -132,6 +132,7 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
   const [newGuardAddress, setNewGuardAddress] = useState<string>('');
   const [addressError, setAddressError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isValidating, setIsValidating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [connectionState, setConnectionState] = useState<WalletConnectionState>({
     isConnected: false,
@@ -190,7 +191,7 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
     loadCurrentGuard();
   }, [connectionState.safeAddress, loadCurrentGuard]);
 
-  const validateAddress = (address: string): string => {
+  const validateAddress = async (address: string): Promise<string> => {
     if (!address.trim()) {
       return '';
     }
@@ -198,6 +199,19 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
     const validation = SafeGuardService.validateGuardAddress(address);
     if (validation.error) {
       return validation.error;
+    }
+
+    // Advanced contract validation
+    try {
+      const provider = safeWalletService.getProvider();
+      if (provider) {
+        const contractValidation = await SafeGuardService.validateGuardContract(address, provider);
+        if (!contractValidation.isValid) {
+          return contractValidation.error || 'Contract validation failed';
+        }
+      }
+    } catch (error) {
+      return `Contract validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
 
     // Additional security check
@@ -211,10 +225,25 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
     return '';
   };
 
-  const handleAddressChange = (value: string) => {
+  const handleAddressChange = async (value: string) => {
     setNewGuardAddress(value);
-    setAddressError(validateAddress(value));
     setSuccessMessage('');
+
+    // Clear previous error immediately for better UX
+    setAddressError('');
+
+    // Only validate if there's a value
+    if (value.trim()) {
+      setIsValidating(true);
+      try {
+        const error = await validateAddress(value);
+        setAddressError(error);
+      } catch (error) {
+        setAddressError(`Validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      } finally {
+        setIsValidating(false);
+      }
+    }
   };
 
   const handleWalletConnectionRequired = (action: () => void) => {
@@ -236,8 +265,8 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
   };
 
   const handleSetGuard = () => {
-    handleWalletConnectionRequired(() => {
-      const validationError = validateAddress(newGuardAddress);
+    handleWalletConnectionRequired(async () => {
+      const validationError = await validateAddress(newGuardAddress);
       if (validationError) {
         setAddressError(validationError);
         return;
@@ -389,7 +418,7 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
             value={newGuardAddress}
             onChange={(e) => handleAddressChange(e.target.value)}
             error={addressError}
-            helperText="Enter the address of a smart contract that implements the Guard interface"
+            helperText={isValidating ? "Validating contract..." : "Enter the address of a smart contract that implements the Guard interface"}
             fullWidth
           />
 
@@ -397,12 +426,12 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
             <Button
               variant="primary"
               onClick={handleSetGuard}
-              disabled={!newGuardAddress.trim() || !!addressError || isSubmitting || !isSignerConnected}
-              loading={isSubmitting}
+              disabled={!newGuardAddress.trim() || !!addressError || isSubmitting || isValidating || !isSignerConnected}
+              loading={isSubmitting || isValidating}
               allowClickWhenDisabled={!isSignerConnected}
               className={!isSignerConnected ? 'opacity-50' : ''}
             >
-              Set Guard
+              {isValidating ? 'Validating...' : 'Set Guard'}
             </Button>
 
             {hasGuard && (

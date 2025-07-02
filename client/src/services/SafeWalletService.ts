@@ -1203,6 +1203,13 @@ export class SafeWalletService {
   }
 
   /**
+   * Get the current provider
+   */
+  getProvider(): ethers.providers.Provider | null {
+    return this.provider;
+  }
+
+  /**
    * Get the current guard address for the Safe
    */
   async getCurrentGuard(): Promise<string> {
