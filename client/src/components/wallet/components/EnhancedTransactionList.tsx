@@ -141,7 +141,7 @@ const DaySummary: React.FC<{ summary: DayGroup['summary'] }> = ({ summary }) => 
       </span>
       
       {!totalIn.isZero() && (
-        <span className="text-green-400">
+        <span className="text-sky-400">
           +{formatEthAmount(totalIn)} ETH
         </span>
       )}
@@ -153,7 +153,7 @@ const DaySummary: React.FC<{ summary: DayGroup['summary'] }> = ({ summary }) => 
       )}
       
       {!netChange.isZero() && (
-        <span className={`font-medium ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+        <span className={`font-medium ${isPositive ? 'text-sky-400' : 'text-red-400'}`}>
           Net: {isPositive ? '+' : '-'}{netChangeFormatted} ETH
         </span>
       )}

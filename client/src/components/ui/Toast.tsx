@@ -60,9 +60,9 @@ const ToastContainer = styled.div<{ type: ToastType; isExiting: boolean }>`
     switch (props.type) {
       case 'success':
         return css`
-          background: rgba(34, 197, 94, 0.1);
-          border-color: rgba(34, 197, 94, 0.3);
-          color: #22c55e;
+          background: rgba(14, 165, 233, 0.1);
+          border-color: rgba(14, 165, 233, 0.3);
+          color: #0ea5e9;
         `;
       case 'error':
         return css`

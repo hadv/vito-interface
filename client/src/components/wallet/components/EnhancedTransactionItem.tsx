@@ -36,9 +36,9 @@ const getTransactionType = (tx: Transaction, safeAddress: string) => {
         ? `From ${formatWalletAddress(tx.from)}`
         : `To ${formatWalletAddress(tx.to)}`,
       icon: isReceive ? '↓' : '↑',
-      color: isReceive ? 'text-green-400' : 'text-red-400',
-      bgColor: isReceive ? 'bg-green-400/10' : 'bg-red-400/10',
-      borderColor: isReceive ? 'border-green-400/20' : 'border-red-400/20'
+      color: isReceive ? 'text-sky-400' : 'text-red-400',
+      bgColor: isReceive ? 'bg-sky-400/10' : 'bg-red-400/10',
+      borderColor: isReceive ? 'border-sky-400/20' : 'border-red-400/20'
     };
   }
 
@@ -50,9 +50,9 @@ const getTransactionType = (tx: Transaction, safeAddress: string) => {
       title: 'Received ETH',
       description: `From ${formatWalletAddress(tx.from)}`,
       icon: '↓',
-      color: 'text-green-400',
-      bgColor: 'bg-green-400/10',
-      borderColor: 'border-green-400/20'
+      color: 'text-sky-400',
+      bgColor: 'bg-sky-400/10',
+      borderColor: 'border-sky-400/20'
     };
   }
 
@@ -242,8 +242,8 @@ const EnhancedTransactionItem: React.FC<EnhancedTransactionItemProps> = ({
               {/* Status indicator */}
               <span className={`
                 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
-                ${transaction.status === 'executed' 
-                  ? 'bg-green-400/20 text-green-400' 
+                ${transaction.status === 'executed'
+                  ? 'bg-sky-400/20 text-sky-400'
                   : transaction.status === 'failed'
                   ? 'bg-red-400/20 text-red-400'
                   : 'bg-yellow-400/20 text-yellow-400'

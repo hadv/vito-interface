@@ -41,7 +41,7 @@ const CodeBlock = styled.code`
   padding: 2px 6px;
   border-radius: 4px;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  color: #10b981;
+  color: #0ea5e9;
 `;
 
 const LinkButton = styled.a`

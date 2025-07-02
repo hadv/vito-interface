@@ -28,11 +28,11 @@ const getBadgeClasses = (
         lg: 'px-4 py-2 text-base h-8'
       }[size];
 
-  // Variant classes with blue as primary theme
+  // Variant classes with light blue theme
   const variantClasses = {
     primary: 'bg-blue-500 text-white shadow-lg shadow-blue-500/25',
-    secondary: 'bg-green-500 text-white shadow-lg shadow-green-500/25',
-    success: 'bg-green-500 text-white shadow-lg shadow-green-500/25',
+    secondary: 'bg-sky-500 text-white shadow-lg shadow-sky-500/25',
+    success: 'bg-sky-500 text-white shadow-lg shadow-sky-500/25',
     warning: 'bg-yellow-500 text-white shadow-lg shadow-yellow-500/25',
     error: 'bg-red-500 text-white shadow-lg shadow-red-500/25',
     info: 'bg-blue-400 text-white shadow-lg shadow-blue-400/25',

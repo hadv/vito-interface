@@ -45,24 +45,24 @@ const getInputWrapperClasses = (
   const variantClasses = {
     default: [
       'bg-white/10 border-white/20 rounded-2xl backdrop-blur-sm',
-      'focus-within:border-[#12D66F]',
-      'focus-within:shadow-[0_0_0_4px_rgba(18,214,111,0.3)]',
+      'focus-within:border-[#0ea5e9]',
+      'focus-within:shadow-[0_0_0_4px_rgba(14,165,233,0.3)]',
       'hover:border-white/30 hover:bg-white/15',
       'transition-all duration-300 ease-out',
       hasError ? 'border-red-400 focus-within:border-red-400 focus-within:shadow-red-500/20' : ''
     ],
     filled: [
       'bg-white/15 border-transparent rounded-2xl backdrop-blur-sm',
-      'focus-within:border-[#12D66F]',
-      'focus-within:shadow-[0_0_0_4px_rgba(18,214,111,0.3)]',
+      'focus-within:border-[#0ea5e9]',
+      'focus-within:shadow-[0_0_0_4px_rgba(14,165,233,0.3)]',
       'hover:bg-white/20',
       'transition-all duration-300 ease-out',
       hasError ? 'border-red-400 focus-within:border-red-400 bg-red-500/15' : ''
     ],
     outlined: [
       'bg-transparent border-white/30 rounded-2xl',
-      'focus-within:border-[#12D66F]',
-      'focus-within:shadow-[0_0_0_4px_rgba(18,214,111,0.3)]',
+      'focus-within:border-[#0ea5e9]',
+      'focus-within:shadow-[0_0_0_4px_rgba(14,165,233,0.3)]',
       'hover:border-white/40',
       'transition-all duration-300 ease-out',
       hasError ? 'border-red-400 focus-within:border-red-400' : ''

@@ -135,7 +135,7 @@ const OptimizedTransactionsPage: React.FC<OptimizedTransactionsPageProps> = ({
           <div className="font-medium text-white flex items-center gap-2">
             {tx.type ? (tx.type.charAt(0).toUpperCase() + tx.type.slice(1)) : 'Transaction'}
             {/* Status indicator - all transactions are executed */}
-            <span className="inline-block w-2 h-2 rounded-full bg-green-400" />
+            <span className="inline-block w-2 h-2 rounded-full bg-sky-400" />
           </div>
           <div className="text-sm text-gray-400 mt-1">
             To: {formatWalletAddress(tx.to)}
@@ -155,7 +155,7 @@ const OptimizedTransactionsPage: React.FC<OptimizedTransactionsPageProps> = ({
           <div className="font-medium text-white">
             {ethers.utils.formatEther(tx.amount || '0')} ETH
           </div>
-          <div className="text-xs mt-1 font-medium text-green-400">
+          <div className="text-xs mt-1 font-medium text-sky-400">
             Executed
           </div>
           {tx.blockNumber && (

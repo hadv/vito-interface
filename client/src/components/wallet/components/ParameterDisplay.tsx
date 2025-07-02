@@ -128,8 +128,8 @@ const BooleanValue = styled.div<{ value: boolean }>`
   border-radius: 4px;
   font-size: 12px;
   font-weight: 600;
-  background: ${props => props.value ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'};
-  color: ${props => props.value ? '#22c55e' : '#ef4444'};
+  background: ${props => props.value ? 'rgba(14, 165, 233, 0.2)' : 'rgba(239, 68, 68, 0.2)'};
+  color: ${props => props.value ? '#0ea5e9' : '#ef4444'};
 `;
 
 interface DecodedInput {

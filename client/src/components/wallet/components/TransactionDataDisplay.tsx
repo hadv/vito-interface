@@ -23,7 +23,7 @@ const FunctionValue = styled.span<{ type: string }>`
   font-size: 12px;
   font-weight: 600;
   color: ${props => 
-    props.type === 'ERC20_TRANSFER' ? '#10b981' :
+    props.type === 'ERC20_TRANSFER' ? '#0ea5e9' :
     props.type === 'CONTRACT_CALL' ? '#3b82f6' :
     '#f59e0b'
   };

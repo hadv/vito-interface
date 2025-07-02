@@ -83,7 +83,7 @@ const StepBadge = styled.div<{ active: boolean; completed: boolean }>`
   font-size: 16px;
   font-weight: 700;
   background: ${props =>
-    props.completed ? '#10b981' :
+    props.completed ? '#0ea5e9' :
     props.active ? '#3b82f6' :
     '#64748b'
   };
@@ -94,7 +94,7 @@ const StepBadge = styled.div<{ active: boolean; completed: boolean }>`
 const StepText = styled.span<{ active: boolean; completed: boolean }>`
   font-size: 14px;
   color: ${props =>
-    props.completed ? '#34d399' :
+    props.completed ? '#38bdf8' :
     props.active ? '#60a5fa' : '#e5e7eb'
   };
   font-weight: ${props => props.active ? '700' : '600'};

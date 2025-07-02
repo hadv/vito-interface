@@ -249,10 +249,10 @@ const Header: React.FC<HeaderProps> = ({
               <button
                 onClick={() => setShowSignerMenu(!showSignerMenu)}
                 className={cn(
-                  'bg-green-500/20 text-green-400',
+                  'bg-sky-500/20 text-sky-400',
                   'px-4 py-2 font-medium text-sm',
                   'transition-all duration-200 flex items-center gap-2',
-                  'hover:bg-green-500/30',
+                  'hover:bg-sky-500/30',
                   'hover:shadow-lg active:scale-95'
                 )}
                 title="Manage connected signer wallet"
@@ -260,7 +260,7 @@ const Header: React.FC<HeaderProps> = ({
                 data-lpignore="true"
                 type="button"
               >
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                <div className="w-2 h-2 bg-sky-400 rounded-full animate-pulse" />
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                   <path d="M21 12V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M3 10H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -472,7 +472,7 @@ const Header: React.FC<HeaderProps> = ({
                   <button
                     onClick={handleSwitchSigner}
                     disabled={isConnectingWallet}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 px-4 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full bg-sky-600 hover:bg-sky-700 text-white py-2.5 px-4 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     data-1p-ignore="true"
                     data-lpignore="true"
                     type="button"

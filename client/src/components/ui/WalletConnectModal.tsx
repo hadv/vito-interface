@@ -138,7 +138,7 @@ const StatusText = styled.div<{ type: 'loading' | 'error' | 'success' }>`
     switch (props.type) {
       case 'loading': return '#3b82f6';
       case 'error': return '#ef4444';
-      case 'success': return '#10b981';
+      case 'success': return '#0ea5e9';
       default: return '#94a3b8';
     }
   }};
@@ -220,7 +220,7 @@ const CopyFeedback = styled.div`
   transform: translateX(-50%);
   background-color: #1e293b;
   border: 1px solid #334155;
-  color: #10b981;
+  color: #0ea5e9;
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 12px;

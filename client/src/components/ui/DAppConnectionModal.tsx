@@ -178,7 +178,7 @@ const DAppConnectionModal: React.FC<DAppConnectionModalProps> = ({
         <div className="p-6 space-y-6">
           {/* Pairing Code Input */}
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-green-400 text-left">
+            <label className="block text-sm font-medium text-sky-400 text-left">
               Pairing code
             </label>
             <div className="relative">
@@ -188,16 +188,16 @@ const DAppConnectionModal: React.FC<DAppConnectionModalProps> = ({
                 onChange={handleInputChange}
                 placeholder="wc:"
                 className={cn(
-                  'w-full h-14 px-4 py-4 pr-20 bg-gray-900 border-2 border-green-500 rounded-lg text-white placeholder-gray-500 text-base',
-                  'focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200',
-                  error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-green-500'
+                  'w-full h-14 px-4 py-4 pr-20 bg-gray-900 border-2 border-sky-500 rounded-lg text-white placeholder-gray-500 text-base',
+                  'focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all duration-200',
+                  error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-sky-500'
                 )}
                 disabled={isConnecting}
               />
               <button
                 onClick={handlePaste}
                 disabled={isConnecting}
-                className="absolute top-1/2 right-3 transform -translate-y-1/2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="absolute top-1/2 right-3 transform -translate-y-1/2 bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Paste
               </button>
@@ -224,7 +224,7 @@ const DAppConnectionModal: React.FC<DAppConnectionModalProps> = ({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-gray-300">Connected dApps ({connectedDApps.length})</p>
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" title="Active connections" />
+                <div className="w-2 h-2 bg-sky-400 rounded-full animate-pulse" title="Active connections" />
               </div>
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {connectedDApps.map((dapp) => (
