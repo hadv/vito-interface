@@ -113,14 +113,14 @@ const NetworkButton = styled.button.withConfig({
 
   &:focus {
     outline: none;
-    border-color: #12D66F;
-    box-shadow: 0 0 0 4px rgba(18, 214, 111, 0.3);
+    border-color: #0ea5e9;
+    box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.3);
   }
 
   ${props => props.isOpen && `
-    border-color: #12D66F;
-    background: rgba(18, 214, 111, 0.1);
-    box-shadow: 0 0 0 4px rgba(18, 214, 111, 0.3);
+    border-color: #0ea5e9;
+    background: rgba(14, 165, 233, 0.1);
+    box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.3);
   `}
 `;
 
@@ -160,7 +160,7 @@ const NetworkBadge = styled.div`
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #12D66F;
+  background: #0ea5e9;
 `;
 
 const ExistingSafeIndicator = styled.div`
@@ -178,7 +178,7 @@ const SafeIcon = styled.div`
   width: 40px;
   height: 40px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #12D66F 0%, #0EA5E9 100%);
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -236,7 +236,7 @@ const ButtonRow = styled.div`
 // Network options - consistent with header
 const NETWORKS = [
   { id: 'ethereum', name: 'Ethereum', color: '#627EEA' },
-  { id: 'sepolia', name: 'Sepolia', color: '#12D66F' },
+  { id: 'sepolia', name: 'Sepolia', color: '#0ea5e9' },
   { id: 'arbitrum', name: 'Arbitrum', color: '#28A0F0' },
 ];
 
@@ -300,7 +300,7 @@ const AddSafeAccountPage: React.FC<AddSafeAccountPageProps> = ({ onConnect, onBa
       <FormCard variant="elevated" padding="xl">
         <Header>
           <Title>Add existing Safe Account</Title>
-          <div style={{ width: '8rem', height: '4px', backgroundColor: '#12D66F', marginBottom: '2rem' }}></div>
+          <div style={{ width: '8rem', height: '4px', backgroundColor: '#0ea5e9', marginBottom: '2rem' }}></div>
           <StepText>Choose address and network</StepText>
           <StepDescription>
             Paste the address of the Safe Account you want to add and select the network.
@@ -379,7 +379,7 @@ const AddSafeAccountPage: React.FC<AddSafeAccountPageProps> = ({ onConnect, onBa
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#12D66F',
+                color: '#0ea5e9',
                 textDecoration: 'underline',
                 cursor: 'pointer',
                 padding: 0,
@@ -394,7 +394,7 @@ const AddSafeAccountPage: React.FC<AddSafeAccountPageProps> = ({ onConnect, onBa
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#12D66F',
+                color: '#0ea5e9',
                 textDecoration: 'underline',
                 cursor: 'pointer',
                 padding: 0,
