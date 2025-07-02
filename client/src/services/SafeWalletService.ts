@@ -1201,6 +1201,106 @@ export class SafeWalletService {
       throw new Error(`Failed to create transaction hash: ${error}`);
     }
   }
+
+  /**
+   * Get the current guard address for the Safe
+   */
+  async getCurrentGuard(): Promise<string> {
+    this.ensureInitialized();
+
+    if (!this.safeContract) {
+      throw new Error('Safe contract not initialized');
+    }
+
+    try {
+      const guardAddress = await this.safeContract.getGuard();
+      return guardAddress;
+    } catch (error) {
+      console.error('Error getting current guard:', error);
+      throw new Error(`Failed to get current guard: ${error}`);
+    }
+  }
+
+  /**
+   * Set a guard for the Safe wallet
+   */
+  async setGuard(guardAddress: string): Promise<SafeTransactionData & { txHash: string; signature: string }> {
+    this.ensureInitialized();
+
+    if (!this.signer) {
+      throw new Error('Signer not available. Please connect a wallet.');
+    }
+
+    if (!this.safeContract) {
+      throw new Error('Safe contract not initialized');
+    }
+
+    try {
+      // Get current nonce
+      const nonce = await this.getNonce();
+
+      // Import SafeGuardService to create the transaction
+      const { SafeGuardService } = await import('./SafeGuardService');
+      const safeTransaction = SafeGuardService.createSetGuardTransaction(
+        this.config!.safeAddress,
+        guardAddress,
+        nonce
+      );
+
+      // Create and sign the transaction
+      const transactionRequest: TransactionRequest = {
+        to: safeTransaction.to,
+        value: safeTransaction.value,
+        data: safeTransaction.data,
+        operation: safeTransaction.operation
+      };
+
+      return await this.createTransaction(transactionRequest);
+    } catch (error) {
+      console.error('Error setting guard:', error);
+      throw new Error(`Failed to set guard: ${error}`);
+    }
+  }
+
+  /**
+   * Remove the current guard from the Safe wallet
+   */
+  async removeGuard(): Promise<SafeTransactionData & { txHash: string; signature: string }> {
+    this.ensureInitialized();
+
+    if (!this.signer) {
+      throw new Error('Signer not available. Please connect a wallet.');
+    }
+
+    if (!this.safeContract) {
+      throw new Error('Safe contract not initialized');
+    }
+
+    try {
+      // Get current nonce
+      const nonce = await this.getNonce();
+
+      // Import SafeGuardService to create the transaction
+      const { SafeGuardService } = await import('./SafeGuardService');
+      const safeTransaction = SafeGuardService.createRemoveGuardTransaction(
+        this.config!.safeAddress,
+        nonce
+      );
+
+      // Create and sign the transaction
+      const transactionRequest: TransactionRequest = {
+        to: safeTransaction.to,
+        value: safeTransaction.value,
+        data: safeTransaction.data,
+        operation: safeTransaction.operation
+      };
+
+      return await this.createTransaction(transactionRequest);
+    } catch (error) {
+      console.error('Error removing guard:', error);
+      throw new Error(`Failed to remove guard: ${error}`);
+    }
+  }
 }
 
 // Singleton instance
