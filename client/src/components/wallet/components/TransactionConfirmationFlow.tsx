@@ -112,8 +112,8 @@ const StepItem = styled.div<{ status: TransactionStep['status']; isActive: boole
     switch (props.status) {
       case 'completed':
         return `
-          background: rgba(34, 197, 94, 0.1);
-          border: 1px solid rgba(34, 197, 94, 0.3);
+          background: rgba(14, 165, 233, 0.1);
+          border: 1px solid rgba(14, 165, 233, 0.3);
         `;
       case 'failed':
         return `
@@ -150,7 +150,7 @@ const StepIcon = styled.div<{ status: TransactionStep['status'] }>`
     switch (props.status) {
       case 'completed':
         return `
-          background: #22c55e;
+          background: #0ea5e9;
           color: white;
         `;
       case 'failed':
@@ -185,7 +185,7 @@ const StepTitle = styled.div<{ status: TransactionStep['status'] }>`
   ${props => {
     switch (props.status) {
       case 'completed':
-        return 'color: #22c55e;';
+        return 'color: #0ea5e9;';
       case 'failed':
         return 'color: #ef4444;';
       case 'active':

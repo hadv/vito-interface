@@ -17,7 +17,7 @@ interface EnhancedTransactionsPageProps {
 // Filter options for transaction types
 const FILTER_OPTIONS = [
   { value: 'all', label: 'All Activity', icon: '📋' },
-  { value: 'in', label: 'Received', icon: '↓', color: 'text-green-400' },
+  { value: 'in', label: 'Received', icon: '↓', color: 'text-sky-400' },
   { value: 'out', label: 'Sent', icon: '↑', color: 'text-red-400' },
   { value: 'contract', label: 'Contracts', icon: '⚙️', color: 'text-blue-400' },
   { value: 'failed', label: 'Failed', icon: '✗', color: 'text-red-400' }
@@ -142,7 +142,7 @@ const EnhancedTransactionsPage: React.FC<EnhancedTransactionsPageProps> = ({
         </div>
         
         <div className="bg-gray-800/50 rounded-lg p-4">
-          <div className="text-2xl font-bold text-green-400">
+          <div className="text-2xl font-bold text-sky-400">
             {formatEthAmount(overview.totalReceived)}
           </div>
           <div className="text-sm text-gray-400">ETH Received</div>

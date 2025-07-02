@@ -296,7 +296,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         <div className="flex justify-between items-center mb-2">
           <div className="text-base font-medium flex items-center text-yellow-400">
             <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
-              hasEnoughSignatures ? 'bg-green-400' : 'bg-yellow-400'
+              hasEnoughSignatures ? 'bg-sky-400' : 'bg-yellow-400'
             }`} />
             {hasEnoughSignatures ? 'Ready to Execute' : 'Pending Transaction'}
           </div>
@@ -337,7 +337,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         <div className="flex justify-between items-center mb-3">
           <div className={`inline-block text-xs px-2 py-1 rounded-full ${
             hasEnoughSignatures
-              ? 'text-green-400 bg-green-400/20'
+              ? 'text-sky-400 bg-sky-400/20'
               : 'text-yellow-400 bg-yellow-400/20'
           }`}>
             {hasEnoughSignatures ? 'Ready to Execute' : 'Pending in Pool'}
@@ -353,7 +353,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
             <div className="text-xs text-gray-400 mb-1">Signed by:</div>
             <div className="flex flex-wrap gap-1">
               {tx.signatures.map((sig, index) => (
-                <span key={index} className="text-xs px-2 py-1 bg-green-400/20 text-green-400 rounded">
+                <span key={index} className="text-xs px-2 py-1 bg-sky-400/20 text-sky-400 rounded">
                   {formatWalletAddress(sig.signer)}
                 </span>
               ))}
@@ -366,7 +366,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
           <button
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               hasEnoughSignatures
-                ? 'bg-green-600 hover:bg-green-700 text-white'
+                ? 'bg-sky-600 hover:bg-sky-700 text-white'
                 : 'bg-blue-600 hover:bg-blue-700 text-white'
             }`}
             onClick={(e) => {
@@ -395,7 +395,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
             <div className="text-gray-400">
               Function: {decodedTx ? (
                 decodedTx.type === 'ERC20_TRANSFER' ? (
-                  <span className="text-green-400">ERC-20 Transfer</span>
+                  <span className="text-sky-400">ERC-20 Transfer</span>
                 ) : decodedTx.description && decodedTx.description !== 'Contract Interaction' ? (
                   <span className="text-blue-400">{decodedTx.description}</span>
                 ) : decodedTx.details.methodName ? (

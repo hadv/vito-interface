@@ -425,7 +425,7 @@ const AddSafeAccountPage: React.FC<AddSafeAccountPageProps> = ({ onConnect, onBa
               size="lg"
               disabled={!isFormValid}
               onClick={handleSubmit}
-              className={isFormValid ? 'bg-green-500 border-green-500 hover:bg-green-600 hover:border-green-600' : ''}
+              className={isFormValid ? 'bg-sky-500 border-sky-500 hover:bg-sky-600 hover:border-sky-600' : ''}
             >
               Next
             </Button>
