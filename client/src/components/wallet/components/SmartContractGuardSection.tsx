@@ -12,6 +12,7 @@ import Input from '../../ui/Input';
 import AddressDisplay from './AddressDisplay';
 import WalletConnectionModal from '../../ui/WalletConnectionModal';
 import GuardConfirmationModal from './GuardConfirmationModal';
+import DelegateCallControlSection from './DelegateCallControlSection';
 
 const Container = styled.div`
   max-width: 800px;
@@ -366,8 +367,8 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
       <Section>
         <SectionTitle>Smart Contract Guard</SectionTitle>
         <Description>
-          Smart contract guards provide an additional layer of security by validating all transactions 
-          before execution. Guards can implement custom logic to restrict certain operations, validate 
+          Smart contract guards provide an additional layer of security by validating all transactions
+          before execution. Guards can implement custom logic to restrict certain operations, validate
           transaction parameters, or enforce business rules.
         </Description>
 
@@ -381,7 +382,7 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
               </StatusBadge>
             </InfoValue>
           </InfoItem>
-          
+
           {hasGuard && (
             <InfoItem>
               <InfoLabel>Guard Address</InfoLabel>
@@ -455,6 +456,9 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
           </Description>
         )}
       </Section>
+
+      {/* Delegate Call Control Section */}
+      <DelegateCallControlSection network={network} />
 
       {/* Wallet Connection Modal */}
       {showWalletModal && (
