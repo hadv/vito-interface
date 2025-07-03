@@ -115,13 +115,38 @@ Successfully updated the vito-interface to support the latest SafeTxPool contrac
 
 ## 📁 Files Modified/Created
 
-### **Modified Files**
-- `client/src/contracts/abis.ts` - Added delegate call ABI entries
-- `client/src/services/SafeTxPoolService.ts` - Extended with delegate call methods
-- `client/src/components/wallet/components/SmartContractGuardSection.tsx` - Integrated new component
+### **Main Repository Files**
 
-### **New Files**
-- `client/src/components/wallet/components/DelegateCallControlSection.tsx` - Main delegate call UI component
+#### **Modified Files**
+- `client/src/contracts/abis.ts` - Added delegate call ABI entries (79 additions)
+- `client/src/services/SafeTxPoolService.ts` - Extended with delegate call methods (95 additions)
+- `client/src/components/wallet/components/SmartContractGuardSection.tsx` - Integrated new component (4 additions)
+
+#### **New Files**
+- `client/src/components/wallet/components/DelegateCallControlSection.tsx` - Main delegate call UI component (482 lines)
+- `SAFE_TX_POOL_DELEGATE_CALL_IMPLEMENTATION.md` - Comprehensive documentation (185 lines)
+
+### **Submodule Files (vito-contracts)**
+
+#### **Modified Files**
+- `src/SafeTxPool.sol` - Added delegate call control functionality with:
+  - `setDelegateCallEnabled()` function
+  - `addDelegateCallTarget()` function
+  - `removeDelegateCallTarget()` function
+  - `isDelegateCallEnabled()` view function
+  - `isDelegateCallTargetAllowed()` view function
+  - Delegate call validation in guard logic
+  - Events: `DelegateCallToggled`, `DelegateCallTargetAdded`, `DelegateCallTargetRemoved`
+
+#### **New Files**
+- `test/SafeTxPoolDelegateCallGuard.t.sol` - Comprehensive test suite for delegate call functionality
+- `script/DelegateCallGuardExample.s.sol` - Example script demonstrating delegate call usage
+- `DELEGATE_CALL_GUARD.md` - Detailed documentation for delegate call guard functionality
+
+### **Total Changes**
+- **Main Repository**: 6 files changed (+846 -1)
+- **Submodule**: 4 files changed (extensive contract and test additions)
+- **Combined**: 10 files with comprehensive delegate call implementation
 
 ## ✅ Testing & Validation
 
