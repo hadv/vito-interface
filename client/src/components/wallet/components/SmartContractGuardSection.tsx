@@ -12,6 +12,7 @@ import Input from '../../ui/Input';
 import AddressDisplay from './AddressDisplay';
 import WalletConnectionModal from '../../ui/WalletConnectionModal';
 import GuardConfirmationModal from './GuardConfirmationModal';
+import DelegateCallControlSection from './DelegateCallControlSection';
 
 const Container = styled.div`
   max-width: 800px;
@@ -455,6 +456,9 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
           </Description>
         )}
       </Section>
+
+      {/* Delegate Call Control Section */}
+      <DelegateCallControlSection network={network} />
 
       {/* Wallet Connection Modal */}
       {showWalletModal && (
