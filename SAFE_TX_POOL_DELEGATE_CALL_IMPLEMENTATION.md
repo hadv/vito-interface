@@ -11,10 +11,11 @@ Successfully updated the vito-interface to support the latest SafeTxPool contrac
 - ✅ Includes enhanced guard test coverage and event emission bug fixes
 - ✅ Analyzed new SafeTxPool contract functions for delegate call control
 
-### 2. **Contract Configuration**
-- ✅ Set default SafeTxPool address for Sepolia network (`0x7a3d07cABd656aEc614831B6eFAbd014697c9E19`)
-- ✅ Updated configuration files and documentation
-- ✅ Enables immediate functionality without additional setup
+### 2. **Smart Contract Guard Integration**
+- ✅ Auto-populate guard address with SafeTxPool from environment configuration
+- ✅ Visual indicator when using SafeTxPool as guard address
+- ✅ Streamlined setup process for users
+- ✅ Maintains flexibility for custom guard contracts
 
 ### 3. **Contract ABI Updates** (`client/src/contracts/abis.ts`)
 - ✅ Added new delegate call control functions to `SAFE_TX_POOL_ABI`:
