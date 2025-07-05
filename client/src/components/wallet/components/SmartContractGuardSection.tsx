@@ -7,6 +7,7 @@ import { SafeGuardService } from '../../../services/SafeGuardService';
 import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
 import { useToast } from '../../../hooks/useToast';
 import { ErrorHandler } from '../../../utils/errorHandling';
+import { getSafeTxPoolAddress } from '../../../contracts/abis';
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
 import AddressDisplay from './AddressDisplay';
@@ -124,6 +125,19 @@ const LoadingState = styled.div`
   font-size: ${theme.typography.fontSize.sm};
 `;
 
+const DefaultAddressIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing[2]};
+  margin-top: ${theme.spacing[2]};
+  padding: ${theme.spacing[2]} ${theme.spacing[3]};
+  background: ${theme.colors.primary[500]}20;
+  border: 1px solid ${theme.colors.primary[500]}30;
+  border-radius: ${theme.borderRadius.md};
+  font-size: ${theme.typography.fontSize.xs};
+  color: ${theme.colors.primary[400]};
+`;
+
 interface SmartContractGuardSectionProps {
   network: string;
 }
@@ -191,6 +205,26 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
   useEffect(() => {
     loadCurrentGuard();
   }, [connectionState.safeAddress, loadCurrentGuard]);
+
+  // Set default guard address to SafeTxPool address when network changes
+  useEffect(() => {
+    if (network && !newGuardAddress) {
+      const safeTxPoolAddress = getSafeTxPoolAddress(network);
+      if (safeTxPoolAddress) {
+        setNewGuardAddress(safeTxPoolAddress);
+      }
+    }
+  }, [network, newGuardAddress]);
+
+  // Set default guard address to SafeTxPool address when network changes
+  useEffect(() => {
+    if (network && !newGuardAddress) {
+      const safeTxPoolAddress = getSafeTxPoolAddress(network);
+      if (safeTxPoolAddress) {
+        setNewGuardAddress(safeTxPoolAddress);
+      }
+    }
+  }, [network, newGuardAddress]);
 
   const validateAddress = async (address: string): Promise<string> => {
     if (!address.trim()) {
@@ -419,9 +453,22 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
             value={newGuardAddress}
             onChange={(e) => handleAddressChange(e.target.value)}
             error={addressError}
-            helperText={isValidating ? "Validating contract..." : "Enter the address of a smart contract that implements the Guard interface"}
+            helperText={
+              isValidating
+                ? "Validating contract..."
+                : getSafeTxPoolAddress(network)
+                  ? "Defaults to SafeTxPool address from configuration. Enter a different address to use a custom guard contract."
+                  : "Enter the address of a smart contract that implements the Guard interface"
+            }
             fullWidth
           />
+
+          {/* Show indicator when using SafeTxPool address */}
+          {newGuardAddress && newGuardAddress === getSafeTxPoolAddress(network) && (
+            <DefaultAddressIndicator>
+              ℹ️ Using SafeTxPool address from {network} network configuration
+            </DefaultAddressIndicator>
+          )}
 
           <FormRow>
             <Button

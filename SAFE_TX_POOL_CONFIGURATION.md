@@ -19,7 +19,7 @@ The Safe TX Pool is a smart contract that manages transaction proposals and sign
    ```bash
    # Safe TX Pool Contract Addresses
    REACT_APP_SAFE_TX_POOL_ETHEREUM=0x1234567890123456789012345678901234567890
-   REACT_APP_SAFE_TX_POOL_SEPOLIA=0x7a3d07cABd656aEc614831B6eFAbd014697c9E19
+   REACT_APP_SAFE_TX_POOL_SEPOLIA=0x2345678901234567890123456789012345678901
    REACT_APP_SAFE_TX_POOL_ARBITRUM=0x3456789012345678901234567890123456789012
    ```
 
@@ -35,7 +35,7 @@ If you prefer to hardcode the addresses, edit `client/src/contracts/abis.ts`:
 ```typescript
 export const SAFE_TX_POOL_ADDRESSES = {
   ethereum: '0x1234567890123456789012345678901234567890', // Your Ethereum mainnet address
-  sepolia: '0x7a3d07cABd656aEc614831B6eFAbd014697c9E19',   // Sepolia testnet address (default)
+  sepolia: '0x2345678901234567890123456789012345678901',   // Your Sepolia testnet address
   arbitrum: '0x3456789012345678901234567890123456789012'   // Your Arbitrum address
 };
 ```
@@ -176,3 +176,35 @@ To add support for additional networks:
 3. **Update the UI** to include the new network in the network selector
 
 4. **Deploy the contract** to the new network and update the configuration
+
+## Smart Contract Guard Integration
+
+When you configure a SafeTxPool address for a network, the Security tab automatically integrates with it:
+
+### Automatic Default Guard Address
+
+- **Pre-filled Address**: The Smart Contract Guard configuration automatically uses the SafeTxPool address as the default
+- **Visual Indicator**: Shows when the SafeTxPool address is being used as the guard
+- **Easy Override**: Users can still change to a different guard contract if needed
+
+### Usage Flow
+
+1. **Configure SafeTxPool**: Set the contract address in environment variables
+2. **Navigate to Security**: Go to Settings → Security tab
+3. **Set Guard**: The SafeTxPool address appears as the default guard address
+4. **One-Click Setup**: Click "Set Guard" to enable SafeTxPool as your Safe's guard
+
+### Benefits
+
+- **Streamlined Setup**: No need to manually enter the SafeTxPool address
+- **Reduced Errors**: Eliminates copy-paste mistakes
+- **Clear Indication**: Visual feedback when using the configured SafeTxPool
+- **Flexibility**: Still allows custom guard contracts when needed
+
+## Best Practices
+
+1. **Use Environment Variables**: Keep contract addresses in environment variables for easy deployment management
+2. **Test on Testnets**: Always test your configuration on testnets before deploying to mainnet
+3. **Verify Contracts**: Ensure all deployed contracts are verified on block explorers
+4. **Monitor Gas Costs**: Different networks have different gas costs - monitor and optimize accordingly
+5. **Backup Configuration**: Keep backup copies of your environment configuration files
