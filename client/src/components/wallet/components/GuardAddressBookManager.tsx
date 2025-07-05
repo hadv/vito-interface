@@ -124,6 +124,9 @@ const GuardAddressBookManager: React.FC<GuardAddressBookManagerProps> = ({ safeA
       setError('');
 
       const safeTxPoolAddress = getSafeTxPoolAddress(network);
+      console.log(`🔍 Debug: SafeTxPool address for ${network}:`, safeTxPoolAddress);
+      console.log(`🔍 Debug: Loading address book for Safe:`, safeAddress);
+
       if (!safeTxPoolAddress) {
         setError(`SafeTxPool not configured for ${network} network`);
         return;
@@ -139,6 +142,7 @@ const GuardAddressBookManager: React.FC<GuardAddressBookManagerProps> = ({ safeA
       // SafeTxPoolService initializes automatically with the provider
 
       const entries = await safeTxPoolService.getAddressBookEntries(safeAddress);
+      console.log(`🔍 Debug: Address book entries returned:`, entries);
       setAddressBookEntries(entries);
 
     } catch (err: any) {
