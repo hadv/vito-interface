@@ -50,11 +50,12 @@ function _getEIP712Hash(SafeTx storage safeTx) internal view returns (bytes32) {
 
 ## 📋 **Implementation Status**
 
-### **Pull Request Created**
+### **Pull Request Merged**
 - **Repository**: `hadv/vito-contracts`
 - **PR Number**: #23
 - **Branch**: `fix/eip712-signature-recovery`
-- **Status**: Open, awaiting review
+- **Status**: ✅ **MERGED**
+- **Commit**: `b71595fca3c0f4de51d8567ee0aee0caba68180b`
 - **URL**: https://github.com/hadv/vito-contracts/pull/23
 
 ### **Changes Included**
@@ -67,10 +68,10 @@ function _getEIP712Hash(SafeTx storage safeTx) internal view returns (bytes32) {
 
 ## 🚀 **Deployment Steps**
 
-### **1. Review and Merge PR**
+### **1. ✅ PR Merged**
 ```bash
-# Review the PR at: https://github.com/hadv/vito-contracts/pull/23
-# Merge when approved
+# ✅ COMPLETED: PR #23 has been merged into main branch
+# Commit: b71595fca3c0f4de51d8567ee0aee0caba68180b
 ```
 
 ### **2. Deploy Updated Contract**
