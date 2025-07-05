@@ -14,6 +14,8 @@ import AddressDisplay from './AddressDisplay';
 import WalletConnectionModal from '../../ui/WalletConnectionModal';
 import GuardConfirmationModal from './GuardConfirmationModal';
 import DelegateCallControlSection from './DelegateCallControlSection';
+import SafeGuardDiagnostic from './SafeGuardDiagnostic';
+import GuardAddressBookManager from './GuardAddressBookManager';
 
 const Container = styled.div`
   max-width: 800px;
@@ -503,6 +505,22 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
           </Description>
         )}
       </Section>
+
+      {/* Safe Guard Diagnostic */}
+      {connectionState.safeAddress && (
+        <SafeGuardDiagnostic
+          safeAddress={connectionState.safeAddress}
+          network={network}
+        />
+      )}
+
+      {/* Guard Address Book Manager */}
+      {connectionState.safeAddress && hasGuard && (
+        <GuardAddressBookManager
+          safeAddress={connectionState.safeAddress}
+          network={network}
+        />
+      )}
 
       {/* Delegate Call Control Section */}
       <DelegateCallControlSection network={network} />

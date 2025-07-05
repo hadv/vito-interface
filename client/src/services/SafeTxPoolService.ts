@@ -598,6 +598,34 @@ export class SafeTxPoolService {
   }
 
   /**
+   * Create transaction data for adding an address book entry
+   */
+  createAddAddressBookEntryTxData(safe: string, walletAddress: string, name: string): string {
+    if (!walletAddress || walletAddress === ethers.constants.AddressZero) {
+      throw new Error('Invalid wallet address');
+    }
+
+    if (!name || name.trim().length === 0) {
+      throw new Error('Name is required');
+    }
+
+    // Create contract interface
+    const contractInterface = new ethers.utils.Interface(SAFE_TX_POOL_ABI);
+
+    // Convert string name to bytes32
+    const nameBytes32 = ethers.utils.formatBytes32String(name.trim().substring(0, 31));
+
+    // Encode function call
+    const data = contractInterface.encodeFunctionData('addAddressBookEntry', [
+      safe,
+      walletAddress,
+      nameBytes32
+    ]);
+
+    return data;
+  }
+
+  /**
    * Listen for address book events
    */
   onAddressBookEntryAdded(callback: (safe: string, walletAddress: string, name: string) => void): void {
