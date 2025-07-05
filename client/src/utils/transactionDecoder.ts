@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { TokenService } from '../services/TokenService';
+import { getSafeTxPoolAddress } from '../contracts/abis';
 
 export interface DecodedTransactionData {
   type: 'ETH_TRANSFER' | 'ERC20_TRANSFER' | 'CONTRACT_CALL' | 'UNKNOWN';
@@ -653,9 +654,17 @@ export class TransactionDecoder {
       return contractInfo.name;
     }
 
+    // Check if this is a SafeTxPool address from configuration
+    const networks = ['ethereum', 'sepolia', 'arbitrum'];
+    for (const network of networks) {
+      const safeTxPoolAddress = getSafeTxPoolAddress(network);
+      if (safeTxPoolAddress && address.toLowerCase() === safeTxPoolAddress.toLowerCase()) {
+        return 'SafeTxPool';
+      }
+    }
+
     // Fallback to generic names
     const knownContracts: { [key: string]: string } = {
-      '0x1F738438AF91442fFa472d4Bd40e13FE0A264db8': 'SafeTxPool',
       // Add more known contracts here
     };
 
