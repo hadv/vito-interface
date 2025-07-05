@@ -197,10 +197,6 @@ const SafeGuardDiagnostic: React.FC<SafeGuardDiagnosticProps> = ({ safeAddress, 
 
   const getGuardStatus = () => {
     if (!currentGuard || currentGuard === ethers.constants.AddressZero) {
-      // Check if this Safe supports guards at all
-      if (error && error.includes('does not support getGuard')) {
-        return { status: 'warning' as const, text: 'Safe Version Does Not Support Guards' };
-      }
       return { status: 'error' as const, text: 'No Guard Set' };
     }
 
@@ -303,31 +299,19 @@ const SafeGuardDiagnostic: React.FC<SafeGuardDiagnosticProps> = ({ safeAddress, 
       {!isGuardCorrect && safeTxPoolAddress && (
         <ActionSection>
           <ActionDescription>
-            {error && error.includes('does not support getGuard') ? (
-              <>
-                <strong>Safe Version Issue:</strong> Your Safe contract is an older version that doesn't support
-                guard contracts. Guard functionality requires Safe contracts v1.3.0 or later. You may need to
-                upgrade your Safe to use SafeTxPool guard features.
-              </>
-            ) : (
-              <>
-                <strong>Issue Detected:</strong> Your Safe doesn't have the SafeTxPool set as its guard contract.
-                This is why address book transactions are failing. Click the button below to set the SafeTxPool
-                as your Safe's guard contract.
-              </>
-            )}
+            <strong>Issue Detected:</strong> Your Safe doesn't have the SafeTxPool set as its guard contract.
+            This is why address book transactions are failing. Click the button below to set the SafeTxPool
+            as your Safe's guard contract.
           </ActionDescription>
 
-          {!(error && error.includes('does not support getGuard')) && (
-            <Button
-              variant="primary"
-              onClick={handleSetSafeTxPoolAsGuard}
-              loading={isSettingGuard}
-              disabled={isSettingGuard}
-            >
-              Set SafeTxPool as Guard
-            </Button>
-          )}
+          <Button
+            variant="primary"
+            onClick={handleSetSafeTxPoolAsGuard}
+            loading={isSettingGuard}
+            disabled={isSettingGuard}
+          >
+            Set SafeTxPool as Guard
+          </Button>
         </ActionSection>
       )}
 
