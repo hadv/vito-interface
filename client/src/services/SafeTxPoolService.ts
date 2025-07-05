@@ -158,6 +158,10 @@ export class SafeTxPoolService {
     }
 
     try {
+      // Verify signer is properly connected
+      const signerAddress = await this.signer.getAddress();
+      console.log('SafeTxPoolService: Using signer address:', signerAddress);
+
       // Get chainId if not provided
       let networkChainId = chainId;
       if (!networkChainId && this.provider) {
@@ -168,10 +172,23 @@ export class SafeTxPoolService {
         throw new Error('Unable to determine chain ID for EIP-712 hash generation');
       }
 
+      console.log('SafeTxPoolService: Using chain ID:', networkChainId);
+
       // Generate EIP-712 transaction hash
       const txHash = this.generateTxHash(params, networkChainId);
+      console.log('SafeTxPoolService: Generated transaction hash:', txHash);
 
       // Call the proposeTx function on the contract
+      console.log('SafeTxPoolService: Calling proposeTx with params:', {
+        txHash,
+        safe: params.safe,
+        to: params.to,
+        value: params.value,
+        data: params.data,
+        operation: params.operation,
+        nonce: params.nonce
+      });
+
       const tx = await this.contract.proposeTx(
         txHash,
         params.safe,
@@ -182,13 +199,28 @@ export class SafeTxPoolService {
         params.nonce
       );
 
+      console.log('SafeTxPoolService: Transaction submitted:', tx.hash);
+
       // Wait for transaction confirmation
       await tx.wait();
+      console.log('SafeTxPoolService: Transaction confirmed');
 
       return txHash;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error proposing transaction:', error);
-      throw new Error(`Failed to propose transaction: ${error}`);
+
+      // Provide more specific error messages
+      if (error.code === 'UNSUPPORTED_OPERATION' && error.operation === 'getAddress') {
+        throw new Error('Wallet signer not properly connected. Please ensure your wallet is connected and unlocked.');
+      } else if (error.code === 'NETWORK_ERROR') {
+        throw new Error('Network connection error. Please check your internet connection and try again.');
+      } else if (error.code === 'INSUFFICIENT_FUNDS') {
+        throw new Error('Insufficient funds to pay for transaction gas fees.');
+      } else if (error.reason) {
+        throw new Error(`Transaction failed: ${error.reason}`);
+      } else {
+        throw new Error(`Failed to propose transaction: ${error.message || error}`);
+      }
     }
   }
 
