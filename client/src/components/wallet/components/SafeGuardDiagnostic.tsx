@@ -122,7 +122,7 @@ const SafeGuardDiagnostic: React.FC<SafeGuardDiagnosticProps> = ({ safeAddress, 
 
   useEffect(() => {
     loadGuardStatus();
-  }, [safeAddress, network]);
+  }, [safeAddress, network]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadGuardStatus = async () => {
     try {

@@ -107,7 +107,6 @@ const GuardAddressBookManager: React.FC<GuardAddressBookManagerProps> = ({ safeA
   const {
     entries: addressBookEntries,
     loading: isLoading,
-    error,
     refresh
   } = useAddressBook({
     network,
