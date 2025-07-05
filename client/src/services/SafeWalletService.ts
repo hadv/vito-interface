@@ -1220,11 +1220,20 @@ export class SafeWalletService {
     }
 
     try {
+      // First, check if the Safe contract supports the getGuard function
       const guardAddress = await this.safeContract.getGuard();
       return guardAddress;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting current guard:', error);
-      throw new Error(`Failed to get current guard: ${error}`);
+
+      // Check if this is a function not found error (older Safe version)
+      if (error.code === 'CALL_EXCEPTION' && error.data === '0x') {
+        console.warn('Safe contract does not support getGuard() function - likely an older version');
+        // Return zero address for older Safe contracts that don't support guards
+        return '0x0000000000000000000000000000000000000000';
+      }
+
+      throw new Error(`Failed to get current guard: ${error.message || error}`);
     }
   }
 
