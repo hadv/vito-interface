@@ -504,7 +504,7 @@ export const TOKEN_ADDRESSES = {
 // These addresses should be updated with the actual deployed contract addresses
 export const SAFE_TX_POOL_ADDRESSES = {
   ethereum: process.env.REACT_APP_SAFE_TX_POOL_ETHEREUM || '0x0000000000000000000000000000000000000000',
-  sepolia: process.env.REACT_APP_SAFE_TX_POOL_SEPOLIA || '0x0000000000000000000000000000000000000000',
+  sepolia: process.env.REACT_APP_SAFE_TX_POOL_SEPOLIA || '0x7a3d07cABd656aEc614831B6eFAbd014697c9E19',
   arbitrum: process.env.REACT_APP_SAFE_TX_POOL_ARBITRUM || '0x0000000000000000000000000000000000000000'
 };
 

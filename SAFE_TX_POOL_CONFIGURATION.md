@@ -19,7 +19,7 @@ The Safe TX Pool is a smart contract that manages transaction proposals and sign
    ```bash
    # Safe TX Pool Contract Addresses
    REACT_APP_SAFE_TX_POOL_ETHEREUM=0x1234567890123456789012345678901234567890
-   REACT_APP_SAFE_TX_POOL_SEPOLIA=0x2345678901234567890123456789012345678901
+   REACT_APP_SAFE_TX_POOL_SEPOLIA=0x7a3d07cABd656aEc614831B6eFAbd014697c9E19
    REACT_APP_SAFE_TX_POOL_ARBITRUM=0x3456789012345678901234567890123456789012
    ```
 
@@ -35,7 +35,7 @@ If you prefer to hardcode the addresses, edit `client/src/contracts/abis.ts`:
 ```typescript
 export const SAFE_TX_POOL_ADDRESSES = {
   ethereum: '0x1234567890123456789012345678901234567890', // Your Ethereum mainnet address
-  sepolia: '0x2345678901234567890123456789012345678901',   // Your Sepolia testnet address
+  sepolia: '0x7a3d07cABd656aEc614831B6eFAbd014697c9E19',   // Sepolia testnet address (default)
   arbitrum: '0x3456789012345678901234567890123456789012'   // Your Arbitrum address
 };
 ```
