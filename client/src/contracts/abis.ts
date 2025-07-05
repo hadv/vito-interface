@@ -402,13 +402,6 @@ export const SAFE_ABI = [
     "outputs": [],
     "stateMutability": "nonpayable"
   },
-  {
-    "type": "function",
-    "name": "getGuard",
-    "inputs": [],
-    "outputs": [{"name": "", "type": "address"}],
-    "stateMutability": "view"
-  },
   // Guard events
   {
     "type": "event",
