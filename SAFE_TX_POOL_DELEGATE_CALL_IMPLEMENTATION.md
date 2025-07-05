@@ -11,7 +11,12 @@ Successfully updated the vito-interface to support the latest SafeTxPool contrac
 - ✅ Includes enhanced guard test coverage and event emission bug fixes
 - ✅ Analyzed new SafeTxPool contract functions for delegate call control
 
-### 2. **Contract ABI Updates** (`client/src/contracts/abis.ts`)
+### 2. **Contract Configuration**
+- ✅ Set default SafeTxPool address for Sepolia network (`0x7a3d07cABd656aEc614831B6eFAbd014697c9E19`)
+- ✅ Updated configuration files and documentation
+- ✅ Enables immediate functionality without additional setup
+
+### 3. **Contract ABI Updates** (`client/src/contracts/abis.ts`)
 - ✅ Added new delegate call control functions to `SAFE_TX_POOL_ABI`:
   - `setDelegateCallEnabled(safe, enabled)` - Enable/disable delegate calls
   - `addDelegateCallTarget(safe, target)` - Add allowed delegate call target
@@ -24,7 +29,7 @@ Successfully updated the vito-interface to support the latest SafeTxPool contrac
   - `DelegateCallTargetAdded` - Emitted when target is added
   - `DelegateCallTargetRemoved` - Emitted when target is removed
 
-### 3. **Service Layer Extensions** (`client/src/services/SafeTxPoolService.ts`)
+### 4. **Service Layer Extensions** (`client/src/services/SafeTxPoolService.ts`)
 - ✅ Extended SafeTxPoolService with new methods:
   - `setDelegateCallEnabled(safe: string, enabled: boolean)` - Toggle delegate calls
   - `addDelegateCallTarget(safe: string, target: string)` - Add allowed target
@@ -32,7 +37,7 @@ Successfully updated the vito-interface to support the latest SafeTxPool contrac
   - `isDelegateCallEnabled(safe: string)` - Check enabled status
   - `isDelegateCallTargetAllowed(safe: string, target: string)` - Check target permission
 
-### 4. **New UI Component** (`client/src/components/wallet/components/DelegateCallControlSection.tsx`)
+### 5. **New UI Component** (`client/src/components/wallet/components/DelegateCallControlSection.tsx`)
 - ✅ Created comprehensive delegate call control interface with:
   - **Toggle Switch**: Enable/disable delegate calls for the Safe
   - **Status Display**: Visual indicator of current delegate call status
@@ -41,7 +46,7 @@ Successfully updated the vito-interface to support the latest SafeTxPool contrac
   - **Wallet Integration**: Seamless connection with wallet services
   - **Error Handling**: Comprehensive error handling and user feedback
 
-### 5. **Security Tab Integration** (`client/src/components/wallet/components/SmartContractGuardSection.tsx`)
+### 6. **Security Tab Integration** (`client/src/components/wallet/components/SmartContractGuardSection.tsx`)
 - ✅ Integrated DelegateCallControlSection into existing Security tab
 - ✅ Maintains consistent UI/UX with existing guard configuration
 - ✅ Proper component organization and styling
