@@ -268,13 +268,20 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
     try {
       console.log(`Creating transaction for network: ${currentNetwork}`);
 
-      // Now get the signer only when we need to submit the transaction
-      if (!window.ethereum) {
-        throw new Error('No wallet connection available');
+      // Use wallet connection service to get provider and signer
+      const provider = walletConnectionService.getProvider();
+      if (!provider) {
+        throw new Error('No wallet provider available. Please connect your wallet first.');
       }
 
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
+      const signer = walletConnectionService.getSigner();
+      if (!signer) {
+        throw new Error('No wallet signer available. Please connect your wallet first.');
+      }
+
+      // Verify signer can get address
+      const signerAddress = await signer.getAddress();
+      console.log('Signer address:', signerAddress);
 
       // Update services with signer for transaction submission
       addressBookService.initialize(provider, signer);

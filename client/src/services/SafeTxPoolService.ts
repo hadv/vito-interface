@@ -158,6 +158,10 @@ export class SafeTxPoolService {
     }
 
     try {
+      // Verify signer is properly connected
+      const signerAddress = await this.signer.getAddress();
+      console.log('SafeTxPoolService: Using signer address:', signerAddress);
+
       // Get chainId if not provided
       let networkChainId = chainId;
       if (!networkChainId && this.provider) {
@@ -168,10 +172,23 @@ export class SafeTxPoolService {
         throw new Error('Unable to determine chain ID for EIP-712 hash generation');
       }
 
+      console.log('SafeTxPoolService: Using chain ID:', networkChainId);
+
       // Generate EIP-712 transaction hash
       const txHash = this.generateTxHash(params, networkChainId);
+      console.log('SafeTxPoolService: Generated transaction hash:', txHash);
 
       // Call the proposeTx function on the contract
+      console.log('SafeTxPoolService: Calling proposeTx with params:', {
+        txHash,
+        safe: params.safe,
+        to: params.to,
+        value: params.value,
+        data: params.data,
+        operation: params.operation,
+        nonce: params.nonce
+      });
+
       const tx = await this.contract.proposeTx(
         txHash,
         params.safe,
@@ -182,13 +199,28 @@ export class SafeTxPoolService {
         params.nonce
       );
 
+      console.log('SafeTxPoolService: Transaction submitted:', tx.hash);
+
       // Wait for transaction confirmation
       await tx.wait();
+      console.log('SafeTxPoolService: Transaction confirmed');
 
       return txHash;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error proposing transaction:', error);
-      throw new Error(`Failed to propose transaction: ${error}`);
+
+      // Provide more specific error messages
+      if (error.code === 'UNSUPPORTED_OPERATION' && error.operation === 'getAddress') {
+        throw new Error('Wallet signer not properly connected. Please ensure your wallet is connected and unlocked.');
+      } else if (error.code === 'NETWORK_ERROR') {
+        throw new Error('Network connection error. Please check your internet connection and try again.');
+      } else if (error.code === 'INSUFFICIENT_FUNDS') {
+        throw new Error('Insufficient funds to pay for transaction gas fees.');
+      } else if (error.reason) {
+        throw new Error(`Transaction failed: ${error.reason}`);
+      } else {
+        throw new Error(`Failed to propose transaction: ${error.message || error}`);
+      }
     }
   }
 
@@ -350,6 +382,101 @@ export class SafeTxPoolService {
   }
 
   /**
+   * Enable or disable delegate calls for a Safe
+   */
+  async setDelegateCallEnabled(safe: string, enabled: boolean): Promise<ethers.ContractTransaction> {
+    if (!this.contract) {
+      throw new Error('Contract not initialized');
+    }
+
+    if (!this.signer) {
+      throw new Error('Signer required for write operations');
+    }
+
+    try {
+      const tx = await this.contract.setDelegateCallEnabled(safe, enabled);
+      return tx;
+    } catch (error) {
+      console.error('Error setting delegate call enabled:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add an allowed delegate call target for a Safe
+   */
+  async addDelegateCallTarget(safe: string, target: string): Promise<ethers.ContractTransaction> {
+    if (!this.contract) {
+      throw new Error('Contract not initialized');
+    }
+
+    if (!this.signer) {
+      throw new Error('Signer required for write operations');
+    }
+
+    try {
+      const tx = await this.contract.addDelegateCallTarget(safe, target);
+      return tx;
+    } catch (error) {
+      console.error('Error adding delegate call target:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove an allowed delegate call target for a Safe
+   */
+  async removeDelegateCallTarget(safe: string, target: string): Promise<ethers.ContractTransaction> {
+    if (!this.contract) {
+      throw new Error('Contract not initialized');
+    }
+
+    if (!this.signer) {
+      throw new Error('Signer required for write operations');
+    }
+
+    try {
+      const tx = await this.contract.removeDelegateCallTarget(safe, target);
+      return tx;
+    } catch (error) {
+      console.error('Error removing delegate call target:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if delegate calls are enabled for a Safe
+   */
+  async isDelegateCallEnabled(safe: string): Promise<boolean> {
+    if (!this.contract) {
+      throw new Error('Contract not initialized');
+    }
+
+    try {
+      return await this.contract.isDelegateCallEnabled(safe);
+    } catch (error) {
+      console.error('Error checking delegate call enabled:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if a target is allowed for delegate calls from a Safe
+   */
+  async isDelegateCallTargetAllowed(safe: string, target: string): Promise<boolean> {
+    if (!this.contract) {
+      throw new Error('Contract not initialized');
+    }
+
+    try {
+      return await this.contract.isDelegateCallTargetAllowed(safe, target);
+    } catch (error) {
+      console.error('Error checking delegate call target allowed:', error);
+      return false;
+    }
+  }
+
+  /**
    * Delete a proposed transaction
    */
   async deleteTx(txHash: string): Promise<void> {
@@ -468,6 +595,34 @@ export class SafeTxPoolService {
       console.error('Error getting address book entries:', error);
       return [];
     }
+  }
+
+  /**
+   * Create transaction data for adding an address book entry
+   */
+  createAddAddressBookEntryTxData(safe: string, walletAddress: string, name: string): string {
+    if (!walletAddress || walletAddress === ethers.constants.AddressZero) {
+      throw new Error('Invalid wallet address');
+    }
+
+    if (!name || name.trim().length === 0) {
+      throw new Error('Name is required');
+    }
+
+    // Create contract interface
+    const contractInterface = new ethers.utils.Interface(SAFE_TX_POOL_ABI);
+
+    // Convert string name to bytes32
+    const nameBytes32 = ethers.utils.formatBytes32String(name.trim().substring(0, 31));
+
+    // Encode function call
+    const data = contractInterface.encodeFunctionData('addAddressBookEntry', [
+      safe,
+      walletAddress,
+      nameBytes32
+    ]);
+
+    return data;
   }
 
   /**

@@ -1215,16 +1215,29 @@ export class SafeWalletService {
   async getCurrentGuard(): Promise<string> {
     this.ensureInitialized();
 
-    if (!this.safeContract) {
-      throw new Error('Safe contract not initialized');
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+
+    if (!this.config) {
+      throw new Error('Safe configuration not initialized');
     }
 
     try {
-      const guardAddress = await this.safeContract.getGuard();
+      // Safe contracts store the guard address in a specific storage slot
+      // keccak256("guard_manager.guard.address") = 0x4a204f620c8c5ccdca3fd54d003badd85ba500436a431f0cbda4f558c93c34c8
+      const GUARD_STORAGE_SLOT = '0x4a204f620c8c5ccdca3fd54d003badd85ba500436a431f0cbda4f558c93c34c8';
+
+      const guardData = await this.provider.getStorageAt(this.config.safeAddress, GUARD_STORAGE_SLOT);
+
+      // Convert the storage data to an address
+      // Storage returns 32 bytes, but address is only 20 bytes (last 20 bytes)
+      const guardAddress = ethers.utils.getAddress('0x' + guardData.slice(-40));
+
       return guardAddress;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting current guard:', error);
-      throw new Error(`Failed to get current guard: ${error}`);
+      throw new Error(`Failed to get current guard: ${error.message || error}`);
     }
   }
 

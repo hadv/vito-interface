@@ -190,6 +190,85 @@ export const SAFE_TX_POOL_ABI = [
       {"name": "safe", "type": "address", "indexed": true},
       {"name": "walletAddress", "type": "address", "indexed": true}
     ]
+  },
+  // Delegate Call Control functions
+  {
+    "type": "function",
+    "name": "setDelegateCallEnabled",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "enabled", "type": "bool"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "addDelegateCallTarget",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "target", "type": "address"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "removeDelegateCallTarget",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "target", "type": "address"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "isDelegateCallEnabled",
+    "inputs": [
+      {"name": "safe", "type": "address"}
+    ],
+    "outputs": [
+      {"name": "enabled", "type": "bool"}
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isDelegateCallTargetAllowed",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "target", "type": "address"}
+    ],
+    "outputs": [
+      {"name": "allowed", "type": "bool"}
+    ],
+    "stateMutability": "view"
+  },
+  // Delegate Call Control events
+  {
+    "type": "event",
+    "name": "DelegateCallToggled",
+    "inputs": [
+      {"name": "safe", "type": "address", "indexed": true},
+      {"name": "enabled", "type": "bool", "indexed": false}
+    ]
+  },
+  {
+    "type": "event",
+    "name": "DelegateCallTargetAdded",
+    "inputs": [
+      {"name": "safe", "type": "address", "indexed": true},
+      {"name": "target", "type": "address", "indexed": true}
+    ]
+  },
+  {
+    "type": "event",
+    "name": "DelegateCallTargetRemoved",
+    "inputs": [
+      {"name": "safe", "type": "address", "indexed": true},
+      {"name": "target", "type": "address", "indexed": true}
+    ]
   }
 ];
 
@@ -323,13 +402,6 @@ export const SAFE_ABI = [
     "outputs": [],
     "stateMutability": "nonpayable"
   },
-  {
-    "type": "function",
-    "name": "getGuard",
-    "inputs": [],
-    "outputs": [{"name": "", "type": "address"}],
-    "stateMutability": "view"
-  },
   // Guard events
   {
     "type": "event",
@@ -425,7 +497,7 @@ export const TOKEN_ADDRESSES = {
 // These addresses should be updated with the actual deployed contract addresses
 export const SAFE_TX_POOL_ADDRESSES = {
   ethereum: process.env.REACT_APP_SAFE_TX_POOL_ETHEREUM || '0x0000000000000000000000000000000000000000',
-  sepolia: process.env.REACT_APP_SAFE_TX_POOL_SEPOLIA || '0x0000000000000000000000000000000000000000',
+  sepolia: process.env.REACT_APP_SAFE_TX_POOL_SEPOLIA || '0x0dDa9cC486a0812817C25845c90EB4cdE7FB5d5a',
   arbitrum: process.env.REACT_APP_SAFE_TX_POOL_ARBITRUM || '0x0000000000000000000000000000000000000000'
 };
 
