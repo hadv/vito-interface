@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import { ethers } from 'ethers';
 import { theme } from '../../../theme';
+import { useAddressBook } from '../../../hooks/useAddressBook';
 import { createSafeTxPoolService } from '../../../services/SafeTxPoolService';
 import { getSafeTxPoolAddress } from '../../../contracts/abis';
 import { walletConnectionService } from '../../../services/WalletConnectionService';
@@ -94,10 +95,7 @@ const EmptyState = styled.div`
   font-size: ${theme.typography.fontSize.sm};
 `;
 
-interface AddressBookEntry {
-  name: string;
-  walletAddress: string;
-}
+
 
 interface GuardAddressBookManagerProps {
   safeAddress: string;
@@ -105,53 +103,25 @@ interface GuardAddressBookManagerProps {
 }
 
 const GuardAddressBookManager: React.FC<GuardAddressBookManagerProps> = ({ safeAddress, network }) => {
-  const [addressBookEntries, setAddressBookEntries] = useState<AddressBookEntry[]>([]);
+  // Use the same hook as the address book page - much simpler!
+  const {
+    entries: addressBookEntries,
+    loading: isLoading,
+    error,
+    refresh
+  } = useAddressBook({
+    network,
+    safeAddress,
+    autoRefresh: true
+  });
+
   const [newAddress, setNewAddress] = useState('');
   const [newName, setNewName] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
-  const [error, setError] = useState<string>('');
 
   const { addToast } = useToast();
 
-  useEffect(() => {
-    loadAddressBook();
-  }, [safeAddress, network]);
 
-  const loadAddressBook = async () => {
-    try {
-      setIsLoading(true);
-      setError('');
-
-      const safeTxPoolAddress = getSafeTxPoolAddress(network);
-      console.log(`🔍 Debug: SafeTxPool address for ${network}:`, safeTxPoolAddress);
-      console.log(`🔍 Debug: Loading address book for Safe:`, safeAddress);
-
-      if (!safeTxPoolAddress) {
-        setError(`SafeTxPool not configured for ${network} network`);
-        return;
-      }
-
-      const provider = walletConnectionService.getProvider();
-      if (!provider) {
-        setError('No wallet provider available');
-        return;
-      }
-
-      const safeTxPoolService = createSafeTxPoolService(network);
-      // SafeTxPoolService initializes automatically with the provider
-
-      const entries = await safeTxPoolService.getAddressBookEntries(safeAddress);
-      console.log(`🔍 Debug: Address book entries returned:`, entries);
-      setAddressBookEntries(entries);
-
-    } catch (err: any) {
-      console.error('Error loading address book:', err);
-      setError(err.message || 'Failed to load address book');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleAddAddress = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,7 +182,7 @@ const GuardAddressBookManager: React.FC<GuardAddressBookManagerProps> = ({ safeA
 
       setNewAddress('');
       setNewName('');
-      await loadAddressBook();
+      await refresh();
 
     } catch (err: any) {
       console.error('Error adding address:', err);
