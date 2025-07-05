@@ -7,7 +7,8 @@ Successfully updated the vito-interface to support the latest SafeTxPool contrac
 ## 📋 Implementation Summary
 
 ### 1. **Submodule Update**
-- ✅ Updated `vito-contracts` submodule to latest version (`62c751aba3059a35f37ca93cce69faa0e74f0971`)
+- ✅ Updated `vito-contracts` submodule to latest version (`3498fcc9e0d145952f1c65579a69dc83a0490491`)
+- ✅ Includes enhanced guard test coverage and event emission bug fixes
 - ✅ Analyzed new SafeTxPool contract functions for delegate call control
 
 ### 2. **Contract ABI Updates** (`client/src/contracts/abis.ts`)
