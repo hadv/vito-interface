@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { ethers } from 'ethers';
 import { theme } from '../../../theme';
 import { safeWalletService } from '../../../services/SafeWalletService';
-import { getSafeTxPoolAddress } from '../../../contracts/abis';
+import { getSafeTxPoolAddress, getRpcUrl } from '../../../contracts/abis';
 import { walletConnectionService } from '../../../services/WalletConnectionService';
 import { useToast } from '../../../hooks/useToast';
 import Button from '../../ui/Button';
@@ -138,16 +138,20 @@ const SafeGuardDiagnostic: React.FC<SafeGuardDiagnosticProps> = ({ safeAddress, 
         return;
       }
 
-      // Initialize SafeWalletService
-      const provider = walletConnectionService.getProvider();
-      if (!provider) {
-        setError('No wallet provider available');
+      // Initialize SafeWalletService with read-only provider for guard status check
+      // We don't need a wallet connection just to read the guard status
+      const rpcUrl = getRpcUrl(network);
+      if (!rpcUrl) {
+        setError(`RPC URL not configured for ${network} network`);
         return;
       }
 
+      // SafeWalletService will create its own read-only provider internally
+
       await safeWalletService.initialize({
         safeAddress,
-        network
+        network,
+        rpcUrl
       });
 
       // Get current guard
