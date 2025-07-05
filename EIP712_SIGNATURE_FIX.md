@@ -60,6 +60,7 @@ function _getEIP712Hash(SafeTx storage safeTx) internal view returns (bytes32) {
 ### **Changes Included**
 - ✅ Updated `_recoverSigner` function to handle EIP-712 signatures
 - ✅ Added `_getEIP712Hash` function for proper hash reconstruction
+- ✅ Fixed Solidity formatting to comply with forge fmt standards
 - ✅ Maintains backward compatibility
 - ✅ Comprehensive documentation and testing
 
