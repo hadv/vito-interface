@@ -10,6 +10,7 @@ Successfully updated the vito-interface to support the latest SafeTxPool contrac
 - ✅ Updated `vito-contracts` submodule to latest version (`3498fcc9e0d145952f1c65579a69dc83a0490491`)
 - ✅ Includes enhanced guard test coverage and event emission bug fixes
 - ✅ Analyzed new SafeTxPool contract functions for delegate call control
+- ⚠️ **EIP-712 Signature Fix Required**: See `EIP712_SIGNATURE_FIX.md` for contract update needed
 
 ### 2. **Smart Contract Guard Integration**
 - ✅ Auto-populate guard address with SafeTxPool from environment configuration
