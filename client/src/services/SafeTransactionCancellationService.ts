@@ -19,6 +19,9 @@ export interface CancellationEstimate {
     available: boolean;
     reason?: string;
     securityWarning?: string;
+    gasEstimate?: string;
+    gasPrice?: string;
+    totalCost?: string;
   };
   secureCancellation: {
     available: boolean;
@@ -157,7 +160,7 @@ export class SafeTransactionCancellationService {
   private async checkSimpleDeletionAvailability(
     transaction: SafeTxPoolTransaction,
     currentSigner?: ethers.Signer
-  ): Promise<{ available: boolean; reason?: string; securityWarning?: string }> {
+  ): Promise<{ available: boolean; reason?: string; securityWarning?: string; gasEstimate?: string; gasPrice?: string; totalCost?: string }> {
     if (!currentSigner) {
       return {
         available: false,
@@ -196,9 +199,40 @@ export class SafeTransactionCancellationService {
         securityWarning = `⚠️ LOW RISK: This transaction needs ${signatureGap} more Safe owner signatures, but existing signatures could still be reused by others.`;
       }
 
+      // Estimate gas for simple deletion (SafeTxPool contract call)
+      let gasEstimate: string | undefined;
+      let gasPrice: string | undefined;
+      let totalCost: string | undefined;
+
+      try {
+        // Estimate gas for deleteTx call on SafeTxPool contract
+        const safeTxPoolAddress = this.safeTxPoolService.getContractAddress();
+        if (safeTxPoolAddress && currentSigner) {
+          const safeTxPoolContract = new ethers.Contract(
+            safeTxPoolAddress,
+            ['function deleteTx(string calldata txHash) external'],
+            this.provider
+          );
+
+          const deleteGasEstimate = await safeTxPoolContract.estimateGas.deleteTx(transaction.txHash);
+          const currentGasPrice = await this.provider.getGasPrice();
+          const cost = deleteGasEstimate.mul(currentGasPrice);
+
+          gasEstimate = deleteGasEstimate.toString();
+          gasPrice = currentGasPrice.toString();
+          totalCost = ethers.utils.formatEther(cost);
+        }
+      } catch (gasError) {
+        console.warn('Failed to estimate gas for simple deletion:', gasError);
+        // Continue without gas estimate - user can still attempt deletion
+      }
+
       return {
         available: true,
-        securityWarning
+        securityWarning,
+        gasEstimate,
+        gasPrice,
+        totalCost
       };
     } catch (error) {
       return {

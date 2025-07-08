@@ -436,13 +436,14 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
                         {estimate.simpleDeletion.securityWarning && <MethodBadge type="warning">Security Risk</MethodBadge>}
                         {!estimate.simpleDeletion.securityWarning && <MethodBadge type="safe">Safe</MethodBadge>}
                         {!estimate.simpleDeletion.securityWarning && <MethodBadge type="recommended">Recommended</MethodBadge>}
+                        <MethodBadge type="simple">Lower Gas</MethodBadge>
                       </MethodTitle>
                       <MethodDescription>
                         {estimate.simpleDeletion.securityWarning ? (
-                          <>Remove transaction from the pool. Fast and free, but others with access to
+                          <>Call SafeTxPool contract to remove transaction. Lower gas cost, but others with access to
                           transaction data and signatures could potentially still execute it.</>
                         ) : (
-                          <>Remove transaction from the pool. Fast, free, and completely safe since no Safe owner signatures exist yet.</>
+                          <>Call SafeTxPool contract to remove transaction. Lower gas cost and completely safe since no Safe owner signatures exist yet.</>
                         )}
                       </MethodDescription>
                       {estimate.simpleDeletion.securityWarning && (
@@ -470,7 +471,7 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
                       </MethodTitle>
                       <MethodDescription>
                         Execute a nonce-consuming transaction on-chain to permanently invalidate
-                        the original transaction. Maximum security but requires gas fees.
+                        the original transaction. Maximum security but higher gas cost.
                       </MethodDescription>
                       {!estimate.secureCancellation.available && (
                         <div style={{ color: '#ef4444', fontSize: '12px' }}>
@@ -505,9 +506,27 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
                 </DetailRow>
               </TransactionDetails>
 
+              {selectedMethod === 'simple_deletion' && estimate?.simpleDeletion.available && estimate.simpleDeletion.totalCost && (
+                <CostEstimate>
+                  <CostTitle>Estimated Simple Deletion Cost</CostTitle>
+                  <DetailRow>
+                    <DetailLabel>Gas Estimate:</DetailLabel>
+                    <DetailValue>{estimate.simpleDeletion.gasEstimate}</DetailValue>
+                  </DetailRow>
+                  <DetailRow>
+                    <DetailLabel>Gas Price:</DetailLabel>
+                    <DetailValue>{estimate.simpleDeletion.gasPrice} wei</DetailValue>
+                  </DetailRow>
+                  <DetailRow>
+                    <DetailLabel>Total Cost:</DetailLabel>
+                    <DetailValue>{estimate.simpleDeletion.totalCost} ETH</DetailValue>
+                  </DetailRow>
+                </CostEstimate>
+              )}
+
               {selectedMethod === 'secure_cancellation' && estimate?.secureCancellation.available && estimate.secureCancellation.totalCost && (
                 <CostEstimate>
-                  <CostTitle>Estimated Cancellation Cost</CostTitle>
+                  <CostTitle>Estimated Secure Cancellation Cost</CostTitle>
                   <DetailRow>
                     <DetailLabel>Gas Estimate:</DetailLabel>
                     <DetailValue>{estimate.secureCancellation.gasEstimate}</DetailValue>

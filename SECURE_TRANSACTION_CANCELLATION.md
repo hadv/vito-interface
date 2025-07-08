@@ -52,9 +52,9 @@ Simply removing Safe transactions from the user interface or transaction pool is
 The implementation provides **user choice** between two cancellation methods:
 
 #### Simple Deletion
-- **Action**: Remove from SafeTxPool contract
-- **Speed**: Instant
-- **Cost**: Free
+- **Action**: Call SafeTxPool contract to remove transaction
+- **Speed**: Requires blockchain confirmation
+- **Cost**: Gas fees for contract call
 - **Security**: Depends on Safe owner signatures present
 - **Risk Levels**:
   - **COMPLETELY SAFE**: No Safe owner signatures (only proposer signature or unsigned)
@@ -67,7 +67,7 @@ The implementation provides **user choice** between two cancellation methods:
 #### Secure Cancellation
 - **Action**: Execute a nonce-consuming transaction on-chain
 - **Speed**: Requires blockchain confirmation
-- **Cost**: Gas fees (typically small)
+- **Cost**: Gas fees for Safe transaction execution
 - **Security**: Maximum security - permanently invalidates the original transaction
 - **Permissions**: Any Safe owner
 - **Recommended for**: Transactions with existing signatures (especially close to threshold) or when maximum security is required
@@ -76,8 +76,8 @@ The implementation provides **user choice** between two cancellation methods:
 
 Safe owners can now choose their preferred approach based on:
 - **Risk tolerance**: How concerned they are about signature reuse and potential execution by other owners
-- **Urgency**: Whether they need immediate cancellation or can wait for blockchain confirmation
-- **Cost sensitivity**: Whether they prefer free deletion or are willing to pay gas for guaranteed security
+- **Cost comparison**: Gas cost of simple deletion vs secure cancellation
+- **Security requirements**: Whether they need guaranteed invalidation or accept some risk
 - **Signature proximity**: How close the transaction is to the execution threshold
 - **Trust level**: How much they trust other Safe owners not to complete the transaction
 
