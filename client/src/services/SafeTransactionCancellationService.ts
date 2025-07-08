@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 import { SafeWalletService } from './SafeWalletService';
 import { SafeTxPoolService, SafeTxPoolTransaction } from './SafeTxPoolService';
-import { SAFE_ABI, getRpcUrl } from '../contracts/abis';
+import { getRpcUrl } from '../contracts/abis';
 import { walletConnectionService } from './WalletConnectionService';
 
 export interface CancellationResult {
@@ -239,7 +239,10 @@ export class SafeTransactionCancellationService {
             this.provider
           );
 
-          const deleteGasEstimate = await safeTxPoolContract.estimateGas.deleteTx(transaction.txHash);
+          const deleteGasEstimate = await safeTxPoolContract.estimateGas.deleteTx(
+            transaction.txHash,
+            { from: await currentSigner.getAddress() }
+          );
           const currentGasPrice = await this.provider.getGasPrice();
           const cost = deleteGasEstimate.mul(currentGasPrice);
 
@@ -249,7 +252,20 @@ export class SafeTransactionCancellationService {
         }
       } catch (gasError) {
         console.warn('Failed to estimate gas for simple deletion:', gasError);
-        // Continue without gas estimate - user can still attempt deletion
+
+        // Fallback: provide a reasonable estimate for SafeTxPool deleteTx call
+        try {
+          const currentGasPrice = await this.provider.getGasPrice();
+          const estimatedGas = ethers.BigNumber.from('50000'); // Typical contract call gas
+          const cost = estimatedGas.mul(currentGasPrice);
+
+          gasEstimate = estimatedGas.toString();
+          gasPrice = currentGasPrice.toString();
+          totalCost = ethers.utils.formatEther(cost);
+        } catch (fallbackError) {
+          console.warn('Fallback gas estimation for simple deletion also failed:', fallbackError);
+          // Continue without gas estimate - user can still attempt deletion
+        }
       }
 
       return {
@@ -293,40 +309,18 @@ export class SafeTransactionCancellationService {
         };
       }
 
-      // Create cancellation transaction for gas estimation
-      const cancellationTx = await this.createCancellationTransaction(transaction);
-
-      // Estimate gas for the cancellation transaction
+      // Provide gas estimation for secure cancellation
       try {
-        const safeContract = new ethers.Contract(
-          transaction.safe,
-          SAFE_ABI,
-          this.provider
-        );
-
-        // Build signature bytes (we'll need at least threshold signatures)
-        const safeInfo = await this.safeWalletService.getSafeInfo();
-        const mockSignatures = '0x' + '00'.repeat(65 * safeInfo.threshold);
-
-        const gasEstimate = await safeContract.estimateGas.execTransaction(
-          cancellationTx.to,
-          cancellationTx.value,
-          cancellationTx.data,
-          cancellationTx.operation,
-          0, // safeTxGas
-          0, // baseGas
-          0, // gasPrice
-          ethers.constants.AddressZero, // gasToken
-          ethers.constants.AddressZero, // refundReceiver
-          mockSignatures
-        );
-
         const gasPrice = await this.provider.getGasPrice();
-        const totalCost = gasEstimate.mul(gasPrice);
+
+        // Use a conservative estimate for Safe transaction execution
+        // This avoids the GS021 error from trying to estimate with invalid signatures
+        const estimatedGas = ethers.BigNumber.from('200000'); // Conservative Safe transaction gas estimate
+        const totalCost = estimatedGas.mul(gasPrice);
 
         return {
           available: true,
-          gasEstimate: gasEstimate.toString(),
+          gasEstimate: estimatedGas.toString(),
           gasPrice: gasPrice.toString(),
           totalCost: ethers.utils.formatEther(totalCost)
         };
