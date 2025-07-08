@@ -110,6 +110,13 @@ export class SafeTxPoolService {
   }
 
   /**
+   * Get the current network name
+   */
+  getNetwork(): string {
+    return this.network;
+  }
+
+  /**
    * Check if SafeTxPool is configured for the current network
    */
   isConfigured(): boolean {

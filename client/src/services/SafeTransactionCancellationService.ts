@@ -122,6 +122,9 @@ export class SafeTransactionCancellationService {
    */
   async estimateCancellation(transaction: SafeTxPoolTransaction): Promise<CancellationEstimate> {
     try {
+      // Ensure SafeWalletService is initialized
+      await this.ensureSafeWalletServiceInitialized(transaction.safe);
+
       const isExecutable = await this.isTransactionExecutable(transaction);
       const currentSigner = this.getCurrentSigner();
 
@@ -152,6 +155,28 @@ export class SafeTransactionCancellationService {
         }
       };
     }
+  }
+
+  /**
+   * Ensure SafeWalletService is initialized for the given Safe address
+   */
+  private async ensureSafeWalletServiceInitialized(safeAddress: string): Promise<void> {
+    try {
+      // Check if already initialized for this Safe
+      const currentSafeInfo = await this.safeWalletService.getSafeInfo().catch(() => null);
+      if (currentSafeInfo && currentSafeInfo.address.toLowerCase() === safeAddress.toLowerCase()) {
+        return; // Already initialized for this Safe
+      }
+    } catch (error) {
+      // Service not initialized, continue to initialize
+    }
+
+    // Initialize for this Safe
+    const currentSigner = this.getCurrentSigner();
+    await this.safeWalletService.initialize({
+      safeAddress,
+      network: this.safeTxPoolService.getNetwork()
+    }, currentSigner);
   }
 
   /**
@@ -358,6 +383,9 @@ export class SafeTransactionCancellationService {
         };
       }
 
+      // Ensure SafeWalletService is initialized
+      await this.ensureSafeWalletServiceInitialized(transaction.safe);
+
       // Check if transaction still exists in the pool
       const currentTx = await this.safeTxPoolService.getTxDetails(transaction.txHash);
       if (!currentTx) {
@@ -484,6 +512,9 @@ export class SafeTransactionCancellationService {
           reason: 'Wallet not connected'
         };
       }
+
+      // Ensure SafeWalletService is initialized before checking permissions
+      await this.ensureSafeWalletServiceInitialized(transaction.safe);
 
       const estimate = await this.estimateCancellation(transaction);
 
