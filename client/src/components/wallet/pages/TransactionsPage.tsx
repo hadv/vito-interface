@@ -5,8 +5,10 @@ import OptimizedTransactionsPage from './OptimizedTransactionsPage';
 import EnhancedTransactionsPage from './EnhancedTransactionsPage';
 import { SafeTxPoolService, SafeTxPoolTransaction } from '../../../services/SafeTxPoolService';
 import { SafeWalletService } from '../../../services/SafeWalletService';
+import { SafeTransactionCancellationService } from '../../../services/SafeTransactionCancellationService';
 import PendingTransactionConfirmationModal from '../components/PendingTransactionConfirmationModal';
 import DeleteTransactionModal from '../components/DeleteTransactionModal';
+import EnhancedTransactionCancellationModal from '../components/EnhancedTransactionCancellationModal';
 import { TransactionDecoder, DecodedTransactionData } from '../../../utils/transactionDecoder';
 import { TokenService } from '../../../services/TokenService';
 import { walletConnectionService } from '../../../services/WalletConnectionService';
@@ -154,10 +156,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
   // Initialize SafeTxPoolService for the current network
   const [safeTxPoolService] = useState(() => new SafeTxPoolService(network));
+  const [cancellationService] = useState(() => new SafeTransactionCancellationService(network));
   const [selectedPendingTx, setSelectedPendingTx] = useState<SafeTxPoolTransaction | null>(null);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEnhancedCancellationModal, setShowEnhancedCancellationModal] = useState(false);
   const [txToDelete, setTxToDelete] = useState<SafeTxPoolTransaction | null>(null);
+  const [txToCancel, setTxToCancel] = useState<SafeTxPoolTransaction | null>(null);
   const toast = useToast();
 
   // Load Safe info to get threshold
@@ -308,36 +313,40 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     loadPendingTransactions();
   };
 
-  // Handle delete transaction
+  // Handle delete/cancel transaction with enhanced security
   const handleDeleteTransaction = async (tx: SafeTxPoolTransaction) => {
     try {
-      // Check if user is connected and is the proposer
+      // Check if user is connected
       const connectionState = walletConnectionService.getState();
       if (!connectionState.signerConnected || !connectionState.signerAddress) {
         toast.error('Wallet not connected', {
-          message: 'Please connect your wallet to delete transactions'
+          message: 'Please connect your wallet to cancel transactions'
         });
         return;
       }
 
-      // Check if current user is the proposer
-      const currentAddress = connectionState.signerAddress.toLowerCase();
-      const proposerAddress = tx.proposer.toLowerCase();
+      // Initialize cancellation service with current signer
+      const signer = walletConnectionService.getSigner();
+      if (signer) {
+        cancellationService.setSigner(signer);
+      }
 
-      if (currentAddress !== proposerAddress) {
+      // Check if user can cancel this transaction
+      const canCancel = await cancellationService.canUserCancelTransaction(tx);
+      if (!canCancel.canCancel) {
         toast.error('Permission denied', {
-          message: 'Only the transaction proposer can delete this transaction'
+          message: canCancel.reason || 'You cannot cancel this transaction'
         });
         return;
       }
 
-      // Show confirmation modal
-      setTxToDelete(tx);
-      setShowDeleteModal(true);
+      // Show enhanced cancellation modal
+      setTxToCancel(tx);
+      setShowEnhancedCancellationModal(true);
     } catch (error) {
-      console.error('Error preparing to delete transaction:', error);
+      console.error('Error preparing to cancel transaction:', error);
       toast.error('Error', {
-        message: 'Failed to prepare transaction deletion'
+        message: 'Failed to prepare transaction cancellation'
       });
     }
   };
@@ -475,14 +484,21 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         <div className="flex justify-end space-x-2">
           {canDelete && (
             <button
-              className="px-3 py-2 rounded-md text-sm font-medium transition-colors bg-red-600 hover:bg-red-700 text-white"
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                hasEnoughSignatures
+                  ? 'bg-red-600 hover:bg-red-700 text-white'
+                  : 'bg-orange-600 hover:bg-orange-700 text-white'
+              }`}
               onClick={(e) => {
                 e.stopPropagation();
                 handleDeleteTransaction(tx);
               }}
-              title="Delete transaction (only proposer can delete)"
+              title={hasEnoughSignatures
+                ? "Secure cancellation required (transaction is executable)"
+                : "Delete transaction from pool"
+              }
             >
-              Delete
+              {hasEnoughSignatures ? 'Cancel' : 'Delete'}
             </button>
           )}
           <button
@@ -708,7 +724,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         />
       )}
 
-      {/* Delete Transaction Confirmation Modal */}
+      {/* Delete Transaction Confirmation Modal (Legacy) */}
       {txToDelete && (
         <DeleteTransactionModal
           isOpen={showDeleteModal}
@@ -718,6 +734,26 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
           }}
           onConfirm={confirmDeleteTransaction}
           transaction={txToDelete}
+        />
+      )}
+
+      {/* Enhanced Transaction Cancellation Modal */}
+      {txToCancel && (
+        <EnhancedTransactionCancellationModal
+          isOpen={showEnhancedCancellationModal}
+          onClose={() => {
+            setShowEnhancedCancellationModal(false);
+            setTxToCancel(null);
+          }}
+          onSuccess={async () => {
+            // Refresh pending transactions after successful cancellation
+            await loadPendingTransactions();
+            toast.success('Transaction cancelled', {
+              message: 'The transaction has been successfully cancelled'
+            });
+          }}
+          transaction={txToCancel}
+          network={network}
         />
       )}
     </Container>
