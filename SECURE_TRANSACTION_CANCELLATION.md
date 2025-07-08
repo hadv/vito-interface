@@ -17,9 +17,16 @@ Simply removing Safe transactions from the user interface or transaction pool is
 4. **Execution Risk**: Anyone who previously had access to the transaction data and signatures can potentially execute it
 5. **Nonce Dependency**: Safe wallets use sequential nonces, and a transaction remains executable until that specific nonce is used
 
-### Critical Security Insight
+### Critical Security Insights
 
-**Simple deletion is never truly secure** for any transaction that has signatures, regardless of whether it currently meets the threshold. The only way to guarantee a transaction cannot be executed is to consume its nonce on-chain.
+1. **Simple deletion is completely safe** for transactions without any Safe owner signatures (only proposer signature or unsigned)
+2. **Simple deletion has risks** for transactions with Safe owner signatures, regardless of whether it currently meets the threshold
+3. **The only way to guarantee** a transaction with Safe owner signatures cannot be executed is to consume its nonce on-chain
+
+### Key Distinction: Safe Owner vs Proposer Signatures
+
+- **Proposer signatures**: Cannot be used by others to execute transactions (safe to ignore for security analysis)
+- **Safe owner signatures**: Can be collected and reused by other Safe owners to complete transactions (security risk)
 
 ## Solution Architecture
 
@@ -48,13 +55,14 @@ The implementation provides **user choice** between two cancellation methods:
 - **Action**: Remove from SafeTxPool contract
 - **Speed**: Instant
 - **Cost**: Free
-- **Security**: ⚠️ **RISK**: Anyone with transaction data and signatures can potentially execute it
+- **Security**: Depends on Safe owner signatures present
 - **Risk Levels**:
-  - **HIGH RISK**: 1 signature away from threshold (any Safe owner can complete it)
-  - **MEDIUM RISK**: 2 signatures away from threshold (coordination between owners possible)
-  - **LOW RISK**: 3+ signatures away from threshold (requires significant coordination)
+  - **COMPLETELY SAFE**: No Safe owner signatures (only proposer signature or unsigned)
+  - **HIGH RISK**: 1 Safe owner signature away from threshold (any Safe owner can complete it)
+  - **MEDIUM RISK**: 2 Safe owner signatures away from threshold (coordination between owners possible)
+  - **LOW RISK**: 3+ Safe owner signatures away from threshold (requires significant coordination)
 - **Permissions**: Transaction proposer OR any Safe owner
-- **Recommended for**: Only when speed is critical and risk is acceptable
+- **Recommended for**: Transactions without Safe owner signatures, or when speed is critical and risk is acceptable
 
 #### Secure Cancellation
 - **Action**: Execute a nonce-consuming transaction on-chain

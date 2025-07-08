@@ -94,12 +94,24 @@ export class SafeTransactionCancellationService {
   private async isTransactionExecutable(transaction: SafeTxPoolTransaction): Promise<boolean> {
     try {
       const safeInfo = await this.safeWalletService.getSafeInfo();
-      return transaction.signatures.length >= safeInfo.threshold;
+      const safeOwnerSignatures = await this.countSafeOwnerSignatures(transaction, safeInfo.owners);
+      return safeOwnerSignatures >= safeInfo.threshold;
     } catch (error) {
       console.error('Error checking if transaction is executable:', error);
       // Default to secure cancellation if we can't determine
       return true;
     }
+  }
+
+  /**
+   * Count signatures from actual Safe owners (excluding proposer if not a Safe owner)
+   */
+  private async countSafeOwnerSignatures(transaction: SafeTxPoolTransaction, safeOwners: string[]): Promise<number> {
+    const ownerAddresses = safeOwners.map(addr => addr.toLowerCase());
+
+    return transaction.signatures.filter(sig =>
+      ownerAddresses.includes(sig.signer.toLowerCase())
+    ).length;
   }
 
   /**
@@ -166,21 +178,22 @@ export class SafeTransactionCancellationService {
         };
       }
 
-      // Check security implications based on existing signatures
-      const hasSignatures = transaction.signatures.length > 0;
+      // Check security implications based on existing Safe owner signatures
       const safeInfo = await this.safeWalletService.getSafeInfo();
-      const signatureGap = safeInfo.threshold - transaction.signatures.length;
+      const safeOwnerSignatures = await this.countSafeOwnerSignatures(transaction, safeInfo.owners);
+      const signatureGap = safeInfo.threshold - safeOwnerSignatures;
 
       let securityWarning: string | undefined;
 
-      if (hasSignatures) {
-        if (signatureGap === 1) {
-          securityWarning = `⚠️ HIGH RISK: This transaction needs only 1 more signature to be executable. Any Safe owner can collect the existing ${transaction.signatures.length} signatures and execute it.`;
-        } else if (signatureGap <= 2) {
-          securityWarning = `⚠️ MEDIUM RISK: This transaction needs ${signatureGap} more signatures. Other Safe owners could potentially collect existing signatures and execute it.`;
-        } else {
-          securityWarning = `⚠️ LOW RISK: This transaction needs ${signatureGap} more signatures, but existing signatures could still be reused by others.`;
-        }
+      if (safeOwnerSignatures === 0) {
+        // No Safe owner signatures - completely safe to delete
+        securityWarning = undefined;
+      } else if (signatureGap === 1) {
+        securityWarning = `⚠️ HIGH RISK: This transaction needs only 1 more Safe owner signature to be executable. Any Safe owner can collect the existing ${safeOwnerSignatures} signatures and execute it.`;
+      } else if (signatureGap <= 2) {
+        securityWarning = `⚠️ MEDIUM RISK: This transaction needs ${signatureGap} more Safe owner signatures. Other Safe owners could potentially collect existing signatures and execute it.`;
+      } else {
+        securityWarning = `⚠️ LOW RISK: This transaction needs ${signatureGap} more Safe owner signatures, but existing signatures could still be reused by others.`;
       }
 
       return {

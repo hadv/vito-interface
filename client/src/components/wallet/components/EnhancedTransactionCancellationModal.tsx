@@ -113,7 +113,7 @@ const MethodDescription = styled.p`
   line-height: 1.5;
 `;
 
-const MethodBadge = styled.span<{ type: 'recommended' | 'secure' | 'simple' | 'warning' }>`
+const MethodBadge = styled.span<{ type: 'recommended' | 'secure' | 'simple' | 'warning' | 'safe' }>`
   font-size: 12px;
   padding: 4px 8px;
   border-radius: 6px;
@@ -128,6 +128,8 @@ const MethodBadge = styled.span<{ type: 'recommended' | 'secure' | 'simple' | 'w
         return 'background-color: rgba(251, 191, 36, 0.2); color: #f59e0b;';
       case 'warning':
         return 'background-color: rgba(239, 68, 68, 0.2); color: #ef4444;';
+      case 'safe':
+        return 'background-color: rgba(34, 197, 94, 0.2); color: #22c55e;';
     }
   }}
 `;
@@ -401,15 +403,22 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
                         <>
                           <strong>Executable Transaction</strong>
                           <br />
-                          This transaction has enough signatures to be executed on-chain immediately.
+                          This transaction has enough Safe owner signatures to be executed on-chain immediately.
                           Simple deletion is risky - anyone with the transaction data can execute it.
                         </>
-                      ) : (
+                      ) : estimate.simpleDeletion.securityWarning ? (
                         <>
                           <strong>Partially Signed Transaction</strong>
                           <br />
-                          This transaction has {transaction.signatures.length} signature(s) but needs more to execute.
+                          This transaction has Safe owner signature(s) but needs more to execute.
                           However, other Safe owners could collect existing signatures and add their own to execute it.
+                        </>
+                      ) : (
+                        <>
+                          <strong>Unsigned Transaction</strong>
+                          <br />
+                          This transaction has no Safe owner signatures yet. Simple deletion is completely safe
+                          since there are no signatures for others to reuse.
                         </>
                       )}
                     </WarningContent>
@@ -425,11 +434,16 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
                       <MethodTitle>
                         🗑️ Simple Deletion
                         {estimate.simpleDeletion.securityWarning && <MethodBadge type="warning">Security Risk</MethodBadge>}
-                        {!estimate.isExecutable && !estimate.simpleDeletion.securityWarning && <MethodBadge type="simple">Fast & Free</MethodBadge>}
+                        {!estimate.simpleDeletion.securityWarning && <MethodBadge type="safe">Safe</MethodBadge>}
+                        {!estimate.simpleDeletion.securityWarning && <MethodBadge type="recommended">Recommended</MethodBadge>}
                       </MethodTitle>
                       <MethodDescription>
-                        Remove transaction from the pool. Fast and free, but others with access to
-                        transaction data and signatures could potentially still execute it.
+                        {estimate.simpleDeletion.securityWarning ? (
+                          <>Remove transaction from the pool. Fast and free, but others with access to
+                          transaction data and signatures could potentially still execute it.</>
+                        ) : (
+                          <>Remove transaction from the pool. Fast, free, and completely safe since no Safe owner signatures exist yet.</>
+                        )}
                       </MethodDescription>
                       {estimate.simpleDeletion.securityWarning && (
                         <SecurityRiskWarning>
