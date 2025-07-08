@@ -25,9 +25,11 @@ const ModalContent = styled.div`
   width: 95%;
   max-width: 900px;
   max-height: 90vh;
-  overflow-y: auto;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  position: relative;
 
   @media (max-width: 768px) {
     width: 95%;
@@ -41,6 +43,9 @@ const ModalHeader = styled.div`
   align-items: center;
   padding: 24px 32px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 16px 16px 0 0;
 `;
 
 const ModalTitle = styled.h2`
@@ -78,6 +83,8 @@ const CloseButton = styled.button`
 
 const ModalBody = styled.div`
   padding: 32px;
+  overflow-y: auto;
+  flex: 1;
 
   @media (max-width: 768px) {
     padding: 24px;
@@ -168,6 +175,34 @@ const SecurityRiskWarning = styled.div`
   font-size: 12px;
   color: #fca5a5;
   line-height: 1.4;
+`;
+
+const SuccessMessage = styled.div`
+  background-color: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  color: #22c55e;
+  text-align: center;
+`;
+
+const SuccessIcon = styled.div`
+  font-size: 48px;
+  margin-bottom: 16px;
+`;
+
+const SuccessTitle = styled.h3`
+  color: #22c55e;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+`;
+
+const SuccessDetails = styled.div`
+  font-size: 14px;
+  color: #86efac;
+  margin-top: 12px;
 `;
 
 const SecurityWarning = styled.div<{ type: 'info' | 'warning' }>`
@@ -261,6 +296,49 @@ const LoadingSpinner = styled.div`
   }
 `;
 
+const ProcessingOverlay = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(26, 26, 46, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  z-index: 10;
+`;
+
+const ProcessingSpinner = styled.div`
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #3b82f6;
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 16px;
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+`;
+
+const ProcessingText = styled.div`
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+`;
+
+const ProcessingSubtext = styled.div`
+  color: #9ca3af;
+  font-size: 14px;
+  text-align: center;
+  margin-top: 8px;
+`;
+
 const ButtonGroup = styled.div`
   display: flex;
   gap: 16px;
@@ -329,6 +407,7 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<CancellationResult | null>(null);
 
   const loadEstimate = useCallback(async () => {
     setLoading(true);
@@ -371,15 +450,20 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
 
     setProcessing(true);
     setError(null);
+    setResult(null);
 
     try {
-      const result: CancellationResult = await cancellationService.cancelTransaction(transaction, selectedMethod);
+      const cancellationResult: CancellationResult = await cancellationService.cancelTransaction(transaction, selectedMethod);
 
-      if (result.success) {
-        onSuccess();
-        onClose();
+      if (cancellationResult.success) {
+        setResult(cancellationResult);
+        // Don't close immediately - show success state first
+        setTimeout(() => {
+          onSuccess();
+          onClose();
+        }, 2000);
       } else {
-        setError(result.error || 'Cancellation failed');
+        setError(cancellationResult.error || 'Cancellation failed');
       }
     } catch (err) {
       console.error('Error cancelling transaction:', err);
@@ -415,6 +499,27 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
               <LoadingSpinner />
               Analyzing transaction...
             </div>
+          ) : result ? (
+            <SuccessMessage>
+              <SuccessIcon>✅</SuccessIcon>
+              <SuccessTitle>
+                {result.type === 'simple_deletion' ? 'Transaction Deleted Successfully' : 'Transaction Cancelled Successfully'}
+              </SuccessTitle>
+              <div>
+                {result.type === 'simple_deletion'
+                  ? 'The transaction has been removed from the SafeTxPool.'
+                  : 'A cancellation transaction has been created to invalidate the original transaction.'
+                }
+              </div>
+              {result.txHash && (
+                <SuccessDetails>
+                  {result.type === 'simple_deletion'
+                    ? `Deletion transaction: ${formatWalletAddress(result.txHash)}`
+                    : `Cancellation transaction: ${formatWalletAddress(result.txHash)}`
+                  }
+                </SuccessDetails>
+              )}
+            </SuccessMessage>
           ) : (
             <>
               {estimate && estimate.canCancel && (
@@ -593,6 +698,22 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
             </>
           )}
         </ModalBody>
+
+        {/* Processing Overlay */}
+        {processing && (
+          <ProcessingOverlay>
+            <ProcessingSpinner />
+            <ProcessingText>
+              {selectedMethod === 'simple_deletion' ? 'Deleting Transaction...' : 'Creating Cancellation Transaction...'}
+            </ProcessingText>
+            <ProcessingSubtext>
+              {selectedMethod === 'simple_deletion'
+                ? 'Removing transaction from SafeTxPool contract'
+                : 'Executing nonce-consuming transaction on-chain'
+              }
+            </ProcessingSubtext>
+          </ProcessingOverlay>
+        )}
       </ModalContent>
     </ModalOverlay>
   );

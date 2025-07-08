@@ -161,10 +161,16 @@ export class SafeTransactionCancellationService {
    * Ensure SafeWalletService is initialized for the given Safe address
    */
   private async ensureSafeWalletServiceInitialized(safeAddress: string): Promise<void> {
+    // Check if we have a cached initialization for this Safe
+    if (this.lastInitializedSafe === safeAddress.toLowerCase()) {
+      return;
+    }
+
     try {
       // Check if already initialized for this Safe
       const currentSafeInfo = await this.safeWalletService.getSafeInfo().catch(() => null);
       if (currentSafeInfo && currentSafeInfo.address.toLowerCase() === safeAddress.toLowerCase()) {
+        this.lastInitializedSafe = safeAddress.toLowerCase();
         return; // Already initialized for this Safe
       }
     } catch (error) {
@@ -177,7 +183,11 @@ export class SafeTransactionCancellationService {
       safeAddress,
       network: this.safeTxPoolService.getNetwork()
     }, currentSigner);
+
+    this.lastInitializedSafe = safeAddress.toLowerCase();
   }
+
+  private lastInitializedSafe: string | null = null;
 
   /**
    * Check if simple deletion is available for the current user
