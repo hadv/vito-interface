@@ -22,12 +22,17 @@ const ModalContent = styled.div`
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   border-radius: 16px;
   padding: 0;
-  width: 90%;
-  max-width: 600px;
+  width: 95%;
+  max-width: 900px;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
+
+  @media (max-width: 768px) {
+    width: 95%;
+    max-width: 500px;
+  }
 `;
 
 const ModalHeader = styled.div`
@@ -73,44 +78,64 @@ const CloseButton = styled.button`
 
 const ModalBody = styled.div`
   padding: 32px;
+
+  @media (max-width: 768px) {
+    padding: 24px;
+  }
 `;
 
 const MethodSelector = styled.div`
   display: flex;
-  gap: 16px;
+  gap: 20px;
   margin-bottom: 24px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 16px;
+  }
 `;
 
 const MethodOption = styled.div<{ selected: boolean; disabled: boolean }>`
   flex: 1;
-  padding: 20px;
+  padding: 24px;
   border-radius: 12px;
   border: 2px solid ${props => props.selected ? '#3b82f6' : 'rgba(255, 255, 255, 0.1)'};
   background-color: ${props => props.selected ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255, 255, 255, 0.05)'};
   cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
   opacity: ${props => props.disabled ? 0.5 : 1};
   transition: all 0.2s ease;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
 
   &:hover {
     border-color: ${props => props.disabled ? 'rgba(255, 255, 255, 0.1)' : '#3b82f6'};
+  }
+
+  @media (max-width: 768px) {
+    min-height: auto;
+    padding: 20px;
   }
 `;
 
 const MethodTitle = styled.h3`
   color: #ffffff;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
-  margin: 0 0 8px 0;
+  margin: 0 0 12px 0;
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+  line-height: 1.3;
 `;
 
 const MethodDescription = styled.p`
   color: #9ca3af;
   font-size: 14px;
-  margin: 0 0 12px 0;
-  line-height: 1.5;
+  margin: 0 0 16px 0;
+  line-height: 1.6;
+  flex-grow: 1;
 `;
 
 const MethodBadge = styled.span<{ type: 'recommended' | 'secure' | 'simple' | 'warning' | 'safe' }>`
