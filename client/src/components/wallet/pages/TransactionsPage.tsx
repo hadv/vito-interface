@@ -272,6 +272,28 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     }
   }, [activeTab, safeAddress, network, loadPendingTransactions, loadSafeInfo]);
 
+  // Update SafeTxPoolService signer when wallet connection changes
+  useEffect(() => {
+    const updateSigner = () => {
+      const connectionState = walletConnectionService.getState();
+      const signer = walletConnectionService.getSigner();
+
+      if (connectionState.signerConnected && signer) {
+        safeTxPoolService.setSigner(signer);
+      } else {
+        safeTxPoolService.setSigner(null);
+      }
+    };
+
+    // Set initial signer
+    updateSigner();
+
+    // Subscribe to wallet connection changes
+    const unsubscribe = walletConnectionService.subscribe(updateSigner);
+
+    return unsubscribe;
+  }, [safeTxPoolService]);
+
   // Auto-refresh removed - users can manually refresh using the "Refresh Pool" button
 
   const formatAmount = (amount: string): string => {
@@ -325,6 +347,23 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     if (!txToDelete) return;
 
     try {
+      // Check wallet connection
+      const connectionState = walletConnectionService.getState();
+      if (!connectionState.signerConnected) {
+        toast.error('Wallet not connected', {
+          message: 'Please connect your wallet to delete transactions'
+        });
+        return;
+      }
+
+      // Verify the service is properly configured
+      if (!safeTxPoolService.isConfigured()) {
+        toast.error('Service not configured', {
+          message: 'SafeTxPool service is not properly configured for this network'
+        });
+        return;
+      }
+
       await safeTxPoolService.deleteTx(txToDelete.txHash);
 
       toast.success('Transaction deleted', {
