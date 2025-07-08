@@ -6,11 +6,20 @@ This document describes the implementation of a secure transaction cancellation 
 
 ## Problem Statement
 
-When a Safe transaction becomes executable (has enough signatures to meet the threshold), simply removing it from the user interface or transaction pool is **not secure** because:
+Simply removing Safe transactions from the user interface or transaction pool is **not secure** for ANY transaction with signatures because:
 
-1. **Transaction Remains Valid**: The transaction data and signatures remain valid on-chain until the nonce is consumed
-2. **Execution Risk**: Anyone who previously had access to the transaction data can still execute it
-3. **Nonce Dependency**: Safe wallets use sequential nonces, and a transaction remains executable until that specific nonce is used
+1. **Signature Reuse Risk**: Even "non-executable" transactions with partial signatures can be completed by other Safe owners
+2. **Example Scenario**:
+   - Safe threshold: 3 signatures required
+   - Current signatures: 2 (appears "non-executable")
+   - Risk: Any other Safe owner can collect the 2 existing signatures + add their own = 3 signatures = executable!
+3. **Transaction Remains Valid**: All transaction data and signatures remain valid on-chain until the nonce is consumed
+4. **Execution Risk**: Anyone who previously had access to the transaction data and signatures can potentially execute it
+5. **Nonce Dependency**: Safe wallets use sequential nonces, and a transaction remains executable until that specific nonce is used
+
+### Critical Security Insight
+
+**Simple deletion is never truly secure** for any transaction that has signatures, regardless of whether it currently meets the threshold. The only way to guarantee a transaction cannot be executed is to consume its nonce on-chain.
 
 ## Solution Architecture
 
@@ -39,9 +48,13 @@ The implementation provides **user choice** between two cancellation methods:
 - **Action**: Remove from SafeTxPool contract
 - **Speed**: Instant
 - **Cost**: Free
-- **Security**: Sufficient for most cases, but executable transactions could theoretically still be executed by someone with the transaction data
+- **Security**: ⚠️ **RISK**: Anyone with transaction data and signatures can potentially execute it
+- **Risk Levels**:
+  - **HIGH RISK**: 1 signature away from threshold (any Safe owner can complete it)
+  - **MEDIUM RISK**: 2 signatures away from threshold (coordination between owners possible)
+  - **LOW RISK**: 3+ signatures away from threshold (requires significant coordination)
 - **Permissions**: Transaction proposer OR any Safe owner
-- **Recommended for**: Non-executable transactions or when speed is prioritized
+- **Recommended for**: Only when speed is critical and risk is acceptable
 
 #### Secure Cancellation
 - **Action**: Execute a nonce-consuming transaction on-chain
@@ -49,15 +62,16 @@ The implementation provides **user choice** between two cancellation methods:
 - **Cost**: Gas fees (typically small)
 - **Security**: Maximum security - permanently invalidates the original transaction
 - **Permissions**: Any Safe owner
-- **Recommended for**: Executable transactions or when maximum security is required
+- **Recommended for**: Transactions with existing signatures (especially close to threshold) or when maximum security is required
 
 ### User Empowerment
 
 Safe owners can now choose their preferred approach based on:
-- **Risk tolerance**: How concerned they are about the theoretical execution risk
+- **Risk tolerance**: How concerned they are about signature reuse and potential execution by other owners
 - **Urgency**: Whether they need immediate cancellation or can wait for blockchain confirmation
-- **Cost sensitivity**: Whether they prefer free deletion or are willing to pay gas for maximum security
-- **Transaction state**: Whether the transaction is executable or not (with appropriate recommendations)
+- **Cost sensitivity**: Whether they prefer free deletion or are willing to pay gas for guaranteed security
+- **Signature proximity**: How close the transaction is to the execution threshold
+- **Trust level**: How much they trust other Safe owners not to complete the transaction
 
 ### Cancellation Transaction Design
 

@@ -113,7 +113,7 @@ const MethodDescription = styled.p`
   line-height: 1.5;
 `;
 
-const MethodBadge = styled.span<{ type: 'recommended' | 'secure' | 'simple' }>`
+const MethodBadge = styled.span<{ type: 'recommended' | 'secure' | 'simple' | 'warning' }>`
   font-size: 12px;
   padding: 4px 8px;
   border-radius: 6px;
@@ -126,8 +126,21 @@ const MethodBadge = styled.span<{ type: 'recommended' | 'secure' | 'simple' }>`
         return 'background-color: rgba(239, 68, 68, 0.2); color: #ef4444;';
       case 'simple':
         return 'background-color: rgba(251, 191, 36, 0.2); color: #f59e0b;';
+      case 'warning':
+        return 'background-color: rgba(239, 68, 68, 0.2); color: #ef4444;';
     }
   }}
+`;
+
+const SecurityRiskWarning = styled.div`
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: #fca5a5;
+  line-height: 1.4;
 `;
 
 const SecurityWarning = styled.div<{ type: 'info' | 'warning' }>`
@@ -388,15 +401,15 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
                         <>
                           <strong>Executable Transaction</strong>
                           <br />
-                          This transaction has enough signatures to be executed on-chain. You can choose between
-                          simple deletion (faster, but less secure) or secure cancellation (on-chain nonce consumption).
+                          This transaction has enough signatures to be executed on-chain immediately.
+                          Simple deletion is risky - anyone with the transaction data can execute it.
                         </>
                       ) : (
                         <>
-                          <strong>Non-Executable Transaction</strong>
+                          <strong>Partially Signed Transaction</strong>
                           <br />
-                          This transaction doesn't have enough signatures to be executed yet. You can safely delete
-                          it from the pool or use secure cancellation for maximum security.
+                          This transaction has {transaction.signatures.length} signature(s) but needs more to execute.
+                          However, other Safe owners could collect existing signatures and add their own to execute it.
                         </>
                       )}
                     </WarningContent>
@@ -411,12 +424,18 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
                     >
                       <MethodTitle>
                         🗑️ Simple Deletion
-                        {!estimate.isExecutable && <MethodBadge type="recommended">Recommended</MethodBadge>}
+                        {estimate.simpleDeletion.securityWarning && <MethodBadge type="warning">Security Risk</MethodBadge>}
+                        {!estimate.isExecutable && !estimate.simpleDeletion.securityWarning && <MethodBadge type="simple">Fast & Free</MethodBadge>}
                       </MethodTitle>
                       <MethodDescription>
-                        Remove transaction from the pool. Fast and free, but executable transactions
-                        could still be executed by others with the transaction data.
+                        Remove transaction from the pool. Fast and free, but others with access to
+                        transaction data and signatures could potentially still execute it.
                       </MethodDescription>
+                      {estimate.simpleDeletion.securityWarning && (
+                        <SecurityRiskWarning>
+                          {estimate.simpleDeletion.securityWarning}
+                        </SecurityRiskWarning>
+                      )}
                       {!estimate.simpleDeletion.available && (
                         <div style={{ color: '#ef4444', fontSize: '12px' }}>
                           {estimate.simpleDeletion.reason}
@@ -432,7 +451,7 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
                     >
                       <MethodTitle>
                         🔒 Secure Cancellation
-                        {estimate.isExecutable && <MethodBadge type="recommended">Recommended</MethodBadge>}
+                        {(estimate.isExecutable || estimate.simpleDeletion.securityWarning) && <MethodBadge type="recommended">Recommended</MethodBadge>}
                         <MethodBadge type="secure">On-Chain</MethodBadge>
                       </MethodTitle>
                       <MethodDescription>

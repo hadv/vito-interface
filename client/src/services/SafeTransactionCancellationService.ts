@@ -18,6 +18,7 @@ export interface CancellationEstimate {
   simpleDeletion: {
     available: boolean;
     reason?: string;
+    securityWarning?: string;
   };
   secureCancellation: {
     available: boolean;
@@ -144,7 +145,7 @@ export class SafeTransactionCancellationService {
   private async checkSimpleDeletionAvailability(
     transaction: SafeTxPoolTransaction,
     currentSigner?: ethers.Signer
-  ): Promise<{ available: boolean; reason?: string }> {
+  ): Promise<{ available: boolean; reason?: string; securityWarning?: string }> {
     if (!currentSigner) {
       return {
         available: false,
@@ -157,15 +158,35 @@ export class SafeTransactionCancellationService {
       const isProposer = transaction.proposer.toLowerCase() === signerAddress.toLowerCase();
       const isOwner = await this.safeWalletService.isOwner(signerAddress);
 
-      // Allow simple deletion if user is proposer OR Safe owner
-      if (isProposer || isOwner) {
-        return { available: true };
-      } else {
+      // Check if user has permission to delete
+      if (!isProposer && !isOwner) {
         return {
           available: false,
           reason: 'Only the transaction proposer or Safe owners can delete transactions'
         };
       }
+
+      // Check security implications based on existing signatures
+      const hasSignatures = transaction.signatures.length > 0;
+      const safeInfo = await this.safeWalletService.getSafeInfo();
+      const signatureGap = safeInfo.threshold - transaction.signatures.length;
+
+      let securityWarning: string | undefined;
+
+      if (hasSignatures) {
+        if (signatureGap === 1) {
+          securityWarning = `⚠️ HIGH RISK: This transaction needs only 1 more signature to be executable. Any Safe owner can collect the existing ${transaction.signatures.length} signatures and execute it.`;
+        } else if (signatureGap <= 2) {
+          securityWarning = `⚠️ MEDIUM RISK: This transaction needs ${signatureGap} more signatures. Other Safe owners could potentially collect existing signatures and execute it.`;
+        } else {
+          securityWarning = `⚠️ LOW RISK: This transaction needs ${signatureGap} more signatures, but existing signatures could still be reused by others.`;
+        }
+      }
+
+      return {
+        available: true,
+        securityWarning
+      };
     } catch (error) {
       return {
         available: false,
