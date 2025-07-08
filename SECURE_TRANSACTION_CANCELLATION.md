@@ -17,33 +17,47 @@ When a Safe transaction becomes executable (has enough signatures to meet the th
 ### Core Components
 
 1. **SafeTransactionCancellationService** (`client/src/services/SafeTransactionCancellationService.ts`)
-   - Main service handling both simple deletion and secure cancellation
-   - Determines transaction executability based on signature count vs threshold
-   - Manages gas estimation and cost calculation
+   - Main service providing both simple deletion and secure cancellation options
+   - Analyzes transaction state and user permissions for both methods
+   - Manages gas estimation and cost calculation for secure cancellation
 
 2. **EnhancedTransactionCancellationModal** (`client/src/components/wallet/components/EnhancedTransactionCancellationModal.tsx`)
-   - Enhanced UI component with security warnings and cost estimates
-   - Different flows for simple deletion vs secure cancellation
-   - Real-time gas estimation and user feedback
+   - User-friendly modal allowing Safe owners to choose their preferred cancellation method
+   - Shows both options with clear explanations and recommendations
+   - Real-time gas estimation and cost transparency
 
 3. **Updated TransactionsPage** (`client/src/components/wallet/pages/TransactionsPage.tsx`)
-   - Integrated with the new cancellation system
-   - Visual indicators for different cancellation types
-   - Permission-based button states
+   - Integrated with the new flexible cancellation system
+   - Single "Cancel" button that opens the method selection modal
+   - Permission-based availability
 
-### Security Model
+### Flexible Security Model
 
-#### Simple Deletion (Non-Executable Transactions)
-- **Condition**: `signatures.length < threshold`
+The implementation provides **user choice** between two cancellation methods:
+
+#### Simple Deletion
 - **Action**: Remove from SafeTxPool contract
-- **Security**: Safe because transaction cannot be executed without additional signatures
-- **Permissions**: Only transaction proposer can delete
+- **Speed**: Instant
+- **Cost**: Free
+- **Security**: Sufficient for most cases, but executable transactions could theoretically still be executed by someone with the transaction data
+- **Permissions**: Transaction proposer OR any Safe owner
+- **Recommended for**: Non-executable transactions or when speed is prioritized
 
-#### Secure Cancellation (Executable Transactions)
-- **Condition**: `signatures.length >= threshold`
+#### Secure Cancellation
 - **Action**: Execute a nonce-consuming transaction on-chain
-- **Security**: Invalidates original transaction by consuming the nonce
-- **Permissions**: Any Safe owner can initiate cancellation
+- **Speed**: Requires blockchain confirmation
+- **Cost**: Gas fees (typically small)
+- **Security**: Maximum security - permanently invalidates the original transaction
+- **Permissions**: Any Safe owner
+- **Recommended for**: Executable transactions or when maximum security is required
+
+### User Empowerment
+
+Safe owners can now choose their preferred approach based on:
+- **Risk tolerance**: How concerned they are about the theoretical execution risk
+- **Urgency**: Whether they need immediate cancellation or can wait for blockchain confirmation
+- **Cost sensitivity**: Whether they prefer free deletion or are willing to pay gas for maximum security
+- **Transaction state**: Whether the transaction is executable or not (with appropriate recommendations)
 
 ### Cancellation Transaction Design
 
@@ -103,31 +117,33 @@ The implementation includes comprehensive error handling for:
 
 ### Modal Flow
 
-1. **Analysis Phase**: Determines cancellation type and estimates costs
-2. **Warning Display**: Shows appropriate security warnings
-3. **Cost Estimation**: Displays gas costs for secure cancellation
-4. **Confirmation**: User confirms understanding and proceeds
-5. **Execution**: Performs the appropriate cancellation method
+1. **Analysis Phase**: Analyzes both cancellation methods and their availability
+2. **Method Selection**: Presents both options with clear explanations and recommendations
+3. **Cost Display**: Shows gas estimates for secure cancellation when selected
+4. **User Choice**: User selects their preferred method based on their needs
+5. **Execution**: Performs the chosen cancellation method
 
-### Security Warnings
+### User Interface
 
-#### Simple Deletion Warning
-```
-⚠️ Simple Deletion
-This transaction doesn't have enough signatures to be executed yet. 
-It can be safely deleted from the transaction pool without any on-chain action.
-```
+#### Method Selection Interface
+The modal presents both options side-by-side:
 
-#### Secure Cancellation Warning
-```
-🔒 Secure Cancellation Required
-This transaction has enough signatures to be executed. Simply deleting it from 
-the interface would be insufficient security because anyone with the transaction 
-data could still execute it on-chain.
+**Simple Deletion Option:**
+- 🗑️ Simple Deletion
+- Fast and free removal from transaction pool
+- Shows "Recommended" badge for non-executable transactions
+- Explains the theoretical risk for executable transactions
 
-To properly cancel this transaction, we need to execute a different transaction 
-on-chain using the same nonce, which will invalidate the original transaction permanently.
-```
+**Secure Cancellation Option:**
+- 🔒 Secure Cancellation (On-Chain)
+- Maximum security through nonce consumption
+- Shows "Recommended" badge for executable transactions
+- Displays real-time gas cost estimates
+
+#### Smart Recommendations
+- **Non-executable transactions**: Simple deletion recommended (faster, no risk)
+- **Executable transactions**: Secure cancellation recommended (maximum security)
+- **User choice**: Always available for both methods when permissions allow
 
 ## Security Considerations
 

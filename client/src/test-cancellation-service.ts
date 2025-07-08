@@ -53,26 +53,26 @@ async function testCancellationService() {
     try {
       const estimate1 = await cancellationService.estimateCancellation(mockNonExecutableTransaction);
       console.log('📊 Estimate result:', estimate1);
-      
-      if (estimate1.type === 'simple_deletion') {
-        console.log('✅ Correctly identified as simple deletion');
+
+      if (!estimate1.isExecutable && estimate1.simpleDeletion.available) {
+        console.log('✅ Correctly identified as non-executable with simple deletion available');
       } else {
-        console.log('❌ Should be simple deletion');
+        console.log('❌ Should be non-executable with simple deletion available');
       }
     } catch (error) {
       console.log('⚠️ Estimation failed (expected for test):', error);
     }
-    
+
     // Test 2: Estimate cancellation for executable transaction
     console.log('\n📋 Test 2: Executable transaction estimation');
     try {
       const estimate2 = await cancellationService.estimateCancellation(mockExecutableTransaction);
       console.log('📊 Estimate result:', estimate2);
-      
-      if (estimate2.type === 'secure_cancellation') {
-        console.log('✅ Correctly identified as secure cancellation');
+
+      if (estimate2.isExecutable && estimate2.secureCancellation.available) {
+        console.log('✅ Correctly identified as executable with secure cancellation available');
       } else {
-        console.log('❌ Should be secure cancellation');
+        console.log('❌ Should be executable with secure cancellation available');
       }
     } catch (error) {
       console.log('⚠️ Estimation failed (expected for test):', error);

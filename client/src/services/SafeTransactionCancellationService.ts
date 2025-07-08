@@ -14,11 +14,18 @@ export interface CancellationResult {
 
 export interface CancellationEstimate {
   canCancel: boolean;
-  type: 'simple_deletion' | 'secure_cancellation';
-  gasEstimate?: string;
-  gasPrice?: string;
-  totalCost?: string;
-  reason?: string;
+  isExecutable: boolean;
+  simpleDeletion: {
+    available: boolean;
+    reason?: string;
+  };
+  secureCancellation: {
+    available: boolean;
+    gasEstimate?: string;
+    gasPrice?: string;
+    totalCost?: string;
+    reason?: string;
+  };
 }
 
 /**
@@ -95,45 +102,107 @@ export class SafeTransactionCancellationService {
   }
 
   /**
-   * Estimate the cost and feasibility of cancelling a transaction
+   * Estimate the cost and feasibility of both cancellation methods
    */
   async estimateCancellation(transaction: SafeTxPoolTransaction): Promise<CancellationEstimate> {
     try {
       const isExecutable = await this.isTransactionExecutable(transaction);
-
-      if (!isExecutable) {
-        // Simple deletion - no gas cost
-        return {
-          canCancel: true,
-          type: 'simple_deletion'
-        };
-      }
-
-      // Secure cancellation required
       const currentSigner = this.getCurrentSigner();
-      if (!currentSigner) {
+
+      // Check simple deletion availability
+      const simpleDeletion = await this.checkSimpleDeletionAvailability(transaction, currentSigner);
+
+      // Check secure cancellation availability
+      const secureCancellation = await this.checkSecureCancellationAvailability(transaction, currentSigner);
+
+      return {
+        canCancel: simpleDeletion.available || secureCancellation.available,
+        isExecutable,
+        simpleDeletion,
+        secureCancellation
+      };
+    } catch (error) {
+      console.error('Error estimating cancellation:', error);
+      return {
+        canCancel: false,
+        isExecutable: false,
+        simpleDeletion: {
+          available: false,
+          reason: `Estimation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        },
+        secureCancellation: {
+          available: false,
+          reason: `Estimation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }
+      };
+    }
+  }
+
+  /**
+   * Check if simple deletion is available for the current user
+   */
+  private async checkSimpleDeletionAvailability(
+    transaction: SafeTxPoolTransaction,
+    currentSigner?: ethers.Signer
+  ): Promise<{ available: boolean; reason?: string }> {
+    if (!currentSigner) {
+      return {
+        available: false,
+        reason: 'Wallet not connected'
+      };
+    }
+
+    try {
+      const signerAddress = await currentSigner.getAddress();
+      const isProposer = transaction.proposer.toLowerCase() === signerAddress.toLowerCase();
+      const isOwner = await this.safeWalletService.isOwner(signerAddress);
+
+      // Allow simple deletion if user is proposer OR Safe owner
+      if (isProposer || isOwner) {
+        return { available: true };
+      } else {
         return {
-          canCancel: false,
-          type: 'secure_cancellation',
-          reason: 'Wallet not connected. Secure cancellation requires a connected wallet to execute the cancellation transaction.'
+          available: false,
+          reason: 'Only the transaction proposer or Safe owners can delete transactions'
         };
       }
+    } catch (error) {
+      return {
+        available: false,
+        reason: 'Error checking permissions'
+      };
+    }
+  }
 
+  /**
+   * Check if secure cancellation is available and estimate costs
+   */
+  private async checkSecureCancellationAvailability(
+    transaction: SafeTxPoolTransaction,
+    currentSigner?: ethers.Signer
+  ): Promise<{ available: boolean; gasEstimate?: string; gasPrice?: string; totalCost?: string; reason?: string }> {
+    if (!currentSigner) {
+      return {
+        available: false,
+        reason: 'Wallet not connected. Secure cancellation requires a connected wallet to execute the cancellation transaction.'
+      };
+    }
+
+    try {
       // Check if current user is a Safe owner
       const signerAddress = await currentSigner.getAddress();
       const isOwner = await this.safeWalletService.isOwner(signerAddress);
-      
+
       if (!isOwner) {
         return {
-          canCancel: false,
-          type: 'secure_cancellation',
+          available: false,
           reason: 'Only Safe owners can execute secure cancellation transactions.'
         };
       }
 
       // Create cancellation transaction for gas estimation
       const cancellationTx = await this.createCancellationTransaction(transaction);
-      
+
       // Estimate gas for the cancellation transaction
       try {
         const safeContract = new ethers.Contract(
@@ -163,8 +232,7 @@ export class SafeTransactionCancellationService {
         const totalCost = gasEstimate.mul(gasPrice);
 
         return {
-          canCancel: true,
-          type: 'secure_cancellation',
+          available: true,
           gasEstimate: gasEstimate.toString(),
           gasPrice: gasPrice.toString(),
           totalCost: ethers.utils.formatEther(totalCost)
@@ -172,17 +240,15 @@ export class SafeTransactionCancellationService {
       } catch (gasError) {
         console.error('Gas estimation failed:', gasError);
         return {
-          canCancel: false,
-          type: 'secure_cancellation',
+          available: false,
           reason: `Gas estimation failed: ${gasError instanceof Error ? gasError.message : 'Unknown error'}`
         };
       }
     } catch (error) {
-      console.error('Error estimating cancellation:', error);
+      console.error('Error checking secure cancellation availability:', error);
       return {
-        canCancel: false,
-        type: 'secure_cancellation',
-        reason: `Estimation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        available: false,
+        reason: `Error checking availability: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
   }
@@ -208,14 +274,17 @@ export class SafeTransactionCancellationService {
   }
 
   /**
-   * Cancel a transaction using the appropriate method
+   * Cancel a transaction using the specified method
    */
-  async cancelTransaction(transaction: SafeTxPoolTransaction): Promise<CancellationResult> {
+  async cancelTransaction(
+    transaction: SafeTxPoolTransaction,
+    method: 'simple_deletion' | 'secure_cancellation'
+  ): Promise<CancellationResult> {
     try {
       // Validate transaction
       if (!transaction || !transaction.txHash) {
         return {
-          type: 'simple_deletion',
+          type: method,
           success: false,
           error: 'Invalid transaction data'
         };
@@ -225,25 +294,38 @@ export class SafeTransactionCancellationService {
       const currentTx = await this.safeTxPoolService.getTxDetails(transaction.txHash);
       if (!currentTx) {
         return {
-          type: 'simple_deletion',
+          type: method,
           success: false,
           error: 'Transaction no longer exists in the pool'
         };
       }
 
-      const isExecutable = await this.isTransactionExecutable(currentTx);
+      // Verify the chosen method is available
+      const estimate = await this.estimateCancellation(currentTx);
 
-      if (!isExecutable) {
-        // Simple deletion from pool
+      if (method === 'simple_deletion') {
+        if (!estimate.simpleDeletion.available) {
+          return {
+            type: method,
+            success: false,
+            error: estimate.simpleDeletion.reason || 'Simple deletion not available'
+          };
+        }
         return await this.performSimpleDeletion(currentTx);
       } else {
-        // Secure on-chain cancellation
+        if (!estimate.secureCancellation.available) {
+          return {
+            type: method,
+            success: false,
+            error: estimate.secureCancellation.reason || 'Secure cancellation not available'
+          };
+        }
         return await this.performSecureCancellation(currentTx);
       }
     } catch (error) {
       console.error('Error cancelling transaction:', error);
       return {
-        type: 'secure_cancellation',
+        type: method,
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
@@ -316,44 +398,39 @@ export class SafeTransactionCancellationService {
   }
 
   /**
-   * Check if a transaction can be cancelled by the current user
+   * Check if a transaction can be cancelled by the current user (either method)
    */
   async canUserCancelTransaction(transaction: SafeTxPoolTransaction): Promise<{
     canCancel: boolean;
+    canSimpleDelete: boolean;
+    canSecureCancel: boolean;
     reason?: string;
   }> {
     try {
-      // Check if user is the proposer (for simple deletion)
       const currentSigner = this.getCurrentSigner();
       if (!currentSigner) {
         return {
           canCancel: false,
+          canSimpleDelete: false,
+          canSecureCancel: false,
           reason: 'Wallet not connected'
         };
       }
 
-      const signerAddress = await currentSigner.getAddress();
-      const isProposer = transaction.proposer.toLowerCase() === signerAddress.toLowerCase();
-      const isExecutable = await this.isTransactionExecutable(transaction);
+      const estimate = await this.estimateCancellation(transaction);
 
-      if (!isExecutable) {
-        // For non-executable transactions, only proposer can delete
-        return {
-          canCancel: isProposer,
-          reason: isProposer ? undefined : 'Only the transaction proposer can delete pending transactions'
-        };
-      } else {
-        // For executable transactions, any Safe owner can cancel
-        const isOwner = await this.safeWalletService.isOwner(signerAddress);
-        return {
-          canCancel: isOwner,
-          reason: isOwner ? undefined : 'Only Safe owners can cancel executable transactions'
-        };
-      }
+      return {
+        canCancel: estimate.canCancel,
+        canSimpleDelete: estimate.simpleDeletion.available,
+        canSecureCancel: estimate.secureCancellation.available,
+        reason: !estimate.canCancel ? 'No cancellation methods available' : undefined
+      };
     } catch (error) {
       console.error('Error checking cancellation permissions:', error);
       return {
         canCancel: false,
+        canSimpleDelete: false,
+        canSecureCancel: false,
         reason: 'Error checking permissions'
       };
     }

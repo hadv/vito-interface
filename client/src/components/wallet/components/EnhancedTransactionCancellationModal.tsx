@@ -75,20 +75,75 @@ const ModalBody = styled.div`
   padding: 32px;
 `;
 
-const SecurityWarning = styled.div<{ type: 'simple' | 'secure' }>`
+const MethodSelector = styled.div`
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+`;
+
+const MethodOption = styled.div<{ selected: boolean; disabled: boolean }>`
+  flex: 1;
+  padding: 20px;
+  border-radius: 12px;
+  border: 2px solid ${props => props.selected ? '#3b82f6' : 'rgba(255, 255, 255, 0.1)'};
+  background-color: ${props => props.selected ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255, 255, 255, 0.05)'};
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  opacity: ${props => props.disabled ? 0.5 : 1};
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: ${props => props.disabled ? 'rgba(255, 255, 255, 0.1)' : '#3b82f6'};
+  }
+`;
+
+const MethodTitle = styled.h3`
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const MethodDescription = styled.p`
+  color: #9ca3af;
+  font-size: 14px;
+  margin: 0 0 12px 0;
+  line-height: 1.5;
+`;
+
+const MethodBadge = styled.span<{ type: 'recommended' | 'secure' | 'simple' }>`
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 500;
+  ${props => {
+    switch (props.type) {
+      case 'recommended':
+        return 'background-color: rgba(34, 197, 94, 0.2); color: #22c55e;';
+      case 'secure':
+        return 'background-color: rgba(239, 68, 68, 0.2); color: #ef4444;';
+      case 'simple':
+        return 'background-color: rgba(251, 191, 36, 0.2); color: #f59e0b;';
+    }
+  }}
+`;
+
+const SecurityWarning = styled.div<{ type: 'info' | 'warning' }>`
   display: flex;
   align-items: flex-start;
   gap: 16px;
   padding: 20px;
   border-radius: 12px;
   margin-bottom: 24px;
-  background-color: ${props => props.type === 'secure' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(251, 191, 36, 0.1)'};
-  border: 1px solid ${props => props.type === 'secure' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(251, 191, 36, 0.3)'};
+  background-color: ${props => props.type === 'warning' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)'};
+  border: 1px solid ${props => props.type === 'warning' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(59, 130, 246, 0.3)'};
 `;
 
-const WarningIcon = styled.div<{ type: 'simple' | 'secure' }>`
+const WarningIcon = styled.div<{ type: 'info' | 'warning' }>`
   font-size: 24px;
-  color: ${props => props.type === 'secure' ? '#ef4444' : '#f59e0b'};
+  color: ${props => props.type === 'warning' ? '#ef4444' : '#3b82f6'};
   flex-shrink: 0;
 `;
 
@@ -230,6 +285,7 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
 }) => {
   const [cancellationService] = useState(() => new SafeTransactionCancellationService(network));
   const [estimate, setEstimate] = useState<CancellationEstimate | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<'simple_deletion' | 'secure_cancellation' | null>(null);
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -237,14 +293,24 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
   const loadEstimate = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setSelectedMethod(null);
 
     try {
       await cancellationService.initialize(transaction.safe, network);
       const estimate = await cancellationService.estimateCancellation(transaction);
       setEstimate(estimate);
 
-      if (!estimate.canCancel && estimate.reason) {
-        setError(estimate.reason);
+      // Auto-select the first available method
+      if (estimate.canCancel) {
+        if (estimate.simpleDeletion.available) {
+          setSelectedMethod('simple_deletion');
+        } else if (estimate.secureCancellation.available) {
+          setSelectedMethod('secure_cancellation');
+        }
+      }
+
+      if (!estimate.canCancel) {
+        setError('No cancellation methods are available for this transaction');
       }
     } catch (err) {
       console.error('Error loading cancellation estimate:', err);
@@ -261,14 +327,14 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
   }, [isOpen, transaction, loadEstimate]);
 
   const handleCancel = async () => {
-    if (!estimate?.canCancel) return;
+    if (!estimate?.canCancel || !selectedMethod) return;
 
     setProcessing(true);
     setError(null);
 
     try {
-      const result: CancellationResult = await cancellationService.cancelTransaction(transaction);
-      
+      const result: CancellationResult = await cancellationService.cancelTransaction(transaction, selectedMethod);
+
       if (result.success) {
         onSuccess();
         onClose();
@@ -291,14 +357,12 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
 
   if (!isOpen) return null;
 
-  const isSecureCancellation = estimate?.type === 'secure_cancellation';
-
   return (
     <ModalOverlay isOpen={isOpen} onClick={handleOverlayClick}>
       <ModalContent>
         <ModalHeader>
           <ModalTitle>
-            {isSecureCancellation ? 'Secure Transaction Cancellation' : 'Delete Transaction'}
+            Choose Cancellation Method
           </ModalTitle>
           <CloseButton onClick={onClose} disabled={processing}>
             ×
@@ -313,31 +377,77 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
             </div>
           ) : (
             <>
-              <SecurityWarning type={isSecureCancellation ? 'secure' : 'simple'}>
-                <WarningIcon type={isSecureCancellation ? 'secure' : 'simple'}>
-                  {isSecureCancellation ? '🔒' : '⚠️'}
-                </WarningIcon>
-                <WarningContent>
-                  {isSecureCancellation ? (
-                    <>
-                      <strong>Secure Cancellation Required</strong>
-                      <br />
-                      This transaction has enough signatures to be executed. Simply deleting it from the interface 
-                      would be insufficient security because anyone with the transaction data could still execute it on-chain.
-                      <br /><br />
-                      To properly cancel this transaction, we need to execute a different transaction on-chain using 
-                      the same nonce, which will invalidate the original transaction permanently.
-                    </>
-                  ) : (
-                    <>
-                      <strong>Simple Deletion</strong>
-                      <br />
-                      This transaction doesn't have enough signatures to be executed yet. It can be safely deleted 
-                      from the transaction pool without any on-chain action.
-                    </>
-                  )}
-                </WarningContent>
-              </SecurityWarning>
+              {estimate && estimate.canCancel && (
+                <>
+                  <SecurityWarning type={estimate.isExecutable ? 'warning' : 'info'}>
+                    <WarningIcon type={estimate.isExecutable ? 'warning' : 'info'}>
+                      {estimate.isExecutable ? '⚠️' : 'ℹ️'}
+                    </WarningIcon>
+                    <WarningContent>
+                      {estimate.isExecutable ? (
+                        <>
+                          <strong>Executable Transaction</strong>
+                          <br />
+                          This transaction has enough signatures to be executed on-chain. You can choose between
+                          simple deletion (faster, but less secure) or secure cancellation (on-chain nonce consumption).
+                        </>
+                      ) : (
+                        <>
+                          <strong>Non-Executable Transaction</strong>
+                          <br />
+                          This transaction doesn't have enough signatures to be executed yet. You can safely delete
+                          it from the pool or use secure cancellation for maximum security.
+                        </>
+                      )}
+                    </WarningContent>
+                  </SecurityWarning>
+
+                  <MethodSelector>
+                    {/* Simple Deletion Option */}
+                    <MethodOption
+                      selected={selectedMethod === 'simple_deletion'}
+                      disabled={!estimate.simpleDeletion.available}
+                      onClick={() => estimate.simpleDeletion.available && setSelectedMethod('simple_deletion')}
+                    >
+                      <MethodTitle>
+                        🗑️ Simple Deletion
+                        {!estimate.isExecutable && <MethodBadge type="recommended">Recommended</MethodBadge>}
+                      </MethodTitle>
+                      <MethodDescription>
+                        Remove transaction from the pool. Fast and free, but executable transactions
+                        could still be executed by others with the transaction data.
+                      </MethodDescription>
+                      {!estimate.simpleDeletion.available && (
+                        <div style={{ color: '#ef4444', fontSize: '12px' }}>
+                          {estimate.simpleDeletion.reason}
+                        </div>
+                      )}
+                    </MethodOption>
+
+                    {/* Secure Cancellation Option */}
+                    <MethodOption
+                      selected={selectedMethod === 'secure_cancellation'}
+                      disabled={!estimate.secureCancellation.available}
+                      onClick={() => estimate.secureCancellation.available && setSelectedMethod('secure_cancellation')}
+                    >
+                      <MethodTitle>
+                        🔒 Secure Cancellation
+                        {estimate.isExecutable && <MethodBadge type="recommended">Recommended</MethodBadge>}
+                        <MethodBadge type="secure">On-Chain</MethodBadge>
+                      </MethodTitle>
+                      <MethodDescription>
+                        Execute a nonce-consuming transaction on-chain to permanently invalidate
+                        the original transaction. Maximum security but requires gas fees.
+                      </MethodDescription>
+                      {!estimate.secureCancellation.available && (
+                        <div style={{ color: '#ef4444', fontSize: '12px' }}>
+                          {estimate.secureCancellation.reason}
+                        </div>
+                      )}
+                    </MethodOption>
+                  </MethodSelector>
+                </>
+              )}
 
               <TransactionDetails>
                 <DetailRow>
@@ -362,20 +472,20 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
                 </DetailRow>
               </TransactionDetails>
 
-              {estimate?.type === 'secure_cancellation' && estimate.canCancel && estimate.totalCost && (
+              {selectedMethod === 'secure_cancellation' && estimate?.secureCancellation.available && estimate.secureCancellation.totalCost && (
                 <CostEstimate>
                   <CostTitle>Estimated Cancellation Cost</CostTitle>
                   <DetailRow>
                     <DetailLabel>Gas Estimate:</DetailLabel>
-                    <DetailValue>{estimate.gasEstimate}</DetailValue>
+                    <DetailValue>{estimate.secureCancellation.gasEstimate}</DetailValue>
                   </DetailRow>
                   <DetailRow>
                     <DetailLabel>Gas Price:</DetailLabel>
-                    <DetailValue>{estimate.gasPrice} wei</DetailValue>
+                    <DetailValue>{estimate.secureCancellation.gasPrice} wei</DetailValue>
                   </DetailRow>
                   <DetailRow>
                     <DetailLabel>Total Cost:</DetailLabel>
-                    <DetailValue>{estimate.totalCost} ETH</DetailValue>
+                    <DetailValue>{estimate.secureCancellation.totalCost} ETH</DetailValue>
                   </DetailRow>
                 </CostEstimate>
               )}
@@ -390,14 +500,16 @@ const EnhancedTransactionCancellationModal: React.FC<EnhancedTransactionCancella
                 <Button variant="secondary" onClick={onClose} disabled={processing}>
                   Cancel
                 </Button>
-                <Button 
-                  variant={isSecureCancellation ? "danger" : "primary"}
+                <Button
+                  variant={selectedMethod === 'secure_cancellation' ? "danger" : "primary"}
                   onClick={handleCancel}
-                  disabled={!estimate?.canCancel || processing}
+                  disabled={!estimate?.canCancel || !selectedMethod || processing}
                 >
                   {processing && <LoadingSpinner />}
                   {processing ? 'Processing...' : (
-                    isSecureCancellation ? 'Execute Secure Cancellation' : 'Delete Transaction'
+                    selectedMethod === 'secure_cancellation' ? 'Execute Secure Cancellation' :
+                    selectedMethod === 'simple_deletion' ? 'Delete Transaction' :
+                    'Select Method'
                   )}
                 </Button>
               </ButtonGroup>

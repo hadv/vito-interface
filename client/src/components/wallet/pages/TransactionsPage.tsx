@@ -484,21 +484,14 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         <div className="flex justify-end space-x-2">
           {canDelete && (
             <button
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                hasEnoughSignatures
-                  ? 'bg-red-600 hover:bg-red-700 text-white'
-                  : 'bg-orange-600 hover:bg-orange-700 text-white'
-              }`}
+              className="px-3 py-2 rounded-md text-sm font-medium transition-colors bg-purple-600 hover:bg-purple-700 text-white"
               onClick={(e) => {
                 e.stopPropagation();
                 handleDeleteTransaction(tx);
               }}
-              title={hasEnoughSignatures
-                ? "Secure cancellation required (transaction is executable)"
-                : "Delete transaction from pool"
-              }
+              title="Choose cancellation method - simple deletion or secure on-chain cancellation"
             >
-              {hasEnoughSignatures ? 'Cancel' : 'Delete'}
+              Cancel
             </button>
           )}
           <button
