@@ -6,8 +6,11 @@ import EnhancedTransactionsPage from './EnhancedTransactionsPage';
 import { SafeTxPoolService, SafeTxPoolTransaction } from '../../../services/SafeTxPoolService';
 import { SafeWalletService } from '../../../services/SafeWalletService';
 import PendingTransactionConfirmationModal from '../components/PendingTransactionConfirmationModal';
+import DeleteTransactionModal from '../components/DeleteTransactionModal';
 import { TransactionDecoder, DecodedTransactionData } from '../../../utils/transactionDecoder';
 import { TokenService } from '../../../services/TokenService';
+import { walletConnectionService } from '../../../services/WalletConnectionService';
+import { useToast } from '../../../hooks/useToast';
 import ParameterDisplay from '../components/ParameterDisplay';
 import { getRpcUrl } from '../../../contracts/abis';
 
@@ -153,6 +156,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
   const [safeTxPoolService] = useState(() => new SafeTxPoolService(network));
   const [selectedPendingTx, setSelectedPendingTx] = useState<SafeTxPoolTransaction | null>(null);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [txToDelete, setTxToDelete] = useState<SafeTxPoolTransaction | null>(null);
+  const toast = useToast();
 
   // Load Safe info to get threshold
   const loadSafeInfo = useCallback(async () => {
@@ -266,6 +272,28 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     }
   }, [activeTab, safeAddress, network, loadPendingTransactions, loadSafeInfo]);
 
+  // Update SafeTxPoolService signer when wallet connection changes
+  useEffect(() => {
+    const updateSigner = () => {
+      const connectionState = walletConnectionService.getState();
+      const signer = walletConnectionService.getSigner();
+
+      if (connectionState.signerConnected && signer) {
+        safeTxPoolService.setSigner(signer);
+      } else {
+        safeTxPoolService.setSigner(null);
+      }
+    };
+
+    // Set initial signer
+    updateSigner();
+
+    // Subscribe to wallet connection changes
+    const unsubscribe = walletConnectionService.subscribe(updateSigner);
+
+    return unsubscribe;
+  }, [safeTxPoolService]);
+
   // Auto-refresh removed - users can manually refresh using the "Refresh Pool" button
 
   const formatAmount = (amount: string): string => {
@@ -280,6 +308,82 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     loadPendingTransactions();
   };
 
+  // Handle delete transaction
+  const handleDeleteTransaction = async (tx: SafeTxPoolTransaction) => {
+    try {
+      // Check if user is connected and is the proposer
+      const connectionState = walletConnectionService.getState();
+      if (!connectionState.signerConnected || !connectionState.signerAddress) {
+        toast.error('Wallet not connected', {
+          message: 'Please connect your wallet to delete transactions'
+        });
+        return;
+      }
+
+      // Check if current user is the proposer
+      const currentAddress = connectionState.signerAddress.toLowerCase();
+      const proposerAddress = tx.proposer.toLowerCase();
+
+      if (currentAddress !== proposerAddress) {
+        toast.error('Permission denied', {
+          message: 'Only the transaction proposer can delete this transaction'
+        });
+        return;
+      }
+
+      // Show confirmation modal
+      setTxToDelete(tx);
+      setShowDeleteModal(true);
+    } catch (error) {
+      console.error('Error preparing to delete transaction:', error);
+      toast.error('Error', {
+        message: 'Failed to prepare transaction deletion'
+      });
+    }
+  };
+
+  // Confirm delete transaction
+  const confirmDeleteTransaction = async () => {
+    if (!txToDelete) return;
+
+    try {
+      // Check wallet connection
+      const connectionState = walletConnectionService.getState();
+      if (!connectionState.signerConnected) {
+        toast.error('Wallet not connected', {
+          message: 'Please connect your wallet to delete transactions'
+        });
+        return;
+      }
+
+      // Verify the service is properly configured
+      if (!safeTxPoolService.isConfigured()) {
+        toast.error('Service not configured', {
+          message: 'SafeTxPool service is not properly configured for this network'
+        });
+        return;
+      }
+
+      await safeTxPoolService.deleteTx(txToDelete.txHash);
+
+      toast.success('Transaction deleted', {
+        message: 'The pending transaction has been successfully deleted'
+      });
+
+      // Refresh pending transactions list
+      await loadPendingTransactions();
+
+      // Close modal
+      setShowDeleteModal(false);
+      setTxToDelete(null);
+    } catch (error: any) {
+      console.error('Error deleting transaction:', error);
+      toast.error('Delete failed', {
+        message: error.message || 'Failed to delete transaction'
+      });
+    }
+  };
+
   // Render pending transaction from Safe TX pool smart contract
   const renderPendingTxItem = (tx: SafeTxPoolTransaction, isSelected: boolean, isFocused: boolean) => {
     // Use actual threshold from Safe info, fallback to 2 if not loaded yet
@@ -289,6 +393,12 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
     // Get decoded transaction data
     const decodedTx = decodedTransactions.get(tx.txHash);
+
+    // Check if current user can delete this transaction (is the proposer)
+    const connectionState = walletConnectionService.getState();
+    const canDelete = connectionState.signerConnected &&
+                     connectionState.signerAddress &&
+                     connectionState.signerAddress.toLowerCase() === tx.proposer.toLowerCase();
 
     return (
       <div className="flex flex-col p-4 border-b border-gray-700 last:border-b-0">
@@ -361,8 +471,20 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
           </div>
         )}
 
-        {/* Action Button */}
-        <div className="flex justify-end">
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-2">
+          {canDelete && (
+            <button
+              className="px-3 py-2 rounded-md text-sm font-medium transition-colors bg-red-600 hover:bg-red-700 text-white"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteTransaction(tx);
+              }}
+              title="Delete transaction (only proposer can delete)"
+            >
+              Delete
+            </button>
+          )}
           <button
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               hasEnoughSignatures
@@ -583,6 +705,19 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
           transaction={selectedPendingTx}
           safeAddress={safeAddress!}
           network={network}
+        />
+      )}
+
+      {/* Delete Transaction Confirmation Modal */}
+      {txToDelete && (
+        <DeleteTransactionModal
+          isOpen={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setTxToDelete(null);
+          }}
+          onConfirm={confirmDeleteTransaction}
+          transaction={txToDelete}
         />
       )}
     </Container>
