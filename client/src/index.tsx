@@ -1,6 +1,9 @@
 // Import polyfills first, before any other imports
 import './polyfills';
 
+// Import WalletConnect error patch as early as possible
+import './utils/walletConnectErrorPatch';
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';

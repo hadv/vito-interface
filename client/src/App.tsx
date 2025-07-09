@@ -11,6 +11,8 @@ import { useToast } from './hooks/useToast';
 import { ErrorHandler } from './utils/errorHandling';
 import Header from './components/ui/Header';
 import Web3AuthProvider from './components/providers/Web3AuthProvider';
+// Import WalletConnect error patch to prevent runtime crashes
+import './utils/walletConnectErrorPatch';
 
 // Tailwind classes for app container
 const appContainerClasses = cn(
