@@ -85,13 +85,48 @@ export class DAppWalletConnectService {
     if (!this.signClient) return;
 
     // Handle session proposals from dApps
-    this.signClient.on('session_proposal', this.handleSessionProposal.bind(this));
-    
+    this.signClient.on('session_proposal', (event: any) => {
+      this.handleSessionProposal(event).catch(error => {
+        console.error('❌ Error handling session proposal:', error);
+      });
+    });
+
     // Handle session requests (transaction signing, etc.)
-    this.signClient.on('session_request', this.handleSessionRequest.bind(this));
-    
-    // Handle session deletions
-    this.signClient.on('session_delete', this.handleSessionDelete.bind(this));
+    this.signClient.on('session_request', (event: any) => {
+      this.handleSessionRequest(event).catch(error => {
+        console.error('❌ Error handling session request:', error);
+      });
+    });
+
+    // Handle session deletions with error handling
+    this.signClient.on('session_delete', (event: any) => {
+      try {
+        this.handleSessionDelete(event).catch(error => {
+          console.error('❌ Error handling session delete:', error);
+        });
+      } catch (error) {
+        console.error('❌ Synchronous error in session delete handler:', error);
+      }
+    });
+
+    // Handle session expiry
+    this.signClient.on('session_expire', (event: any) => {
+      try {
+        console.log('⏰ DApp service received session expire event:', event);
+        const { topic } = event;
+
+        // Only handle sessions that we actually own
+        if (this.activeSessions.has(topic)) {
+          console.log('⏰ Cleaning up our expired dApp session:', topic);
+          this.activeSessions.delete(topic);
+          this.emit('session_disconnected', { topic, reason: 'expired' });
+        } else {
+          console.log('🚫 Ignoring session expire for topic we don\'t own:', topic);
+        }
+      } catch (error) {
+        console.error('❌ Error handling session expire:', error);
+      }
+    });
   }
 
   /**
@@ -365,12 +400,18 @@ export class DAppWalletConnectService {
    * Handle session deletions
    */
   private async handleSessionDelete(event: any): Promise<void> {
-    console.log('🗑️ Session deleted:', event);
-    
+    console.log('🗑️ DApp service received session delete event:', event);
+
     const { topic } = event;
-    this.activeSessions.delete(topic);
-    
-    this.emit('session_disconnected', { topic });
+
+    // Only handle sessions that we actually own (exist in our activeSessions)
+    if (this.activeSessions.has(topic)) {
+      console.log('🗑️ Cleaning up our dApp session:', topic);
+      this.activeSessions.delete(topic);
+      this.emit('session_disconnected', { topic });
+    } else {
+      console.log('🚫 Ignoring session delete for topic we don\'t own:', topic);
+    }
   }
 
   /**
@@ -403,18 +444,34 @@ export class DAppWalletConnectService {
     }
 
     try {
+      // First check if this session belongs to us
+      if (!this.activeSessions.has(topic)) {
+        console.log('🚫 Cannot disconnect session that doesn\'t belong to dApp service:', topic);
+        return;
+      }
+
       // Check if session exists in WalletConnect client before trying to disconnect
-      const sessionExists = this.signClient.session.keys.includes(topic);
+      let sessionExists = false;
+      try {
+        sessionExists = this.signClient.session.keys.includes(topic);
+      } catch (error) {
+        console.warn('⚠️ Error checking session existence:', error);
+        sessionExists = false;
+      }
 
       if (sessionExists) {
-        await this.signClient.disconnect({
-          topic,
-          reason: {
-            code: 6000,
-            message: 'User disconnected'
-          }
-        });
-        console.log('✅ Disconnected from WalletConnect session:', topic);
+        try {
+          await this.signClient.disconnect({
+            topic,
+            reason: {
+              code: 6000,
+              message: 'User disconnected'
+            }
+          });
+          console.log('✅ Disconnected from WalletConnect session:', topic);
+        } catch (disconnectError) {
+          console.warn('⚠️ WalletConnect disconnect failed, but continuing with cleanup:', disconnectError);
+        }
       } else {
         console.log('⚠️ Session not found in WalletConnect client, cleaning up locally:', topic);
       }

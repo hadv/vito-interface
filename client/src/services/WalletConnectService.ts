@@ -82,45 +82,61 @@ export class WalletConnectService {
 
     // Handle session deletion (when mobile wallet disconnects)
     this.signClient.on('session_delete', ({ topic }: { topic: string }) => {
-      console.log(`WalletConnect session deleted by mobile wallet: ${topic}`);
-      if (topic === this.sessionTopic) {
-        console.log('Mobile wallet initiated disconnection, cleaning up app state...');
+      try {
+        console.log(`Signer service received session delete event: ${topic}`);
 
-        // Clear session state
-        this.sessionTopic = null;
-        this.connectionResult = null;
+        // Only handle sessions that belong to us (match our sessionTopic)
+        if (topic === this.sessionTopic) {
+          console.log('Mobile wallet initiated disconnection, cleaning up app state...');
 
-        // Emit disconnection event to notify the app
-        this.emit('session_disconnected', {
-          topic,
-          reason: 'Mobile wallet disconnected',
-          initiatedBy: 'mobile'
-        });
-        this.emit('session_delete', { topic });
+          // Clear session state
+          this.sessionTopic = null;
+          this.connectionResult = null;
 
-        console.log('Mobile wallet disconnection cleanup completed');
+          // Emit disconnection event to notify the app
+          this.emit('session_disconnected', {
+            topic,
+            reason: 'Mobile wallet disconnected',
+            initiatedBy: 'mobile'
+          });
+          this.emit('session_delete', { topic });
+
+          console.log('Mobile wallet disconnection cleanup completed');
+        } else {
+          console.log('🚫 Ignoring session delete for topic that doesn\'t match our session:', topic);
+        }
+      } catch (error) {
+        console.error('❌ Error handling session delete in signer service:', error);
       }
     });
 
     // Handle session expiry
     this.signClient.on('session_expire', ({ topic }: { topic: string }) => {
-      console.log(`WalletConnect session expired: ${topic}`);
-      if (topic === this.sessionTopic) {
-        console.log('WalletConnect session expired, cleaning up app state...');
+      try {
+        console.log(`Signer service received session expire event: ${topic}`);
 
-        // Clear session state
-        this.sessionTopic = null;
-        this.connectionResult = null;
+        // Only handle sessions that belong to us (match our sessionTopic)
+        if (topic === this.sessionTopic) {
+          console.log('WalletConnect session expired, cleaning up app state...');
 
-        // Emit disconnection event to notify the app
-        this.emit('session_disconnected', {
-          topic,
-          reason: 'Session expired',
-          initiatedBy: 'system'
-        });
-        this.emit('session_expire', { topic });
+          // Clear session state
+          this.sessionTopic = null;
+          this.connectionResult = null;
 
-        console.log('Session expiry cleanup completed');
+          // Emit disconnection event to notify the app
+          this.emit('session_disconnected', {
+            topic,
+            reason: 'Session expired',
+            initiatedBy: 'system'
+          });
+          this.emit('session_expire', { topic });
+
+          console.log('Session expiry cleanup completed');
+        } else {
+          console.log('🚫 Ignoring session expire for topic that doesn\'t match our session:', topic);
+        }
+      } catch (error) {
+        console.error('❌ Error handling session expire in signer service:', error);
       }
     });
 
