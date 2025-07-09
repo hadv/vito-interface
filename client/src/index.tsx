@@ -9,10 +9,10 @@ import reportWebVitals from './reportWebVitals';
 // Import WalletConnect patching test for debugging
 import './tests/WalletConnectPatchingTest';
 
-// SIMPLE SOLUTION: Just log WalletConnect errors as warnings instead of errors
+// WORKING SOLUTION: Global error handler to catch WalletConnect runtime errors
 const originalConsoleError = console.error;
 
-// Simple console.error override to show WalletConnect errors as warnings
+// Override console.error for console output
 console.error = (...args: any[]) => {
   const errorString = args.join(' ');
   if (errorString.includes('No matching key') &&
@@ -22,6 +22,28 @@ console.error = (...args: any[]) => {
   }
   originalConsoleError.apply(console, args);
 };
+
+// Global error handler to catch runtime errors before they reach React
+window.addEventListener('error', (event) => {
+  const errorMessage = event.error?.message || '';
+  if (errorMessage.includes('No matching key') &&
+      (errorMessage.includes('session') || errorMessage.includes('pairing'))) {
+    console.warn('⚠️ WalletConnect runtime error suppressed:', errorMessage);
+    event.preventDefault(); // Prevent the error from propagating
+    return;
+  }
+});
+
+// Handle unhandled promise rejections
+window.addEventListener('unhandledrejection', (event) => {
+  const errorMessage = event.reason?.message || '';
+  if (errorMessage.includes('No matching key') &&
+      (errorMessage.includes('session') || errorMessage.includes('pairing'))) {
+    console.warn('⚠️ WalletConnect promise rejection suppressed:', errorMessage);
+    event.preventDefault(); // Prevent the error from propagating
+    return;
+  }
+});
 
 
 
