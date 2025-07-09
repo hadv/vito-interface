@@ -571,13 +571,19 @@ export class DAppWalletConnectService {
     let removedCount = 0;
 
     // Check each loaded session and remove if it looks like a signer wallet
-    for (const [topic, session] of this.activeSessions.entries()) {
+    const topicsToRemove: string[] = [];
+    this.activeSessions.forEach((session, topic) => {
       if (this.isLikelySignerWalletSession(session)) {
-        this.activeSessions.delete(topic);
-        removedCount++;
-        console.log(`🗑️ Removed likely signer wallet session: ${topic} (${session.peer?.metadata?.name})`);
+        topicsToRemove.push(topic);
+        console.log(`🗑️ Marking for removal - likely signer wallet session: ${topic} (${session.peer?.metadata?.name})`);
       }
-    }
+    });
+
+    // Remove the identified sessions
+    topicsToRemove.forEach(topic => {
+      this.activeSessions.delete(topic);
+      removedCount++;
+    });
 
     console.log(`✅ Cleanup complete: removed ${removedCount} signer sessions, ${this.activeSessions.size} dApp sessions remain`);
   }
