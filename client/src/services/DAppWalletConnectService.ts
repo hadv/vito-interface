@@ -1,6 +1,4 @@
-import { SignClient } from '@walletconnect/sign-client';
 import { SessionTypes } from '@walletconnect/types';
-import { WALLETCONNECT_DAPP_PROJECT_ID, WALLETCONNECT_DAPP_METADATA } from '../config/walletconnect';
 import { walletConnectionService } from './WalletConnectionService';
 import { safeWalletService } from './SafeWalletService';
 import { walletConnectManager } from './WalletConnectManager';

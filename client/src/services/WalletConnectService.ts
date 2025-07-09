@@ -1,8 +1,6 @@
-import { SignClient } from '@walletconnect/sign-client';
 import QRCode from 'qrcode';
 import { ethers } from 'ethers';
 import { WalletConnectSigner } from './WalletConnectSigner';
-import { WALLETCONNECT_SIGNER_PROJECT_ID, WALLETCONNECT_SIGNER_METADATA } from '../config/walletconnect';
 import { walletConnectManager } from './WalletConnectManager';
 
 export class WalletConnectService {
