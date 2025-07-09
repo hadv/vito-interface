@@ -3,7 +3,6 @@ import { safeWalletService, SafeWalletService, SafeWalletConfig } from './SafeWa
 import { getRpcUrl, NETWORK_CONFIGS, SAFE_ABI } from '../contracts/abis';
 import { walletConnectService } from './WalletConnectService';
 import { web3AuthService } from './Web3AuthService';
-import { dAppWalletConnectService } from './DAppWalletConnectService';
 
 export interface WalletConnectionState {
   isConnected: boolean;
@@ -47,12 +46,6 @@ export class WalletConnectionService {
 
     // Set up periodic connection verification for WalletConnect
     this.setupConnectionVerification();
-
-    // Clean up any incorrectly loaded sessions on service initialization
-    // This handles the case where dApp service loads sessions before Safe wallet connects
-    setTimeout(() => {
-      dAppWalletConnectService.cleanupIncorrectlyLoadedSessions();
-    }, 2000); // Wait for dApp service to finish loading sessions
   }
 
   /**
@@ -248,10 +241,6 @@ export class WalletConnectionService {
         this.setupEventListeners();
       }
 
-      // Clean up any incorrectly loaded signer sessions from dApp service
-      // This is especially important on app restart when sessions are loaded from storage
-      dAppWalletConnectService.cleanupIncorrectlyLoadedSessions();
-
       // Notify listeners
       this.notifyListeners();
 
@@ -401,10 +390,6 @@ export class WalletConnectionService {
       };
 
       console.log('✅ WalletConnect signer connected successfully');
-
-      // Clear any incorrectly stored signer sessions from dApp service
-      dAppWalletConnectService.clearIncorrectSignerSessions();
-
       this.notifyListeners();
 
       return this.state;
@@ -566,9 +551,6 @@ export class WalletConnectionService {
 
       console.log('✅ Updated wallet connection state:', this.state);
 
-      // Clear any incorrectly stored signer sessions from dApp service
-      dAppWalletConnectService.clearIncorrectSignerSessions();
-
       // Notify listeners
       console.log('📢 Notifying listeners...');
       this.notifyListeners();
@@ -679,9 +661,6 @@ export class WalletConnectionService {
       // Set up event listeners for account/network changes
       this.setupEventListeners();
 
-      // Clear any incorrectly stored signer sessions from dApp service
-      dAppWalletConnectService.clearIncorrectSignerSessions();
-
       // Notify listeners
       this.notifyListeners();
 
@@ -769,9 +748,6 @@ export class WalletConnectionService {
       console.log('👤 User:', web3AuthState.user?.email);
       console.log('📍 Address:', userAddress);
       console.log('💰 Balance:', signerBalance);
-
-      // Clear any incorrectly stored signer sessions from dApp service
-      dAppWalletConnectService.clearIncorrectSignerSessions();
 
       // Notify listeners
       this.notifyListeners();

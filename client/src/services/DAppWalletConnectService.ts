@@ -15,7 +15,6 @@ export class DAppWalletConnectService {
   private signClient: any = null;
   private activeSessions: Map<string, SessionTypes.Struct> = new Map();
   private eventListeners: Map<string, Function[]> = new Map();
-  private expectingDAppConnection: boolean = false;
 
   constructor() {
     this.initialize();
@@ -52,42 +51,13 @@ export class DAppWalletConnectService {
 
   /**
    * Load existing sessions from WalletConnect client
-   * Only loads sessions that are likely to be dApp connections, not signer wallet connections
+   * For dApp connections, we don't load existing sessions on app restart
+   * to avoid confusion with signer wallet sessions
    */
   private loadExistingSessions(): void {
-    try {
-      if (!this.signClient) return;
-
-      // Add a small delay to ensure client is fully initialized
-      setTimeout(() => {
-        try {
-          const sessions = this.signClient.session.getAll();
-          console.log('📋 DApp service checking existing sessions:', sessions.length);
-
-          let loadedCount = 0;
-          sessions.forEach((session: SessionTypes.Struct) => {
-            // Only load valid sessions that appear to be dApp connections
-            if (session.topic && session.peer?.metadata) {
-              // Skip sessions that look like signer wallet connections
-              if (this.isLikelySignerWalletSession(session)) {
-                console.log('🚫 Skipping likely signer wallet session:', session.topic, session.peer.metadata.name);
-                return;
-              }
-
-              this.activeSessions.set(session.topic, session);
-              console.log('📱 Loaded dApp session:', session.topic, session.peer.metadata.name);
-              loadedCount++;
-            }
-          });
-
-          console.log(`✅ DApp service loaded ${loadedCount} valid dApp sessions (skipped ${sessions.length - loadedCount} likely signer sessions)`);
-        } catch (error) {
-          console.error('❌ Error loading existing sessions:', error);
-        }
-      }, 1000);
-    } catch (error) {
-      console.error('❌ Error in loadExistingSessions:', error);
-    }
+    console.log('📋 DApp service: Not loading existing sessions on app restart to prevent confusion with signer wallet sessions');
+    console.log('✅ DApp service initialized with clean session state');
+    // Note: dApp connections will be re-established when users explicitly connect via pairing codes
   }
 
   /**
@@ -111,13 +81,6 @@ export class DAppWalletConnectService {
    */
   private async handleSessionProposal(event: any): Promise<void> {
     console.log('📥 Received session proposal from dApp:', event);
-
-    // IMPORTANT: Only handle proposals that were initiated through connectDApp()
-    // This prevents interference with signer wallet connections
-    if (!this.expectingDAppConnection) {
-      console.log('🚫 Ignoring session proposal - not expecting dApp connection (likely signer wallet connection)');
-      return;
-    }
 
     // Check if we already have a session with this dApp
     const existingSession = Array.from(this.activeSessions.values()).find(
@@ -200,9 +163,6 @@ export class DAppWalletConnectService {
       } catch (rejectError) {
         console.error('❌ Failed to reject proposal:', rejectError);
       }
-    } finally {
-      // Reset the flag after handling the proposal
-      this.expectingDAppConnection = false;
     }
   }
 
@@ -406,17 +366,12 @@ export class DAppWalletConnectService {
     try {
       console.log('🔗 Connecting to dApp with pairing code...');
 
-      // Set flag to indicate we're expecting a dApp connection
-      this.expectingDAppConnection = true;
-
       // Pair with the dApp using the provided URI
       await this.signClient.pair({ uri: pairingCode });
 
       console.log('✅ Pairing initiated, waiting for session proposal...');
     } catch (error) {
       console.error('❌ Failed to connect to dApp:', error);
-      // Reset flag on error
-      this.expectingDAppConnection = false;
       throw error;
     }
   }
@@ -487,105 +442,7 @@ export class DAppWalletConnectService {
     }
   }
 
-  /**
-   * Determine if a session is likely a signer wallet connection rather than a dApp connection
-   * This helps prevent signer wallet sessions from being loaded as dApp connections on app restart
-   */
-  private isLikelySignerWalletSession(session: SessionTypes.Struct): boolean {
-    if (!session.peer?.metadata) return false;
 
-    const metadata = session.peer.metadata;
-    const name = metadata.name?.toLowerCase() || '';
-    const description = metadata.description?.toLowerCase() || '';
-    const url = metadata.url?.toLowerCase() || '';
-
-    // Common signer wallet identifiers
-    const signerWalletIndicators = [
-      // Wallet names
-      'metamask', 'trust wallet', 'coinbase wallet', 'rainbow', 'walletconnect',
-      'phantom', 'exodus', 'atomic wallet', 'ledger', 'trezor', 'safe wallet',
-      'argent', 'gnosis safe', 'multisig', 'hardware wallet',
-      // Mobile wallet apps
-      'mobile', 'ios', 'android', 'app wallet', 'crypto wallet',
-      // Wallet-specific terms
-      'wallet', 'signer', 'keystore', 'private key', 'seed phrase',
-      // URLs that indicate wallets
-      'wallet.', 'metamask.', 'trustwallet.', 'coinbase.', 'rainbow.',
-      'phantom.', 'exodus.', 'atomic.', 'ledger.', 'trezor.'
-    ];
-
-    // Check if any indicator is present in name, description, or URL
-    const textToCheck = `${name} ${description} ${url}`;
-    const isLikelyWallet = signerWalletIndicators.some(indicator =>
-      textToCheck.includes(indicator)
-    );
-
-    // Additional heuristics:
-    // 1. If the session only supports signing methods (no dApp-specific methods)
-    const supportedMethods = session.namespaces?.eip155?.methods || [];
-    const hasOnlySigningMethods = supportedMethods.length > 0 &&
-      supportedMethods.every(method =>
-        ['eth_sign', 'personal_sign', 'eth_signTypedData', 'eth_signTypedData_v4', 'eth_sendTransaction'].includes(method)
-      );
-
-    // 2. If the metadata looks generic or wallet-like
-    const hasGenericMetadata = !metadata.icons || metadata.icons.length === 0 ||
-      !metadata.url || metadata.url === '' || metadata.url === 'https://';
-
-    if (isLikelyWallet || hasOnlySigningMethods || hasGenericMetadata) {
-      console.log(`🔍 Session ${session.topic} identified as likely signer wallet:`, {
-        name: metadata.name,
-        url: metadata.url,
-        isLikelyWallet,
-        hasOnlySigningMethods,
-        hasGenericMetadata
-      });
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * Clear any incorrectly stored signer wallet sessions
-   * This helps fix the issue where signer connections were mistakenly stored as dApp connections
-   */
-  public clearIncorrectSignerSessions(): void {
-    console.log('🧹 Clearing any incorrectly stored signer wallet sessions...');
-    const sessionsBefore = this.activeSessions.size;
-
-    // Clear all sessions since they should only be dApp-initiated connections
-    // Any legitimate dApp connections will be re-established when needed
-    this.activeSessions.clear();
-
-    console.log(`✅ Cleared ${sessionsBefore} sessions from dApp service`);
-  }
-
-  /**
-   * Clean up any currently loaded sessions that appear to be signer wallet sessions
-   * This can be called to fix sessions that were incorrectly loaded
-   */
-  public cleanupIncorrectlyLoadedSessions(): void {
-    console.log('🧹 Cleaning up incorrectly loaded signer wallet sessions...');
-    let removedCount = 0;
-
-    // Check each loaded session and remove if it looks like a signer wallet
-    const topicsToRemove: string[] = [];
-    this.activeSessions.forEach((session, topic) => {
-      if (this.isLikelySignerWalletSession(session)) {
-        topicsToRemove.push(topic);
-        console.log(`🗑️ Marking for removal - likely signer wallet session: ${topic} (${session.peer?.metadata?.name})`);
-      }
-    });
-
-    // Remove the identified sessions
-    topicsToRemove.forEach(topic => {
-      this.activeSessions.delete(topic);
-      removedCount++;
-    });
-
-    console.log(`✅ Cleanup complete: removed ${removedCount} signer sessions, ${this.activeSessions.size} dApp sessions remain`);
-  }
 
   /**
    * Event emitter methods
