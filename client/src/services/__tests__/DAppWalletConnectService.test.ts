@@ -39,7 +39,7 @@ describe('DAppWalletConnectService Session Filtering', () => {
 
   describe('isDAppSession', () => {
     it('should identify dApp sessions correctly based on self metadata', () => {
-      const dAppSession: Partial<SessionTypes.Struct> = {
+      const dAppSession = {
         topic: 'test-topic-1',
         self: {
           metadata: {
@@ -57,14 +57,14 @@ describe('DAppWalletConnectService Session Filtering', () => {
             icons: []
           }
         }
-      } as SessionTypes.Struct;
+      } as unknown as SessionTypes.Struct;
 
       const result = isDAppSession(dAppSession);
       expect(result).toBe(true);
     });
 
     it('should reject signer wallet sessions based on peer wallet keywords', () => {
-      const signerWalletSession: Partial<SessionTypes.Struct> = {
+      const signerWalletSession = {
         topic: 'test-topic-2',
         self: {
           metadata: {
@@ -82,14 +82,14 @@ describe('DAppWalletConnectService Session Filtering', () => {
             icons: []
           }
         }
-      } as SessionTypes.Struct;
+      } as unknown as SessionTypes.Struct;
 
       const result = isDAppSession(signerWalletSession);
       expect(result).toBe(false);
     });
 
     it('should reject MetaMask wallet sessions', () => {
-      const metamaskSession: Partial<SessionTypes.Struct> = {
+      const metamaskSession = {
         topic: 'test-topic-3',
         self: {
           metadata: {
@@ -107,14 +107,14 @@ describe('DAppWalletConnectService Session Filtering', () => {
             icons: []
           }
         }
-      } as SessionTypes.Struct;
+      } as unknown as SessionTypes.Struct;
 
       const result = isDAppSession(metamaskSession);
       expect(result).toBe(false);
     });
 
     it('should reject Trust Wallet sessions', () => {
-      const trustWalletSession: Partial<SessionTypes.Struct> = {
+      const trustWalletSession = {
         topic: 'test-topic-4',
         self: {
           metadata: {
@@ -132,14 +132,14 @@ describe('DAppWalletConnectService Session Filtering', () => {
             icons: []
           }
         }
-      } as SessionTypes.Struct;
+      } as unknown as SessionTypes.Struct;
 
       const result = isDAppSession(trustWalletSession);
       expect(result).toBe(false);
     });
 
     it('should accept legitimate dApp sessions when uncertain', () => {
-      const uncertainDAppSession: Partial<SessionTypes.Struct> = {
+      const uncertainDAppSession = {
         topic: 'test-topic-5',
         self: {
           metadata: {
@@ -157,18 +157,18 @@ describe('DAppWalletConnectService Session Filtering', () => {
             icons: []
           }
         }
-      } as SessionTypes.Struct;
+      } as unknown as SessionTypes.Struct;
 
       const result = isDAppSession(uncertainDAppSession);
       expect(result).toBe(true);
     });
 
     it('should handle sessions with missing metadata gracefully', () => {
-      const sessionWithoutMetadata: Partial<SessionTypes.Struct> = {
+      const sessionWithoutMetadata = {
         topic: 'test-topic-6',
         self: {},
         peer: {}
-      } as SessionTypes.Struct;
+      } as unknown as SessionTypes.Struct;
 
       const result = isDAppSession(sessionWithoutMetadata);
       expect(result).toBe(true); // Default to true when uncertain
