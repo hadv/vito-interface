@@ -113,6 +113,21 @@ export class ErrorHandler {
       };
     }
 
+    // WalletConnect errors
+    if (errorMessage.includes('walletconnect') ||
+        errorMessage.includes('pair') ||
+        errorMessage.includes('no matching') ||
+        errorMessage.includes('session')) {
+      return {
+        code: 'WALLETCONNECT_ERROR',
+        message: error.message,
+        userMessage: 'WalletConnect session error. Please try reconnecting your wallet.',
+        severity: 'medium',
+        recoverable: true,
+        category: 'wallet'
+      };
+    }
+
     // Wallet connection errors
     if (errorMessage.includes('wallet') && 
         (errorMessage.includes('connect') || errorMessage.includes('not found'))) {
@@ -314,14 +329,40 @@ export async function safeAsyncOperation<T>(
     return await operation();
   } catch (error) {
     const errorDetails = ErrorHandler.classifyError(error);
-    
+
     console.error('Safe async operation failed:', ErrorHandler.formatErrorForLogging(error));
-    
+
     if (onError) {
       onError(errorDetails);
     }
-    
+
     return fallback;
+  }
+}
+
+/**
+ * Utility function to safely execute WalletConnect operations with enhanced error handling
+ */
+export async function safeWalletConnectOperation<T>(
+  operation: () => Promise<T>,
+  operationName: string,
+  fallback?: T
+): Promise<T | undefined> {
+  try {
+    return await operation();
+  } catch (error) {
+    const errorDetails = ErrorHandler.classifyError(error);
+
+    console.warn(`WalletConnect operation '${operationName}' failed:`, errorDetails.message);
+
+    // For WalletConnect errors, log but don't throw to prevent uncaught errors
+    if (errorDetails.code === 'WALLETCONNECT_ERROR') {
+      console.warn('WalletConnect error handled gracefully:', errorDetails.userMessage);
+      return fallback;
+    }
+
+    // For other errors, re-throw
+    throw error;
   }
 }
 

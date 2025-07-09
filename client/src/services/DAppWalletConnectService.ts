@@ -33,11 +33,18 @@ export class DAppWalletConnectService {
           ...WALLETCONNECT_METADATA,
           name: 'Vito Safe Wallet',
           description: 'Safe wallet interface for dApp connections'
+        },
+        // Use separate storage key to avoid conflicts with signer service
+        storageOptions: {
+          database: 'vito-dapp-walletconnect'
         }
       });
 
       // Set up event listeners
       this.setupEventListeners();
+
+      // Clean up any orphaned sessions from previous runs
+      await this.cleanupOrphanedSessions();
 
       // Load existing sessions (only legitimate dApp sessions)
       this.loadExistingSessions();
@@ -46,6 +53,93 @@ export class DAppWalletConnectService {
     } catch (error) {
       console.error('❌ Failed to initialize DApp WalletConnect service:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Validate if a dApp session exists and is not expired
+   */
+  private async validateSession(topic: string): Promise<boolean> {
+    if (!this.signClient || !topic) {
+      return false;
+    }
+
+    try {
+      // Check if session exists in the client's session store
+      const sessionKeys = this.signClient.session.keys;
+      if (!sessionKeys.includes(topic)) {
+        console.log('dApp session not found in client session store:', topic);
+        return false;
+      }
+
+      // Get the session and check expiry
+      const session = await this.signClient.session.get(topic);
+      const isValid = !!session && session.expiry * 1000 > Date.now();
+      console.log('dApp session validation:', {
+        exists: isValid,
+        topic,
+        expiry: session?.expiry ? new Date(session.expiry * 1000).toISOString() : 'unknown'
+      });
+      return isValid;
+    } catch (error) {
+      console.warn('dApp session validation failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Clean up orphaned sessions that might cause "no matching pair key" errors
+   */
+  private async cleanupOrphanedSessions(): Promise<void> {
+    if (!this.signClient) return;
+
+    try {
+      console.log('🧹 Cleaning up orphaned dApp WalletConnect sessions...');
+
+      // Get all sessions from the client
+      const allSessions = this.signClient.session.getAll();
+      console.log(`Found ${allSessions.length} dApp sessions in WalletConnect client`);
+
+      // Check each session and remove expired or invalid ones
+      for (const session of allSessions) {
+        try {
+          // Check if session is expired
+          if (session.expiry * 1000 <= Date.now()) {
+            console.log(`Removing expired dApp session: ${session.topic}`);
+            await this.signClient.disconnect({
+              topic: session.topic,
+              reason: {
+                code: 6000,
+                message: 'dApp session expired during cleanup'
+              }
+            }).catch((error: any) => {
+              // Ignore disconnect errors during cleanup
+              console.warn(`Failed to disconnect expired dApp session ${session.topic}:`, error);
+            });
+          }
+        } catch (error) {
+          console.warn(`Error checking dApp session ${session.topic}:`, error);
+          // Try to remove problematic sessions
+          try {
+            await this.signClient.disconnect({
+              topic: session.topic,
+              reason: {
+                code: 6000,
+                message: 'dApp session cleanup due to error'
+              }
+            }).catch(() => {
+              // Ignore errors during cleanup
+            });
+          } catch {
+            // Ignore cleanup errors
+          }
+        }
+      }
+
+      console.log('✅ Orphaned dApp session cleanup completed');
+    } catch (error) {
+      console.warn('⚠️ Error during orphaned dApp session cleanup:', error);
+      // Don't throw - cleanup is best effort
     }
   }
 
@@ -385,8 +479,8 @@ export class DAppWalletConnectService {
     }
 
     try {
-      // Check if session exists in WalletConnect client before trying to disconnect
-      const sessionExists = this.signClient.session.keys.includes(topic);
+      // Validate session exists before attempting disconnect
+      const sessionExists = await this.validateSession(topic);
 
       if (sessionExists) {
         await this.signClient.disconnect({
@@ -398,7 +492,7 @@ export class DAppWalletConnectService {
         });
         console.log('✅ Disconnected from WalletConnect session:', topic);
       } else {
-        console.log('⚠️ Session not found in WalletConnect client, cleaning up locally:', topic);
+        console.log('⚠️ Session not found or expired in WalletConnect client, cleaning up locally:', topic);
       }
 
       // Always remove from our local storage regardless of WalletConnect state
@@ -410,6 +504,12 @@ export class DAppWalletConnectService {
       console.log('✅ Cleaned up dApp session:', topic);
     } catch (error) {
       console.error('❌ Failed to disconnect from dApp:', error);
+
+      // Check if this is a WalletConnect internal error
+      const errorMessage = (error as any)?.message?.toLowerCase() || '';
+      if (errorMessage.includes('pair') || errorMessage.includes('no matching') || errorMessage.includes('session')) {
+        console.warn('WalletConnect internal error detected during dApp disconnect, cleaning up locally:', error);
+      }
 
       // Even if disconnect fails, clean up locally to prevent UI issues
       this.activeSessions.delete(topic);

@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import { ethers } from 'ethers';
 import { WalletConnectSigner } from './WalletConnectSigner';
 import { WALLETCONNECT_PROJECT_ID, WALLETCONNECT_METADATA } from '../config/walletconnect';
+import { safeWalletConnectOperation } from '../utils/errorHandling';
 
 export class WalletConnectService {
   private signClient: any; // WalletConnect SignClient instance for signer wallet connections
@@ -19,6 +20,13 @@ export class WalletConnectService {
     this.listeners.set('session_update', []);
     this.listeners.set('session_connected', []);
     this.listeners.set('session_disconnected', []);
+
+    // Set up cleanup on page unload to prevent orphaned sessions
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', () => {
+        this.gracefulShutdown();
+      });
+    }
   }
 
   /**
@@ -205,11 +213,18 @@ export class WalletConnectService {
       if (!this.signClient) {
         this.signClient = await SignClient.init({
           projectId: WALLETCONNECT_PROJECT_ID,
-          metadata: WALLETCONNECT_METADATA
+          metadata: WALLETCONNECT_METADATA,
+          // Use separate storage key to avoid conflicts with DApp service
+          storageOptions: {
+            database: 'vito-signer-walletconnect'
+          }
         });
 
         // Set up event listeners
         this.setupWalletConnectListeners();
+
+        // Clean up any orphaned sessions from previous runs
+        await this.cleanupOrphanedSessions();
       }
 
       // Create connection
@@ -344,26 +359,38 @@ export class WalletConnectService {
     try {
       console.log(`Disconnecting WalletConnect session from app... (attempt ${retryCount + 1}/${maxRetries + 1})`);
 
-      // Add timeout to prevent hanging
-      const disconnectPromise = this.signClient.disconnect({
-        topic: this.sessionTopic,
-        reason: {
-          code: 6000,
-          message: reason || 'User disconnected from app'
-        }
-      });
+      // Validate session exists before attempting disconnect
+      const sessionExists = await this.validateSession(this.sessionTopic);
 
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Disconnect timeout')), 10000)
-      );
+      // Only attempt disconnect if session exists and is valid
+      if (sessionExists) {
+        await safeWalletConnectOperation(
+          async () => {
+            // Add timeout to prevent hanging
+            const disconnectPromise = this.signClient.disconnect({
+              topic: this.sessionTopic,
+              reason: {
+                code: 6000,
+                message: reason || 'User disconnected from app'
+              }
+            });
 
-      await Promise.race([disconnectPromise, timeoutPromise]);
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Disconnect timeout')), 10000)
+            );
 
-      // Reset the session topic
+            await Promise.race([disconnectPromise, timeoutPromise]);
+            console.log('WalletConnect session disconnected successfully');
+          },
+          'session disconnect'
+        );
+      } else {
+        console.log('Session does not exist or is expired, skipping disconnect call');
+      }
+
+      // Always clean up local state regardless of disconnect success
       const disconnectedTopic = this.sessionTopic;
       this.sessionTopic = null;
-
-      // Clear connection result
       this.connectionResult = null;
 
       // Emit disconnection event
@@ -373,11 +400,29 @@ export class WalletConnectService {
         initiatedBy: 'app'
       });
 
-      console.log('WalletConnect session disconnected successfully');
     } catch (error) {
       console.error(`WalletConnect disconnection failed (attempt ${retryCount + 1}):`, error);
 
-      // Retry if we haven't exceeded max retries
+      // Check if this is a "no matching pair key" or similar WalletConnect internal error
+      const errorMessage = (error as any)?.message?.toLowerCase() || '';
+      if (errorMessage.includes('pair') || errorMessage.includes('no matching') || errorMessage.includes('session')) {
+        console.warn('WalletConnect internal error detected, forcing cleanup without retry:', error);
+
+        // Force cleanup immediately for WalletConnect internal errors
+        const disconnectedTopic = this.sessionTopic;
+        this.sessionTopic = null;
+        this.connectionResult = null;
+
+        this.emit('session_disconnected', {
+          topic: disconnectedTopic,
+          reason: 'WalletConnect internal error, forced cleanup',
+          initiatedBy: 'app',
+          error: error
+        });
+        return;
+      }
+
+      // Retry if we haven't exceeded max retries for other errors
       if (retryCount < maxRetries) {
         console.log(`Retrying disconnection in ${retryDelay}ms...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay));
@@ -432,6 +477,25 @@ export class WalletConnectService {
   }
 
   /**
+   * Graceful shutdown to clean up sessions before page unload
+   */
+  private gracefulShutdown(): void {
+    try {
+      // Only perform synchronous cleanup during page unload
+      console.log('WalletConnect graceful shutdown initiated');
+
+      // Clear local state immediately
+      this.sessionTopic = null;
+      this.connectionResult = null;
+      this.isConnecting = false;
+
+      console.log('WalletConnect graceful shutdown completed');
+    } catch (error) {
+      console.warn('Error during graceful shutdown:', error);
+    }
+  }
+
+  /**
    * Force disconnect and cleanup all WalletConnect state
    * Used when switching wallets to ensure clean state
    */
@@ -456,6 +520,94 @@ export class WalletConnectService {
   }
 
   /**
+   * Validate if a session exists and is not expired
+   */
+  private async validateSession(topic: string | null): Promise<boolean> {
+    if (!this.signClient || !topic) {
+      return false;
+    }
+
+    return await safeWalletConnectOperation(
+      async () => {
+        // Check if session exists in the client's session store
+        const sessionKeys = this.signClient.session.keys;
+        if (!sessionKeys.includes(topic)) {
+          console.log('Session not found in client session store:', topic);
+          return false;
+        }
+
+        // Get the session and check expiry
+        const session = await this.signClient.session.get(topic);
+        const isValid = !!session && session.expiry * 1000 > Date.now();
+        console.log('Session validation:', {
+          exists: isValid,
+          topic,
+          expiry: session?.expiry ? new Date(session.expiry * 1000).toISOString() : 'unknown'
+        });
+        return isValid;
+      },
+      'session validation',
+      false
+    ) ?? false;
+  }
+
+  /**
+   * Clean up orphaned sessions that might cause "no matching pair key" errors
+   */
+  private async cleanupOrphanedSessions(): Promise<void> {
+    if (!this.signClient) return;
+
+    try {
+      console.log('🧹 Cleaning up orphaned WalletConnect sessions...');
+
+      // Get all sessions from the client
+      const allSessions = this.signClient.session.getAll();
+      console.log(`Found ${allSessions.length} sessions in WalletConnect client`);
+
+      // Check each session and remove expired or invalid ones
+      for (const session of allSessions) {
+        try {
+          // Check if session is expired
+          if (session.expiry * 1000 <= Date.now()) {
+            console.log(`Removing expired session: ${session.topic}`);
+            await this.signClient.disconnect({
+              topic: session.topic,
+              reason: {
+                code: 6000,
+                message: 'Session expired during cleanup'
+              }
+            }).catch((error: any) => {
+              // Ignore disconnect errors during cleanup
+              console.warn(`Failed to disconnect expired session ${session.topic}:`, error);
+            });
+          }
+        } catch (error) {
+          console.warn(`Error checking session ${session.topic}:`, error);
+          // Try to remove problematic sessions
+          try {
+            await this.signClient.disconnect({
+              topic: session.topic,
+              reason: {
+                code: 6000,
+                message: 'Session cleanup due to error'
+              }
+            }).catch(() => {
+              // Ignore errors during cleanup
+            });
+          } catch {
+            // Ignore cleanup errors
+          }
+        }
+      }
+
+      console.log('✅ Orphaned session cleanup completed');
+    } catch (error) {
+      console.warn('⚠️ Error during orphaned session cleanup:', error);
+      // Don't throw - cleanup is best effort
+    }
+  }
+
+  /**
    * Verify connection status by checking session validity
    */
   public async verifyConnection(): Promise<boolean> {
@@ -463,32 +615,30 @@ export class WalletConnectService {
       return false;
     }
 
-    try {
-      const session = await this.signClient.session.get(this.sessionTopic);
-      if (!session || session.expiry * 1000 <= Date.now()) {
-        console.log('WalletConnect session is expired or invalid');
-        // Clean up expired session
-        this.sessionTopic = null;
-        this.connectionResult = null;
-        this.emit('session_disconnected', {
-          reason: 'Session expired during verification',
-          initiatedBy: 'system'
-        });
-        return false;
-      }
-      return true;
-    } catch (error) {
-      console.error('Failed to verify WalletConnect session:', error);
-      // Clean up invalid session
+    const isValid = await safeWalletConnectOperation(
+      async () => {
+        const session = await this.signClient.session.get(this.sessionTopic);
+        if (!session || session.expiry * 1000 <= Date.now()) {
+          console.log('WalletConnect session is expired or invalid');
+          return false;
+        }
+        return true;
+      },
+      'session verification',
+      false
+    );
+
+    if (!isValid) {
+      // Clean up invalid/expired session
       this.sessionTopic = null;
       this.connectionResult = null;
       this.emit('session_disconnected', {
-        reason: 'Session verification failed',
-        initiatedBy: 'system',
-        error
+        reason: 'Session verification failed or expired',
+        initiatedBy: 'system'
       });
-      return false;
     }
+
+    return isValid ?? false;
   }
 
   /**
