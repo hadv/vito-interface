@@ -3,6 +3,7 @@ import { SessionTypes } from '@walletconnect/types';
 import { WALLETCONNECT_DAPP_PROJECT_ID, WALLETCONNECT_DAPP_METADATA } from '../config/walletconnect';
 import { walletConnectionService } from './WalletConnectionService';
 import { safeWalletService } from './SafeWalletService';
+import { walletConnectManager } from './WalletConnectManager';
 
 /**
  * DApp WalletConnect Service
@@ -12,7 +13,6 @@ import { safeWalletService } from './SafeWalletService';
  * which connects our app to external wallets.
  */
 export class DAppWalletConnectService {
-  private signClient: any = null;
   private activeSessions: Map<string, SessionTypes.Struct> = new Map();
   private eventListeners: Map<string, Function[]> = new Map();
 
@@ -21,29 +21,26 @@ export class DAppWalletConnectService {
   }
 
   /**
-   * Initialize the WalletConnect SignClient for dApp connections
+   * Initialize the DApp WalletConnect service using the unified manager
    */
   private async initialize(): Promise<void> {
     try {
       console.log('🔄 Initializing DApp WalletConnect service...');
-      
-      this.signClient = await SignClient.init({
-        projectId: WALLETCONNECT_DAPP_PROJECT_ID,
-        metadata: WALLETCONNECT_DAPP_METADATA,
-        // Use different storage key to avoid conflicts with signer service
-        storageOptions: {
-          database: 'dapp-walletconnect'
-        }
+
+      // Initialize the unified manager
+      await walletConnectManager.initialize();
+
+      // Listen for dApp-specific events from the manager
+      walletConnectManager.on('dapp_disconnected', (data: any) => {
+        this.handleDAppDisconnected(data);
       });
 
-      // Set up event listeners
-      this.setupEventListeners();
+      walletConnectManager.on('dapp_request', (event: any) => {
+        this.handleDAppRequest(event);
+      });
 
-      // Set up global error handler for this client
-      this.setupGlobalErrorHandler();
-
-      // Load existing sessions
-      this.loadExistingSessions();
+      // Load existing dApp sessions from the manager
+      this.loadExistingDAppSessions();
 
       console.log('✅ DApp WalletConnect service initialized');
     } catch (error) {
@@ -53,117 +50,68 @@ export class DAppWalletConnectService {
   }
 
   /**
-   * Load existing sessions from WalletConnect client
+   * Load existing dApp sessions from the unified manager
    */
-  private loadExistingSessions(): void {
+  private loadExistingDAppSessions(): void {
     try {
-      if (!this.signClient) return;
+      // Get dApp sessions from the unified manager
+      const dAppSessions = walletConnectManager.getDAppSessions();
 
-      // Add a small delay to ensure client is fully initialized
-      setTimeout(() => {
-        try {
-          const sessions = this.signClient.session.getAll();
-          console.log('📋 Loading existing sessions:', sessions.length);
+      console.log('📋 Loading existing dApp sessions:', dAppSessions.length);
 
-          sessions.forEach((session: SessionTypes.Struct) => {
-            // Load all valid sessions (now properly isolated by project ID)
-            if (session.topic && session.peer?.metadata) {
-              this.activeSessions.set(session.topic, session);
-              console.log('📱 Loaded dApp session:', session.topic, session.peer.metadata.name);
-            }
-          });
-
-          console.log('✅ Loaded', this.activeSessions.size, 'valid dApp sessions');
-        } catch (error) {
-          console.error('❌ Error loading existing sessions:', error);
+      dAppSessions.forEach((session: SessionTypes.Struct) => {
+        if (session.topic && session.peer?.metadata) {
+          this.activeSessions.set(session.topic, session);
+          console.log('📱 Loaded dApp session:', session.topic, session.peer.metadata.name);
         }
-      }, 1000);
+      });
+
+      console.log('✅ Loaded', this.activeSessions.size, 'valid dApp sessions');
     } catch (error) {
-      console.error('❌ Error in loadExistingSessions:', error);
+      console.error('❌ Error loading existing dApp sessions:', error);
     }
   }
 
+  /**
+   * Handle dApp disconnection from unified manager
+   */
+  private handleDAppDisconnected(data: any): void {
+    const { topic, reason } = data;
 
+    if (this.activeSessions.has(topic)) {
+      console.log('dApp disconnected via unified manager:', topic);
+
+      // Remove from our local sessions
+      this.activeSessions.delete(topic);
+
+      // Emit disconnection event
+      this.emit('session_disconnected', { topic, reason });
+    }
+  }
 
   /**
-   * Set up WalletConnect event listeners
+   * Handle dApp requests from unified manager
+   */
+  private handleDAppRequest(event: any): void {
+    // Forward the request to our session request handler
+    this.handleSessionRequest(event).catch(error => {
+      console.error('❌ Error handling dApp request:', error);
+    });
+  }
+
+  /**
+   * Set up WalletConnect event listeners (DEPRECATED - now using unified manager)
    */
   private setupEventListeners(): void {
-    if (!this.signClient) return;
-
-    // Handle session proposals from dApps
-    this.signClient.on('session_proposal', (event: any) => {
-      this.handleSessionProposal(event).catch(error => {
-        console.error('❌ Error handling session proposal:', error);
-      });
-    });
-
-    // Handle session requests (transaction signing, etc.)
-    this.signClient.on('session_request', (event: any) => {
-      this.handleSessionRequest(event).catch(error => {
-        console.error('❌ Error handling session request:', error);
-      });
-    });
-
-    // Handle session deletions with comprehensive error handling
-    this.signClient.on('session_delete', (event: any) => {
-      // Wrap in setTimeout to prevent blocking the event loop
-      setTimeout(() => {
-        try {
-          this.handleSessionDelete(event).catch(error => {
-            console.error('❌ Error handling session delete in dApp service:', error);
-            // Swallow the error to prevent crashes
-          });
-        } catch (error) {
-          console.error('❌ Synchronous error in dApp session delete handler:', error);
-          // Swallow the error to prevent crashes
-        }
-      }, 0);
-    });
-
-    // Handle session expiry with comprehensive error handling
-    this.signClient.on('session_expire', (event: any) => {
-      // Wrap in setTimeout to prevent blocking the event loop
-      setTimeout(() => {
-        try {
-          console.log('⏰ DApp service received session expire event:', event);
-          const { topic } = event;
-
-          // Only handle sessions that we actually own
-          if (this.activeSessions.has(topic)) {
-            console.log('⏰ Cleaning up our expired dApp session:', topic);
-            this.activeSessions.delete(topic);
-            this.emit('session_disconnected', { topic, reason: 'expired' });
-          } else {
-            console.log('🚫 Ignoring session expire for topic we don\'t own:', topic);
-          }
-        } catch (error) {
-          console.error('❌ Error handling session expire in dApp service:', error);
-          // Swallow the error to prevent crashes
-        }
-      }, 0);
-    });
+    // This method is no longer used since we're using the unified manager
+    console.log('⚠️ setupEventListeners called but deprecated - using unified manager instead');
   }
 
   /**
-   * Set up global error handler to catch unhandled WalletConnect errors
+   * Set up global error handler (DEPRECATED - now handled by unified manager)
    */
   private setupGlobalErrorHandler(): void {
-    if (!this.signClient) return;
-
-    // Handle any unhandled errors from the SignClient
-    this.signClient.on('error', (error: any) => {
-      console.error('🚨 DApp WalletConnect global error (swallowed to prevent crashes):', error);
-      // Swallow the error to prevent application crashes
-    });
-
-    // Handle transport errors
-    if (this.signClient.core?.relayer) {
-      this.signClient.core.relayer.on('relayer_error', (error: any) => {
-        console.error('🚨 DApp WalletConnect relayer error (swallowed):', error);
-        // Swallow the error to prevent application crashes
-      });
-    }
+    console.log('⚠️ setupGlobalErrorHandler called but deprecated - using unified manager instead');
   }
 
   /**
@@ -179,7 +127,8 @@ export class DAppWalletConnectService {
 
     if (existingSession) {
       console.log('⚠️ Session already exists for this dApp, rejecting duplicate');
-      await this.signClient?.reject({
+      const signClient = walletConnectManager.getSignClient();
+      await signClient?.reject({
         id: event.id,
         reason: {
           code: 5001,
@@ -195,7 +144,8 @@ export class DAppWalletConnectService {
       
       if (!walletState.isConnected || !walletState.safeAddress) {
         console.error('❌ No Safe wallet connected, rejecting proposal');
-        await this.signClient?.reject({
+        const signClient = walletConnectManager.getSignClient();
+        await signClient?.reject({
           id: event.id,
           reason: {
             code: 5000,
@@ -209,7 +159,8 @@ export class DAppWalletConnectService {
       const chainId = walletState.chainId || 11155111; // Default to Sepolia
       const accounts = [`eip155:${chainId}:${walletState.safeAddress}`];
 
-      const session = await this.signClient?.approve({
+      const signClient = walletConnectManager.getSignClient();
+      const session = await signClient?.approve({
         id: event.id,
         namespaces: {
           eip155: {
@@ -243,7 +194,8 @@ export class DAppWalletConnectService {
       
       // Reject the proposal on error
       try {
-        await this.signClient?.reject({
+        const signClient = walletConnectManager.getSignClient();
+        await signClient?.reject({
           id: event.id,
           reason: {
             code: 5001,
@@ -288,7 +240,8 @@ export class DAppWalletConnectService {
           
         default:
           console.warn('⚠️ Unsupported request method:', request.method);
-          await this.signClient?.respond({
+          const signClient = walletConnectManager.getSignClient();
+          await signClient?.respond({
             topic,
             response: {
               id,
@@ -304,7 +257,8 @@ export class DAppWalletConnectService {
       
       // Send error response
       try {
-        await this.signClient?.respond({
+        const signClient = walletConnectManager.getSignClient();
+        await signClient?.respond({
           topic: event.topic,
           response: {
             id: event.id,
@@ -354,7 +308,8 @@ export class DAppWalletConnectService {
       console.log('✅ Safe transaction created:', result);
 
       // Respond with the Safe transaction hash
-      await this.signClient?.respond({
+      const signClient = walletConnectManager.getSignClient();
+      await signClient?.respond({
         topic,
         response: {
           id,
@@ -374,7 +329,8 @@ export class DAppWalletConnectService {
       console.error('❌ Failed to handle transaction request:', error);
 
       // Respond with error
-      await this.signClient?.respond({
+      const signClient = walletConnectManager.getSignClient();
+      await signClient?.respond({
         topic,
         response: {
           id,
@@ -402,7 +358,8 @@ export class DAppWalletConnectService {
     console.log('✍️ Handling personal sign request:', params);
     
     // For now, auto-reject signing requests as they need signer wallet
-    await this.signClient?.respond({
+    const signClient = walletConnectManager.getSignClient();
+    await signClient?.respond({
       topic,
       response: {
         id,
@@ -421,7 +378,8 @@ export class DAppWalletConnectService {
     console.log('📝 Handling typed data sign request:', params);
     
     // For now, auto-reject signing requests as they need signer wallet
-    await this.signClient?.respond({
+    const signClient = walletConnectManager.getSignClient();
+    await signClient?.respond({
       topic,
       response: {
         id,
@@ -455,15 +413,16 @@ export class DAppWalletConnectService {
    * Connect to a dApp using a pairing code
    */
   public async connectDApp(pairingCode: string): Promise<void> {
-    if (!this.signClient) {
+    const signClient = walletConnectManager.getSignClient();
+    if (!signClient) {
       throw new Error('WalletConnect client not initialized');
     }
 
     try {
       console.log('🔗 Connecting to dApp with pairing code...');
-      
+
       // Pair with the dApp using the provided URI
-      await this.signClient.pair({ uri: pairingCode });
+      await signClient.pair({ uri: pairingCode });
       
       console.log('✅ Pairing initiated, waiting for session proposal...');
     } catch (error) {
@@ -476,7 +435,8 @@ export class DAppWalletConnectService {
    * Disconnect from a specific dApp session
    */
   public async disconnectDApp(topic: string): Promise<void> {
-    if (!this.signClient) {
+    const signClient = walletConnectManager.getSignClient();
+    if (!signClient) {
       throw new Error('WalletConnect client not initialized');
     }
 
@@ -490,7 +450,7 @@ export class DAppWalletConnectService {
       // Check if session exists in WalletConnect client before trying to disconnect
       let sessionExists = false;
       try {
-        sessionExists = this.signClient.session.keys.includes(topic);
+        sessionExists = signClient.session.keys.includes(topic);
       } catch (error) {
         console.warn('⚠️ Error checking session existence:', error);
         sessionExists = false;
@@ -498,7 +458,7 @@ export class DAppWalletConnectService {
 
       if (sessionExists) {
         try {
-          await this.signClient.disconnect({
+          await signClient.disconnect({
             topic,
             reason: {
               code: 6000,
@@ -544,8 +504,9 @@ export class DAppWalletConnectService {
    */
   public getFullSession(topic: string): SessionTypes.Struct | null {
     try {
-      if (!this.signClient) return null;
-      return this.signClient.session.get(topic);
+      const signClient = walletConnectManager.getSignClient();
+      if (!signClient) return null;
+      return signClient.session.get(topic);
     } catch (error) {
       console.error('Error getting full session:', error);
       return null;
