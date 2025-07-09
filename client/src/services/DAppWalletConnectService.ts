@@ -15,6 +15,7 @@ export class DAppWalletConnectService {
   private signClient: any = null;
   private activeSessions: Map<string, SessionTypes.Struct> = new Map();
   private eventListeners: Map<string, Function[]> = new Map();
+  private expectingDAppConnection: boolean = false;
 
   constructor() {
     this.initialize();
@@ -102,6 +103,13 @@ export class DAppWalletConnectService {
   private async handleSessionProposal(event: any): Promise<void> {
     console.log('📥 Received session proposal from dApp:', event);
 
+    // IMPORTANT: Only handle proposals that were initiated through connectDApp()
+    // This prevents interference with signer wallet connections
+    if (!this.expectingDAppConnection) {
+      console.log('🚫 Ignoring session proposal - not expecting dApp connection (likely signer wallet connection)');
+      return;
+    }
+
     // Check if we already have a session with this dApp
     const existingSession = Array.from(this.activeSessions.values()).find(
       session => session.peer?.metadata?.url === event.params.proposer.metadata.url
@@ -159,8 +167,8 @@ export class DAppWalletConnectService {
 
       if (session) {
         this.activeSessions.set(session.topic, session);
-        console.log('✅ Session approved and stored:', session.topic);
-        
+        console.log('✅ dApp session approved and stored:', session.topic);
+
         // Emit session connected event
         this.emit('session_connected', {
           topic: session.topic,
@@ -169,8 +177,8 @@ export class DAppWalletConnectService {
         });
       }
     } catch (error) {
-      console.error('❌ Failed to handle session proposal:', error);
-      
+      console.error('❌ Failed to handle dApp session proposal:', error);
+
       // Reject the proposal on error
       try {
         await this.signClient?.reject({
@@ -183,6 +191,9 @@ export class DAppWalletConnectService {
       } catch (rejectError) {
         console.error('❌ Failed to reject proposal:', rejectError);
       }
+    } finally {
+      // Reset the flag after handling the proposal
+      this.expectingDAppConnection = false;
     }
   }
 
@@ -385,13 +396,18 @@ export class DAppWalletConnectService {
 
     try {
       console.log('🔗 Connecting to dApp with pairing code...');
-      
+
+      // Set flag to indicate we're expecting a dApp connection
+      this.expectingDAppConnection = true;
+
       // Pair with the dApp using the provided URI
       await this.signClient.pair({ uri: pairingCode });
-      
+
       console.log('✅ Pairing initiated, waiting for session proposal...');
     } catch (error) {
       console.error('❌ Failed to connect to dApp:', error);
+      // Reset flag on error
+      this.expectingDAppConnection = false;
       throw error;
     }
   }
@@ -444,7 +460,9 @@ export class DAppWalletConnectService {
    * Get all active dApp sessions
    */
   public getActiveSessions(): SessionTypes.Struct[] {
-    return Array.from(this.activeSessions.values());
+    const sessions = Array.from(this.activeSessions.values());
+    console.log(`📋 DApp service has ${sessions.length} active sessions`);
+    return sessions;
   }
 
   /**
@@ -458,6 +476,21 @@ export class DAppWalletConnectService {
       console.error('Error getting full session:', error);
       return null;
     }
+  }
+
+  /**
+   * Clear any incorrectly stored signer wallet sessions
+   * This helps fix the issue where signer connections were mistakenly stored as dApp connections
+   */
+  public clearIncorrectSignerSessions(): void {
+    console.log('🧹 Clearing any incorrectly stored signer wallet sessions...');
+    const sessionsBefore = this.activeSessions.size;
+
+    // Clear all sessions since they should only be dApp-initiated connections
+    // Any legitimate dApp connections will be re-established when needed
+    this.activeSessions.clear();
+
+    console.log(`✅ Cleared ${sessionsBefore} sessions from dApp service`);
   }
 
   /**
