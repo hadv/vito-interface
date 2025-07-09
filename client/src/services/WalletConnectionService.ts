@@ -47,6 +47,12 @@ export class WalletConnectionService {
 
     // Set up periodic connection verification for WalletConnect
     this.setupConnectionVerification();
+
+    // Clean up any incorrectly loaded sessions on service initialization
+    // This handles the case where dApp service loads sessions before Safe wallet connects
+    setTimeout(() => {
+      dAppWalletConnectService.cleanupIncorrectlyLoadedSessions();
+    }, 2000); // Wait for dApp service to finish loading sessions
   }
 
   /**
@@ -241,6 +247,10 @@ export class WalletConnectionService {
       if (this.signer && !readOnlyMode) {
         this.setupEventListeners();
       }
+
+      // Clean up any incorrectly loaded signer sessions from dApp service
+      // This is especially important on app restart when sessions are loaded from storage
+      dAppWalletConnectService.cleanupIncorrectlyLoadedSessions();
 
       // Notify listeners
       this.notifyListeners();
