@@ -15,7 +15,8 @@ window.addEventListener('unhandledrejection', (event) => {
   const errorMessage = event.reason?.message?.toLowerCase() || '';
   if (errorMessage.includes('pair') ||
       errorMessage.includes('walletconnect') ||
-      errorMessage.includes('session')) {
+      errorMessage.includes('session') ||
+      errorMessage.includes('no matching key')) {
     console.warn('WalletConnect error caught and handled:', event.reason);
     // Prevent the error from being thrown to the console
     event.preventDefault();
@@ -29,12 +30,25 @@ window.addEventListener('error', (event) => {
   const errorMessage = event.error?.message?.toLowerCase() || '';
   if (errorMessage.includes('pair') ||
       errorMessage.includes('walletconnect') ||
-      errorMessage.includes('session')) {
+      errorMessage.includes('session') ||
+      errorMessage.includes('no matching key')) {
     console.warn('WalletConnect error caught and handled:', event.error);
     // Prevent the error from being thrown to the console
     event.preventDefault();
   }
 });
+
+// Patch console.error to catch and suppress WalletConnect "No matching key" errors
+const originalConsoleError = console.error;
+console.error = (...args: any[]) => {
+  const errorString = args.join(' ').toLowerCase();
+  if (errorString.includes('no matching key') &&
+      (errorString.includes('session') || errorString.includes('pairing'))) {
+    console.warn('🛡️ Suppressed WalletConnect "No matching key" error:', ...args);
+    return;
+  }
+  originalConsoleError.apply(console, args);
+};
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement

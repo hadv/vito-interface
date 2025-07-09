@@ -602,9 +602,78 @@ export class WalletConnectService {
         };
       }
 
+      // Override session store methods to prevent "No matching key" errors
+      this.overrideSessionStoreMethods();
+
       console.log('✅ Session validation methods overridden for WalletConnect service');
     } catch (error) {
       console.warn('⚠️ Failed to override session validation methods:', error);
+    }
+  }
+
+  /**
+   * Override session store methods to prevent "No matching key" errors
+   */
+  private overrideSessionStoreMethods(): void {
+    if (!this.signClient?.session) return;
+
+    try {
+      // Override session.get to return null instead of throwing
+      const originalGet = this.signClient.session.get;
+      if (originalGet) {
+        this.signClient.session.get = (topic: string) => {
+          try {
+            return originalGet.call(this.signClient.session, topic);
+          } catch (error) {
+            console.warn(`Session not found for topic ${topic}, returning null:`, error);
+            return null;
+          }
+        };
+      }
+
+      // Override session.delete to not throw if session doesn't exist
+      const originalDelete = this.signClient.session.delete;
+      if (originalDelete) {
+        this.signClient.session.delete = (topic: string, reason?: any) => {
+          try {
+            return originalDelete.call(this.signClient.session, topic, reason);
+          } catch (error) {
+            console.warn(`Failed to delete session ${topic}, ignoring:`, error);
+            return;
+          }
+        };
+      }
+
+      // Override pairing store methods as well
+      if (this.signClient.pairing) {
+        const originalPairingGet = this.signClient.pairing.get;
+        if (originalPairingGet) {
+          this.signClient.pairing.get = (topic: string) => {
+            try {
+              return originalPairingGet.call(this.signClient.pairing, topic);
+            } catch (error) {
+              console.warn(`Pairing not found for topic ${topic}, returning null:`, error);
+              return null;
+            }
+          };
+        }
+
+        const originalPairingDelete = this.signClient.pairing.delete;
+        if (originalPairingDelete) {
+          this.signClient.pairing.delete = (topic: string, reason?: any) => {
+            try {
+              return originalPairingDelete.call(this.signClient.pairing, topic, reason);
+            } catch (error) {
+              console.warn(`Failed to delete pairing ${topic}, ignoring:`, error);
+              return;
+            }
+          };
+        }
+      }
+
+      console.log('✅ Session store methods overridden for WalletConnect service');
+    } catch (error) {
+      console.warn('⚠️ Failed to override session store methods:', error);
     }
   }
 
