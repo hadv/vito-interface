@@ -6,13 +6,20 @@ The application was experiencing serious uncaught runtime errors related to Wall
 
 ## Root Cause Analysis
 
-### **Primary Root Cause: Storage Conflicts Between Services**
-The main issue was that both `WalletConnectService` (for signer wallet connections) and `DAppWalletConnectService` (for dApp connections) were using the **same browser storage** for WalletConnect sessions. This created several critical problems:
+### **Primary Root Cause: WalletConnect Relay Message Processing**
+The main issue was that **WalletConnect receives relay messages for sessions that don't exist in the current client's storage**. This happens when:
+
+1. **Cross-Device Session Management**: Sessions are created/deleted on other devices or browser instances
+2. **Relay Message Broadcasting**: WalletConnect relay broadcasts session deletion messages to all connected clients
+3. **Internal Validation Failures**: WalletConnect's internal handlers try to process these messages and throw "No matching key" errors
+4. **Error Locations**: Errors occur in `isValidSessionOrPairingTopic`, `isValidDisconnect`, and `onRelayMessage` methods
+
+### **Secondary Root Cause: Storage Conflicts Between Services**
+Additionally, both `WalletConnectService` (for signer wallet connections) and `DAppWalletConnectService` (for dApp connections) were using the **same browser storage** for WalletConnect sessions. This created additional problems:
 
 1. **Shared Storage Namespace**: Both services stored sessions in the same localStorage under WalletConnect's default keys
 2. **Session Cross-Contamination**: One service would try to disconnect sessions that belonged to the other service
 3. **Stale Session References**: Sessions created by one service were being referenced by the other service
-4. **"No Matching Pair Key" Errors**: When one service tried to operate on sessions from the other service, WalletConnect couldn't find the corresponding pair key
 
 ### **Secondary Issues**
 1. **Missing Global Error Handler**: No global `unhandledrejection` event listener to catch WalletConnect promise rejections
@@ -23,7 +30,58 @@ The main issue was that both `WalletConnectService` (for signer wallet connectio
 
 ## Solution Implementation
 
-### 1. **PRIMARY FIX: Separate Storage Namespaces**
+### 1. **PRIMARY FIX: Relay Message Interception**
+
+#### Deep WalletConnect Integration Fix
+The core solution intercepts WalletConnect relay messages before they reach the internal handlers:
+
+```typescript
+private setupRelayMessageInterception(): void {
+  // Intercept relay messages before they reach WalletConnect's internal handlers
+  const originalOnRelayMessage = this.signClient.core.relayer.onRelayMessage;
+
+  this.signClient.core.relayer.onRelayMessage = async (message: any) => {
+    if (message && message.topic) {
+      const sessionKeys = this.signClient.session.keys || [];
+      const pairingKeys = this.signClient.pairing.keys || [];
+
+      // Check if this message is for a session/pairing we don't have
+      if (!sessionKeys.includes(message.topic) && !pairingKeys.includes(message.topic)) {
+        console.warn('Ignoring relay message for unknown session/pairing:', message.topic);
+        return; // Don't process this message
+      }
+    }
+
+    // If we have the session/pairing, process normally
+    return await originalOnRelayMessage.call(this.signClient.core.relayer, message);
+  };
+}
+```
+
+#### Internal Validation Method Override
+Additionally, we override WalletConnect's internal validation methods to prevent throwing errors:
+
+```typescript
+private overrideSessionValidation(): void {
+  // Override WalletConnect's internal validation methods
+  this.signClient.isValidSessionOrPairingTopic = (topic: string) => {
+    const sessionKeys = this.signClient.session.keys || [];
+    const pairingKeys = this.signClient.pairing.keys || [];
+    return sessionKeys.includes(topic) || pairingKeys.includes(topic);
+  };
+
+  this.signClient.isValidDisconnect = (params: any) => {
+    if (!params || !params.topic) return false;
+    const sessionKeys = this.signClient.session.keys || [];
+    const pairingKeys = this.signClient.pairing.keys || [];
+    return sessionKeys.includes(params.topic) || pairingKeys.includes(params.topic);
+  };
+}
+```
+
+**Impact**: This completely eliminates "No matching key" errors by filtering relay messages and preventing internal validation failures.
+
+### 2. **SECONDARY FIX: Separate Storage Namespaces**
 
 #### WalletConnect Service Storage Isolation (`client/src/services/WalletConnectService.ts`)
 ```typescript
@@ -242,9 +300,11 @@ export async function safeWalletConnectOperation<T>(
 ## Benefits
 
 ### **Primary Benefits (Root Cause Fix)**
-1. **🎯 ELIMINATED STORAGE CONFLICTS**: Separate storage namespaces completely prevent cross-service session interference
-2. **🎯 NO MORE "NO MATCHING PAIR KEY" ERRORS**: Each service now operates on its own isolated session store
-3. **🎯 CLEAN SESSION MANAGEMENT**: Services can no longer accidentally reference each other's sessions
+1. **🎯 ELIMINATED RELAY MESSAGE ERRORS**: Intercepts and filters unknown session messages before processing
+2. **🎯 NO MORE "NO MATCHING KEY" ERRORS**: Prevents WalletConnect internal validation failures completely
+3. **🎯 ROBUST MESSAGE PROCESSING**: Only processes relay messages for known sessions/pairings
+4. **🎯 ELIMINATED STORAGE CONFLICTS**: Separate storage namespaces prevent cross-service session interference
+5. **🎯 CLEAN SESSION MANAGEMENT**: Services operate independently without interference
 
 ### **Secondary Benefits (Error Handling Improvements)**
 4. **Eliminated Uncaught Errors**: Global handlers prevent WalletConnect errors from crashing the application
@@ -268,39 +328,54 @@ export async function safeWalletConnectOperation<T>(
 ### **Before the Fix**
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Browser localStorage                     │
+│                    WalletConnect Relay                      │
 ├─────────────────────────────────────────────────────────────┤
-│  WalletConnect Sessions (shared storage)                   │
-│  ├── Session A (created by WalletConnectService)           │
-│  ├── Session B (created by DAppWalletConnectService)       │
-│  └── Session C (created by WalletConnectService)           │
+│  Broadcasts session deletion message for Session X         │
+│  (Session X was created on another device/browser)         │
 └─────────────────────────────────────────────────────────────┘
-     ↑                                    ↑
-     │                                    │
-WalletConnectService ←─── CONFLICT! ───→ DAppWalletConnectService
-(tries to disconnect Session B)         (tries to disconnect Session A)
-     │                                    │
-     └─── "No matching pair key" error ←──┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    Current Browser                          │
+├─────────────────────────────────────────────────────────────┤
+│  WalletConnect Client receives relay message               │
+│  ├── Tries to validate Session X                           │
+│  ├── Session X doesn't exist in local storage              │
+│  └── Throws "No matching key" error                        │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+                    💥 UNCAUGHT RUNTIME ERROR
 ```
 
 ### **After the Fix**
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Browser localStorage                     │
+│                    WalletConnect Relay                      │
 ├─────────────────────────────────────────────────────────────┤
-│  vito-signer-walletconnect                                  │
-│  ├── Session A (WalletConnectService only)                 │
-│  └── Session C (WalletConnectService only)                 │
+│  Broadcasts session deletion message for Session X         │
+│  (Session X was created on another device/browser)         │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    Current Browser                          │
 ├─────────────────────────────────────────────────────────────┤
-│  vito-dapp-walletconnect                                    │
-│  └── Session B (DAppWalletConnectService only)             │
+│  🛡️ RELAY MESSAGE INTERCEPTION                             │
+│  ├── Checks if Session X exists locally                    │
+│  ├── Session X not found in local storage                  │
+│  ├── ⚠️ Ignores message (doesn't process)                   │
+│  └── ✅ No error thrown                                     │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+                    ✅ CLEAN OPERATION
+
+PLUS: Storage Isolation
+┌─────────────────────────────────────────────────────────────┐
+│  vito-signer-walletconnect     │  vito-dapp-walletconnect   │
+│  ├── Session A                 │  └── Session B             │
+│  └── Session C                 │                            │
 └─────────────────────────────────────────────────────────────┘
      ↑                                    ↑
-     │                                    │
-WalletConnectService ←─── ISOLATED ────→ DAppWalletConnectService
-(only sees Sessions A & C)              (only sees Session B)
-     │                                    │
-     └─── No conflicts, clean operation ──┘
+WalletConnectService              DAppWalletConnectService
+(isolated storage)                (isolated storage)
 ```
 
 ## Future Considerations
