@@ -11,7 +11,7 @@ window.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled promise rejection:', event.reason);
 
   // Check if it's a WalletConnect-related error
-  const errorMessage = event.reason?.message?.toLowerCase() || '';
+  const errorMessage = String(event.reason?.message || '').toLowerCase();
   if (errorMessage.includes('pair') ||
       errorMessage.includes('walletconnect') ||
       errorMessage.includes('session') ||
@@ -26,7 +26,7 @@ window.addEventListener('error', (event) => {
   console.error('Global error caught:', event.error);
 
   // Check if it's a WalletConnect-related error
-  const errorMessage = event.error?.message?.toLowerCase() || '';
+  const errorMessage = String(event.error?.message || '').toLowerCase();
   if (errorMessage.includes('pair') ||
       errorMessage.includes('walletconnect') ||
       errorMessage.includes('session') ||
@@ -54,29 +54,7 @@ console.error = (...args: any[]) => {
   originalConsoleError.apply(console, args);
 };
 
-// NUCLEAR OPTION: Patch Error constructor to prevent WalletConnect errors from being thrown
-const originalError = Error;
-(window as any).Error = function(message?: string) {
-  if (message && message.includes('No matching key') &&
-      (message.includes('session') || message.includes('pairing'))) {
-    console.warn('🛡️ Intercepted WalletConnect error creation:', message);
-    // Return a non-throwing dummy error
-    const dummyError = {
-      name: 'SuppressedWalletConnectError',
-      message: 'WalletConnect error suppressed',
-      stack: new originalError().stack
-    };
-    return dummyError as Error;
-  }
-  return new originalError(message);
-};
 
-// Preserve Error prototype and static methods
-Object.setPrototypeOf((window as any).Error, originalError);
-Object.defineProperty((window as any).Error, 'prototype', {
-  value: originalError.prototype,
-  writable: false
-});
 
 
 
