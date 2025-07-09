@@ -91,6 +91,13 @@ export class WalletConnectService {
     // Handle session deletion (when mobile wallet disconnects)
     this.signClient.on('session_delete', ({ topic }: { topic: string }) => {
       console.log(`WalletConnect session deleted by mobile wallet: ${topic}`);
+
+      // Only process session deletions for sessions we own
+      if (!this.ownsSession(topic)) {
+        console.log(`Ignoring session deletion for topic not owned by WalletConnectService: ${topic}`);
+        return;
+      }
+
       if (topic === this.sessionTopic) {
         console.log('Mobile wallet initiated disconnection, cleaning up app state...');
 
@@ -108,8 +115,7 @@ export class WalletConnectService {
 
         console.log('Mobile wallet disconnection cleanup completed');
       } else {
-        // This is a session deletion for a different topic - ignore it
-        console.log(`Ignoring session deletion for different topic: ${topic} (current: ${this.sessionTopic})`);
+        console.log(`Session deletion for different topic: ${topic} (current: ${this.sessionTopic})`);
       }
     });
 
@@ -225,9 +231,6 @@ export class WalletConnectService {
 
         // Set up event listeners
         this.setupWalletConnectListeners();
-
-        // Patch WalletConnect internal methods to prevent "no matching key" errors
-        this.patchWalletConnectInternals();
 
         // Clean up any orphaned sessions from previous runs
         await this.cleanupOrphanedSessions();
@@ -523,71 +526,23 @@ export class WalletConnectService {
 
 
   /**
-   * Patch WalletConnect internal methods to prevent "no matching key" errors
-   * This addresses the core issue where WalletConnect receives relay messages
-   * for sessions that don't exist in the local storage
+   * Check if this service owns a specific session topic
+   * This prevents processing session events from DAppWalletConnectService
    */
-  private patchWalletConnectInternals(): void {
-    if (!this.signClient) return;
+  private ownsSession(topic: string): boolean {
+    if (!this.signClient) return false;
 
     try {
-      // Patch isValidSessionOrPairingTopic to not throw errors
-      const originalIsValidSessionOrPairingTopic = this.signClient.isValidSessionOrPairingTopic;
-      if (originalIsValidSessionOrPairingTopic) {
-        this.signClient.isValidSessionOrPairingTopic = (topic: string) => {
-          try {
-            return originalIsValidSessionOrPairingTopic.call(this.signClient, topic);
-          } catch (error) {
-            console.warn('🛡️ WalletConnect session validation failed, returning false:', topic);
-            return false;
-          }
-        };
-      }
-
-      // Patch isValidDisconnect to not throw errors
-      const originalIsValidDisconnect = this.signClient.isValidDisconnect;
-      if (originalIsValidDisconnect) {
-        this.signClient.isValidDisconnect = (params: any) => {
-          try {
-            return originalIsValidDisconnect.call(this.signClient, params);
-          } catch (error) {
-            console.warn('🛡️ WalletConnect disconnect validation failed, returning false:', params);
-            return false;
-          }
-        };
-      }
-
-      // Patch session store get method to not throw
-      if (this.signClient.session?.get) {
-        const originalSessionGet = this.signClient.session.get;
-        this.signClient.session.get = (topic: string) => {
-          try {
-            return originalSessionGet.call(this.signClient.session, topic);
-          } catch (error) {
-            console.warn('🛡️ WalletConnect session.get failed, returning null:', topic);
-            return null;
-          }
-        };
-      }
-
-      // Patch session store delete method to not throw
-      if (this.signClient.session?.delete) {
-        const originalSessionDelete = this.signClient.session.delete;
-        this.signClient.session.delete = (topic: string, reason?: any) => {
-          try {
-            return originalSessionDelete.call(this.signClient.session, topic, reason);
-          } catch (error) {
-            console.warn('🛡️ WalletConnect session.delete failed, ignoring:', topic);
-            return;
-          }
-        };
-      }
-
-      console.log('✅ WalletConnect internal methods patched successfully');
+      // Check if this session exists in our active sessions
+      const activeSessions = this.signClient.getActiveSessions();
+      return activeSessions.hasOwnProperty(topic);
     } catch (error) {
-      console.warn('⚠️ Failed to patch WalletConnect internal methods:', error);
+      console.warn('Error checking session ownership:', error);
+      return false;
     }
   }
+
+
 
   /**
    * Validate if a session exists and is not expired

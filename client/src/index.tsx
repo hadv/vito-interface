@@ -46,6 +46,11 @@ console.error = (...args: any[]) => {
     console.warn('🛡️ Suppressed WalletConnect "No matching key" error:', ...args);
     return;
   }
+  // Also suppress destructuring errors from null sessions
+  if (errorString.includes('cannot destructure') && errorString.includes('session.get')) {
+    console.warn('🛡️ Suppressed WalletConnect session destructuring error:', ...args);
+    return;
+  }
   originalConsoleError.apply(console, args);
 };
 
