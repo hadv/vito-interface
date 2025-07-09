@@ -1,10 +1,14 @@
+import { SignClient } from '@walletconnect/sign-client';
 import QRCode from 'qrcode';
 import { ethers } from 'ethers';
 import { WalletConnectSigner } from './WalletConnectSigner';
-import { walletConnectManager } from './WalletConnectManager';
+import { WALLETCONNECT_PROJECT_ID, WALLETCONNECT_METADATA } from '../config/walletconnect';
 
 export class WalletConnectService {
+  private signClient: any; // WalletConnect SignClient instance for signer wallet connections
+  private dAppClient: any; // WalletConnect SignClient instance for dApp connections
   private sessionTopic: string | null = null; // Store the signer WalletConnect session topic
+  private dAppSessionTopic: string | null = null; // Store the dApp WalletConnect session topic
   private isConnecting: boolean = false; // Flag to track connection state
   private listeners: Map<string, Function[]> = new Map();
 
@@ -15,51 +19,6 @@ export class WalletConnectService {
     this.listeners.set('session_update', []);
     this.listeners.set('session_connected', []);
     this.listeners.set('session_disconnected', []);
-
-    // Initialize the unified manager
-    walletConnectManager.initialize().catch(error => {
-      console.error('Failed to initialize WalletConnect manager:', error);
-    });
-
-    // Listen for signer-specific events from the manager
-    walletConnectManager.on('signer_disconnected', (data: any) => {
-      this.handleSignerDisconnected(data);
-    });
-
-    walletConnectManager.on('signer_request', (event: any) => {
-      this.handleSignerRequest(event);
-    });
-  }
-
-  /**
-   * Handle signer disconnection from unified manager
-   */
-  private handleSignerDisconnected(data: any): void {
-    const { topic, reason } = data;
-
-    if (topic === this.sessionTopic) {
-      console.log('Signer wallet disconnected via unified manager:', topic);
-
-      // Clear session state
-      this.sessionTopic = null;
-      this.connectionResult = null;
-
-      // Emit disconnection event
-      this.emit('session_disconnected', {
-        topic,
-        reason: reason || 'Signer wallet disconnected',
-        initiatedBy: 'mobile'
-      });
-      this.emit('session_delete', { topic });
-    }
-  }
-
-  /**
-   * Handle signer requests from unified manager
-   */
-  private handleSignerRequest(event: any): void {
-    // Forward the request to any listeners
-    this.emit('session_request', event);
   }
 
   /**
@@ -107,11 +66,92 @@ export class WalletConnectService {
     return this.sessionTopic;
   }
 
+  /**
+   * Get the dApp session topic
+   * @returns The dApp session topic
+   */
+  public getDAppSessionTopic(): string | null {
+    return this.dAppSessionTopic;
+  }
 
+  /**
+   * Setup WalletConnect event listeners
+   */
+  private setupWalletConnectListeners(): void {
+    if (!this.signClient) return;
 
+    // Handle session deletion (when mobile wallet disconnects)
+    this.signClient.on('session_delete', ({ topic }: { topic: string }) => {
+      try {
+        console.log(`WalletConnect session deleted by mobile wallet: ${topic}`);
+        if (topic === this.sessionTopic) {
+          console.log('Mobile wallet initiated disconnection, cleaning up app state...');
 
+          // Clear session state
+          this.sessionTopic = null;
+          this.connectionResult = null;
 
+          // Emit disconnection event to notify the app
+          this.emit('session_disconnected', {
+            topic,
+            reason: 'Mobile wallet disconnected',
+            initiatedBy: 'mobile'
+          });
+          this.emit('session_delete', { topic });
 
+          console.log('Mobile wallet disconnection cleanup completed');
+        }
+      } catch (error) {
+        console.error('❌ Error handling session delete (swallowed to prevent crash):', error);
+      }
+    });
+
+    // Handle session expiry
+    this.signClient.on('session_expire', ({ topic }: { topic: string }) => {
+      try {
+        console.log(`WalletConnect session expired: ${topic}`);
+        if (topic === this.sessionTopic) {
+          console.log('WalletConnect session expired, cleaning up app state...');
+
+          // Clear session state
+          this.sessionTopic = null;
+          this.connectionResult = null;
+
+          // Emit disconnection event to notify the app
+          this.emit('session_disconnected', {
+            topic,
+            reason: 'Session expired',
+            initiatedBy: 'system'
+          });
+          this.emit('session_expire', { topic });
+
+          console.log('Session expiry cleanup completed');
+        }
+      } catch (error) {
+        console.error('❌ Error handling session expire (swallowed to prevent crash):', error);
+      }
+    });
+
+    // Handle session events
+    this.signClient.on('session_event', (event: any) => {
+      console.log('WalletConnect session event:', event);
+      this.emit('session_update', event);
+    });
+
+    // Handle session ping (to detect connection status)
+    this.signClient.on('session_ping', ({ topic }: { topic: string }) => {
+      console.log(`WalletConnect session ping: ${topic}`);
+      // Respond to ping to maintain connection
+      if (topic === this.sessionTopic) {
+        this.signClient.respond({
+          topic,
+          response: { id: Date.now(), result: true, jsonrpc: '2.0' }
+        }).catch((error: any) => {
+          console.error('Failed to respond to ping:', error);
+        });
+      }
+    });
+  }
 
   /**
    * Initialize WalletConnect with the selected chain ID
@@ -129,9 +169,8 @@ export class WalletConnectService {
       if (this.sessionTopic) {
         console.log('Cleaning up existing session before forcing new connection...');
         try {
-          const signClient = walletConnectManager.getSignClient();
-          if (signClient) {
-            await signClient.disconnect({
+          if (this.signClient) {
+            await this.signClient.disconnect({
               topic: this.sessionTopic,
               reason: { code: 6000, message: 'Forcing new connection' }
             });
@@ -155,10 +194,9 @@ export class WalletConnectService {
       this.isConnecting = true;
 
       // If there's an active session, verify it's still valid (unless forcing new)
-      const existingSignClient = walletConnectManager.getSignClient();
-      if (this.sessionTopic && existingSignClient && !forceNew) {
+      if (this.sessionTopic && this.signClient && !forceNew) {
         try {
-          const session = await existingSignClient.session.get(this.sessionTopic);
+          const session = await this.signClient.session.get(this.sessionTopic);
           if (session && session.expiry * 1000 > Date.now()) {
             // Session is still valid
             this.emit('session_connected', { message: 'Already connected to wallet!' });
@@ -171,17 +209,19 @@ export class WalletConnectService {
         }
       }
 
-      // Ensure the unified manager is initialized
-      await walletConnectManager.initialize();
+      // Initialize WalletConnect SignClient if not already initialized
+      if (!this.signClient) {
+        this.signClient = await SignClient.init({
+          projectId: WALLETCONNECT_PROJECT_ID,
+          metadata: WALLETCONNECT_METADATA
+        });
 
-      // Get the SignClient from the unified manager
-      const wcSignClient = walletConnectManager.getSignClient();
-      if (!wcSignClient) {
-        throw new Error('Failed to get SignClient from unified manager');
+        // Set up event listeners
+        this.setupWalletConnectListeners();
       }
 
       // Create connection
-      const connectResult = await wcSignClient.connect({
+      const connectResult = await this.signClient.connect({
         requiredNamespaces: {
           eip155: {
             methods: [
@@ -203,9 +243,6 @@ export class WalletConnectService {
       // Wait for approval
       const session = await connectResult.approval();
       this.sessionTopic = session.topic;
-
-      // Update the unified manager with our signer session topic
-      walletConnectManager.setSignerSessionTopic(session.topic);
 
       console.log('WalletConnect session approved:', session);
       console.log('Session namespaces:', session.namespaces);
@@ -256,10 +293,9 @@ export class WalletConnectService {
    */
   public async connectWithUri(uri?: string): Promise<{ uri: string }> {
     // If no URI is provided and we have a sign client, create a new connection
-    const uriSignClient = walletConnectManager.getSignClient();
-    if (!uri && uriSignClient) {
+    if (!uri && this.signClient) {
       try {
-        const connectResult = await uriSignClient.connect({
+        const connectResult = await this.signClient.connect({
           requiredNamespaces: {
             eip155: {
               methods: [
@@ -288,7 +324,7 @@ export class WalletConnectService {
 
     try {
       // Parse the URI
-      await uriSignClient.pair({ uri });
+      await this.signClient.pair({ uri });
 
       // Return the session URI
       return { uri };
@@ -304,8 +340,7 @@ export class WalletConnectService {
    * @param retryCount Number of retry attempts (internal use)
    */
   public async disconnect(reason?: string, retryCount: number = 0): Promise<void> {
-    const signClient = walletConnectManager.getSignClient();
-    if (!signClient || !this.sessionTopic) {
+    if (!this.signClient || !this.sessionTopic) {
       console.log('No WalletConnect session to disconnect');
       return;
     }
@@ -317,7 +352,7 @@ export class WalletConnectService {
       console.log(`Disconnecting WalletConnect session from app... (attempt ${retryCount + 1}/${maxRetries + 1})`);
 
       // Add timeout to prevent hanging
-      const disconnectPromise = signClient.disconnect({
+      const disconnectPromise = this.signClient.disconnect({
         topic: this.sessionTopic,
         reason: {
           code: 6000,
@@ -334,9 +369,6 @@ export class WalletConnectService {
       // Reset the session topic
       const disconnectedTopic = this.sessionTopic;
       this.sessionTopic = null;
-
-      // Update the unified manager
-      walletConnectManager.setSignerSessionTopic(null);
 
       // Clear connection result
       this.connectionResult = null;
@@ -378,7 +410,7 @@ export class WalletConnectService {
    * Check if WalletConnect is currently connected
    */
   public isConnected(): boolean {
-    return !!this.sessionTopic && !!walletConnectManager.getSignClient();
+    return !!this.sessionTopic && !!this.signClient;
   }
 
   /**
@@ -415,7 +447,7 @@ export class WalletConnectService {
 
     try {
       // If there's an active session, disconnect it
-      if (this.sessionTopic && walletConnectManager.getSignClient()) {
+      if (this.sessionTopic && this.signClient) {
         await this.disconnect('Switching to different wallet');
       }
     } catch (error) {
@@ -434,13 +466,12 @@ export class WalletConnectService {
    * Verify connection status by checking session validity
    */
   public async verifyConnection(): Promise<boolean> {
-    const signClient = walletConnectManager.getSignClient();
-    if (!signClient || !this.sessionTopic) {
+    if (!this.signClient || !this.sessionTopic) {
       return false;
     }
 
     try {
-      const session = await signClient.session.get(this.sessionTopic);
+      const session = await this.signClient.session.get(this.sessionTopic);
       if (!session || session.expiry * 1000 <= Date.now()) {
         console.log('WalletConnect session is expired or invalid');
         // Clean up expired session
@@ -507,13 +538,12 @@ export class WalletConnectService {
    * Get current session info if connected
    */
   public async getSessionInfo(): Promise<any | null> {
-    const signClient = walletConnectManager.getSignClient();
-    if (!signClient || !this.sessionTopic) {
+    if (!this.signClient || !this.sessionTopic) {
       return null;
     }
 
     try {
-      const session = await signClient.session.get(this.sessionTopic);
+      const session = await this.signClient.session.get(this.sessionTopic);
       return session;
     } catch (error) {
       console.error('Failed to get session info:', error);
