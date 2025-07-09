@@ -9,32 +9,71 @@ import reportWebVitals from './reportWebVitals';
 // Import WalletConnect patching test for debugging
 import './tests/WalletConnectPatchingTest';
 
-// NUCLEAR OPTION: Global error suppression for WalletConnect "No matching key" errors
-// Since the validation methods don't exist on our signClient instances,
-// the errors are coming from WalletConnect's internal processing that we can't patch
+// NUCLEAR OPTION: Runtime patching of WalletConnect internal methods
+// Since the validation methods don't exist on our signClient instances initially,
+// we need to patch them at runtime when they become available
 
-// Override the global Error constructor to intercept WalletConnect errors at the source
-const originalError = window.Error;
-window.Error = function(message?: string) {
-  const msg = String(message || '').toLowerCase();
-  if (msg.includes('no matching key') && (msg.includes('session') || msg.includes('pairing'))) {
-    console.warn('🛡️ Intercepted WalletConnect "No matching key" error:', message);
-    // Return a dummy error that won't cause issues
-    const dummyError = Object.create(Error.prototype);
-    dummyError.name = 'SuppressedWalletConnectError';
-    dummyError.message = 'WalletConnect error suppressed';
-    dummyError.stack = (new originalError()).stack;
-    return dummyError;
-  }
-  return new originalError(message);
-} as any;
+// Function to patch WalletConnect methods when they become available
+function patchWalletConnectMethods() {
+  // Look for WalletConnect instances in the global scope
+  const checkAndPatch = () => {
+    // Check for any objects that might contain WalletConnect methods
+    const potentialWCObjects = [];
 
-// Preserve Error prototype and static methods
-Object.setPrototypeOf(window.Error, originalError);
-Object.defineProperty(window.Error, 'prototype', {
-  value: originalError.prototype,
-  writable: false
-});
+    // Search through window properties for WalletConnect-related objects
+    for (const key in window) {
+      try {
+        const obj = (window as any)[key];
+        if (obj && typeof obj === 'object' &&
+            (obj.constructor?.name?.includes('WalletConnect') ||
+             obj.constructor?.name?.includes('SignClient') ||
+             (obj.isValidSessionOrPairingTopic && typeof obj.isValidSessionOrPairingTopic === 'function'))) {
+          potentialWCObjects.push(obj);
+        }
+      } catch (e) {
+        // Ignore access errors
+      }
+    }
+
+    // Patch any found objects
+    potentialWCObjects.forEach(obj => {
+      if (obj.isValidSessionOrPairingTopic && !obj.__patched) {
+        const original = obj.isValidSessionOrPairingTopic;
+        obj.isValidSessionOrPairingTopic = function(topic: string) {
+          try {
+            return original.call(this, topic);
+          } catch (error) {
+            console.warn('🛡️ WalletConnect isValidSessionOrPairingTopic failed, returning false:', topic);
+            return false;
+          }
+        };
+        obj.__patched = true;
+        console.log('✅ Patched WalletConnect isValidSessionOrPairingTopic');
+      }
+
+      if (obj.isValidDisconnect && !obj.__patchedDisconnect) {
+        const original = obj.isValidDisconnect;
+        obj.isValidDisconnect = function(params: any) {
+          try {
+            return original.call(this, params);
+          } catch (error) {
+            console.warn('🛡️ WalletConnect isValidDisconnect failed, returning false:', params);
+            return false;
+          }
+        };
+        obj.__patchedDisconnect = true;
+        console.log('✅ Patched WalletConnect isValidDisconnect');
+      }
+    });
+  };
+
+  // Check immediately and then periodically
+  checkAndPatch();
+  setInterval(checkAndPatch, 1000);
+}
+
+// Start patching process
+patchWalletConnectMethods();
 
 // Global error handlers to prevent uncaught runtime errors
 window.addEventListener('unhandledrejection', (event) => {
