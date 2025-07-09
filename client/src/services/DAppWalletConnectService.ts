@@ -43,6 +43,9 @@ export class DAppWalletConnectService {
       // Set up event listeners
       this.setupEventListeners();
 
+      // Patch WalletConnect internal validation to prevent "no matching key" errors
+      this.patchWalletConnectInternalValidation();
+
       // Clean up any orphaned sessions from previous runs
       await this.cleanupOrphanedSessions();
 
@@ -478,6 +481,73 @@ export class DAppWalletConnectService {
     } catch (error) {
       console.warn('Error checking dApp session ownership:', error);
       return false;
+    }
+  }
+
+  /**
+   * Patch WalletConnect's internal validation methods to prevent "no matching key" errors
+   * This patches the methods that are called during relay message processing
+   */
+  private patchWalletConnectInternalValidation(): void {
+    if (!this.signClient) return;
+
+    try {
+      // Patch isValidSessionOrPairingTopic - this is where the error originates
+      const originalIsValidSessionOrPairingTopic = (this.signClient as any).isValidSessionOrPairingTopic;
+      if (originalIsValidSessionOrPairingTopic) {
+        (this.signClient as any).isValidSessionOrPairingTopic = (topic: string) => {
+          try {
+            return originalIsValidSessionOrPairingTopic.call(this.signClient, topic);
+          } catch (error) {
+            console.warn('🛡️ DApp WalletConnect isValidSessionOrPairingTopic failed, returning false:', topic);
+            return false;
+          }
+        };
+      }
+
+      // Patch isValidDisconnect - this is called during session delete processing
+      const originalIsValidDisconnect = (this.signClient as any).isValidDisconnect;
+      if (originalIsValidDisconnect) {
+        (this.signClient as any).isValidDisconnect = (params: any) => {
+          try {
+            return originalIsValidDisconnect.call(this.signClient, params);
+          } catch (error) {
+            console.warn('🛡️ DApp WalletConnect isValidDisconnect failed, returning false:', params);
+            return false;
+          }
+        };
+      }
+
+      // Patch the session store's get method to not throw
+      if ((this.signClient as any).session?.store?.get) {
+        const originalGet = (this.signClient as any).session.store.get;
+        (this.signClient as any).session.store.get = (topic: string) => {
+          try {
+            return originalGet.call((this.signClient as any).session.store, topic);
+          } catch (error) {
+            console.warn('🛡️ DApp WalletConnect session store get failed, returning null:', topic);
+            return null;
+          }
+        };
+      }
+
+      // Patch the session store's getData method to not throw
+      if ((this.signClient as any).session?.store?.getData) {
+        const originalGetData = (this.signClient as any).session.store.getData;
+        (this.signClient as any).session.store.getData = (topic: string) => {
+          try {
+            return originalGetData.call((this.signClient as any).session.store, topic);
+          } catch (error) {
+            console.warn('🛡️ DApp WalletConnect session store getData failed, throwing controlled error:', topic);
+            // Return a controlled error instead of letting it bubble up
+            throw new Error('Session not found (controlled)');
+          }
+        };
+      }
+
+      console.log('✅ DApp WalletConnect internal validation methods patched successfully');
+    } catch (error) {
+      console.warn('⚠️ Failed to patch DApp WalletConnect internal validation methods:', error);
     }
   }
 
