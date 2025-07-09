@@ -82,62 +82,70 @@ export class WalletConnectService {
 
     // Handle session deletion (when mobile wallet disconnects)
     this.signClient.on('session_delete', ({ topic }: { topic: string }) => {
-      try {
-        console.log(`Signer service received session delete event: ${topic}`);
+      // Wrap in setTimeout to prevent blocking the event loop and isolate errors
+      setTimeout(() => {
+        try {
+          console.log(`Signer service received session delete event: ${topic}`);
 
-        // Only handle sessions that belong to us (match our sessionTopic)
-        if (topic === this.sessionTopic) {
-          console.log('Mobile wallet initiated disconnection, cleaning up app state...');
+          // Only handle sessions that belong to us (match our sessionTopic)
+          if (topic === this.sessionTopic) {
+            console.log('Mobile wallet initiated disconnection, cleaning up app state...');
 
-          // Clear session state
-          this.sessionTopic = null;
-          this.connectionResult = null;
+            // Clear session state
+            this.sessionTopic = null;
+            this.connectionResult = null;
 
-          // Emit disconnection event to notify the app
-          this.emit('session_disconnected', {
-            topic,
-            reason: 'Mobile wallet disconnected',
-            initiatedBy: 'mobile'
-          });
-          this.emit('session_delete', { topic });
+            // Emit disconnection event to notify the app
+            this.emit('session_disconnected', {
+              topic,
+              reason: 'Mobile wallet disconnected',
+              initiatedBy: 'mobile'
+            });
+            this.emit('session_delete', { topic });
 
-          console.log('Mobile wallet disconnection cleanup completed');
-        } else {
-          console.log('🚫 Ignoring session delete for topic that doesn\'t match our session:', topic);
+            console.log('Mobile wallet disconnection cleanup completed');
+          } else {
+            console.log('🚫 Ignoring session delete for topic that doesn\'t match our session:', topic);
+          }
+        } catch (error) {
+          console.error('❌ Error handling session delete in signer service:', error);
+          // Swallow the error to prevent crashes
         }
-      } catch (error) {
-        console.error('❌ Error handling session delete in signer service:', error);
-      }
+      }, 0);
     });
 
     // Handle session expiry
     this.signClient.on('session_expire', ({ topic }: { topic: string }) => {
-      try {
-        console.log(`Signer service received session expire event: ${topic}`);
+      // Wrap in setTimeout to prevent blocking the event loop and isolate errors
+      setTimeout(() => {
+        try {
+          console.log(`Signer service received session expire event: ${topic}`);
 
-        // Only handle sessions that belong to us (match our sessionTopic)
-        if (topic === this.sessionTopic) {
-          console.log('WalletConnect session expired, cleaning up app state...');
+          // Only handle sessions that belong to us (match our sessionTopic)
+          if (topic === this.sessionTopic) {
+            console.log('WalletConnect session expired, cleaning up app state...');
 
-          // Clear session state
-          this.sessionTopic = null;
-          this.connectionResult = null;
+            // Clear session state
+            this.sessionTopic = null;
+            this.connectionResult = null;
 
-          // Emit disconnection event to notify the app
-          this.emit('session_disconnected', {
-            topic,
-            reason: 'Session expired',
-            initiatedBy: 'system'
-          });
-          this.emit('session_expire', { topic });
+            // Emit disconnection event to notify the app
+            this.emit('session_disconnected', {
+              topic,
+              reason: 'Session expired',
+              initiatedBy: 'system'
+            });
+            this.emit('session_expire', { topic });
 
-          console.log('Session expiry cleanup completed');
-        } else {
-          console.log('🚫 Ignoring session expire for topic that doesn\'t match our session:', topic);
+            console.log('Session expiry cleanup completed');
+          } else {
+            console.log('🚫 Ignoring session expire for topic that doesn\'t match our session:', topic);
+          }
+        } catch (error) {
+          console.error('❌ Error handling session expire in signer service:', error);
+          // Swallow the error to prevent crashes
         }
-      } catch (error) {
-        console.error('❌ Error handling session expire in signer service:', error);
-      }
+      }, 0);
     });
 
     // Handle session events
@@ -159,6 +167,27 @@ export class WalletConnectService {
         });
       }
     });
+  }
+
+  /**
+   * Set up global error handler to catch unhandled WalletConnect errors
+   */
+  private setupGlobalErrorHandler(): void {
+    if (!this.signClient) return;
+
+    // Handle any unhandled errors from the SignClient
+    this.signClient.on('error', (error: any) => {
+      console.error('🚨 Signer WalletConnect global error (swallowed to prevent crashes):', error);
+      // Swallow the error to prevent application crashes
+    });
+
+    // Handle transport errors
+    if (this.signClient.core?.relayer) {
+      this.signClient.core.relayer.on('relayer_error', (error: any) => {
+        console.error('🚨 Signer WalletConnect relayer error (swallowed):', error);
+        // Swallow the error to prevent application crashes
+      });
+    }
   }
 
   /**
@@ -221,11 +250,18 @@ export class WalletConnectService {
       if (!this.signClient) {
         this.signClient = await SignClient.init({
           projectId: WALLETCONNECT_SIGNER_PROJECT_ID,
-          metadata: WALLETCONNECT_SIGNER_METADATA
+          metadata: WALLETCONNECT_SIGNER_METADATA,
+          // Use different storage key to avoid conflicts with dApp service
+          storageOptions: {
+            database: 'signer-walletconnect'
+          }
         });
 
         // Set up event listeners
         this.setupWalletConnectListeners();
+
+        // Set up global error handler
+        this.setupGlobalErrorHandler();
       }
 
       // Create connection

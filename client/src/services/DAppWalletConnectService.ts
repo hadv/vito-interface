@@ -29,11 +29,18 @@ export class DAppWalletConnectService {
       
       this.signClient = await SignClient.init({
         projectId: WALLETCONNECT_DAPP_PROJECT_ID,
-        metadata: WALLETCONNECT_DAPP_METADATA
+        metadata: WALLETCONNECT_DAPP_METADATA,
+        // Use different storage key to avoid conflicts with signer service
+        storageOptions: {
+          database: 'dapp-walletconnect'
+        }
       });
 
       // Set up event listeners
       this.setupEventListeners();
+
+      // Set up global error handler for this client
+      this.setupGlobalErrorHandler();
 
       // Load existing sessions
       this.loadExistingSessions();
@@ -98,35 +105,65 @@ export class DAppWalletConnectService {
       });
     });
 
-    // Handle session deletions with error handling
+    // Handle session deletions with comprehensive error handling
     this.signClient.on('session_delete', (event: any) => {
-      try {
-        this.handleSessionDelete(event).catch(error => {
-          console.error('❌ Error handling session delete:', error);
-        });
-      } catch (error) {
-        console.error('❌ Synchronous error in session delete handler:', error);
-      }
-    });
-
-    // Handle session expiry
-    this.signClient.on('session_expire', (event: any) => {
-      try {
-        console.log('⏰ DApp service received session expire event:', event);
-        const { topic } = event;
-
-        // Only handle sessions that we actually own
-        if (this.activeSessions.has(topic)) {
-          console.log('⏰ Cleaning up our expired dApp session:', topic);
-          this.activeSessions.delete(topic);
-          this.emit('session_disconnected', { topic, reason: 'expired' });
-        } else {
-          console.log('🚫 Ignoring session expire for topic we don\'t own:', topic);
+      // Wrap in setTimeout to prevent blocking the event loop
+      setTimeout(() => {
+        try {
+          this.handleSessionDelete(event).catch(error => {
+            console.error('❌ Error handling session delete in dApp service:', error);
+            // Swallow the error to prevent crashes
+          });
+        } catch (error) {
+          console.error('❌ Synchronous error in dApp session delete handler:', error);
+          // Swallow the error to prevent crashes
         }
-      } catch (error) {
-        console.error('❌ Error handling session expire:', error);
-      }
+      }, 0);
     });
+
+    // Handle session expiry with comprehensive error handling
+    this.signClient.on('session_expire', (event: any) => {
+      // Wrap in setTimeout to prevent blocking the event loop
+      setTimeout(() => {
+        try {
+          console.log('⏰ DApp service received session expire event:', event);
+          const { topic } = event;
+
+          // Only handle sessions that we actually own
+          if (this.activeSessions.has(topic)) {
+            console.log('⏰ Cleaning up our expired dApp session:', topic);
+            this.activeSessions.delete(topic);
+            this.emit('session_disconnected', { topic, reason: 'expired' });
+          } else {
+            console.log('🚫 Ignoring session expire for topic we don\'t own:', topic);
+          }
+        } catch (error) {
+          console.error('❌ Error handling session expire in dApp service:', error);
+          // Swallow the error to prevent crashes
+        }
+      }, 0);
+    });
+  }
+
+  /**
+   * Set up global error handler to catch unhandled WalletConnect errors
+   */
+  private setupGlobalErrorHandler(): void {
+    if (!this.signClient) return;
+
+    // Handle any unhandled errors from the SignClient
+    this.signClient.on('error', (error: any) => {
+      console.error('🚨 DApp WalletConnect global error (swallowed to prevent crashes):', error);
+      // Swallow the error to prevent application crashes
+    });
+
+    // Handle transport errors
+    if (this.signClient.core?.relayer) {
+      this.signClient.core.relayer.on('relayer_error', (error: any) => {
+        console.error('🚨 DApp WalletConnect relayer error (swallowed):', error);
+        // Swallow the error to prevent application crashes
+      });
+    }
   }
 
   /**
