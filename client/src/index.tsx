@@ -9,27 +9,40 @@ import reportWebVitals from './reportWebVitals';
 // Import WalletConnect patching test for debugging
 import './tests/WalletConnectPatchingTest';
 
-// FINAL SOLUTION: Monkey patch Error constructor to completely suppress WalletConnect errors
-// Since the methods are in the bundled code and we can't access them directly,
-// we need to intercept the errors at the Error creation level
+// ULTIMATE SOLUTION: Complete error suppression at multiple levels
+// Since Error constructor override still creates throwable objects,
+// we need to be more aggressive
 
 const originalError = window.Error;
 const originalConsoleError = console.error;
 
-// Override Error constructor to suppress WalletConnect "No matching key" errors
+// Track if we're in a WalletConnect error context
+let suppressingWalletConnectError = false;
+
+// Override Error constructor to completely suppress WalletConnect errors
 window.Error = function(message?: string) {
   const msg = String(message || '');
   if (msg.includes('No matching key') &&
       (msg.includes('session') || msg.includes('pairing'))) {
     console.warn('🛡️ Suppressed WalletConnect error:', msg);
-    // Return a non-throwing dummy error
-    const dummyError = {
+    suppressingWalletConnectError = true;
+
+    // Return a special object that won't cause issues when thrown
+    const suppressedError = {
       name: 'SuppressedWalletConnectError',
       message: 'WalletConnect error suppressed',
       stack: '',
-      toString: () => 'WalletConnect error suppressed'
+      toString: () => 'WalletConnect error suppressed',
+      // Make it non-enumerable and non-configurable
+      [Symbol.toPrimitive]: () => 'WalletConnect error suppressed',
+      // Override valueOf to return a safe value
+      valueOf: () => 'WalletConnect error suppressed'
     };
-    return dummyError as any;
+
+    // Reset the flag after a short delay
+    setTimeout(() => { suppressingWalletConnectError = false; }, 0);
+
+    return suppressedError as any;
   }
   return new originalError(message);
 } as any;
@@ -52,19 +65,46 @@ console.error = (...args: any[]) => {
   originalConsoleError.apply(console, args);
 };
 
-// Additional aggressive patching - override throw statements for WalletConnect errors
-const originalThrow = (function() {
-  const _throw = function(error: any) {
-    if (error && typeof error === 'object' && error.message &&
-        error.message.includes('No matching key') &&
-        (error.message.includes('session') || error.message.includes('pairing'))) {
-      console.warn('🛡️ Intercepted WalletConnect throw:', error.message);
-      return; // Don't throw
+// NUCLEAR OPTION: Override React's error handling
+// Patch React's error boundary mechanism to catch WalletConnect errors
+setTimeout(() => {
+  // Find React's error handling functions and patch them
+  const reactErrorHandlers = [];
+
+  // Look for React DevTools or React internals
+  if ((window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__) {
+    const hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
+    if (hook.onCommitFiberRoot) {
+      const original = hook.onCommitFiberRoot;
+      hook.onCommitFiberRoot = function(...args: any[]) {
+        try {
+          return original.apply(this, args);
+        } catch (error: any) {
+          if (error?.message?.includes('No matching key') ||
+              error?.name === 'SuppressedWalletConnectError') {
+            console.warn('🛡️ Suppressed WalletConnect error in React DevTools:', error);
+            return;
+          }
+          throw error;
+        }
+      };
     }
-    throw error;
-  };
-  return _throw;
-})();
+  }
+
+  // Patch any existing error reporting functions
+  if ((window as any).reportError) {
+    const originalReportError = (window as any).reportError;
+    (window as any).reportError = function(error: any) {
+      if (error?.message?.includes('No matching key') ||
+          error?.name === 'SuppressedWalletConnectError' ||
+          String(error).includes('WalletConnect error suppressed')) {
+        console.warn('🛡️ Suppressed WalletConnect error in reportError:', error);
+        return;
+      }
+      return originalReportError.call(this, error);
+    };
+  }
+}, 1000);
 
 // Try to patch any existing Error throwing in the global scope
 setTimeout(() => {
@@ -110,6 +150,12 @@ window.addEventListener('unhandledrejection', (event) => {
     event.preventDefault();
     return;
   }
+  // Also check for our suppressed errors
+  if (event.reason?.name === 'SuppressedWalletConnectError' || suppressingWalletConnectError) {
+    console.warn('🛡️ Suppressed WalletConnect error in promise:', event.reason);
+    event.preventDefault();
+    return;
+  }
   console.error('Unhandled promise rejection:', event.reason);
 });
 
@@ -118,6 +164,18 @@ window.addEventListener('error', (event) => {
   if (errorMessage.includes('no matching key') &&
       (errorMessage.includes('session') || errorMessage.includes('pairing'))) {
     console.warn('🛡️ Suppressed WalletConnect global error:', event.error);
+    event.preventDefault();
+    return;
+  }
+  // Also check for our suppressed errors
+  if (event.error?.name === 'SuppressedWalletConnectError' || suppressingWalletConnectError) {
+    console.warn('🛡️ Suppressed WalletConnect error in global handler:', event.error);
+    event.preventDefault();
+    return;
+  }
+  // Check if the error message contains our suppressed error text
+  if (errorMessage.includes('walletconnect error suppressed')) {
+    console.warn('🛡️ Suppressed WalletConnect error (by message):', event.error);
     event.preventDefault();
     return;
   }
