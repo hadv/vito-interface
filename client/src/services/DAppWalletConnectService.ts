@@ -3,7 +3,6 @@ import { SessionTypes } from '@walletconnect/types';
 import { WALLETCONNECT_PROJECT_ID, WALLETCONNECT_METADATA } from '../config/walletconnect';
 import { walletConnectionService } from './WalletConnectionService';
 import { safeWalletService } from './SafeWalletService';
-import { patchSignClient } from '../utils/walletConnectPatch';
 
 /**
  * DApp WalletConnect Service
@@ -41,14 +40,8 @@ export class DAppWalletConnectService {
         }
       });
 
-      // Apply aggressive patching to prevent "no matching key" errors
-      patchSignClient(this.signClient);
-
       // Set up event listeners
       this.setupEventListeners();
-
-      // Set up relay message interception to prevent "no matching key" errors
-      this.setupRelayMessageInterception();
 
       // Clean up any orphaned sessions from previous runs
       await this.cleanupOrphanedSessions();
@@ -63,160 +56,11 @@ export class DAppWalletConnectService {
     }
   }
 
-  /**
-   * Set up relay message interception to prevent "no matching key" errors
-   */
-  private setupRelayMessageInterception(): void {
-    if (!this.signClient) return;
 
-    try {
-      // Intercept relay messages before they reach WalletConnect's internal handlers
-      const originalOnRelayMessage = this.signClient.core.relayer.onRelayMessage;
 
-      this.signClient.core.relayer.onRelayMessage = async (message: any) => {
-        try {
-          // Parse the message to check if it's a session-related operation
-          if (message && message.topic) {
-            const sessionKeys = this.signClient.session.keys || [];
-            const pairingKeys = this.signClient.pairing.keys || [];
 
-            // Check if this message is for a session/pairing we don't have
-            if (!sessionKeys.includes(message.topic) && !pairingKeys.includes(message.topic)) {
-              console.warn('DApp service: Ignoring relay message for unknown session/pairing:', message.topic);
-              return; // Don't process this message
-            }
-          }
 
-          // If we have the session/pairing, process normally
-          return await originalOnRelayMessage.call(this.signClient.core.relayer, message);
-        } catch (error) {
-          console.warn('Error in dApp relay message interception:', error);
-          // If there's an error in our interception, fall back to original behavior
-          return await originalOnRelayMessage.call(this.signClient.core.relayer, message);
-        }
-      };
 
-      console.log('✅ Relay message interception set up for DApp WalletConnect service');
-    } catch (error) {
-      console.warn('⚠️ Failed to set up dApp relay message interception:', error);
-    }
-
-    // Also override the session validation methods to prevent internal errors
-    this.overrideSessionValidation();
-  }
-
-  /**
-   * Override WalletConnect's internal session validation to prevent "no matching key" errors
-   */
-  private overrideSessionValidation(): void {
-    if (!this.signClient) return;
-
-    try {
-      // Override the isValidSessionOrPairingTopic method if it exists
-      const originalIsValidSessionOrPairingTopic = this.signClient.isValidSessionOrPairingTopic;
-      if (originalIsValidSessionOrPairingTopic) {
-        this.signClient.isValidSessionOrPairingTopic = (topic: string) => {
-          try {
-            const sessionKeys = this.signClient.session.keys || [];
-            const pairingKeys = this.signClient.pairing.keys || [];
-            return sessionKeys.includes(topic) || pairingKeys.includes(topic);
-          } catch (error) {
-            console.warn('Error in dApp session validation override:', error);
-            return false; // Return false instead of throwing
-          }
-        };
-      }
-
-      // Override the isValidDisconnect method if it exists
-      const originalIsValidDisconnect = this.signClient.isValidDisconnect;
-      if (originalIsValidDisconnect) {
-        this.signClient.isValidDisconnect = (params: any) => {
-          try {
-            if (!params || !params.topic) return false;
-            const sessionKeys = this.signClient.session.keys || [];
-            const pairingKeys = this.signClient.pairing.keys || [];
-            return sessionKeys.includes(params.topic) || pairingKeys.includes(params.topic);
-          } catch (error) {
-            console.warn('Error in dApp disconnect validation override:', error);
-            return false; // Return false instead of throwing
-          }
-        };
-      }
-
-      // Override session store methods to prevent "No matching key" errors
-      this.overrideSessionStoreMethods();
-
-      console.log('✅ Session validation methods overridden for DApp WalletConnect service');
-    } catch (error) {
-      console.warn('⚠️ Failed to override dApp session validation methods:', error);
-    }
-  }
-
-  /**
-   * Override session store methods to prevent "No matching key" errors
-   */
-  private overrideSessionStoreMethods(): void {
-    if (!this.signClient?.session) return;
-
-    try {
-      // Override session.get to return null instead of throwing
-      const originalGet = this.signClient.session.get;
-      if (originalGet) {
-        this.signClient.session.get = (topic: string) => {
-          try {
-            return originalGet.call(this.signClient.session, topic);
-          } catch (error) {
-            console.warn(`DApp session not found for topic ${topic}, returning null:`, error);
-            return null;
-          }
-        };
-      }
-
-      // Override session.delete to not throw if session doesn't exist
-      const originalDelete = this.signClient.session.delete;
-      if (originalDelete) {
-        this.signClient.session.delete = (topic: string, reason?: any) => {
-          try {
-            return originalDelete.call(this.signClient.session, topic, reason);
-          } catch (error) {
-            console.warn(`Failed to delete dApp session ${topic}, ignoring:`, error);
-            return;
-          }
-        };
-      }
-
-      // Override pairing store methods as well
-      if (this.signClient.pairing) {
-        const originalPairingGet = this.signClient.pairing.get;
-        if (originalPairingGet) {
-          this.signClient.pairing.get = (topic: string) => {
-            try {
-              return originalPairingGet.call(this.signClient.pairing, topic);
-            } catch (error) {
-              console.warn(`DApp pairing not found for topic ${topic}, returning null:`, error);
-              return null;
-            }
-          };
-        }
-
-        const originalPairingDelete = this.signClient.pairing.delete;
-        if (originalPairingDelete) {
-          this.signClient.pairing.delete = (topic: string, reason?: any) => {
-            try {
-              return originalPairingDelete.call(this.signClient.pairing, topic, reason);
-            } catch (error) {
-              console.warn(`Failed to delete dApp pairing ${topic}, ignoring:`, error);
-              return;
-            }
-          };
-        }
-      }
-
-      console.log('✅ Session store methods overridden for DApp WalletConnect service');
-    } catch (error) {
-      console.warn('⚠️ Failed to override dApp session store methods:', error);
-    }
-  }
 
   /**
    * Validate if a dApp session exists and is not expired
@@ -641,20 +485,25 @@ export class DAppWalletConnectService {
     }
 
     try {
-      // Validate session exists before attempting disconnect
-      const sessionExists = await this.validateSession(topic);
+      // Check if session exists using WalletConnect's recommended method
+      const activeSessions = this.signClient.getActiveSessions();
+      const sessionExists = activeSessions[topic];
 
       if (sessionExists) {
-        await this.signClient.disconnect({
+        console.log('Session exists in active sessions, attempting disconnect...');
+
+        // Use WalletConnect's recommended disconnectSession method
+        await this.signClient.disconnectSession({
           topic,
           reason: {
             code: 6000,
             message: 'User disconnected'
           }
         });
+
         console.log('✅ Disconnected from WalletConnect session:', topic);
       } else {
-        console.log('⚠️ Session not found or expired in WalletConnect client, cleaning up locally:', topic);
+        console.log('⚠️ Session not found in active sessions, cleaning up locally:', topic);
       }
 
       // Always remove from our local storage regardless of WalletConnect state
@@ -667,10 +516,10 @@ export class DAppWalletConnectService {
     } catch (error) {
       console.error('❌ Failed to disconnect from dApp:', error);
 
-      // Check if this is a WalletConnect internal error
+      // Handle "no matching key" error as documented by WalletConnect
       const errorMessage = (error as any)?.message?.toLowerCase() || '';
-      if (errorMessage.includes('pair') || errorMessage.includes('no matching') || errorMessage.includes('session')) {
-        console.warn('WalletConnect internal error detected during dApp disconnect, cleaning up locally:', error);
+      if (errorMessage.includes('no matching key') && errorMessage.includes('session topic')) {
+        console.warn('Session topic does not exist (already disconnected), cleaning up locally:', error);
       }
 
       // Even if disconnect fails, clean up locally to prevent UI issues

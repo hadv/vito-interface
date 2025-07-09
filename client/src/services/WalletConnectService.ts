@@ -4,7 +4,6 @@ import { ethers } from 'ethers';
 import { WalletConnectSigner } from './WalletConnectSigner';
 import { WALLETCONNECT_PROJECT_ID, WALLETCONNECT_METADATA } from '../config/walletconnect';
 import { safeWalletConnectOperation } from '../utils/errorHandling';
-import { patchSignClient } from '../utils/walletConnectPatch';
 
 export class WalletConnectService {
   private signClient: any; // WalletConnect SignClient instance for signer wallet connections
@@ -108,6 +107,9 @@ export class WalletConnectService {
         this.emit('session_delete', { topic });
 
         console.log('Mobile wallet disconnection cleanup completed');
+      } else {
+        // This is a session deletion for a different topic - ignore it
+        console.log(`Ignoring session deletion for different topic: ${topic} (current: ${this.sessionTopic})`);
       }
     });
 
@@ -221,14 +223,8 @@ export class WalletConnectService {
           }
         });
 
-        // Apply aggressive patching to prevent "no matching key" errors
-        patchSignClient(this.signClient);
-
         // Set up event listeners
         this.setupWalletConnectListeners();
-
-        // Set up relay message interception to prevent "no matching key" errors
-        this.setupRelayMessageInterception();
 
         // Clean up any orphaned sessions from previous runs
         await this.cleanupOrphanedSessions();
@@ -366,33 +362,25 @@ export class WalletConnectService {
     try {
       console.log(`Disconnecting WalletConnect session from app... (attempt ${retryCount + 1}/${maxRetries + 1})`);
 
-      // Validate session exists before attempting disconnect
-      const sessionExists = await this.validateSession(this.sessionTopic);
+      // Check if session exists using WalletConnect's recommended method
+      const activeSessions = this.signClient.getActiveSessions();
+      const sessionExists = activeSessions[this.sessionTopic];
 
-      // Only attempt disconnect if session exists and is valid
       if (sessionExists) {
-        await safeWalletConnectOperation(
-          async () => {
-            // Add timeout to prevent hanging
-            const disconnectPromise = this.signClient.disconnect({
-              topic: this.sessionTopic,
-              reason: {
-                code: 6000,
-                message: reason || 'User disconnected from app'
-              }
-            });
+        console.log('Session exists in active sessions, attempting disconnect...');
 
-            const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Disconnect timeout')), 10000)
-            );
+        // Use WalletConnect's recommended disconnectSession method
+        await this.signClient.disconnectSession({
+          topic: this.sessionTopic,
+          reason: {
+            code: 6000,
+            message: reason || 'User disconnected from app'
+          }
+        });
 
-            await Promise.race([disconnectPromise, timeoutPromise]);
-            console.log('WalletConnect session disconnected successfully');
-          },
-          'session disconnect'
-        );
+        console.log('WalletConnect session disconnected successfully');
       } else {
-        console.log('Session does not exist or is expired, skipping disconnect call');
+        console.log('Session does not exist in active sessions, skipping disconnect call');
       }
 
       // Always clean up local state regardless of disconnect success
@@ -410,21 +398,20 @@ export class WalletConnectService {
     } catch (error) {
       console.error(`WalletConnect disconnection failed (attempt ${retryCount + 1}):`, error);
 
-      // Check if this is a "no matching pair key" or similar WalletConnect internal error
+      // Handle "no matching key" error as documented by WalletConnect
       const errorMessage = (error as any)?.message?.toLowerCase() || '';
-      if (errorMessage.includes('pair') || errorMessage.includes('no matching') || errorMessage.includes('session')) {
-        console.warn('WalletConnect internal error detected, forcing cleanup without retry:', error);
+      if (errorMessage.includes('no matching key') && errorMessage.includes('session topic')) {
+        console.warn('Session topic does not exist (already disconnected), cleaning up local state:', error);
 
-        // Force cleanup immediately for WalletConnect internal errors
+        // This is expected when session was already disconnected - just clean up
         const disconnectedTopic = this.sessionTopic;
         this.sessionTopic = null;
         this.connectionResult = null;
 
         this.emit('session_disconnected', {
           topic: disconnectedTopic,
-          reason: 'WalletConnect internal error, forced cleanup',
-          initiatedBy: 'app',
-          error: error
+          reason: 'Session already disconnected',
+          initiatedBy: 'app'
         });
         return;
       }
@@ -526,160 +513,11 @@ export class WalletConnectService {
     console.log('WalletConnect force cleanup completed');
   }
 
-  /**
-   * Set up relay message interception to prevent "no matching key" errors
-   */
-  private setupRelayMessageInterception(): void {
-    if (!this.signClient) return;
 
-    try {
-      // Intercept relay messages before they reach WalletConnect's internal handlers
-      const originalOnRelayMessage = this.signClient.core.relayer.onRelayMessage;
 
-      this.signClient.core.relayer.onRelayMessage = async (message: any) => {
-        try {
-          // Parse the message to check if it's a session-related operation
-          if (message && message.topic) {
-            const sessionKeys = this.signClient.session.keys || [];
-            const pairingKeys = this.signClient.pairing.keys || [];
 
-            // Check if this message is for a session/pairing we don't have
-            if (!sessionKeys.includes(message.topic) && !pairingKeys.includes(message.topic)) {
-              console.warn('Ignoring relay message for unknown session/pairing:', message.topic);
-              return; // Don't process this message
-            }
-          }
 
-          // If we have the session/pairing, process normally
-          return await originalOnRelayMessage.call(this.signClient.core.relayer, message);
-        } catch (error) {
-          console.warn('Error in relay message interception:', error);
-          // If there's an error in our interception, fall back to original behavior
-          return await originalOnRelayMessage.call(this.signClient.core.relayer, message);
-        }
-      };
 
-      console.log('✅ Relay message interception set up for WalletConnect service');
-    } catch (error) {
-      console.warn('⚠️ Failed to set up relay message interception:', error);
-    }
-
-    // Also override the session validation methods to prevent internal errors
-    this.overrideSessionValidation();
-  }
-
-  /**
-   * Override WalletConnect's internal session validation to prevent "no matching key" errors
-   */
-  private overrideSessionValidation(): void {
-    if (!this.signClient) return;
-
-    try {
-      // Override the isValidSessionOrPairingTopic method if it exists
-      const originalIsValidSessionOrPairingTopic = this.signClient.isValidSessionOrPairingTopic;
-      if (originalIsValidSessionOrPairingTopic) {
-        this.signClient.isValidSessionOrPairingTopic = (topic: string) => {
-          try {
-            const sessionKeys = this.signClient.session.keys || [];
-            const pairingKeys = this.signClient.pairing.keys || [];
-            return sessionKeys.includes(topic) || pairingKeys.includes(topic);
-          } catch (error) {
-            console.warn('Error in session validation override:', error);
-            return false; // Return false instead of throwing
-          }
-        };
-      }
-
-      // Override the isValidDisconnect method if it exists
-      const originalIsValidDisconnect = this.signClient.isValidDisconnect;
-      if (originalIsValidDisconnect) {
-        this.signClient.isValidDisconnect = (params: any) => {
-          try {
-            if (!params || !params.topic) return false;
-            const sessionKeys = this.signClient.session.keys || [];
-            const pairingKeys = this.signClient.pairing.keys || [];
-            return sessionKeys.includes(params.topic) || pairingKeys.includes(params.topic);
-          } catch (error) {
-            console.warn('Error in disconnect validation override:', error);
-            return false; // Return false instead of throwing
-          }
-        };
-      }
-
-      // Override session store methods to prevent "No matching key" errors
-      this.overrideSessionStoreMethods();
-
-      console.log('✅ Session validation methods overridden for WalletConnect service');
-    } catch (error) {
-      console.warn('⚠️ Failed to override session validation methods:', error);
-    }
-  }
-
-  /**
-   * Override session store methods to prevent "No matching key" errors
-   */
-  private overrideSessionStoreMethods(): void {
-    if (!this.signClient?.session) return;
-
-    try {
-      // Override session.get to return null instead of throwing
-      const originalGet = this.signClient.session.get;
-      if (originalGet) {
-        this.signClient.session.get = (topic: string) => {
-          try {
-            return originalGet.call(this.signClient.session, topic);
-          } catch (error) {
-            console.warn(`Session not found for topic ${topic}, returning null:`, error);
-            return null;
-          }
-        };
-      }
-
-      // Override session.delete to not throw if session doesn't exist
-      const originalDelete = this.signClient.session.delete;
-      if (originalDelete) {
-        this.signClient.session.delete = (topic: string, reason?: any) => {
-          try {
-            return originalDelete.call(this.signClient.session, topic, reason);
-          } catch (error) {
-            console.warn(`Failed to delete session ${topic}, ignoring:`, error);
-            return;
-          }
-        };
-      }
-
-      // Override pairing store methods as well
-      if (this.signClient.pairing) {
-        const originalPairingGet = this.signClient.pairing.get;
-        if (originalPairingGet) {
-          this.signClient.pairing.get = (topic: string) => {
-            try {
-              return originalPairingGet.call(this.signClient.pairing, topic);
-            } catch (error) {
-              console.warn(`Pairing not found for topic ${topic}, returning null:`, error);
-              return null;
-            }
-          };
-        }
-
-        const originalPairingDelete = this.signClient.pairing.delete;
-        if (originalPairingDelete) {
-          this.signClient.pairing.delete = (topic: string, reason?: any) => {
-            try {
-              return originalPairingDelete.call(this.signClient.pairing, topic, reason);
-            } catch (error) {
-              console.warn(`Failed to delete pairing ${topic}, ignoring:`, error);
-              return;
-            }
-          };
-        }
-      }
-
-      console.log('✅ Session store methods overridden for WalletConnect service');
-    } catch (error) {
-      console.warn('⚠️ Failed to override session store methods:', error);
-    }
-  }
 
   /**
    * Validate if a session exists and is not expired
