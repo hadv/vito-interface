@@ -536,9 +536,29 @@ export class WalletConnectService {
     if (!this.signClient) return false;
 
     try {
-      // Check if this session exists in our active sessions
-      const activeSessions = this.signClient.getActiveSessions();
-      return activeSessions.hasOwnProperty(topic);
+      // Try different methods to check session ownership
+      if (typeof this.signClient.getActiveSessions === 'function') {
+        const activeSessions = this.signClient.getActiveSessions();
+        return activeSessions.hasOwnProperty(topic);
+      }
+
+      // Fallback: check if we have a session store
+      if (this.signClient.session?.store) {
+        try {
+          const session = this.signClient.session.store.get(topic);
+          return !!session;
+        } catch {
+          return false;
+        }
+      }
+
+      // Fallback: check our current session topic
+      if (this.sessionTopic === topic) {
+        return true;
+      }
+
+      console.warn('WalletConnect: No method available to check session ownership, defaulting to false');
+      return false;
     } catch (error) {
       console.warn('Error checking session ownership:', error);
       return false;

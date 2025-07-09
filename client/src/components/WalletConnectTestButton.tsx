@@ -16,30 +16,33 @@ export const WalletConnectTestButton: React.FC = () => {
   };
 
   return (
-    <div style={{ 
-      position: 'fixed', 
-      top: '10px', 
-      right: '10px', 
+    <div style={{
+      position: 'fixed',
+      bottom: '20px',
+      left: '20px',
       zIndex: 9999,
-      background: '#f0f0f0',
-      padding: '10px',
-      border: '1px solid #ccc',
-      borderRadius: '5px'
+      background: '#1f2937',
+      padding: '12px',
+      border: '1px solid #374151',
+      borderRadius: '8px',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
     }}>
-      <button 
+      <button
         onClick={runTest}
         style={{
-          background: '#007bff',
+          background: '#3b82f6',
           color: 'white',
           border: 'none',
           padding: '8px 16px',
-          borderRadius: '4px',
-          cursor: 'pointer'
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontSize: '14px',
+          fontWeight: '500'
         }}
       >
-        🧪 Test WalletConnect Patching
+        🧪 Test WalletConnect
       </button>
-      <div style={{ fontSize: '12px', marginTop: '5px', color: '#666' }}>
+      <div style={{ fontSize: '11px', marginTop: '6px', color: '#9ca3af' }}>
         Check console for results
       </div>
     </div>

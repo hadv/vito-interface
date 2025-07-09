@@ -61,12 +61,22 @@ export class WalletConnectPatchingTest {
 
   private async testWalletConnectServicePatching(): Promise<void> {
     console.log('🔍 Testing WalletConnectService patching...');
-    
+
     const signClient = (this.walletConnectService as any).signClient;
     if (!signClient) {
       console.error('❌ WalletConnectService signClient not available');
       return;
     }
+
+    // First, let's see what methods are actually available
+    console.log('📋 Available methods on WalletConnectService signClient:');
+    console.log('- getActiveSessions:', typeof signClient.getActiveSessions);
+    console.log('- isValidSessionOrPairingTopic:', typeof signClient.isValidSessionOrPairingTopic);
+    console.log('- isValidDisconnect:', typeof signClient.isValidDisconnect);
+    console.log('- session:', !!signClient.session);
+    console.log('- session.store:', !!signClient.session?.store);
+    console.log('- session.store.get:', typeof signClient.session?.store?.get);
+    console.log('- session.store.getData:', typeof signClient.session?.store?.getData);
 
     // Test isValidSessionOrPairingTopic patching
     await this.testMethod(
@@ -104,12 +114,22 @@ export class WalletConnectPatchingTest {
 
   private async testDAppServicePatching(): Promise<void> {
     console.log('🔍 Testing DAppWalletConnectService patching...');
-    
+
     const signClient = (this.dappService as any).signClient;
     if (!signClient) {
       console.error('❌ DAppWalletConnectService signClient not available');
       return;
     }
+
+    // First, let's see what methods are actually available
+    console.log('📋 Available methods on DAppWalletConnectService signClient:');
+    console.log('- getActiveSessions:', typeof signClient.getActiveSessions);
+    console.log('- isValidSessionOrPairingTopic:', typeof signClient.isValidSessionOrPairingTopic);
+    console.log('- isValidDisconnect:', typeof signClient.isValidDisconnect);
+    console.log('- session:', !!signClient.session);
+    console.log('- session.store:', !!signClient.session?.store);
+    console.log('- session.store.get:', typeof signClient.session?.store?.get);
+    console.log('- session.store.getData:', typeof signClient.session?.store?.getData);
 
     // Test isValidSessionOrPairingTopic patching
     await this.testMethod(

@@ -475,9 +475,29 @@ export class DAppWalletConnectService {
     if (!this.signClient) return false;
 
     try {
-      // Check if this session exists in our active sessions
-      const activeSessions = this.signClient.getActiveSessions();
-      return activeSessions.hasOwnProperty(topic);
+      // Try different methods to check session ownership
+      if (typeof this.signClient.getActiveSessions === 'function') {
+        const activeSessions = this.signClient.getActiveSessions();
+        return activeSessions.hasOwnProperty(topic);
+      }
+
+      // Fallback: check if we have a session store
+      if (this.signClient.session?.store) {
+        try {
+          const session = this.signClient.session.store.get(topic);
+          return !!session;
+        } catch {
+          return false;
+        }
+      }
+
+      // Fallback: check our active sessions map
+      if (this.activeSessions.has(topic)) {
+        return true;
+      }
+
+      console.warn('DApp WalletConnect: No method available to check session ownership, defaulting to false');
+      return false;
     } catch (error) {
       console.warn('Error checking dApp session ownership:', error);
       return false;
