@@ -11,6 +11,7 @@ import { useToast } from './hooks/useToast';
 import { ErrorHandler } from './utils/errorHandling';
 import Header from './components/ui/Header';
 import Web3AuthProvider from './components/providers/Web3AuthProvider';
+import { WalletConnectTestButton } from './components/WalletConnectTestButton';
 
 // Tailwind classes for app container
 const appContainerClasses = cn(
@@ -252,6 +253,9 @@ function App() {
           onClose={toast.removeToast}
           style={{ top: '80px' }}
         />
+
+        {/* WalletConnect Test Button - Only in development */}
+        {process.env.NODE_ENV === 'development' && <WalletConnectTestButton />}
 
       <div className={getOverlayClasses(networkSelectorOpen)} />
       <div className={contentContainerClasses}>

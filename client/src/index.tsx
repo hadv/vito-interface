@@ -6,6 +6,9 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
+// Import WalletConnect patching test for debugging
+import './tests/WalletConnectPatchingTest';
+
 // Global error handlers to prevent uncaught runtime errors
 window.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled promise rejection:', event.reason);
