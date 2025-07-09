@@ -3,6 +3,7 @@ import { SessionTypes } from '@walletconnect/types';
 import { WALLETCONNECT_PROJECT_ID, WALLETCONNECT_METADATA } from '../config/walletconnect';
 import { walletConnectionService } from './WalletConnectionService';
 import { safeWalletService } from './SafeWalletService';
+import { patchSignClient } from '../utils/walletConnectPatch';
 
 /**
  * DApp WalletConnect Service
@@ -39,6 +40,9 @@ export class DAppWalletConnectService {
           database: 'vito-dapp-walletconnect'
         }
       });
+
+      // Apply aggressive patching to prevent "no matching key" errors
+      patchSignClient(this.signClient);
 
       // Set up event listeners
       this.setupEventListeners();

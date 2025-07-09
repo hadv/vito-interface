@@ -4,6 +4,7 @@ import { ethers } from 'ethers';
 import { WalletConnectSigner } from './WalletConnectSigner';
 import { WALLETCONNECT_PROJECT_ID, WALLETCONNECT_METADATA } from '../config/walletconnect';
 import { safeWalletConnectOperation } from '../utils/errorHandling';
+import { patchSignClient } from '../utils/walletConnectPatch';
 
 export class WalletConnectService {
   private signClient: any; // WalletConnect SignClient instance for signer wallet connections
@@ -219,6 +220,9 @@ export class WalletConnectService {
             database: 'vito-signer-walletconnect'
           }
         });
+
+        // Apply aggressive patching to prevent "no matching key" errors
+        patchSignClient(this.signClient);
 
         // Set up event listeners
         this.setupWalletConnectListeners();
