@@ -1,6 +1,6 @@
 import { SignClient } from '@walletconnect/sign-client';
 import { SessionTypes } from '@walletconnect/types';
-import { WALLETCONNECT_PROJECT_ID, WALLETCONNECT_METADATA } from '../config/walletconnect';
+import { WALLETCONNECT_DAPP_PROJECT_ID, WALLETCONNECT_DAPP_METADATA } from '../config/walletconnect';
 import { walletConnectionService } from './WalletConnectionService';
 import { safeWalletService } from './SafeWalletService';
 
@@ -28,12 +28,8 @@ export class DAppWalletConnectService {
       console.log('🔄 Initializing DApp WalletConnect service...');
       
       this.signClient = await SignClient.init({
-        projectId: WALLETCONNECT_PROJECT_ID,
-        metadata: {
-          ...WALLETCONNECT_METADATA,
-          name: 'Vito Safe Wallet',
-          description: 'Safe wallet interface for dApp connections'
-        }
+        projectId: WALLETCONNECT_DAPP_PROJECT_ID,
+        metadata: WALLETCONNECT_DAPP_METADATA
       });
 
       // Set up event listeners
@@ -63,12 +59,10 @@ export class DAppWalletConnectService {
           console.log('📋 Loading existing sessions:', sessions.length);
 
           sessions.forEach((session: SessionTypes.Struct) => {
-            // Only load valid sessions that are dApp connections (not signer wallet connections)
-            if (session.topic && session.peer?.metadata && this.isDAppSession(session)) {
+            // Load all valid sessions (now properly isolated by project ID)
+            if (session.topic && session.peer?.metadata) {
               this.activeSessions.set(session.topic, session);
               console.log('📱 Loaded dApp session:', session.topic, session.peer.metadata.name);
-            } else if (session.topic && session.peer?.metadata) {
-              console.log('🚫 Skipping signer wallet session:', session.topic, session.peer.metadata.name);
             }
           });
 
@@ -82,53 +76,7 @@ export class DAppWalletConnectService {
     }
   }
 
-  /**
-   * Determine if a session is a dApp connection (not a signer wallet connection)
-   *
-   * For dApp connections:
-   * - Our app acts as the "wallet" and external dApps connect to us
-   * - The peer (external dApp) is the one that initiated the connection
-   * - Our app's metadata should be in session.self
-   *
-   * For signer wallet connections:
-   * - Our app acts as the "dApp" connecting to external wallets
-   * - Our app initiated the connection to the external wallet
-   * - External wallet's metadata should be in session.peer
-   * - Our app's metadata should be in session.self, but we initiated the connection
-   */
-  private isDAppSession(session: SessionTypes.Struct): boolean {
-    try {
-      // Check if this session has our Safe wallet metadata in self (indicating we're acting as wallet)
-      const selfMetadata = session.self?.metadata;
-      const peerMetadata = session.peer?.metadata;
 
-      // If our self metadata indicates we're the "Vito Safe Wallet", this is likely a dApp connection
-      if (selfMetadata?.name === 'Vito Safe Wallet' && selfMetadata?.description === 'Safe wallet interface for dApp connections') {
-        console.log('✅ Identified as dApp session based on self metadata:', peerMetadata?.name);
-        return true;
-      }
-
-      // Additional check: if peer metadata looks like a typical dApp (not a wallet)
-      // Wallets typically have names like "MetaMask", "Trust Wallet", "Uniswap Wallet", etc.
-      // dApps typically have names like "Uniswap", "OpenSea", "Compound", etc.
-      const peerName = peerMetadata?.name?.toLowerCase() || '';
-      const walletKeywords = ['wallet', 'metamask', 'trust', 'coinbase', 'rainbow', 'argent'];
-      const isLikelyWallet = walletKeywords.some(keyword => peerName.includes(keyword));
-
-      if (isLikelyWallet) {
-        console.log('🚫 Identified as signer wallet session based on peer name:', peerMetadata?.name);
-        return false;
-      }
-
-      // If we can't determine clearly, default to treating as dApp session
-      // but log for debugging
-      console.log('❓ Uncertain session type, defaulting to dApp session:', peerMetadata?.name);
-      return true;
-    } catch (error) {
-      console.error('❌ Error determining session type:', error);
-      return false;
-    }
-  }
 
   /**
    * Set up WalletConnect event listeners
@@ -498,21 +446,12 @@ export class DAppWalletConnectService {
   }
 
   /**
-   * Get full session data for a topic (only returns dApp sessions)
+   * Get full session data for a topic
    */
   public getFullSession(topic: string): SessionTypes.Struct | null {
     try {
       if (!this.signClient) return null;
-
-      const session = this.signClient.session.get(topic);
-
-      // Only return the session if it's a valid dApp session
-      if (session && this.isDAppSession(session)) {
-        return session;
-      }
-
-      console.log('🚫 Session not found or not a dApp session:', topic);
-      return null;
+      return this.signClient.session.get(topic);
     } catch (error) {
       console.error('Error getting full session:', error);
       return null;

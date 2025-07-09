@@ -4,14 +4,34 @@
 
 // For development, you can use a demo project ID
 // For production, get your own project ID from https://cloud.walletconnect.com/
-export const WALLETCONNECT_PROJECT_ID = process.env.REACT_APP_WALLETCONNECT_PROJECT_ID || 'demo-project-id-for-development';
 
-export const WALLETCONNECT_METADATA = {
+// Signer wallet connections (our app connects to external wallets like MetaMask, Uniswap Wallet)
+export const WALLETCONNECT_SIGNER_PROJECT_ID = process.env.REACT_APP_WALLETCONNECT_SIGNER_PROJECT_ID || process.env.REACT_APP_WALLETCONNECT_PROJECT_ID || 'demo-project-id-for-development';
+
+// dApp connections (external dApps connect to our Safe wallet)
+export const WALLETCONNECT_DAPP_PROJECT_ID = process.env.REACT_APP_WALLETCONNECT_DAPP_PROJECT_ID || process.env.REACT_APP_WALLETCONNECT_PROJECT_ID || 'demo-project-id-for-development';
+
+// Legacy export for backward compatibility
+export const WALLETCONNECT_PROJECT_ID = WALLETCONNECT_SIGNER_PROJECT_ID;
+
+// Metadata for signer wallet connections (our app as dApp)
+export const WALLETCONNECT_SIGNER_METADATA = {
   name: 'Vito Interface',
   description: 'A secure and efficient application designed to interact with Safe wallets',
   url: typeof window !== 'undefined' ? window.location.origin : 'https://localhost:3000',
   icons: [typeof window !== 'undefined' ? `${window.location.origin}/favicon.ico` : 'https://localhost:3000/favicon.ico']
 };
+
+// Metadata for dApp connections (our app as wallet)
+export const WALLETCONNECT_DAPP_METADATA = {
+  name: 'Vito Safe Wallet',
+  description: 'Safe wallet interface for dApp connections',
+  url: typeof window !== 'undefined' ? window.location.origin : 'https://localhost:3000',
+  icons: [typeof window !== 'undefined' ? `${window.location.origin}/favicon.ico` : 'https://localhost:3000/favicon.ico']
+};
+
+// Legacy export for backward compatibility
+export const WALLETCONNECT_METADATA = WALLETCONNECT_SIGNER_METADATA;
 
 export const SUPPORTED_CHAINS = {
   ethereum: {

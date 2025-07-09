@@ -2,7 +2,7 @@ import { SignClient } from '@walletconnect/sign-client';
 import QRCode from 'qrcode';
 import { ethers } from 'ethers';
 import { WalletConnectSigner } from './WalletConnectSigner';
-import { WALLETCONNECT_PROJECT_ID, WALLETCONNECT_METADATA } from '../config/walletconnect';
+import { WALLETCONNECT_SIGNER_PROJECT_ID, WALLETCONNECT_SIGNER_METADATA } from '../config/walletconnect';
 
 export class WalletConnectService {
   private signClient: any; // WalletConnect SignClient instance for signer wallet connections
@@ -204,8 +204,8 @@ export class WalletConnectService {
       // Initialize WalletConnect SignClient if not already initialized
       if (!this.signClient) {
         this.signClient = await SignClient.init({
-          projectId: WALLETCONNECT_PROJECT_ID,
-          metadata: WALLETCONNECT_METADATA
+          projectId: WALLETCONNECT_SIGNER_PROJECT_ID,
+          metadata: WALLETCONNECT_SIGNER_METADATA
         });
 
         // Set up event listeners
