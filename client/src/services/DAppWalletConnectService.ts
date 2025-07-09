@@ -39,7 +39,7 @@ export class DAppWalletConnectService {
       // Set up event listeners
       this.setupEventListeners();
 
-      // Load existing sessions
+      // Load existing sessions (only legitimate dApp sessions)
       this.loadExistingSessions();
 
       console.log('✅ DApp WalletConnect service initialized');
@@ -51,33 +51,13 @@ export class DAppWalletConnectService {
 
   /**
    * Load existing sessions from WalletConnect client
+   * For dApp connections, we don't load existing sessions on app restart
+   * to avoid confusion with signer wallet sessions
    */
   private loadExistingSessions(): void {
-    try {
-      if (!this.signClient) return;
-
-      // Add a small delay to ensure client is fully initialized
-      setTimeout(() => {
-        try {
-          const sessions = this.signClient.session.getAll();
-          console.log('📋 Loading existing sessions:', sessions.length);
-
-          sessions.forEach((session: SessionTypes.Struct) => {
-            // Only load valid sessions
-            if (session.topic && session.peer?.metadata) {
-              this.activeSessions.set(session.topic, session);
-              console.log('📱 Loaded session:', session.topic, session.peer.metadata.name);
-            }
-          });
-
-          console.log('✅ Loaded', this.activeSessions.size, 'valid sessions');
-        } catch (error) {
-          console.error('❌ Error loading existing sessions:', error);
-        }
-      }, 1000);
-    } catch (error) {
-      console.error('❌ Error in loadExistingSessions:', error);
-    }
+    console.log('📋 DApp service: Not loading existing sessions on app restart to prevent confusion with signer wallet sessions');
+    console.log('✅ DApp service initialized with clean session state');
+    // Note: dApp connections will be re-established when users explicitly connect via pairing codes
   }
 
   /**
@@ -159,8 +139,8 @@ export class DAppWalletConnectService {
 
       if (session) {
         this.activeSessions.set(session.topic, session);
-        console.log('✅ Session approved and stored:', session.topic);
-        
+        console.log('✅ dApp session approved and stored:', session.topic);
+
         // Emit session connected event
         this.emit('session_connected', {
           topic: session.topic,
@@ -169,8 +149,8 @@ export class DAppWalletConnectService {
         });
       }
     } catch (error) {
-      console.error('❌ Failed to handle session proposal:', error);
-      
+      console.error('❌ Failed to handle dApp session proposal:', error);
+
       // Reject the proposal on error
       try {
         await this.signClient?.reject({
@@ -385,10 +365,10 @@ export class DAppWalletConnectService {
 
     try {
       console.log('🔗 Connecting to dApp with pairing code...');
-      
+
       // Pair with the dApp using the provided URI
       await this.signClient.pair({ uri: pairingCode });
-      
+
       console.log('✅ Pairing initiated, waiting for session proposal...');
     } catch (error) {
       console.error('❌ Failed to connect to dApp:', error);
@@ -444,7 +424,9 @@ export class DAppWalletConnectService {
    * Get all active dApp sessions
    */
   public getActiveSessions(): SessionTypes.Struct[] {
-    return Array.from(this.activeSessions.values());
+    const sessions = Array.from(this.activeSessions.values());
+    console.log(`📋 DApp service has ${sessions.length} active sessions`);
+    return sessions;
   }
 
   /**
@@ -459,6 +441,8 @@ export class DAppWalletConnectService {
       return null;
     }
   }
+
+
 
   /**
    * Event emitter methods

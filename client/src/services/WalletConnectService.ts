@@ -266,6 +266,7 @@ export class WalletConnectService {
       };
 
       // Emit successful connection event
+      console.log('🔗 WalletConnect signer session established:', { address: account, topic: session.topic });
       this.emit('session_connected', { address: account, session });
     } catch (error: unknown) {
       // Clear session state on error
