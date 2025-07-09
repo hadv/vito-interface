@@ -567,7 +567,6 @@ export class DAppWalletConnectService {
    */
   public cleanupIncorrectlyLoadedSessions(): void {
     console.log('🧹 Cleaning up incorrectly loaded signer wallet sessions...');
-    const sessionsBefore = this.activeSessions.size;
     let removedCount = 0;
 
     // Check each loaded session and remove if it looks like a signer wallet
