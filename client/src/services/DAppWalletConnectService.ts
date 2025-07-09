@@ -43,6 +43,9 @@ export class DAppWalletConnectService {
       // Set up event listeners
       this.setupEventListeners();
 
+      // Set up relay message interception to prevent "no matching key" errors
+      this.setupRelayMessageInterception();
+
       // Clean up any orphaned sessions from previous runs
       await this.cleanupOrphanedSessions();
 
@@ -53,6 +56,92 @@ export class DAppWalletConnectService {
     } catch (error) {
       console.error('❌ Failed to initialize DApp WalletConnect service:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Set up relay message interception to prevent "no matching key" errors
+   */
+  private setupRelayMessageInterception(): void {
+    if (!this.signClient) return;
+
+    try {
+      // Intercept relay messages before they reach WalletConnect's internal handlers
+      const originalOnRelayMessage = this.signClient.core.relayer.onRelayMessage;
+
+      this.signClient.core.relayer.onRelayMessage = async (message: any) => {
+        try {
+          // Parse the message to check if it's a session-related operation
+          if (message && message.topic) {
+            const sessionKeys = this.signClient.session.keys || [];
+            const pairingKeys = this.signClient.pairing.keys || [];
+
+            // Check if this message is for a session/pairing we don't have
+            if (!sessionKeys.includes(message.topic) && !pairingKeys.includes(message.topic)) {
+              console.warn('DApp service: Ignoring relay message for unknown session/pairing:', message.topic);
+              return; // Don't process this message
+            }
+          }
+
+          // If we have the session/pairing, process normally
+          return await originalOnRelayMessage.call(this.signClient.core.relayer, message);
+        } catch (error) {
+          console.warn('Error in dApp relay message interception:', error);
+          // If there's an error in our interception, fall back to original behavior
+          return await originalOnRelayMessage.call(this.signClient.core.relayer, message);
+        }
+      };
+
+      console.log('✅ Relay message interception set up for DApp WalletConnect service');
+    } catch (error) {
+      console.warn('⚠️ Failed to set up dApp relay message interception:', error);
+    }
+
+    // Also override the session validation methods to prevent internal errors
+    this.overrideSessionValidation();
+  }
+
+  /**
+   * Override WalletConnect's internal session validation to prevent "no matching key" errors
+   */
+  private overrideSessionValidation(): void {
+    if (!this.signClient) return;
+
+    try {
+      // Override the isValidSessionOrPairingTopic method if it exists
+      const originalIsValidSessionOrPairingTopic = this.signClient.isValidSessionOrPairingTopic;
+      if (originalIsValidSessionOrPairingTopic) {
+        this.signClient.isValidSessionOrPairingTopic = (topic: string) => {
+          try {
+            const sessionKeys = this.signClient.session.keys || [];
+            const pairingKeys = this.signClient.pairing.keys || [];
+            return sessionKeys.includes(topic) || pairingKeys.includes(topic);
+          } catch (error) {
+            console.warn('Error in dApp session validation override:', error);
+            return false; // Return false instead of throwing
+          }
+        };
+      }
+
+      // Override the isValidDisconnect method if it exists
+      const originalIsValidDisconnect = this.signClient.isValidDisconnect;
+      if (originalIsValidDisconnect) {
+        this.signClient.isValidDisconnect = (params: any) => {
+          try {
+            if (!params || !params.topic) return false;
+            const sessionKeys = this.signClient.session.keys || [];
+            const pairingKeys = this.signClient.pairing.keys || [];
+            return sessionKeys.includes(params.topic) || pairingKeys.includes(params.topic);
+          } catch (error) {
+            console.warn('Error in dApp disconnect validation override:', error);
+            return false; // Return false instead of throwing
+          }
+        };
+      }
+
+      console.log('✅ Session validation methods overridden for DApp WalletConnect service');
+    } catch (error) {
+      console.warn('⚠️ Failed to override dApp session validation methods:', error);
     }
   }
 
