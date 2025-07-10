@@ -410,7 +410,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                      connectionState.signerAddress.toLowerCase() === tx.proposer.toLowerCase();
 
     return (
-      <div className="flex flex-col p-4 border-b border-gray-700 last:border-b-0">
+      <div className="flex flex-col p-4 border-b border-gray-700 last:border-b-0 hover:bg-gray-800/50 transition-colors">
         {/* Transaction Header */}
         <div className="flex justify-between items-center mb-2">
           <div className="text-base font-medium flex items-center text-yellow-400">
@@ -418,6 +418,11 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
               hasEnoughSignatures ? 'bg-sky-400' : 'bg-yellow-400'
             }`} />
             {hasEnoughSignatures ? 'Ready to Execute' : 'Pending Transaction'}
+            {!hasEnoughSignatures && (
+              <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-1 rounded-full">
+                Click to Sign
+              </span>
+            )}
           </div>
           <div className="text-base font-medium text-yellow-400">
             {decodedTx?.details.formattedAmount || `${formatAmount(tx.value)} ETH`}
@@ -644,9 +649,10 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
               <div>
                 {pendingTxs.map((tx, index) => (
                   <div key={tx.txHash || index} onClick={() => {
-                    // For pending transactions, we could open Safe app or show transaction details
-                    console.log('Pending transaction selected:', tx.txHash);
-                  }}>
+                    console.log('Pending transaction selected for signing:', tx.txHash);
+                    setSelectedPendingTx(tx);
+                    setShowConfirmationModal(true);
+                  }} style={{ cursor: 'pointer' }}>
                     {renderPendingTxItem(tx, false, false)}
                   </div>
                 ))}

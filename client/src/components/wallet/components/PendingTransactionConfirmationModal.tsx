@@ -510,7 +510,7 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
       <ModalContainer>
         <ModalHeader>
           <ModalTitle>
-            🔍 Review Transaction
+            🔐 Sign Pending Transaction
           </ModalTitle>
           <CloseButton onClick={onClose}>&times;</CloseButton>
         </ModalHeader>

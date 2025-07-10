@@ -597,6 +597,53 @@ export class SafeWalletService {
   }
 
   /**
+   * Propose transaction only (without signing) - for separated workflow
+   */
+  async proposeTransactionOnly(transactionRequest: TransactionRequest): Promise<{
+    safeTransactionData: SafeTransactionData;
+    domain: SafeDomain;
+    txHash: string;
+  }> {
+    console.log('🔐 SAFE WALLET SERVICE: proposeTransactionOnly called');
+    console.log('📋 Transaction request:', transactionRequest);
+
+    this.ensureInitialized();
+
+    if (!this.safeTxPoolService || !this.provider) {
+      throw new Error('SafeTxPool service or provider not initialized');
+    }
+
+    try {
+      // Step 1: Create EIP-712 transaction data
+      const { safeTransactionData, domain, txHash } = await this.createEIP712Transaction(transactionRequest);
+
+      // Step 2: Propose transaction to SafeTxPool contract (without signature)
+      const network = await this.provider.getNetwork();
+
+      await this.safeTxPoolService.proposeTx({
+        safe: this.config!.safeAddress,
+        to: safeTransactionData.to,
+        value: safeTransactionData.value,
+        data: safeTransactionData.data,
+        operation: safeTransactionData.operation,
+        nonce: safeTransactionData.nonce
+      }, network.chainId);
+
+      console.log('🔐 SAFE WALLET SERVICE: Transaction proposed successfully (without signing)');
+      console.log('📋 Transaction hash:', txHash);
+
+      return {
+        safeTransactionData,
+        domain,
+        txHash
+      };
+    } catch (error) {
+      console.error('Error proposing transaction only:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Step 3: Use signed transaction data to propose transaction on SafeTxPool contract
    */
   async proposeSignedTransaction(
