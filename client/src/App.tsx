@@ -9,6 +9,7 @@ import ErrorBoundary from './components/ui/ErrorBoundary';
 import { ToastNotificationContainer } from './components/ui/Toast';
 import { useToast } from './hooks/useToast';
 import { ErrorHandler } from './utils/errorHandling';
+import { globalErrorHandler } from './utils/globalErrorHandler';
 import Header from './components/ui/Header';
 import Web3AuthProvider from './components/providers/Web3AuthProvider';
 
@@ -54,7 +55,18 @@ function App() {
   // Initialize toast system
   const toast = useToast();
 
+  // Initialize global error handler to show nice toast messages for WalletConnect errors
+  useEffect(() => {
+    globalErrorHandler.setToastMethods({
+      warning: toast.warning,
+      error: toast.error
+    });
+    globalErrorHandler.initialize();
 
+    return () => {
+      globalErrorHandler.cleanup();
+    };
+  }, [toast.warning, toast.error]);
 
   // Network change is handled by selectNetwork function in the UI
 

@@ -130,7 +130,22 @@ class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+
+    // Check if this is a WalletConnect error
+    const errorMessage = error.message?.toLowerCase() || '';
+    const isWalletConnectError = errorMessage.includes('no matching key') ||
+                                errorMessage.includes('session or pairing topic doesn\'t exist') ||
+                                errorMessage.includes('isvalidsessionorpairingtopic');
+
+    if (isWalletConnectError) {
+      // For WalletConnect errors, just log and reset the boundary
+      console.debug('WalletConnect error caught by boundary - resetting:', error.message);
+      setTimeout(() => {
+        this.setState({ hasError: false, error: undefined, errorInfo: undefined });
+      }, 100);
+      return;
+    }
+
     this.setState({
       error,
       errorInfo
@@ -160,6 +175,16 @@ class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      // Check if this is a WalletConnect error
+      const errorMessage = this.state.error?.message?.toLowerCase() || '';
+      const isWalletConnectError = errorMessage.includes('no matching key') ||
+                                  errorMessage.includes('session or pairing topic doesn\'t exist');
+
+      if (isWalletConnectError) {
+        // For WalletConnect errors, don't show error UI - just continue normally
+        return this.props.children;
+      }
+
       // Custom fallback UI
       if (this.props.fallback) {
         return this.props.fallback;

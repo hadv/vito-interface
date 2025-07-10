@@ -162,6 +162,23 @@ export class ErrorHandler {
       };
     }
 
+    // WalletConnect "No matching key" errors - these are internal WC bugs, not user errors
+    if (errorMessage.includes('no matching key') ||
+        errorMessage.includes('session or pairing topic doesn\'t exist') ||
+        errorMessage.includes('isvalidsessionorpairingtopic') ||
+        errorMessage.includes('isvaliddisconnect') ||
+        errorMessage.includes('onsessiondeleterequest') ||
+        errorMessage.includes('deletesession')) {
+      return {
+        code: 'WALLETCONNECT_INTERNAL_ERROR',
+        message: error.message,
+        userMessage: 'WalletConnect sync issue - functionality not affected',
+        severity: 'low',
+        recoverable: true,
+        category: 'wallet'
+      };
+    }
+
     // Default unknown error
     return {
       code: errorCode,
@@ -227,6 +244,12 @@ export class ErrorHandler {
       case 'RATE_LIMITED':
         suggestions.push('Wait a few minutes before trying again');
         suggestions.push('Reduce the frequency of requests');
+        break;
+
+      case 'WALLETCONNECT_INTERNAL_ERROR':
+        suggestions.push('This is a harmless WalletConnect sync issue');
+        suggestions.push('All functionality continues to work normally');
+        suggestions.push('No action needed from you');
         break;
 
       default:
