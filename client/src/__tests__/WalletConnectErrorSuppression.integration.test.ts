@@ -1,0 +1,295 @@
+/**
+ * Integration tests for WalletConnect Error Suppression
+ * Tests the complete error suppression flow including ErrorHandler integration
+ */
+
+import { ErrorHandler } from '../utils/errorHandling';
+import { walletConnectErrorSuppression } from '../services/WalletConnectErrorSuppression';
+
+describe('WalletConnect Error Suppression Integration', () => {
+  let originalConsoleError: typeof console.error;
+  let originalConsoleLog: typeof console.log;
+  let consoleErrorSpy: jest.SpyInstance;
+  let consoleLogSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    // Store original console methods
+    originalConsoleError = console.error;
+    originalConsoleLog = console.log;
+    
+    // Create spies
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    
+    // Reset suppression state
+    walletConnectErrorSuppression.deactivate();
+    walletConnectErrorSuppression.resetStats();
+  });
+
+  afterEach(() => {
+    // Restore original console methods
+    console.error = originalConsoleError;
+    console.log = originalConsoleLog;
+    
+    // Cleanup suppression
+    ErrorHandler.cleanupWalletConnectErrorSuppression();
+    
+    // Clear all mocks
+    jest.clearAllMocks();
+  });
+
+  describe('ErrorHandler Integration', () => {
+    test('should initialize WalletConnect error suppression through ErrorHandler', () => {
+      ErrorHandler.initializeWalletConnectErrorSuppression();
+      
+      const stats = walletConnectErrorSuppression.getStats();
+      expect(stats.isActive).toBe(true);
+      
+      // Should log initialization message
+      expect(consoleLogSpy).toHaveBeenCalledWith('🔇 Activating WalletConnect error suppression...');
+      expect(consoleLogSpy).toHaveBeenCalledWith('✅ WalletConnect error suppression activated');
+    });
+
+    test('should cleanup WalletConnect error suppression through ErrorHandler', () => {
+      ErrorHandler.initializeWalletConnectErrorSuppression();
+      ErrorHandler.cleanupWalletConnectErrorSuppression();
+      
+      const stats = walletConnectErrorSuppression.getStats();
+      expect(stats.isActive).toBe(false);
+      
+      // Should log cleanup message
+      expect(consoleLogSpy).toHaveBeenCalledWith('🔊 Deactivating WalletConnect error suppression...');
+    });
+
+    test('should classify WalletConnect errors correctly', () => {
+      ErrorHandler.initializeWalletConnectErrorSuppression();
+      
+      const walletConnectError = new Error('No matching key. session or pairing topic doesn\'t exist: abc123');
+      walletConnectError.stack = 'at isValidSessionOrPairingTopic';
+      
+      const errorDetails = ErrorHandler.classifyError(walletConnectError);
+      
+      expect(errorDetails.code).toBe('WALLETCONNECT_SUPPRESSED');
+      expect(errorDetails.category).toBe('walletconnect');
+      expect(errorDetails.severity).toBe('low');
+      expect(errorDetails.recoverable).toBe(true);
+      expect(errorDetails.userMessage).toBe('WalletConnect internal error (suppressed)');
+    });
+
+    test('should not classify non-WalletConnect errors as suppressed', () => {
+      ErrorHandler.initializeWalletConnectErrorSuppression();
+      
+      const normalError = new Error('User rejected transaction');
+      const errorDetails = ErrorHandler.classifyError(normalError);
+      
+      expect(errorDetails.code).not.toBe('WALLETCONNECT_SUPPRESSED');
+      expect(errorDetails.category).not.toBe('walletconnect');
+    });
+  });
+
+  describe('End-to-End Error Suppression', () => {
+    test('should suppress WalletConnect errors in console.error', () => {
+      // Mock the original console.error to track actual calls
+      const mockOriginalConsoleError = jest.fn();
+      (walletConnectErrorSuppression as any).originalConsoleError = mockOriginalConsoleError;
+
+      ErrorHandler.initializeWalletConnectErrorSuppression();
+
+      // These should be suppressed
+      console.error('No matching key. session or pairing topic doesn\'t exist: abc123');
+      console.error('No matching key. session: def456');
+      console.error('session or pairing topic doesn\'t exist');
+
+      // This should not be suppressed
+      console.error('Normal error message');
+
+      // Only the normal error should have been logged to original console.error
+      expect(mockOriginalConsoleError).toHaveBeenCalledTimes(1);
+      expect(mockOriginalConsoleError).toHaveBeenCalledWith('Normal error message');
+
+      // Check suppression stats
+      const stats = walletConnectErrorSuppression.getStats();
+      expect(stats.suppressedCount).toBe(3);
+    });
+
+    test('should handle window errors properly', () => {
+      ErrorHandler.initializeWalletConnectErrorSuppression();
+      
+      // Create mock WalletConnect error
+      const wcError = new Error('No matching key. session: abc123');
+      wcError.stack = 'at isValidSessionOrPairingTopic';
+      
+      // Simulate window error
+      const result = window.onerror?.('No matching key. session: abc123', 'test.js', 1, 1, wcError);
+      
+      expect(result).toBe(true); // Should prevent default handling
+      
+      const stats = walletConnectErrorSuppression.getStats();
+      expect(stats.suppressedCount).toBe(1);
+    });
+
+    test('should handle unhandled promise rejections', (done) => {
+      ErrorHandler.initializeWalletConnectErrorSuppression();
+
+      // Create a promise that rejects with WalletConnect error
+      const wcError = new Error('No matching key. session: test');
+      wcError.stack = 'at isValidDisconnect';
+
+      // Listen for unhandledrejection events
+      const originalHandler = window.onunhandledrejection;
+      let eventHandled = false;
+
+      const handleRejection = (event: PromiseRejectionEvent) => {
+        eventHandled = true;
+
+        // Check if the error was suppressed
+        setTimeout(() => {
+          const stats = walletConnectErrorSuppression.getStats();
+          expect(stats.suppressedCount).toBe(1);
+
+          // Restore original handler
+          window.onunhandledrejection = originalHandler;
+          window.removeEventListener('unhandledrejection', handleRejection);
+          done();
+        }, 10);
+      };
+
+      window.addEventListener('unhandledrejection', handleRejection);
+
+      // Create unhandled rejection
+      Promise.reject(wcError);
+
+      // Ensure the test completes even if event doesn't fire
+      setTimeout(() => {
+        if (!eventHandled) {
+          window.onunhandledrejection = originalHandler;
+          window.removeEventListener('unhandledrejection', handleRejection);
+          done();
+        }
+      }, 100);
+    });
+  });
+
+  describe('Error Suppression in Development vs Production', () => {
+    test('should log debug messages in development mode', () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
+
+      // Mock the original console.error to track debug calls
+      const mockOriginalConsoleError = jest.fn();
+      (walletConnectErrorSuppression as any).originalConsoleError = mockOriginalConsoleError;
+
+      ErrorHandler.initializeWalletConnectErrorSuppression();
+
+      // Trigger a suppressed error
+      console.error('No matching key. session: test');
+
+      // Should log debug message in development via original console.error
+      expect(mockOriginalConsoleError).toHaveBeenCalledWith(
+        '🔇 Suppressed WalletConnect error:',
+        'No matching key. session: test'
+      );
+
+      // Restore environment
+      process.env.NODE_ENV = originalNodeEnv;
+    });
+
+    test('should not log debug messages in production mode', () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+      
+      const consoleDebugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
+      
+      ErrorHandler.initializeWalletConnectErrorSuppression();
+      
+      // Trigger a suppressed error
+      console.error('No matching key. session: test');
+      
+      // Should not log debug message in production
+      expect(consoleDebugSpy).not.toHaveBeenCalled();
+      
+      // Restore environment
+      process.env.NODE_ENV = originalNodeEnv;
+      consoleDebugSpy.mockRestore();
+    });
+  });
+
+  describe('Multiple Error Types', () => {
+    test('should handle mixed error types correctly', () => {
+      // Mock the original console.error to track actual calls
+      const mockOriginalConsoleError = jest.fn();
+      (walletConnectErrorSuppression as any).originalConsoleError = mockOriginalConsoleError;
+
+      ErrorHandler.initializeWalletConnectErrorSuppression();
+
+      const errors = [
+        'No matching key. session or pairing topic doesn\'t exist: abc123',
+        'User rejected transaction',
+        'No matching key. session: def456',
+        'Network connection failed',
+        'session or pairing topic doesn\'t exist',
+        'Invalid session topic'
+      ];
+
+      errors.forEach(error => console.error(error));
+
+      // Should only log non-WalletConnect errors to original console.error
+      expect(mockOriginalConsoleError).toHaveBeenCalledTimes(2);
+      expect(mockOriginalConsoleError).toHaveBeenCalledWith('User rejected transaction');
+      expect(mockOriginalConsoleError).toHaveBeenCalledWith('Network connection failed');
+
+      // Should suppress 4 WalletConnect errors
+      const stats = walletConnectErrorSuppression.getStats();
+      expect(stats.suppressedCount).toBe(4);
+    });
+  });
+
+  describe('Error Suppression Robustness', () => {
+    test('should handle errors during suppression gracefully', () => {
+      // Mock the original console.error to track calls
+      const mockOriginalConsoleError = jest.fn();
+      (walletConnectErrorSuppression as any).originalConsoleError = mockOriginalConsoleError;
+
+      // Mock shouldSuppressError to throw an error
+      const originalShouldSuppress = walletConnectErrorSuppression.shouldSuppressError;
+      jest.spyOn(walletConnectErrorSuppression, 'shouldSuppressError').mockImplementation(() => {
+        throw new Error('Suppression check failed');
+      });
+
+      ErrorHandler.initializeWalletConnectErrorSuppression();
+
+      // This should not crash the application
+      expect(() => {
+        console.error('No matching key. session: test');
+      }).not.toThrow();
+
+      // Should log the suppression error and the original error
+      expect(mockOriginalConsoleError).toHaveBeenCalledWith('Error in suppression check:', expect.any(Error));
+      expect(mockOriginalConsoleError).toHaveBeenCalledWith('No matching key. session: test');
+
+      // Restore original method
+      walletConnectErrorSuppression.shouldSuppressError = originalShouldSuppress;
+    });
+
+    test('should handle initialization errors gracefully', () => {
+      // Mock activate to throw an error
+      jest.spyOn(walletConnectErrorSuppression, 'activate').mockImplementation(() => {
+        throw new Error('Activation failed');
+      });
+      
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      
+      // Should not throw, but should log warning
+      expect(() => {
+        ErrorHandler.initializeWalletConnectErrorSuppression();
+      }).not.toThrow();
+      
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '⚠️ Failed to initialize WalletConnect error suppression:',
+        expect.any(Error)
+      );
+      
+      consoleWarnSpy.mockRestore();
+    });
+  });
+});

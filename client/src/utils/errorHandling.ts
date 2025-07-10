@@ -1,4 +1,5 @@
 // Error handling utilities - ethers import removed as it's not used in this file
+import { walletConnectErrorSuppression } from '../services/WalletConnectErrorSuppression';
 
 export interface ErrorDetails {
   code: string;
@@ -6,7 +7,7 @@ export interface ErrorDetails {
   userMessage: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
   recoverable: boolean;
-  category: 'network' | 'wallet' | 'transaction' | 'validation' | 'system';
+  category: 'network' | 'wallet' | 'transaction' | 'validation' | 'system' | 'walletconnect';
 }
 
 /**
@@ -20,8 +21,23 @@ export class ErrorHandler {
     const errorMessage = error.message?.toLowerCase() || '';
     const errorCode = error.code || 'UNKNOWN_ERROR';
 
+    // WalletConnect errors that should be suppressed
+    if (walletConnectErrorSuppression.shouldSuppressError({
+      message: error.message || '',
+      stack: error.stack || ''
+    })) {
+      return {
+        code: 'WALLETCONNECT_SUPPRESSED',
+        message: error.message,
+        userMessage: 'WalletConnect internal error (suppressed)',
+        severity: 'low',
+        recoverable: true,
+        category: 'walletconnect'
+      };
+    }
+
     // User rejection errors
-    if (errorMessage.includes('user rejected') || 
+    if (errorMessage.includes('user rejected') ||
         errorMessage.includes('user denied') ||
         errorCode === 'ACTION_REJECTED') {
       return {
@@ -297,8 +313,34 @@ export class ErrorHandler {
    * Check if error is critical and requires immediate attention
    */
   static isCriticalError(errorDetails: ErrorDetails): boolean {
-    return errorDetails.severity === 'critical' || 
+    return errorDetails.severity === 'critical' ||
            (errorDetails.category === 'system' && !errorDetails.recoverable);
+  }
+
+  /**
+   * Initialize WalletConnect error suppression
+   * Should be called during app initialization
+   */
+  static initializeWalletConnectErrorSuppression(): void {
+    try {
+      walletConnectErrorSuppression.activate();
+      console.log('✅ WalletConnect error suppression initialized');
+    } catch (error) {
+      console.warn('⚠️ Failed to initialize WalletConnect error suppression:', error);
+    }
+  }
+
+  /**
+   * Cleanup WalletConnect error suppression
+   * Should be called during app cleanup
+   */
+  static cleanupWalletConnectErrorSuppression(): void {
+    try {
+      walletConnectErrorSuppression.deactivate();
+      console.log('✅ WalletConnect error suppression cleaned up');
+    } catch (error) {
+      console.warn('⚠️ Failed to cleanup WalletConnect error suppression:', error);
+    }
   }
 }
 

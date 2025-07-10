@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import { ethers } from 'ethers';
 import { WalletConnectSigner } from './WalletConnectSigner';
 import { WALLETCONNECT_PROJECT_ID, WALLETCONNECT_METADATA } from '../config/walletconnect';
+import { walletConnectErrorSuppression } from './WalletConnectErrorSuppression';
 
 export class WalletConnectService {
   private signClient: any; // WalletConnect SignClient instance for signer wallet connections
@@ -82,45 +83,73 @@ export class WalletConnectService {
 
     // Handle session deletion (when mobile wallet disconnects)
     this.signClient.on('session_delete', ({ topic }: { topic: string }) => {
-      console.log(`WalletConnect session deleted by mobile wallet: ${topic}`);
-      if (topic === this.sessionTopic) {
-        console.log('Mobile wallet initiated disconnection, cleaning up app state...');
+      try {
+        console.log(`WalletConnect session deleted by mobile wallet: ${topic}`);
+        if (topic === this.sessionTopic) {
+          console.log('Mobile wallet initiated disconnection, cleaning up app state...');
 
-        // Clear session state
-        this.sessionTopic = null;
-        this.connectionResult = null;
+          // Clear session state
+          this.sessionTopic = null;
+          this.connectionResult = null;
 
-        // Emit disconnection event to notify the app
-        this.emit('session_disconnected', {
-          topic,
-          reason: 'Mobile wallet disconnected',
-          initiatedBy: 'mobile'
-        });
-        this.emit('session_delete', { topic });
+          // Emit disconnection event to notify the app
+          this.emit('session_disconnected', {
+            topic,
+            reason: 'Mobile wallet disconnected',
+            initiatedBy: 'mobile'
+          });
+          this.emit('session_delete', { topic });
 
-        console.log('Mobile wallet disconnection cleanup completed');
+          console.log('Mobile wallet disconnection cleanup completed');
+        }
+      } catch (error: any) {
+        // Check if this is a suppressed WalletConnect error
+        if (walletConnectErrorSuppression.shouldSuppressError({
+          message: error.message || '',
+          stack: error.stack || ''
+        })) {
+          // Silently handle suppressed errors
+          console.debug('🔇 Suppressed WalletConnect session_delete error:', error.message);
+          return;
+        }
+        // Log non-suppressed errors
+        console.error('Error handling session_delete:', error);
       }
     });
 
     // Handle session expiry
     this.signClient.on('session_expire', ({ topic }: { topic: string }) => {
-      console.log(`WalletConnect session expired: ${topic}`);
-      if (topic === this.sessionTopic) {
-        console.log('WalletConnect session expired, cleaning up app state...');
+      try {
+        console.log(`WalletConnect session expired: ${topic}`);
+        if (topic === this.sessionTopic) {
+          console.log('WalletConnect session expired, cleaning up app state...');
 
-        // Clear session state
-        this.sessionTopic = null;
-        this.connectionResult = null;
+          // Clear session state
+          this.sessionTopic = null;
+          this.connectionResult = null;
 
-        // Emit disconnection event to notify the app
-        this.emit('session_disconnected', {
-          topic,
-          reason: 'Session expired',
-          initiatedBy: 'system'
-        });
-        this.emit('session_expire', { topic });
+          // Emit disconnection event to notify the app
+          this.emit('session_disconnected', {
+            topic,
+            reason: 'Session expired',
+            initiatedBy: 'system'
+          });
+          this.emit('session_expire', { topic });
 
-        console.log('Session expiry cleanup completed');
+          console.log('Session expiry cleanup completed');
+        }
+      } catch (error: any) {
+        // Check if this is a suppressed WalletConnect error
+        if (walletConnectErrorSuppression.shouldSuppressError({
+          message: error.message || '',
+          stack: error.stack || ''
+        })) {
+          // Silently handle suppressed errors
+          console.debug('🔇 Suppressed WalletConnect session_expire error:', error.message);
+          return;
+        }
+        // Log non-suppressed errors
+        console.error('Error handling session_expire:', error);
       }
     });
 

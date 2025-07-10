@@ -54,6 +54,16 @@ function App() {
   // Initialize toast system
   const toast = useToast();
 
+  // Initialize WalletConnect error suppression on app start
+  useEffect(() => {
+    ErrorHandler.initializeWalletConnectErrorSuppression();
+
+    // Cleanup on unmount
+    return () => {
+      ErrorHandler.cleanupWalletConnectErrorSuppression();
+    };
+  }, []);
+
 
 
   // Network change is handled by selectNetwork function in the UI
