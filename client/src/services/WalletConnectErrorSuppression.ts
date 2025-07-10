@@ -26,11 +26,15 @@ export class WalletConnectErrorSuppression {
   private suppressionRules: ErrorSuppressionRule[] = [];
   private suppressedErrorCount = 0;
   private originalConsoleError: typeof console.error;
+  private originalConsoleWarn: typeof console.warn;
   private originalWindowErrorHandler: OnErrorEventHandler = null;
+  private originalErrorConstructor: typeof Error;
   private isActive = false;
 
   private constructor() {
     this.originalConsoleError = console.error;
+    this.originalConsoleWarn = console.warn;
+    this.originalErrorConstructor = Error;
     this.setupSuppressionRules();
   }
 
@@ -51,7 +55,9 @@ export class WalletConnectErrorSuppression {
           'no matching key',
           'session or pairing topic doesn\'t exist',
           'session topic doesn\'t exist',
-          'pairing topic doesn\'t exist'
+          'pairing topic doesn\'t exist',
+          'no matching key. session or pairing topic doesn\'t exist:',
+          'no matching key. session:'
         ],
         description: 'WalletConnect session validation errors during cleanup',
         severity: 'low'
@@ -141,6 +147,52 @@ export class WalletConnectErrorSuppression {
       this.originalConsoleError.apply(console, args);
     };
 
+    // Override console.warn as well since some WalletConnect errors appear as warnings
+    console.warn = (...args: any[]) => {
+      try {
+        const errorMessage = args[0]?.toString() || '';
+        const error: WalletConnectError = {
+          message: errorMessage,
+          stack: ''
+        };
+
+        if (this.shouldSuppressError(error)) {
+          this.suppressedErrorCount++;
+          if (process.env.NODE_ENV === 'development') {
+            this.originalConsoleError.call(console, '🔇 Suppressed WalletConnect warning:', errorMessage);
+          }
+          return;
+        }
+      } catch (suppressionError) {
+        this.originalConsoleWarn.call(console, 'Error in warning suppression check:', suppressionError);
+      }
+
+      this.originalConsoleWarn.apply(console, args);
+    };
+
+    // Patch the Error constructor to catch WalletConnect errors at their source
+    const self = this;
+    (window as any).Error = function(this: Error, message?: string) {
+      const error = new self.originalErrorConstructor(message);
+
+      // Check if this is a WalletConnect error that should be suppressed
+      if (message && self.shouldSuppressError({ message, stack: error.stack || '' })) {
+        self.suppressedErrorCount++;
+        if (process.env.NODE_ENV === 'development') {
+          self.originalConsoleError.call(console, '🔇 Suppressed WalletConnect Error constructor:', message);
+        }
+        // Return a silent error that won't propagate
+        const silentError = new self.originalErrorConstructor('Suppressed WalletConnect error');
+        silentError.name = 'SuppressedWalletConnectError';
+        return silentError;
+      }
+
+      return error;
+    };
+
+    // Preserve the original Error prototype
+    (window as any).Error.prototype = this.originalErrorConstructor.prototype;
+
     // Override window.onerror
     this.originalWindowErrorHandler = window.onerror;
     window.onerror = (message: Event | string, source?: string, lineno?: number, colno?: number, error?: Error): boolean => {
@@ -178,9 +230,28 @@ export class WalletConnectErrorSuppression {
         this.suppressedErrorCount++;
         // Log suppressed error in development for debugging
         if (process.env.NODE_ENV === 'development') {
-          console.debug('🔇 Suppressed WalletConnect promise rejection:', error.message);
+          this.originalConsoleError.call(console, '🔇 Suppressed WalletConnect promise rejection:', error.message);
         }
         event.preventDefault(); // Prevent unhandled rejection error
+      }
+    });
+
+    // Add a global error event listener to catch all errors
+    window.addEventListener('error', (event) => {
+      const error: WalletConnectError = {
+        message: event.message || event.error?.message || '',
+        stack: event.error?.stack || '',
+        source: event.filename || ''
+      };
+
+      if (this.shouldSuppressError(error)) {
+        this.suppressedErrorCount++;
+        if (process.env.NODE_ENV === 'development') {
+          this.originalConsoleError.call(console, '🔇 Suppressed WalletConnect global error:', error.message);
+        }
+        event.preventDefault(); // Prevent error from propagating
+        event.stopPropagation();
+        return false;
       }
     });
 
@@ -198,11 +269,15 @@ export class WalletConnectErrorSuppression {
 
     console.log('🔊 Deactivating WalletConnect error suppression...');
 
-    // Restore original console.error
+    // Restore original console methods
     console.error = this.originalConsoleError;
+    console.warn = this.originalConsoleWarn;
 
     // Restore original window.onerror
     window.onerror = this.originalWindowErrorHandler;
+
+    // Restore original Error constructor
+    (window as any).Error = this.originalErrorConstructor;
 
     this.isActive = false;
     console.log(`✅ WalletConnect error suppression deactivated. Suppressed ${this.suppressedErrorCount} errors.`);
