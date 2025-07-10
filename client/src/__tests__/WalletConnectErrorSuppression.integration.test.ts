@@ -145,8 +145,8 @@ describe('WalletConnect Error Suppression Integration', () => {
       ErrorHandler.initializeWalletConnectErrorSuppression();
 
       // Test that the service can detect WalletConnect errors in promise rejections
-      const wcError = new Error('session topic doesn\'t exist');
-      wcError.stack = 'at isValidDisconnect';
+      const wcError = new Error('Invalid session topic');
+      wcError.stack = 'at WalletConnect';
 
       const shouldSuppress = walletConnectErrorSuppression.shouldSuppressError({
         message: wcError.message,
