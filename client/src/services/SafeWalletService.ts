@@ -806,21 +806,73 @@ export class SafeWalletService {
       // Combine signatures using EIP-712 utility (properly sorted)
       const combinedSignatures = combineSignatures(signatures);
 
-      // Execute the transaction on the Safe contract
-      const tx = await this.safeContract.execTransaction(
-        safeTransaction.to,
-        safeTransaction.value,
-        safeTransaction.data,
-        safeTransaction.operation,
-        safeTransaction.safeTxGas,
-        safeTransaction.baseGas,
-        safeTransaction.gasPrice,
-        safeTransaction.gasToken,
-        safeTransaction.refundReceiver,
-        combinedSignatures
-      );
+      // Check if we're using WalletConnect (mobile wallet)
+      const isWalletConnect = this.signer.provider &&
+        ((this.signer.provider as any)._walletConnectService ||
+         (this.signer.provider as any).isWalletConnect ||
+         (this.signer as any).isWalletConnect);
 
-      return tx;
+      if (isWalletConnect) {
+        console.log('🔗 Using WalletConnect execution method for mobile wallet');
+
+        // For WalletConnect, we need to populate the transaction and send it as a standard transaction
+        const populatedTx = await this.safeContract.populateTransaction.execTransaction(
+          safeTransaction.to,
+          safeTransaction.value,
+          safeTransaction.data,
+          safeTransaction.operation,
+          safeTransaction.safeTxGas,
+          safeTransaction.baseGas,
+          safeTransaction.gasPrice,
+          safeTransaction.gasToken,
+          safeTransaction.refundReceiver,
+          combinedSignatures
+        );
+
+        console.log('🔗 Populated transaction for WalletConnect:', populatedTx);
+
+        // Estimate gas for the transaction
+        let gasLimit = '500000'; // Default fallback
+        try {
+          const gasEstimate = await this.signer.estimateGas({
+            to: populatedTx.to,
+            data: populatedTx.data,
+            value: populatedTx.value || '0x0'
+          });
+          gasLimit = gasEstimate.mul(120).div(100).toString(); // Add 20% buffer
+          console.log('⛽ Gas estimated:', gasLimit);
+        } catch (error) {
+          console.warn('⚠️ Gas estimation failed, using default:', error);
+        }
+
+        // Send as a standard transaction through WalletConnect
+        const tx = await this.signer.sendTransaction({
+          to: populatedTx.to,
+          data: populatedTx.data,
+          value: populatedTx.value || '0x0',
+          gasLimit
+        });
+
+        return tx;
+      } else {
+        console.log('🔐 Using direct contract execution method');
+
+        // Execute the transaction on the Safe contract directly
+        const tx = await this.safeContract.execTransaction(
+          safeTransaction.to,
+          safeTransaction.value,
+          safeTransaction.data,
+          safeTransaction.operation,
+          safeTransaction.safeTxGas,
+          safeTransaction.baseGas,
+          safeTransaction.gasPrice,
+          safeTransaction.gasToken,
+          safeTransaction.refundReceiver,
+          combinedSignatures
+        );
+
+        return tx;
+      }
     } catch (error) {
       console.error('Error executing Safe transaction:', error);
       throw new Error(`Failed to execute transaction: ${error}`);
