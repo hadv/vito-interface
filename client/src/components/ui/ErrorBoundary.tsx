@@ -122,21 +122,6 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
-    // Check if this is a WalletConnect error that should be suppressed
-    const errorMessage = error.message || '';
-    const isWalletConnectError =
-      errorMessage.includes('No matching key') ||
-      errorMessage.includes('session or pairing topic doesn\'t exist') ||
-      errorMessage.includes('session topic doesn\'t exist') ||
-      errorMessage.includes('pairing topic doesn\'t exist') ||
-      errorMessage.includes('Suppressed WalletConnect error');
-
-    if (isWalletConnectError) {
-      // Suppress WalletConnect errors - don't show error boundary
-      console.log('🔇 Suppressed WalletConnect error in error boundary:', errorMessage);
-      return { hasError: false }; // Don't trigger error boundary
-    }
-
     return {
       hasError: true,
       error
@@ -144,23 +129,6 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Check if this is a WalletConnect error
-    const errorMessage = error.message || '';
-    const isWalletConnectError =
-      errorMessage.includes('No matching key') ||
-      errorMessage.includes('session or pairing topic doesn\'t exist') ||
-      errorMessage.includes('session topic doesn\'t exist') ||
-      errorMessage.includes('pairing topic doesn\'t exist') ||
-      errorMessage.includes('Suppressed WalletConnect error');
-
-    if (isWalletConnectError) {
-      // Suppress WalletConnect errors
-      console.log('🔇 Suppressed WalletConnect error in componentDidCatch:', errorMessage);
-      // Reset the error boundary state to prevent error UI
-      this.setState({ hasError: false });
-      return;
-    }
-
     console.error('ErrorBoundary caught an error:', error, errorInfo);
 
     this.setState({

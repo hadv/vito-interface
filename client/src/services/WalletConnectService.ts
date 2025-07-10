@@ -217,13 +217,29 @@ export class WalletConnectService {
       // If there's an active session, verify it's still valid (unless forcing new)
       if (this.sessionTopic && this.signClient && !forceNew) {
         try {
-          const session = await this.signClient.session.get(this.sessionTopic);
-          if (session && session.expiry * 1000 > Date.now()) {
-            // Session is still valid
-            this.emit('session_connected', { message: 'Already connected to wallet!' });
-            return;
+          // First check if the session exists in the client's session store
+          const sessions = this.signClient.session.getAll();
+          const sessionExists = sessions.some((session: any) => session.topic === this.sessionTopic);
+
+          if (!sessionExists) {
+            console.log('Session no longer exists in store, clearing local state');
+            this.sessionTopic = null;
+            this.emit('session_disconnected', null);
+          } else {
+            const session = await this.signClient.session.get(this.sessionTopic);
+            if (session && session.expiry * 1000 > Date.now()) {
+              // Session is still valid
+              this.emit('session_connected', { message: 'Already connected to wallet!' });
+              return;
+            }
           }
-        } catch (e) {
+        } catch (e: any) {
+          // Check if this is the "No matching key" error
+          if (e.message && e.message.includes('No matching key')) {
+            console.log('Session was deleted externally, clearing local state');
+          } else {
+            console.warn('Error checking existing session:', e);
+          }
           // Session not found or expired, clear it
           this.sessionTopic = null;
           this.emit('session_disconnected', null);
@@ -493,6 +509,22 @@ export class WalletConnectService {
     }
 
     try {
+      // First check if the session exists in the client's session store
+      const sessions = this.signClient.session.getAll();
+      const sessionExists = sessions.some((session: any) => session.topic === this.sessionTopic);
+
+      if (!sessionExists) {
+        console.log('WalletConnect session no longer exists in store');
+        // Clean up non-existent session
+        this.sessionTopic = null;
+        this.connectionResult = null;
+        this.emit('session_disconnected', {
+          reason: 'Session no longer exists',
+          initiatedBy: 'system'
+        });
+        return false;
+      }
+
       const session = await this.signClient.session.get(this.sessionTopic);
       if (!session || session.expiry * 1000 <= Date.now()) {
         console.log('WalletConnect session is expired or invalid');
@@ -506,7 +538,19 @@ export class WalletConnectService {
         return false;
       }
       return true;
-    } catch (error) {
+    } catch (error: any) {
+      // Check if this is the "No matching key" error - this means session was deleted
+      if (error.message && error.message.includes('No matching key')) {
+        console.log('WalletConnect session was deleted, cleaning up local state');
+        this.sessionTopic = null;
+        this.connectionResult = null;
+        this.emit('session_disconnected', {
+          reason: 'Session was deleted externally',
+          initiatedBy: 'system'
+        });
+        return false;
+      }
+
       console.error('Failed to verify WalletConnect session:', error);
       // Clean up invalid session
       this.sessionTopic = null;
@@ -565,9 +609,29 @@ export class WalletConnectService {
     }
 
     try {
+      // First check if the session exists in the client's session store
+      const sessions = this.signClient.session.getAll();
+      const sessionExists = sessions.some((session: any) => session.topic === this.sessionTopic);
+
+      if (!sessionExists) {
+        console.log('Session no longer exists in store');
+        // Clean up local state
+        this.sessionTopic = null;
+        this.connectionResult = null;
+        return null;
+      }
+
       const session = await this.signClient.session.get(this.sessionTopic);
       return session;
-    } catch (error) {
+    } catch (error: any) {
+      // Check if this is the "No matching key" error
+      if (error.message && error.message.includes('No matching key')) {
+        console.log('Session was deleted externally, cleaning up local state');
+        this.sessionTopic = null;
+        this.connectionResult = null;
+        return null;
+      }
+
       console.error('Failed to get session info:', error);
       return null;
     }
