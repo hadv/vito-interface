@@ -54,23 +54,46 @@ function App() {
   // Initialize toast system
   const toast = useToast();
 
-  // Initialize WalletConnect error suppression on app start
+  // Initialize error suppression for WalletConnect internal errors
   useEffect(() => {
-    // Simple approach: just suppress the specific WalletConnect errors that are normal behavior
-    const originalConsoleError = console.error;
-    console.error = (...args) => {
-      const message = args[0]?.toString() || '';
-      if (message.includes('No matching key') ||
-          message.includes('session or pairing topic doesn\'t exist')) {
-        // These are normal WalletConnect cleanup errors, suppress them
+    // Override global error handler to catch WalletConnect internal errors
+    const originalOnError = window.onerror;
+    window.onerror = (message, source, lineno, colno, error) => {
+      const errorMessage = typeof message === 'string' ? message : error?.message || '';
+
+      // Check if this is a WalletConnect internal error
+      if (errorMessage.includes('No matching key') &&
+          (source?.includes('bundle.js') || error?.stack?.includes('bundle.js'))) {
+        console.log('🔇 Suppressed WalletConnect internal error:', errorMessage);
+        return true; // Prevent error from showing in UI
+      }
+
+      // Let other errors through normally
+      return originalOnError ? originalOnError(message, source, lineno, colno, error) : false;
+    };
+
+    // Override unhandled promise rejections
+    const originalUnhandledRejection = window.onunhandledrejection;
+    window.onunhandledrejection = (event) => {
+      const error = event.reason;
+      const errorMessage = error?.message || error?.toString() || '';
+
+      if (errorMessage.includes('No matching key') ||
+          errorMessage.includes('session or pairing topic doesn\'t exist')) {
+        console.log('🔇 Suppressed WalletConnect promise rejection:', errorMessage);
+        event.preventDefault();
         return;
       }
-      originalConsoleError.apply(console, args);
+
+      if (originalUnhandledRejection) {
+        originalUnhandledRejection.call(window, event);
+      }
     };
 
     // Cleanup on unmount
     return () => {
-      console.error = originalConsoleError;
+      window.onerror = originalOnError;
+      window.onunhandledrejection = originalUnhandledRejection;
     };
   }, []);
 
