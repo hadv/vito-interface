@@ -233,8 +233,155 @@ export class WalletConnectErrorSuppression {
       }
     });
 
+    // Patch WalletConnect methods that throw the errors directly
+    this.patchWalletConnectMethods();
+
     this.isActive = true;
     console.log('✅ WalletConnect error suppression activated');
+  }
+
+  /**
+   * Patch WalletConnect methods that throw errors directly
+   */
+  private patchWalletConnectMethods(): void {
+    try {
+      // Wait for WalletConnect to be available and patch its methods
+      const patchInterval = setInterval(() => {
+        // Try to find WalletConnect instances in the global scope
+        const walletConnectInstances = this.findWalletConnectInstances();
+
+        if (walletConnectInstances.length > 0) {
+          clearInterval(patchInterval);
+          walletConnectInstances.forEach(instance => this.patchInstance(instance));
+          if (process.env.NODE_ENV === 'development') {
+            this.originalConsoleError.call(console, '🔧 Patched WalletConnect methods for error suppression');
+          }
+        }
+      }, 100);
+
+      // Stop trying after 10 seconds
+      setTimeout(() => clearInterval(patchInterval), 10000);
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        this.originalConsoleError.call(console, 'Failed to patch WalletConnect methods:', error);
+      }
+    }
+  }
+
+  /**
+   * Find WalletConnect instances in the global scope
+   */
+  private findWalletConnectInstances(): any[] {
+    const instances: any[] = [];
+
+    try {
+      // Check for WalletConnect in window object
+      if ((window as any).walletConnect) {
+        instances.push((window as any).walletConnect);
+      }
+
+      // Check for SignClient instances
+      if ((window as any).signClient) {
+        instances.push((window as any).signClient);
+      }
+
+      // Look for WalletConnect instances in common locations
+      const checkObject = (obj: any, path: string = '') => {
+        if (!obj || typeof obj !== 'object') return;
+
+        for (const key in obj) {
+          try {
+            const value = obj[key];
+            if (value && typeof value === 'object') {
+              // Check if this looks like a WalletConnect instance
+              if (value.isValidSessionOrPairingTopic || value.isValidDisconnect) {
+                instances.push(value);
+              }
+              // Recursively check nested objects (but limit depth)
+              if (path.split('.').length < 3) {
+                checkObject(value, path ? `${path}.${key}` : key);
+              }
+            }
+          } catch (e) {
+            // Ignore errors accessing properties
+          }
+        }
+      };
+
+      checkObject(window);
+    } catch (error) {
+      // Ignore errors in instance discovery
+    }
+
+    return instances;
+  }
+
+  /**
+   * Patch a WalletConnect instance to suppress errors
+   */
+  private patchInstance(instance: any): void {
+    try {
+      // Patch isValidSessionOrPairingTopic method
+      if (instance.isValidSessionOrPairingTopic && typeof instance.isValidSessionOrPairingTopic === 'function') {
+        const originalMethod = instance.isValidSessionOrPairingTopic.bind(instance);
+        instance.isValidSessionOrPairingTopic = (...args: any[]) => {
+          try {
+            return originalMethod(...args);
+          } catch (error: any) {
+            if (this.shouldSuppressError({ message: error.message || '', stack: error.stack || '' })) {
+              this.suppressedErrorCount++;
+              if (process.env.NODE_ENV === 'development') {
+                this.originalConsoleError.call(console, '🔇 Suppressed WalletConnect isValidSessionOrPairingTopic error:', error.message);
+              }
+              return false; // Return false instead of throwing
+            }
+            throw error; // Re-throw non-WalletConnect errors
+          }
+        };
+      }
+
+      // Patch isValidDisconnect method
+      if (instance.isValidDisconnect && typeof instance.isValidDisconnect === 'function') {
+        const originalMethod = instance.isValidDisconnect.bind(instance);
+        instance.isValidDisconnect = (...args: any[]) => {
+          try {
+            return originalMethod(...args);
+          } catch (error: any) {
+            if (this.shouldSuppressError({ message: error.message || '', stack: error.stack || '' })) {
+              this.suppressedErrorCount++;
+              if (process.env.NODE_ENV === 'development') {
+                this.originalConsoleError.call(console, '🔇 Suppressed WalletConnect isValidDisconnect error:', error.message);
+              }
+              return false; // Return false instead of throwing
+            }
+            throw error; // Re-throw non-WalletConnect errors
+          }
+        };
+      }
+
+      // Patch getData method (for store access errors)
+      if (instance.getData && typeof instance.getData === 'function') {
+        const originalMethod = instance.getData.bind(instance);
+        instance.getData = (...args: any[]) => {
+          try {
+            return originalMethod(...args);
+          } catch (error: any) {
+            if (this.shouldSuppressError({ message: error.message || '', stack: error.stack || '' })) {
+              this.suppressedErrorCount++;
+              if (process.env.NODE_ENV === 'development') {
+                this.originalConsoleError.call(console, '🔇 Suppressed WalletConnect getData error:', error.message);
+              }
+              return null; // Return null instead of throwing
+            }
+            throw error; // Re-throw non-WalletConnect errors
+          }
+        };
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        this.originalConsoleError.call(console, 'Failed to patch WalletConnect instance:', error);
+      }
+    }
   }
 
   /**
