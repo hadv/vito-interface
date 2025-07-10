@@ -35,16 +35,15 @@ export class GlobalErrorHandler {
   }
 
   /**
-   * Check if an error is a WalletConnect "No matching key" error
+   * Check if an error is specifically the WalletConnect "No matching key" error we want to suppress
+   * Be very specific to avoid blocking legitimate WalletConnect functionality like QR code generation
    */
   private isWalletConnectError(message: string): boolean {
     const lowerMessage = message.toLowerCase();
-    return lowerMessage.includes('no matching key') ||
-           lowerMessage.includes('session or pairing topic doesn\'t exist') ||
-           lowerMessage.includes('isvalidsessionorpairingtopic') ||
-           lowerMessage.includes('isvaliddisconnect') ||
-           lowerMessage.includes('onsessiondeleterequest') ||
-           lowerMessage.includes('deletesession');
+    // Only suppress the very specific "No matching key" errors that cause red overlays
+    return lowerMessage.includes('no matching key. session or pairing topic doesn\'t exist') ||
+           lowerMessage.includes('no matching key. session:') ||
+           (lowerMessage.includes('no matching key') && lowerMessage.includes('session') && lowerMessage.includes('topic'));
   }
 
   /**
@@ -63,20 +62,8 @@ export class GlobalErrorHandler {
    * Initialize global error handling
    */
   public initialize(): void {
-    // Handle console.error calls
-    console.error = (...args: any[]) => {
-      const errorMessage = args.join(' ');
-      
-      if (this.isWalletConnectError(errorMessage)) {
-        // Log as debug instead of error for WalletConnect issues
-        console.debug('[WalletConnect Internal Error]', ...args);
-        this.showWalletConnectErrorToast();
-        return;
-      }
-      
-      // Call original console.error for other errors
-      this.originalConsoleError.call(console, ...args);
-    };
+    // DON'T intercept console.error - this can break legitimate WalletConnect functionality
+    // Only handle uncaught errors and unhandled rejections that cause the red overlay
 
     // Handle uncaught JavaScript errors
     window.onerror = (message, source, lineno, colno, error) => {
