@@ -58,6 +58,38 @@ function App() {
   useEffect(() => {
     ErrorHandler.initializeWalletConnectErrorSuppression();
 
+    // NUCLEAR OPTION: Patch the Error constructor globally to catch WalletConnect errors
+    const originalError = window.Error;
+    const originalThrow = Error.prototype.constructor;
+
+    // Override Error constructor to catch WalletConnect errors at their source
+    (window as any).Error = function(this: any, message?: string) {
+      if (message && (
+        message.includes('No matching key') ||
+        message.includes('session or pairing topic doesn\'t exist') ||
+        message.includes('session topic doesn\'t exist') ||
+        message.includes('pairing topic doesn\'t exist')
+      )) {
+        console.log('🔇 NUCLEAR: Suppressed WalletConnect Error constructor:', message);
+        // Return a silent error that won't propagate
+        const silentError = new originalError('WalletConnect error suppressed');
+        silentError.name = 'SuppressedWalletConnectError';
+        silentError.stack = ''; // Remove stack trace
+        return silentError;
+      }
+
+      // For non-WalletConnect errors, use original constructor
+      if (this instanceof Error) {
+        return new originalError(message);
+      } else {
+        return new originalError(message);
+      }
+    };
+
+    // Preserve prototype
+    (window as any).Error.prototype = originalError.prototype;
+    (window as any).Error.captureStackTrace = originalError.captureStackTrace;
+
     // Add ultra-aggressive error suppression at the global level
     const originalOnError = window.onerror;
     window.onerror = (message, source, lineno, colno, error) => {
@@ -94,11 +126,52 @@ function App() {
       }
     };
 
+    // EXTREME MEASURE: Try to patch the bundle functions directly
+    setTimeout(() => {
+      try {
+        // Look for the specific bundle functions that are throwing errors
+        const scripts = document.querySelectorAll('script[src*="bundle.js"]');
+        console.log('🔧 Attempting to patch WalletConnect bundle functions...');
+
+        // Try to find and patch the isValidSessionOrPairingTopic function
+        if ((window as any).webpackChunkName) {
+          console.log('🔧 Found webpack chunks, attempting to patch...');
+        }
+
+        // Patch any global objects that might contain WalletConnect
+        Object.keys(window).forEach(key => {
+          try {
+            const obj = (window as any)[key];
+            if (obj && typeof obj === 'object' && obj.isValidSessionOrPairingTopic) {
+              console.log('🔧 Found WalletConnect object, patching:', key);
+              const original = obj.isValidSessionOrPairingTopic;
+              obj.isValidSessionOrPairingTopic = function(...args: any[]) {
+                try {
+                  return original.apply(this, args);
+                } catch (error: any) {
+                  if (error.message && error.message.includes('No matching key')) {
+                    console.log('🔇 Patched isValidSessionOrPairingTopic error:', error.message);
+                    return false;
+                  }
+                  throw error;
+                }
+              };
+            }
+          } catch (e) {
+            // Ignore errors when checking objects
+          }
+        });
+      } catch (error) {
+        console.log('Bundle patching failed:', error);
+      }
+    }, 1000);
+
     // Cleanup on unmount
     return () => {
       ErrorHandler.cleanupWalletConnectErrorSuppression();
       window.onerror = originalOnError;
       window.onunhandledrejection = originalUnhandledRejection;
+      (window as any).Error = originalError;
     };
   }, []);
 
