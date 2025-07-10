@@ -90,7 +90,7 @@ function App() {
       }
 
       if (originalUnhandledRejection) {
-        originalUnhandledRejection(event);
+        originalUnhandledRejection.call(window, event);
       }
     };
 
