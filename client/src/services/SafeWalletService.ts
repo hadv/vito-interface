@@ -831,27 +831,45 @@ export class SafeWalletService {
 
         console.log('🔗 Populated transaction for WalletConnect:', populatedTx);
 
-        // Estimate gas for the transaction
+        // For WalletConnect, use a read-only provider for gas estimation
+        // since WalletConnect providers often fail at gas estimation
         let gasLimit = '500000'; // Default fallback
         try {
-          const gasEstimate = await this.signer.estimateGas({
+          console.log('⛽ Attempting gas estimation with read-only provider...');
+
+          // Use read-only provider for gas estimation
+          const readOnlyProvider = new ethers.providers.JsonRpcProvider(getRpcUrl(this.config!.network));
+          const gasEstimate = await readOnlyProvider.estimateGas({
             to: populatedTx.to,
             data: populatedTx.data,
-            value: populatedTx.value || '0x0'
+            value: populatedTx.value || '0x0',
+            from: await this.signer.getAddress() // Use the signer's address
           });
-          gasLimit = gasEstimate.mul(120).div(100).toString(); // Add 20% buffer
-          console.log('⛽ Gas estimated:', gasLimit);
+
+          gasLimit = gasEstimate.mul(150).div(100).toString(); // Add 50% buffer for Safe transactions
+          console.log('⛽ Gas estimated with read-only provider:', gasLimit);
         } catch (error) {
-          console.warn('⚠️ Gas estimation failed, using default:', error);
+          console.warn('⚠️ Gas estimation failed, using conservative default:', error);
+          // Use a higher default for Safe transactions which are typically more expensive
+          gasLimit = '800000';
         }
 
         // Send as a standard transaction through WalletConnect
-        const tx = await this.signer.sendTransaction({
+        // Let the mobile wallet handle gas estimation and pricing
+        const txRequest: any = {
           to: populatedTx.to,
           data: populatedTx.data,
-          value: populatedTx.value || '0x0',
-          gasLimit
+          value: populatedTx.value || '0x0'
+          // Intentionally omit gasLimit, gasPrice to let wallet handle it
+        };
+
+        console.log('🔗 Sending transaction request to WalletConnect (wallet will handle gas):', {
+          to: txRequest.to,
+          dataLength: txRequest.data?.length,
+          value: txRequest.value
         });
+
+        const tx = await this.signer.sendTransaction(txRequest);
 
         return tx;
       } else {
