@@ -58,9 +58,47 @@ function App() {
   useEffect(() => {
     ErrorHandler.initializeWalletConnectErrorSuppression();
 
+    // Add ultra-aggressive error suppression at the global level
+    const originalOnError = window.onerror;
+    window.onerror = (message, source, lineno, colno, error) => {
+      const errorMessage = typeof message === 'string' ? message : error?.message || '';
+
+      if (errorMessage.includes('No matching key') ||
+          errorMessage.includes('session or pairing topic doesn\'t exist') ||
+          errorMessage.includes('session topic doesn\'t exist') ||
+          errorMessage.includes('pairing topic doesn\'t exist')) {
+        console.log('🔇 Suppressed WalletConnect window error:', errorMessage);
+        return true; // Prevent default error handling
+      }
+
+      return originalOnError ? originalOnError(message, source, lineno, colno, error) : false;
+    };
+
+    // Override unhandled promise rejections
+    const originalUnhandledRejection = window.onunhandledrejection;
+    window.onunhandledrejection = (event) => {
+      const error = event.reason;
+      const errorMessage = error?.message || error?.toString() || '';
+
+      if (errorMessage.includes('No matching key') ||
+          errorMessage.includes('session or pairing topic doesn\'t exist') ||
+          errorMessage.includes('session topic doesn\'t exist') ||
+          errorMessage.includes('pairing topic doesn\'t exist')) {
+        console.log('🔇 Suppressed WalletConnect promise rejection:', errorMessage);
+        event.preventDefault();
+        return;
+      }
+
+      if (originalUnhandledRejection) {
+        originalUnhandledRejection(event);
+      }
+    };
+
     // Cleanup on unmount
     return () => {
       ErrorHandler.cleanupWalletConnectErrorSuppression();
+      window.onerror = originalOnError;
+      window.onunhandledrejection = originalUnhandledRejection;
     };
   }, []);
 
