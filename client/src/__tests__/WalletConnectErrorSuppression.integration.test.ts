@@ -16,13 +16,17 @@ describe('WalletConnect Error Suppression Integration', () => {
     // Store original console methods
     originalConsoleError = console.error;
     originalConsoleLog = console.log;
-    
+
     // Create spies
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    
-    // Reset suppression state
-    walletConnectErrorSuppression.deactivate();
+
+    // Reset suppression state with error handling
+    try {
+      walletConnectErrorSuppression.deactivate();
+    } catch (error) {
+      // Ignore errors if already deactivated
+    }
     walletConnectErrorSuppression.resetStats();
   });
 
@@ -30,10 +34,14 @@ describe('WalletConnect Error Suppression Integration', () => {
     // Restore original console methods
     console.error = originalConsoleError;
     console.log = originalConsoleLog;
-    
-    // Cleanup suppression
-    ErrorHandler.cleanupWalletConnectErrorSuppression();
-    
+
+    // Cleanup suppression with error handling
+    try {
+      ErrorHandler.cleanupWalletConnectErrorSuppression();
+    } catch (error) {
+      // Ignore cleanup errors
+    }
+
     // Clear all mocks
     jest.clearAllMocks();
   });
@@ -234,7 +242,7 @@ describe('WalletConnect Error Suppression Integration', () => {
     test('should handle errors during suppression gracefully', () => {
       // Mock shouldSuppressError to throw an error
       const originalShouldSuppress = walletConnectErrorSuppression.shouldSuppressError;
-      jest.spyOn(walletConnectErrorSuppression, 'shouldSuppressError').mockImplementation(() => {
+      const mockShouldSuppress = jest.spyOn(walletConnectErrorSuppression, 'shouldSuppressError').mockImplementation(() => {
         throw new Error('Suppression check failed');
       });
 
@@ -250,7 +258,7 @@ describe('WalletConnect Error Suppression Integration', () => {
       }).not.toThrow();
 
       // Restore original method
-      walletConnectErrorSuppression.shouldSuppressError = originalShouldSuppress;
+      mockShouldSuppress.mockRestore();
     });
 
     test('should handle initialization errors gracefully', () => {

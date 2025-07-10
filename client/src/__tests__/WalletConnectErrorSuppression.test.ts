@@ -13,29 +13,37 @@ describe('WalletConnectErrorSuppression', () => {
   beforeEach(() => {
     // Get fresh instance for each test
     errorSuppression = WalletConnectErrorSuppression.getInstance();
-    
+
     // Store original handlers
     originalConsoleError = console.error;
     originalWindowError = window.onerror;
-    
+
     // Create spy for console.error
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    
+
     // Reset stats
     errorSuppression.resetStats();
-    
-    // Ensure suppression is deactivated before each test
-    errorSuppression.deactivate();
+
+    // Ensure suppression is deactivated before each test with error handling
+    try {
+      errorSuppression.deactivate();
+    } catch (error) {
+      // Ignore errors if already deactivated
+    }
   });
 
   afterEach(() => {
     // Restore original handlers
     console.error = originalConsoleError;
     window.onerror = originalWindowError;
-    
-    // Deactivate suppression
-    errorSuppression.deactivate();
-    
+
+    // Deactivate suppression with error handling
+    try {
+      errorSuppression.deactivate();
+    } catch (error) {
+      // Ignore deactivation errors
+    }
+
     // Clear all mocks
     jest.clearAllMocks();
   });
