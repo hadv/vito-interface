@@ -827,6 +827,8 @@ export class SafeWalletService {
     }
   }
 
+
+
   /**
    * Get pending transactions for the Safe from SafeTxPool
    */
