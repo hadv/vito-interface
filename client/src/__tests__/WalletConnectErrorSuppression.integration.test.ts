@@ -173,7 +173,7 @@ describe('WalletConnect Error Suppression Integration', () => {
   describe('Error Suppression in Development vs Production', () => {
     test('should log debug messages in development mode', () => {
       const originalNodeEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+      Object.defineProperty(process.env, 'NODE_ENV', { value: 'development', writable: true });
 
       // Mock the original console.error to track debug calls
       const mockOriginalConsoleError = jest.fn();
@@ -191,12 +191,12 @@ describe('WalletConnect Error Suppression Integration', () => {
       );
 
       // Restore environment
-      process.env.NODE_ENV = originalNodeEnv;
+      Object.defineProperty(process.env, 'NODE_ENV', { value: originalNodeEnv, writable: true });
     });
 
     test('should not log debug messages in production mode', () => {
       const originalNodeEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+      Object.defineProperty(process.env, 'NODE_ENV', { value: 'production', writable: true });
       
       const consoleDebugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
       
@@ -209,7 +209,7 @@ describe('WalletConnect Error Suppression Integration', () => {
       expect(consoleDebugSpy).not.toHaveBeenCalled();
       
       // Restore environment
-      process.env.NODE_ENV = originalNodeEnv;
+      Object.defineProperty(process.env, 'NODE_ENV', { value: originalNodeEnv, writable: true });
       consoleDebugSpy.mockRestore();
     });
   });

@@ -26,7 +26,7 @@ export class WalletConnectErrorSuppression {
   private suppressionRules: ErrorSuppressionRule[] = [];
   private suppressedErrorCount = 0;
   private originalConsoleError: typeof console.error;
-  private originalWindowErrorHandler: ((event: ErrorEvent) => boolean | void) | null = null;
+  private originalWindowErrorHandler: OnErrorEventHandler = null;
   private isActive = false;
 
   private constructor() {
@@ -143,7 +143,7 @@ export class WalletConnectErrorSuppression {
 
     // Override window.onerror
     this.originalWindowErrorHandler = window.onerror;
-    window.onerror = (message, source, lineno, colno, error) => {
+    window.onerror = (message: Event | string, source?: string, lineno?: number, colno?: number, error?: Error): boolean => {
       const wcError: WalletConnectError = {
         message: message?.toString() || '',
         stack: error?.stack || '',
@@ -154,14 +154,14 @@ export class WalletConnectErrorSuppression {
         this.suppressedErrorCount++;
         // Log suppressed error in development for debugging
         if (process.env.NODE_ENV === 'development') {
-          console.debug('🔇 Suppressed WalletConnect window error:', message);
+          this.originalConsoleError.call(console, '🔇 Suppressed WalletConnect window error:', message);
         }
         return true; // Prevent default error handling
       }
 
       // Call original error handler for non-suppressed errors
       if (this.originalWindowErrorHandler) {
-        return this.originalWindowErrorHandler(message, source, lineno, colno, error);
+        return this.originalWindowErrorHandler.call(window, message, source, lineno, colno, error) || false;
       }
 
       return false; // Allow default error handling
