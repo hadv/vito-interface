@@ -28,13 +28,11 @@ export class WalletConnectErrorSuppression {
   private originalConsoleError: typeof console.error;
   private originalConsoleWarn: typeof console.warn;
   private originalWindowErrorHandler: OnErrorEventHandler = null;
-  private originalErrorConstructor: typeof Error;
   private isActive = false;
 
   private constructor() {
     this.originalConsoleError = console.error;
     this.originalConsoleWarn = console.warn;
-    this.originalErrorConstructor = Error;
     this.setupSuppressionRules();
   }
 
@@ -57,7 +55,8 @@ export class WalletConnectErrorSuppression {
           'session topic doesn\'t exist',
           'pairing topic doesn\'t exist',
           'no matching key. session or pairing topic doesn\'t exist:',
-          'no matching key. session:'
+          'no matching key. session:',
+          'suppressed walletconnect error'
         ],
         description: 'WalletConnect session validation errors during cleanup',
         severity: 'low'
@@ -170,28 +169,7 @@ export class WalletConnectErrorSuppression {
       this.originalConsoleWarn.apply(console, args);
     };
 
-    // Patch the Error constructor to catch WalletConnect errors at their source
-    const self = this;
-    (window as any).Error = function(this: Error, message?: string) {
-      const error = new self.originalErrorConstructor(message);
 
-      // Check if this is a WalletConnect error that should be suppressed
-      if (message && self.shouldSuppressError({ message, stack: error.stack || '' })) {
-        self.suppressedErrorCount++;
-        if (process.env.NODE_ENV === 'development') {
-          self.originalConsoleError.call(console, '🔇 Suppressed WalletConnect Error constructor:', message);
-        }
-        // Return a silent error that won't propagate
-        const silentError = new self.originalErrorConstructor('Suppressed WalletConnect error');
-        silentError.name = 'SuppressedWalletConnectError';
-        return silentError;
-      }
-
-      return error;
-    };
-
-    // Preserve the original Error prototype
-    (window as any).Error.prototype = this.originalErrorConstructor.prototype;
 
     // Override window.onerror
     this.originalWindowErrorHandler = window.onerror;
@@ -276,8 +254,7 @@ export class WalletConnectErrorSuppression {
     // Restore original window.onerror
     window.onerror = this.originalWindowErrorHandler;
 
-    // Restore original Error constructor
-    (window as any).Error = this.originalErrorConstructor;
+
 
     this.isActive = false;
     console.log(`✅ WalletConnect error suppression deactivated. Suppressed ${this.suppressedErrorCount} errors.`);
