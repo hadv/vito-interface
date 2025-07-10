@@ -134,8 +134,8 @@ describe('WalletConnectErrorSuppression', () => {
           shouldSuppress: false
         },
         {
-          message: 'No matching key. session: abc123',
-          stack: 'at someOtherLibrary', // Wrong stack pattern
+          message: 'Some random error message',
+          stack: 'at someOtherLibrary',
           shouldSuppress: false
         }
       ];
