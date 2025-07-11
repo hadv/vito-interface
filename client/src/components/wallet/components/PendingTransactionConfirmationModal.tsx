@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { ethers } from 'ethers';
-import { SafeTxPoolTransaction } from '../../../services/SafeTxPoolService';
+import { SafeTxPoolTransaction, SafeTxPoolService } from '../../../services/SafeTxPoolService';
 import { SafeWalletService } from '../../../services/SafeWalletService';
 import { walletConnectionService } from '../../../services/WalletConnectionService';
 import { formatWalletAddress } from '../../../utils';
@@ -450,19 +450,33 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
       // Set the signer for transaction execution
       await walletService.setSigner(signer);
 
-      // Prepare Safe transaction data for execution
+      // Get the complete original transaction data from SafeTxPool
+      // This ensures we use the EXACT same data that was signed
+      console.log('🔍 Getting original transaction data from SafeTxPool...');
+      const safeTxPoolService = new SafeTxPoolService(network);
+
+      const originalTxDetails = await safeTxPoolService.getTxDetails(transaction.txHash);
+      if (!originalTxDetails) {
+        throw new Error('Could not retrieve original transaction details from SafeTxPool');
+      }
+
+      console.log('📋 Original transaction details from SafeTxPool:', originalTxDetails);
+
+      // Use the EXACT original transaction data that was signed
       const safeTransactionData = {
-        to: transaction.to,
-        value: transaction.value,
-        data: transaction.data,
-        operation: transaction.operation,
-        safeTxGas: '0',
+        to: originalTxDetails.to,
+        value: originalTxDetails.value,
+        data: originalTxDetails.data,
+        operation: originalTxDetails.operation,
+        safeTxGas: '0', // These are always 0 in our implementation
         baseGas: '0',
         gasPrice: '0',
         gasToken: '0x0000000000000000000000000000000000000000',
         refundReceiver: '0x0000000000000000000000000000000000000000',
-        nonce: transaction.nonce
+        nonce: originalTxDetails.nonce
       };
+
+      console.log('📋 Safe transaction data for execution:', safeTransactionData);
 
       // Execute the transaction with collected signatures
       const executionTx = await walletService.executeTransaction(
