@@ -808,6 +808,22 @@ export class SafeWalletService {
       console.log('🔐 Signatures received:', signatures);
       console.log('🔐 Number of signatures:', signatures.length);
 
+      // Check Safe threshold
+      try {
+        const safeInfo = await this.getSafeInfo();
+        console.log('🔐 Safe threshold:', safeInfo.threshold);
+        console.log('🔐 Safe owners:', safeInfo.owners);
+
+        if (signatures.length < safeInfo.threshold) {
+          console.error(`❌ Insufficient signatures: ${signatures.length}/${safeInfo.threshold} required`);
+          throw new Error(`Insufficient signatures: ${signatures.length}/${safeInfo.threshold} required`);
+        } else {
+          console.log('✅ Signature threshold met');
+        }
+      } catch (thresholdError) {
+        console.warn('⚠️ Could not check Safe threshold:', thresholdError);
+      }
+
       // Combine signatures using EIP-712 utility (properly sorted)
       const combinedSignatures = combineSignatures(signatures);
       console.log('🔐 Combined signatures result:', combinedSignatures);
