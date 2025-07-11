@@ -803,8 +803,22 @@ export class SafeWalletService {
     }
 
     try {
+      console.log('🔐 EXECUTION DEBUG: Starting transaction execution');
+      console.log('🔐 Transaction data:', safeTransaction);
+      console.log('🔐 Signatures received:', signatures);
+      console.log('🔐 Number of signatures:', signatures.length);
+
       // Combine signatures using EIP-712 utility (properly sorted)
       const combinedSignatures = combineSignatures(signatures);
+      console.log('🔐 Combined signatures result:', combinedSignatures);
+      console.log('🔐 Combined signatures length:', combinedSignatures.length);
+
+      console.log('🔐 Calling Safe contract execTransaction with:');
+      console.log('  - to:', safeTransaction.to);
+      console.log('  - value:', safeTransaction.value);
+      console.log('  - data length:', safeTransaction.data?.length);
+      console.log('  - operation:', safeTransaction.operation);
+      console.log('  - signatures length:', combinedSignatures.length);
 
       // Execute the transaction on the Safe contract
       const tx = await this.safeContract.execTransaction(
@@ -820,6 +834,7 @@ export class SafeWalletService {
         combinedSignatures
       );
 
+      console.log('✅ Transaction executed successfully:', tx.hash);
       return tx;
     } catch (error) {
       console.error('Error executing Safe transaction:', error);

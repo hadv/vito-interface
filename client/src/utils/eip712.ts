@@ -324,19 +324,34 @@ export function combineSignatures(signatures: Array<{ signature: string; signer:
 
   let combinedSignatures = '0x';
 
-  for (const { signature } of sortedSignatures) {
+  for (const { signature, signer } of sortedSignatures) {
     let adjustedSignature = signature;
+
+    console.log(`🔐 Processing signature from ${signer}:`, {
+      original: signature,
+      length: signature.length
+    });
 
     // Adjust v value for Safe contract compatibility (eth_sign format)
     // Safe expects v values to be adjusted: 27->31, 28->32 for eth_sign compatibility
     if (adjustedSignature.length === 132) { // 0x + 64 + 64 + 2 = 132 chars
       const v = parseInt(adjustedSignature.slice(-2), 16);
+      console.log(`🔐 Original v value: ${v}`);
+
       if (v === 27) {
         adjustedSignature = adjustedSignature.slice(0, -2) + '1f'; // 27 -> 31
+        console.log(`🔐 Adjusted v: 27 -> 31`);
       } else if (v === 28) {
         adjustedSignature = adjustedSignature.slice(0, -2) + '20'; // 28 -> 32
+        console.log(`🔐 Adjusted v: 28 -> 32`);
+      } else {
+        console.log(`🔐 V value ${v} not adjusted`);
       }
+    } else {
+      console.warn(`🔐 Unexpected signature length: ${adjustedSignature.length}`);
     }
+
+    console.log(`🔐 Final signature for ${signer}:`, adjustedSignature);
 
     // Remove 0x prefix and append
     combinedSignatures += adjustedSignature.slice(2);
