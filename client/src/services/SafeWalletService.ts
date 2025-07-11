@@ -838,29 +838,55 @@ export class SafeWalletService {
 
       console.log('🔐 About to call execTransaction...');
 
-      // Add timeout to prevent hanging
-      const execPromise = this.safeContract.execTransaction(
-        safeTransaction.to,
-        safeTransaction.value,
-        safeTransaction.data,
-        safeTransaction.operation,
-        safeTransaction.safeTxGas,
-        safeTransaction.baseGas,
-        safeTransaction.gasPrice,
-        safeTransaction.gasToken,
-        safeTransaction.refundReceiver,
-        combinedSignatures
-      );
+      // Try with manual gas limit to avoid gas estimation hanging
+      try {
+        console.log('🔐 Method 1: Trying with manual gas limit...');
+        const tx = await this.safeContract.execTransaction(
+          safeTransaction.to,
+          safeTransaction.value,
+          safeTransaction.data,
+          safeTransaction.operation,
+          safeTransaction.safeTxGas,
+          safeTransaction.baseGas,
+          safeTransaction.gasPrice,
+          safeTransaction.gasToken,
+          safeTransaction.refundReceiver,
+          combinedSignatures,
+          {
+            gasLimit: 500000, // Manual gas limit to avoid estimation
+            gasPrice: ethers.utils.parseUnits('20', 'gwei') // Manual gas price
+          }
+        );
 
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Transaction execution timeout after 30 seconds')), 30000)
-      );
+        console.log('✅ Transaction executed successfully with manual gas:', tx.hash);
+        return tx;
+      } catch (manualGasError: any) {
+        console.log('❌ Manual gas method failed:', manualGasError.message);
 
-      console.log('🔐 Waiting for transaction execution...');
-      const tx = await Promise.race([execPromise, timeoutPromise]);
+        // Fallback: Try without gas overrides (let ethers handle it)
+        console.log('🔐 Method 2: Trying without gas overrides...');
+        const execPromise = this.safeContract.execTransaction(
+          safeTransaction.to,
+          safeTransaction.value,
+          safeTransaction.data,
+          safeTransaction.operation,
+          safeTransaction.safeTxGas,
+          safeTransaction.baseGas,
+          safeTransaction.gasPrice,
+          safeTransaction.gasToken,
+          safeTransaction.refundReceiver,
+          combinedSignatures
+        );
 
-      console.log('✅ Transaction executed successfully:', tx.hash);
-      return tx;
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Transaction execution timeout after 30 seconds')), 30000)
+        );
+
+        console.log('🔐 Waiting for transaction execution...');
+        const tx = await Promise.race([execPromise, timeoutPromise]);
+        console.log('✅ Transaction executed successfully:', tx.hash);
+        return tx;
+      }
     } catch (error: any) {
       console.error('❌ Error executing Safe transaction:', error);
       console.error('❌ Error type:', typeof error);
