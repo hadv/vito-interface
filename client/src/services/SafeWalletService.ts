@@ -836,8 +836,10 @@ export class SafeWalletService {
       console.log('  - operation:', safeTransaction.operation);
       console.log('  - signatures length:', combinedSignatures.length);
 
-      // Execute the transaction on the Safe contract
-      const tx = await this.safeContract.execTransaction(
+      console.log('🔐 About to call execTransaction...');
+
+      // Add timeout to prevent hanging
+      const execPromise = this.safeContract.execTransaction(
         safeTransaction.to,
         safeTransaction.value,
         safeTransaction.data,
@@ -850,11 +852,32 @@ export class SafeWalletService {
         combinedSignatures
       );
 
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Transaction execution timeout after 30 seconds')), 30000)
+      );
+
+      console.log('🔐 Waiting for transaction execution...');
+      const tx = await Promise.race([execPromise, timeoutPromise]);
+
       console.log('✅ Transaction executed successfully:', tx.hash);
       return tx;
-    } catch (error) {
-      console.error('Error executing Safe transaction:', error);
-      throw new Error(`Failed to execute transaction: ${error}`);
+    } catch (error: any) {
+      console.error('❌ Error executing Safe transaction:', error);
+      console.error('❌ Error type:', typeof error);
+      console.error('❌ Error message:', error?.message);
+      console.error('❌ Error code:', error?.code);
+      console.error('❌ Error reason:', error?.reason);
+      console.error('❌ Error data:', error?.data);
+
+      // Provide more specific error information
+      let errorMessage = 'Failed to execute transaction';
+      if (error?.reason) {
+        errorMessage = `Transaction failed: ${error.reason}`;
+      } else if (error?.message) {
+        errorMessage = `Execution error: ${error.message}`;
+      }
+
+      throw new Error(errorMessage);
     }
   }
 
