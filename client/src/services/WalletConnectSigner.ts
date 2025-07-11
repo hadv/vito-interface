@@ -187,7 +187,7 @@ export class WalletConnectSigner extends ethers.Signer {
     };
 
     console.log('📱 MOBILE WALLET: EIP-712 signing request sent via WalletConnect');
-    
+
     try {
       const signature = await signClient.request(request);
       console.log('✅ WalletConnect Signer: EIP-712 signature received');
