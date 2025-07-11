@@ -98,24 +98,16 @@ export class WalletConnectSigner extends ethers.Signer {
    * Send a transaction using WalletConnect
    */
   async sendTransaction(transaction: ethers.providers.TransactionRequest): Promise<ethers.providers.TransactionResponse> {
-    console.log('🔗 WalletConnectSigner.sendTransaction called with:', transaction);
-
     const sessionTopic = this.walletConnectService.getSessionTopic();
     if (!sessionTopic) {
-      console.error('❌ No WalletConnect session topic available');
-      throw new Error('No WalletConnect session available - please reconnect your wallet');
+      throw new Error('No WalletConnect session available');
     }
-
-    console.log('✅ WalletConnect session topic found:', sessionTopic);
 
     // Use the WalletConnect SignClient directly
     const signClient = (this.walletConnectService as any).signClient;
     if (!signClient) {
-      console.error('❌ WalletConnect SignClient not available');
       throw new Error('WalletConnect SignClient not available');
     }
-
-    console.log('✅ WalletConnect SignClient available');
 
     const request = {
       topic: sessionTopic,
