@@ -806,91 +806,21 @@ export class SafeWalletService {
       // Combine signatures using EIP-712 utility (properly sorted)
       const combinedSignatures = combineSignatures(signatures);
 
-      // Check if we're using WalletConnect (mobile wallet)
-      const isWalletConnect = this.signer.provider &&
-        ((this.signer.provider as any)._walletConnectService ||
-         (this.signer.provider as any).isWalletConnect ||
-         (this.signer as any).isWalletConnect);
+      // Execute the transaction on the Safe contract
+      const tx = await this.safeContract.execTransaction(
+        safeTransaction.to,
+        safeTransaction.value,
+        safeTransaction.data,
+        safeTransaction.operation,
+        safeTransaction.safeTxGas,
+        safeTransaction.baseGas,
+        safeTransaction.gasPrice,
+        safeTransaction.gasToken,
+        safeTransaction.refundReceiver,
+        combinedSignatures
+      );
 
-      if (isWalletConnect) {
-        console.log('🔗 Using WalletConnect execution method for mobile wallet');
-
-        // For WalletConnect, we need to populate the transaction and send it as a standard transaction
-        const populatedTx = await this.safeContract.populateTransaction.execTransaction(
-          safeTransaction.to,
-          safeTransaction.value,
-          safeTransaction.data,
-          safeTransaction.operation,
-          safeTransaction.safeTxGas,
-          safeTransaction.baseGas,
-          safeTransaction.gasPrice,
-          safeTransaction.gasToken,
-          safeTransaction.refundReceiver,
-          combinedSignatures
-        );
-
-        console.log('🔗 Populated transaction for WalletConnect:', populatedTx);
-
-        // For WalletConnect, use a read-only provider for gas estimation
-        // since WalletConnect providers often fail at gas estimation
-        let gasLimit = '500000'; // Default fallback
-        try {
-          console.log('⛽ Attempting gas estimation with read-only provider...');
-
-          // Use read-only provider for gas estimation
-          const readOnlyProvider = new ethers.providers.JsonRpcProvider(getRpcUrl(this.config!.network));
-          const gasEstimate = await readOnlyProvider.estimateGas({
-            to: populatedTx.to,
-            data: populatedTx.data,
-            value: populatedTx.value || '0x0',
-            from: await this.signer.getAddress() // Use the signer's address
-          });
-
-          gasLimit = gasEstimate.mul(150).div(100).toString(); // Add 50% buffer for Safe transactions
-          console.log('⛽ Gas estimated with read-only provider:', gasLimit);
-        } catch (error) {
-          console.warn('⚠️ Gas estimation failed, using conservative default:', error);
-          // Use a higher default for Safe transactions which are typically more expensive
-          gasLimit = '800000';
-        }
-
-        // Send as a standard transaction through WalletConnect
-        // Let the mobile wallet handle gas estimation and pricing
-        const txRequest: any = {
-          to: populatedTx.to,
-          data: populatedTx.data,
-          value: populatedTx.value || '0x0'
-          // Intentionally omit gasLimit, gasPrice to let wallet handle it
-        };
-
-        console.log('🔗 Sending transaction request to WalletConnect (wallet will handle gas):', {
-          to: txRequest.to,
-          dataLength: txRequest.data?.length,
-          value: txRequest.value
-        });
-
-        const tx = await this.signer.sendTransaction(txRequest);
-
-        return tx;
-      } else {
-        console.log('🔐 Using direct contract execution method');
-
-        // Execute the transaction on the Safe contract directly
-        const tx = await this.safeContract.execTransaction(
-          safeTransaction.to,
-          safeTransaction.value,
-          safeTransaction.data,
-          safeTransaction.operation,
-          safeTransaction.safeTxGas,
-          safeTransaction.baseGas,
-          safeTransaction.gasPrice,
-          safeTransaction.gasToken,
-          safeTransaction.refundReceiver,
-          combinedSignatures
-        );
-
-        return tx;
-      }
+      return tx;
     } catch (error) {
       console.error('Error executing Safe transaction:', error);
       throw new Error(`Failed to execute transaction: ${error}`);
