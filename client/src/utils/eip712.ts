@@ -129,7 +129,7 @@ export function createSafeTransactionTypedData(
       refundReceiver: normalizeAddress(txData.refundReceiver)
     };
 
-    return {
+    const typedData = {
       types: {
         EIP712Domain: [
           { name: 'chainId', type: 'uint256' },
@@ -152,6 +152,27 @@ export function createSafeTransactionTypedData(
       domain: normalizedDomain,
       message: normalizedTxData
     };
+
+    // Debug: Check if this might be causing mobile wallet issues
+    const isERC20 = normalizedTxData.data && normalizedTxData.data !== '0x' && normalizedTxData.data.startsWith('0xa9059cbb');
+
+    if (isERC20) {
+      console.log('🔍 EIP-712 TYPED DATA DEBUG (ERC20):');
+      console.log('  - Message data length:', normalizedTxData.data.length);
+      console.log('  - Types structure:', JSON.stringify(typedData.types, null, 2));
+      console.log('  - Domain:', JSON.stringify(typedData.domain, null, 2));
+      console.log('  - Message preview:', JSON.stringify({
+        ...normalizedTxData,
+        data: normalizedTxData.data.substring(0, 50) + '...'
+      }, null, 2));
+
+      // Check for potential mobile wallet compatibility issues
+      if (normalizedTxData.data.length > 200) {
+        console.log('⚠️  WARNING: Long data field may cause mobile wallet display issues');
+      }
+    }
+
+    return typedData;
   } catch (error: any) {
     console.error('❌ Error creating EIP-712 typed data:', error);
     throw new Error(`Failed to create EIP-712 typed data: ${error.message}`);
