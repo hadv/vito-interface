@@ -815,6 +815,21 @@ export class SafeWalletService {
       if (isWalletConnect) {
         console.log('🔗 Detected WalletConnect - using eth_sendTransaction method');
 
+        // Debug WalletConnect signer state
+        console.log('🔍 WalletConnect signer debug:', {
+          signerType: this.signer.constructor.name,
+          hasProvider: !!this.signer.provider,
+          address: await this.signer.getAddress()
+        });
+
+        // Check if WalletConnect session is active
+        const wcSigner = this.signer as any;
+        if (wcSigner.walletConnectService) {
+          const sessionTopic = wcSigner.walletConnectService.getSessionTopic();
+          console.log('🔍 WalletConnect session topic:', sessionTopic);
+          console.log('🔍 WalletConnect connected:', wcSigner.walletConnectService.isConnected());
+        }
+
         // For WalletConnect, we need to encode the transaction data and send it as a standard transaction
         const txData = this.safeContract.interface.encodeFunctionData('execTransaction', [
           safeTransaction.to,
@@ -828,6 +843,12 @@ export class SafeWalletService {
           safeTransaction.refundReceiver,
           combinedSignatures
         ]);
+
+        console.log('🔗 Sending WalletConnect transaction:', {
+          to: this.config!.safeAddress,
+          dataLength: txData.length,
+          value: '0x0'
+        });
 
         // Send as a standard transaction to the Safe contract
         const tx = await this.signer.sendTransaction({
