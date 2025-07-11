@@ -756,10 +756,39 @@ export class SafeWalletService {
     }
 
     try {
+      console.log('🔐 SAFE EXECUTION DEBUG:');
+      console.log('  - Safe Address:', this.config!.safeAddress);
+      console.log('  - Transaction Data:', safeTransaction);
+      console.log('  - Number of signatures:', signatures.length);
+
+      // Get current nonce for debugging
+      const currentNonce = await this.getNonce();
+      console.log('  - Current Safe nonce:', currentNonce);
+      console.log('  - Transaction nonce:', safeTransaction.nonce);
+
+      if (currentNonce !== safeTransaction.nonce) {
+        console.error('❌ NONCE MISMATCH DETECTED!');
+        console.error('  - Current nonce:', currentNonce);
+        console.error('  - Transaction nonce:', safeTransaction.nonce);
+        console.error('  - This will cause signature verification to fail!');
+      }
+
+      // Calculate the transaction hash that will be used for signature verification
+      const network = await this.provider!.getNetwork();
+      const domain: SafeDomain = {
+        chainId: network.chainId,
+        verifyingContract: this.config!.safeAddress
+      };
+
+      const expectedTxHash = await this.getEIP712TransactionHash(safeTransaction);
+      console.log('  - Expected transaction hash for signature verification:', expectedTxHash);
+
       // Combine signatures using EIP-712 utility (properly sorted)
       const combinedSignatures = combineSignatures(signatures);
+      console.log('  - Combined signatures length:', combinedSignatures.length);
 
       // Execute the transaction on the Safe contract
+      console.log('🚀 Executing Safe transaction...');
       const tx = await this.safeContract.execTransaction(
         safeTransaction.to,
         safeTransaction.value,
@@ -773,9 +802,29 @@ export class SafeWalletService {
         combinedSignatures
       );
 
+      console.log('✅ Safe transaction executed successfully');
+      console.log('  - Transaction hash:', tx.hash);
       return tx;
     } catch (error) {
-      console.error('Error executing Safe transaction:', error);
+      console.error('❌ Error executing Safe transaction:', error);
+
+      // Enhanced error analysis
+      if (error instanceof Error) {
+        if (error.message.includes('0x3b22f8f9')) {
+          console.error('❌ SIGNATURE VERIFICATION FAILED (0x3b22f8f9)');
+          console.error('  - This means the Safe contract could not verify the signatures');
+          console.error('  - Possible causes:');
+          console.error('    1. Nonce mismatch between signing and execution');
+          console.error('    2. Transaction data mismatch between signing and execution');
+          console.error('    3. Incorrect signature format or v value adjustment');
+          console.error('    4. Signatures not properly sorted by signer address');
+        } else if (error.message.includes('GS013')) {
+          console.error('❌ INTERNAL TRANSACTION FAILED (GS013)');
+          console.error('  - The Safe transaction executed but the internal call failed');
+          console.error('  - This is different from signature verification failure');
+        }
+      }
+
       throw new Error(`Failed to execute transaction: ${error}`);
     }
   }
