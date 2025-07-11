@@ -787,8 +787,13 @@ export class SafeWalletService {
       const combinedSignatures = combineSignatures(signatures);
       console.log('  - Combined signatures length:', combinedSignatures.length);
 
-      // Execute the transaction on the Safe contract
+      // Execute the transaction on the Safe contract with explicit gas limit
       console.log('🚀 Executing Safe transaction...');
+
+      // Provide explicit gas limit to avoid estimation issues
+      // Safe transactions typically need more gas than estimated due to signature verification
+      const gasLimit = 500000; // Conservative gas limit for Safe transactions
+
       const tx = await this.safeContract.execTransaction(
         safeTransaction.to,
         safeTransaction.value,
@@ -799,7 +804,8 @@ export class SafeWalletService {
         safeTransaction.gasPrice,
         safeTransaction.gasToken,
         safeTransaction.refundReceiver,
-        combinedSignatures
+        combinedSignatures,
+        { gasLimit } // Explicit gas limit to avoid estimation failure
       );
 
       console.log('✅ Safe transaction executed successfully');

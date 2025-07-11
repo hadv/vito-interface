@@ -367,14 +367,14 @@ export function combineSignatures(signatures: Array<{ signature: string; signer:
       // Some mobile wallets return v values that need adjustment for Safe contract compatibility
 
       if (v === 27 || v === 28) {
-        // Standard ECDSA v values - these should work with Safe contract
-        console.log('  - Standard ECDSA v value, keeping as-is for EIP-712 signature');
+        // Standard ECDSA v values - keep as-is for EIP-712 signatures
+        console.log('  - Standard ECDSA v value, keeping original for EIP-712 signature');
       } else if (v === 0 || v === 1) {
         // These are special Safe signature types
         console.log('  - Special Safe signature type detected');
       } else if (v > 30) {
         // This triggers eth_sign flow in Safe contract
-        console.log('  - WARNING: v > 30 will trigger eth_sign flow in Safe contract');
+        console.log('  - v > 30 detected - this will trigger eth_sign flow in Safe contract');
       } else {
         // Unexpected v value
         console.log('  - WARNING: Unexpected v value:', v);
