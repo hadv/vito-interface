@@ -806,21 +806,56 @@ export class SafeWalletService {
       // Combine signatures using EIP-712 utility (properly sorted)
       const combinedSignatures = combineSignatures(signatures);
 
-      // Execute the transaction on the Safe contract
-      const tx = await this.safeContract.execTransaction(
-        safeTransaction.to,
-        safeTransaction.value,
-        safeTransaction.data,
-        safeTransaction.operation,
-        safeTransaction.safeTxGas,
-        safeTransaction.baseGas,
-        safeTransaction.gasPrice,
-        safeTransaction.gasToken,
-        safeTransaction.refundReceiver,
-        combinedSignatures
-      );
+      // Check if we're using WalletConnect by checking the signer type
+      const isWalletConnect = this.signer.constructor.name.includes('WalletConnect') ||
+        (this.signer as any).isWalletConnect ||
+        (this.signer.provider as any).isWalletConnect ||
+        (this.signer.provider as any)._walletConnectService;
 
-      return tx;
+      if (isWalletConnect) {
+        console.log('🔗 Detected WalletConnect - using eth_sendTransaction method');
+
+        // For WalletConnect, we need to encode the transaction data and send it as a standard transaction
+        const txData = this.safeContract.interface.encodeFunctionData('execTransaction', [
+          safeTransaction.to,
+          safeTransaction.value,
+          safeTransaction.data,
+          safeTransaction.operation,
+          safeTransaction.safeTxGas,
+          safeTransaction.baseGas,
+          safeTransaction.gasPrice,
+          safeTransaction.gasToken,
+          safeTransaction.refundReceiver,
+          combinedSignatures
+        ]);
+
+        // Send as a standard transaction to the Safe contract
+        const tx = await this.signer.sendTransaction({
+          to: this.config!.safeAddress,
+          data: txData,
+          value: '0x0'
+        });
+
+        return tx;
+      } else {
+        console.log('🔐 Using direct contract method call');
+
+        // Execute the transaction on the Safe contract directly
+        const tx = await this.safeContract.execTransaction(
+          safeTransaction.to,
+          safeTransaction.value,
+          safeTransaction.data,
+          safeTransaction.operation,
+          safeTransaction.safeTxGas,
+          safeTransaction.baseGas,
+          safeTransaction.gasPrice,
+          safeTransaction.gasToken,
+          safeTransaction.refundReceiver,
+          combinedSignatures
+        );
+
+        return tx;
+      }
     } catch (error) {
       console.error('Error executing Safe transaction:', error);
       throw new Error(`Failed to execute transaction: ${error}`);
