@@ -219,13 +219,6 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   const toast = useToast();
   const { connectionState } = useWalletConnection();
 
-  // Load pending transactions when modal opens and signing flow is selected
-  useEffect(() => {
-    if (isOpen && selectedFlow === 'sign') {
-      loadPendingTransactions();
-    }
-  }, [isOpen, selectedFlow, loadPendingTransactions]);
-
   const loadPendingTransactions = useCallback(async () => {
     if (!connectionState.signerConnected || !fromAddress) return;
 
@@ -262,6 +255,13 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       setIsLoadingPending(false);
     }
   }, [connectionState.signerConnected, connectionState.network, fromAddress, toast]);
+
+  // Load pending transactions when modal opens and signing flow is selected
+  useEffect(() => {
+    if (isOpen && selectedFlow === 'sign') {
+      loadPendingTransactions();
+    }
+  }, [isOpen, selectedFlow, loadPendingTransactions]);
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {

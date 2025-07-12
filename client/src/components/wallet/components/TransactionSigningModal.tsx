@@ -8,7 +8,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import Button from '../../ui/Button';
 import { useToast } from '../../../hooks/useToast';
-import { useWalletConnection } from '../../../hooks/useWalletConnection';
 import { SafeWalletService } from '../../../services/SafeWalletService';
 import { SafeTxPoolTransaction } from '../../../services/SafeTxPoolService';
 import { walletConnectionService } from '../../../services/WalletConnectionService';
@@ -250,13 +249,6 @@ const TransactionSigningModal: React.FC<TransactionSigningModalProps> = ({
   
   const toast = useToast();
 
-  // Initialize component state
-  useEffect(() => {
-    if (isOpen && transaction) {
-      initializeSigningModal();
-    }
-  }, [isOpen, transaction, initializeSigningModal]);
-
   const initializeSigningModal = useCallback(async () => {
     try {
       const signer = walletConnectionService.getSigner();
@@ -287,6 +279,13 @@ const TransactionSigningModal: React.FC<TransactionSigningModalProps> = ({
       setError('Failed to initialize signing interface');
     }
   }, [transaction]);
+
+  // Initialize component state
+  useEffect(() => {
+    if (isOpen && transaction) {
+      initializeSigningModal();
+    }
+  }, [isOpen, transaction, initializeSigningModal]);
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
