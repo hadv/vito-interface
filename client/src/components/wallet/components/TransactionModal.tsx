@@ -44,75 +44,79 @@ const ModalHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px 32px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  margin-bottom: 24px;
 `;
 
 const ModalTitle = styled.h2`
-  color: #f8fafc;
-  font-size: 1.5rem;
-  font-weight: 600;
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 700;
   margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
 `;
 
 const CloseButton = styled.button`
   background: none;
   border: none;
-  color: #94a3b8;
-  font-size: 1.5rem;
+  color: #CBD5E1;
+  font-size: 32px;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
+  padding: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  transition: all 0.3s ease;
 
   &:hover {
-    color: #f8fafc;
-    background-color: rgba(148, 163, 184, 0.1);
+    background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+    color: #fff;
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(255, 107, 107, 0.4);
   }
-`;
-
-const ModalContent = styled.div`
-  padding: 32px;
 `;
 
 const FlowSelector = styled.div`
   display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 24px;
+  margin-bottom: 32px;
 `;
 
 const FlowOption = styled.div<{ selected: boolean }>`
   flex: 1;
-  padding: 20px;
-  border: 2px solid ${props => props.selected ? '#3b82f6' : 'rgba(148, 163, 184, 0.2)'};
-  border-radius: 12px;
-  background: ${props => props.selected ? 'rgba(59, 130, 246, 0.1)' : 'rgba(148, 163, 184, 0.05)'};
+  padding: 24px;
+  border: 2px solid ${props => props.selected ? '#4ECDC4' : 'rgba(78, 205, 196, 0.3)'};
+  border-radius: 16px;
+  background: ${props => props.selected ? 'rgba(78, 205, 196, 0.1)' : 'rgba(255, 255, 255, 0.05)'};
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  box-shadow: ${props => props.selected ? '0 8px 32px rgba(78, 205, 196, 0.3)' : '0 4px 16px rgba(0, 0, 0, 0.2)'};
 
   &:hover {
-    border-color: #3b82f6;
-    background: rgba(59, 130, 246, 0.1);
+    border-color: #4ECDC4;
+    background: rgba(78, 205, 196, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(78, 205, 196, 0.4);
   }
 `;
 
 const FlowTitle = styled.h3`
-  color: #f8fafc;
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0 0 8px 0;
+  color: #4ECDC4;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 12px 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  text-shadow: 0 0 10px rgba(78, 205, 196, 0.3);
 `;
 
 const FlowDescription = styled.p`
-  color: #cbd5e1;
-  font-size: 0.875rem;
-  line-height: 1.4;
+  color: #CBD5E1;
+  font-size: 14px;
+  line-height: 1.6;
   margin: 0;
 `;
 
@@ -320,78 +324,77 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         <ModalContainer>
           <ModalHeader>
             <ModalTitle>
-              🔄 Transaction Flow
+              Transaction Manager
             </ModalTitle>
             <CloseButton onClick={onClose}>&times;</CloseButton>
           </ModalHeader>
 
-          <ModalContent>
-            <FlowSelector>
-              <FlowOption
-                selected={selectedFlow === 'propose'}
-                onClick={() => handleFlowSelection('propose')}
-              >
-                <FlowTitle>
-                  📝 Propose Transaction
-                </FlowTitle>
-                <FlowDescription>
-                  Create a new transaction proposal without requiring signatures.
-                  The transaction will be added to the pending queue for later signing.
-                </FlowDescription>
-              </FlowOption>
+          <FlowSelector>
+            <FlowOption
+              selected={selectedFlow === 'propose'}
+              onClick={() => handleFlowSelection('propose')}
+            >
+              <FlowTitle>
+                📝 Create Transaction
+              </FlowTitle>
+              <FlowDescription>
+                Create a new transaction proposal with full details and preview.
+                The transaction will be added to the pending queue for later signing by Safe owners.
+              </FlowDescription>
+            </FlowOption>
 
-              <FlowOption
-                selected={selectedFlow === 'sign'}
-                onClick={() => setSelectedFlow('sign')}
-              >
-                <FlowTitle>
-                  🔐 Sign Transaction
-                </FlowTitle>
-                <FlowDescription>
-                  Sign pending transactions that have been proposed by you or other Safe owners.
-                </FlowDescription>
-              </FlowOption>
-            </FlowSelector>
+            <FlowOption
+              selected={selectedFlow === 'sign'}
+              onClick={() => setSelectedFlow('sign')}
+            >
+              <FlowTitle>
+                🔐 Sign Pending Transactions
+              </FlowTitle>
+              <FlowDescription>
+                Review and sign pending transactions that have been proposed by you or other Safe owners.
+                View transaction details and add your signature using EIP-712.
+              </FlowDescription>
+            </FlowOption>
+          </FlowSelector>
 
-            {selectedFlow === 'sign' && (
-              <>
-                {isLoadingPending ? (
-                  <EmptyState>
-                    <EmptyStateIcon>⏳</EmptyStateIcon>
-                    <EmptyStateText>Loading pending transactions...</EmptyStateText>
-                  </EmptyState>
-                ) : pendingTransactions.length === 0 ? (
-                  <EmptyState>
-                    <EmptyStateIcon>📭</EmptyStateIcon>
-                    <EmptyStateText>No pending transactions found</EmptyStateText>
-                  </EmptyState>
-                ) : (
-                  <PendingTransactionsList>
-                    {pendingTransactions.map((tx) => (
-                      <PendingTransactionItem
-                        key={tx.txHash}
-                        onClick={() => handleTransactionSelected(tx)}
-                      >
-                        <TransactionSummary>
-                          <TransactionTo>To: {formatAddress(tx.to)}</TransactionTo>
-                          <TransactionValue>{formatValue(tx.value)}</TransactionValue>
-                        </TransactionSummary>
-                        <TransactionHash>
-                          Hash: {formatAddress(tx.txHash)}
-                        </TransactionHash>
-                      </PendingTransactionItem>
-                    ))}
-                  </PendingTransactionsList>
-                )}
+          {selectedFlow === 'sign' && (
+            <div style={{ padding: '0 32px 32px 32px' }}>
+              {isLoadingPending ? (
+                <EmptyState>
+                  <EmptyStateIcon>⏳</EmptyStateIcon>
+                  <EmptyStateText>Loading pending transactions...</EmptyStateText>
+                </EmptyState>
+              ) : pendingTransactions.length === 0 ? (
+                <EmptyState>
+                  <EmptyStateIcon>📭</EmptyStateIcon>
+                  <EmptyStateText>No pending transactions found</EmptyStateText>
+                </EmptyState>
+              ) : (
+                <PendingTransactionsList>
+                  {pendingTransactions.map((tx) => (
+                    <PendingTransactionItem
+                      key={tx.txHash}
+                      onClick={() => handleTransactionSelected(tx)}
+                    >
+                      <TransactionSummary>
+                        <TransactionTo>To: {formatAddress(tx.to)}</TransactionTo>
+                        <TransactionValue>{formatValue(tx.value)}</TransactionValue>
+                      </TransactionSummary>
+                      <TransactionHash>
+                        Hash: {formatAddress(tx.txHash)}
+                      </TransactionHash>
+                    </PendingTransactionItem>
+                  ))}
+                </PendingTransactionsList>
+              )}
 
-                <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end' }}>
-                  <Button variant="secondary" onClick={loadPendingTransactions} disabled={isLoadingPending}>
-                    🔄 Refresh
-                  </Button>
-                </div>
-              </>
-            )}
-          </ModalContent>
+              <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end' }}>
+                <Button variant="secondary" onClick={loadPendingTransactions} disabled={isLoadingPending}>
+                  🔄 Refresh
+                </Button>
+              </div>
+            </div>
+          )}
         </ModalContainer>
       </ModalOverlay>
 
