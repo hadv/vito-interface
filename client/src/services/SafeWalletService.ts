@@ -796,90 +796,25 @@ export class SafeWalletService {
       console.log('🚀 EXECUTING SAFE TRANSACTION');
       console.log('📱 Mobile wallet execution - ensuring proper gas estimation');
 
-      // Check if we're dealing with WalletConnect or mobile wallet
-      const isMobileWallet = await this.detectMobileWallet();
-      const isWalletConnect = this.isWalletConnect();
-      const isUniswapWallet = this.isUniswapWallet();
+      // SIMPLE APPROACH: Just try to execute the transaction normally first
+      // If it fails, we'll add specific handling
 
-      // MANUAL OVERRIDE: Force WalletConnect execution if we're clearly in a mobile environment
-      const isMobileEnvironment = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-        navigator.userAgent.includes('Mobile') ||
-        window.innerWidth < 768;
-
-      // Force WalletConnect execution if we detect any mobile/WalletConnect indicators OR mobile environment
-      const shouldUseWalletConnect = isWalletConnect || isUniswapWallet || isMobileWallet || isMobileEnvironment;
-
-      console.log('📱 Wallet type detected:', {
-        isMobileWallet,
-        isWalletConnect,
-        isUniswapWallet,
-        isMobileEnvironment,
-        shouldUseWalletConnect
+      console.log('🚀 EXECUTING SAFE TRANSACTION - Simple approach');
+      console.log('📱 User agent:', navigator.userAgent);
+      const provider = this.signer?.provider as any;
+      console.log('🔍 Provider info:', {
+        constructorName: provider?.constructor?.name,
+        hasRequest: typeof provider?.request === 'function',
+        hasSend: typeof provider?.send === 'function'
       });
 
-      console.log('🚨 MANUAL OVERRIDE: If shouldUseWalletConnect is true, using WalletConnect execution path');
+      // Try standard execution first - this worked before
+      console.log('🚀 Attempting standard Safe contract execution...');
 
       let tx: ethers.ContractTransaction;
 
-      if (shouldUseWalletConnect) {
-        console.log('🔗 WALLETCONNECT: Using WalletConnect-specific execution method');
-        tx = await this.executeTransactionViaWalletConnect(
-          safeTransaction,
-          combinedSignatures
-        );
-      } else {
-        // Standard execution for browser extensions and other wallets
-        console.log('🌐 STANDARD: Using standard contract execution');
-
-        // Prepare transaction options with proper gas estimation for mobile wallets
-        let txOptions: any = {};
-
-        if (isMobileWallet) {
-          console.log('📱 MOBILE WALLET: Adding explicit gas estimation');
-
-          try {
-            // Estimate gas for mobile wallets
-            const gasEstimate = await this.safeContract.estimateGas.execTransaction(
-              safeTransaction.to,
-              safeTransaction.value,
-              safeTransaction.data,
-              safeTransaction.operation,
-              safeTransaction.safeTxGas,
-              safeTransaction.baseGas,
-              safeTransaction.gasPrice,
-              safeTransaction.gasToken,
-              safeTransaction.refundReceiver,
-              combinedSignatures
-            );
-
-            // Add 20% buffer for mobile wallets (they're more sensitive to gas issues)
-            const gasLimit = gasEstimate.mul(120).div(100);
-
-            // Get current gas price
-            const gasPrice = await this.provider!.getGasPrice();
-
-            txOptions = {
-              gasLimit,
-              gasPrice: gasPrice.mul(110).div(100) // 10% higher gas price for mobile
-            };
-
-            console.log('📱 MOBILE WALLET: Gas estimation completed', {
-              gasEstimate: gasEstimate.toString(),
-              gasLimit: gasLimit.toString(),
-              gasPrice: gasPrice.toString()
-            });
-          } catch (gasError) {
-            console.warn('📱 MOBILE WALLET: Gas estimation failed, using defaults:', gasError);
-            // Fallback to higher default gas for mobile wallets
-            txOptions = {
-              gasLimit: 500000, // Higher default for mobile
-              gasPrice: await this.provider!.getGasPrice()
-            };
-          }
-        }
-
-        // Execute the transaction on the Safe contract
-        console.log('🚀 Executing Safe transaction with options:', txOptions);
+      try {
+        // Standard execution - just like it worked before
         tx = await this.safeContract.execTransaction(
           safeTransaction.to,
           safeTransaction.value,
@@ -890,9 +825,52 @@ export class SafeWalletService {
           safeTransaction.gasPrice,
           safeTransaction.gasToken,
           safeTransaction.refundReceiver,
-          combinedSignatures,
-          txOptions
+          combinedSignatures
         );
+
+        console.log('✅ Standard execution successful:', tx.hash);
+      } catch (standardError) {
+        console.warn('❌ Standard execution failed, trying alternative approach:', standardError);
+
+        // If standard execution fails, try with explicit gas estimation
+        try {
+          console.log('🔄 Trying with gas estimation...');
+
+          const gasEstimate = await this.safeContract.estimateGas.execTransaction(
+            safeTransaction.to,
+            safeTransaction.value,
+            safeTransaction.data,
+            safeTransaction.operation,
+            safeTransaction.safeTxGas,
+            safeTransaction.baseGas,
+            safeTransaction.gasPrice,
+            safeTransaction.gasToken,
+            safeTransaction.refundReceiver,
+            combinedSignatures
+          );
+
+          const gasLimit = gasEstimate.mul(150).div(100); // 50% buffer
+          const gasPrice = await this.provider!.getGasPrice();
+
+          tx = await this.safeContract.execTransaction(
+            safeTransaction.to,
+            safeTransaction.value,
+            safeTransaction.data,
+            safeTransaction.operation,
+            safeTransaction.safeTxGas,
+            safeTransaction.baseGas,
+            safeTransaction.gasPrice,
+            safeTransaction.gasToken,
+            safeTransaction.refundReceiver,
+            combinedSignatures,
+            { gasLimit, gasPrice }
+          );
+
+          console.log('✅ Gas estimation execution successful:', tx.hash);
+        } catch (gasError) {
+          console.error('❌ Both execution methods failed:', gasError);
+          throw gasError;
+        }
       }
 
       console.log('✅ Safe transaction executed successfully:', tx.hash);
@@ -914,110 +892,128 @@ export class SafeWalletService {
   }
 
   /**
-   * Detect if we're dealing with a mobile wallet or WalletConnect
+   * Detect if we're in a mobile environment (device/browser)
    */
-  private async detectMobileWallet(): Promise<boolean> {
+  private isMobileEnvironment(): boolean {
     try {
-      // Check if we're in a mobile environment
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const userAgent = navigator.userAgent;
+      const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+      const isMobileScreen = window.innerWidth < 768;
+      const hasTouchScreen = 'ontouchstart' in window;
 
-      // Check if the signer is from a mobile wallet or WalletConnect
-      const provider = this.signer!.provider as any;
+      const result = isMobileUA || isMobileScreen || hasTouchScreen;
 
-      // Enhanced WalletConnect detection
-      const isWalletConnect = provider && (
-        provider.isWalletConnect ||
-        provider.connector ||
-        provider.session ||
-        (provider.constructor && provider.constructor.name?.includes('WalletConnect')) ||
-        (provider._events && provider._events['connect']) // WalletConnect event pattern
-      );
-
-      // Enhanced Uniswap Wallet detection
-      const isUniswapWallet = provider && (
-        provider.isUniswap ||
-        provider.isUniswapWallet ||
-        (provider.session && provider.session.peer &&
-         provider.session.peer.metadata &&
-         provider.session.peer.metadata.name?.toLowerCase().includes('uniswap')) ||
-        (provider.connector && provider.connector.session &&
-         provider.connector.session.peer &&
-         provider.connector.session.peer.metadata &&
-         provider.connector.session.peer.metadata.name?.toLowerCase().includes('uniswap'))
-      );
-
-      const isMobileProvider = provider && (
-        (provider.isMetaMask && isMobile) ||
-        isWalletConnect ||
-        isUniswapWallet ||
-        (provider.isCoinbaseWallet && isMobile) ||
-        provider.isTrust ||
-        provider.isImToken
-      );
-
-      // AGGRESSIVE DEBUGGING - Let's see EVERYTHING about this provider
-      console.log('🔍 FULL PROVIDER INSPECTION:');
-      console.log('Provider object:', provider);
-      console.log('Provider keys:', provider ? Object.keys(provider) : 'null');
-      console.log('Provider constructor:', provider?.constructor);
-      console.log('Provider constructor name:', provider?.constructor?.name);
-      console.log('Provider prototype:', Object.getPrototypeOf(provider));
-
-      // Check all possible WalletConnect indicators
-      console.log('🔗 WalletConnect indicators:');
-      console.log('- provider.isWalletConnect:', provider?.isWalletConnect);
-      console.log('- provider.connector:', provider?.connector);
-      console.log('- provider.session:', provider?.session);
-      console.log('- provider._events:', provider?._events);
-      console.log('- provider.request:', typeof provider?.request);
-      console.log('- provider.enable:', typeof provider?.enable);
-      console.log('- provider.send:', typeof provider?.send);
-      console.log('- provider.sendAsync:', typeof provider?.sendAsync);
-
-      // Check all possible Uniswap indicators
-      console.log('🦄 Uniswap indicators:');
-      console.log('- provider.isUniswap:', provider?.isUniswap);
-      console.log('- provider.isUniswapWallet:', provider?.isUniswapWallet);
-      console.log('- window.uniswap:', typeof window !== 'undefined' ? (window as any).uniswap : 'undefined');
-      console.log('- window.ethereum:', typeof window !== 'undefined' ? (window as any).ethereum : 'undefined');
-
-      // Check if this is actually a different type of provider
-      console.log('🔍 Other provider types:');
-      console.log('- provider.isMetaMask:', provider?.isMetaMask);
-      console.log('- provider.isCoinbaseWallet:', provider?.isCoinbaseWallet);
-      console.log('- provider.isTrust:', provider?.isTrust);
-      console.log('- provider.isImToken:', provider?.isImToken);
-
-      console.log('🔍 Enhanced wallet detection:', {
-        isMobile,
-        isWalletConnect,
-        isUniswapWallet,
-        isMobileProvider,
-        providerType: provider?.constructor?.name,
-        hasConnector: !!provider?.connector,
-        hasSession: !!provider?.session,
-        sessionPeerName: provider?.session?.peer?.metadata?.name || provider?.connector?.session?.peer?.metadata?.name
+      console.log('📱 Mobile environment detection:', {
+        userAgent: userAgent.substring(0, 100) + '...',
+        isMobileUA,
+        isMobileScreen,
+        hasTouchScreen,
+        screenWidth: window.innerWidth,
+        result
       });
-
-      // EMERGENCY FALLBACK: If we're clearly in a mobile environment, force mobile wallet handling
-      const emergencyMobileDetection = isMobile ||
-        navigator.userAgent.includes('Mobile') ||
-        navigator.userAgent.includes('Android') ||
-        navigator.userAgent.includes('iPhone') ||
-        window.innerWidth < 768; // Mobile screen size
-
-      console.log('🚨 EMERGENCY MOBILE DETECTION:', emergencyMobileDetection);
-
-      // Return true if any mobile/WalletConnect indicators are found
-      const result = isMobile || !!isMobileProvider || !!isWalletConnect || !!isUniswapWallet || emergencyMobileDetection;
-
-      console.log('🎯 FINAL MOBILE WALLET DETECTION RESULT:', result);
 
       return result;
     } catch (error) {
-      console.warn('Could not detect mobile wallet, assuming desktop:', error);
+      console.warn('Mobile environment detection error:', error);
       return false;
     }
+  }
+
+  /**
+   * Detect if we're dealing with a browser extension wallet
+   */
+  private isBrowserExtension(): boolean {
+    try {
+      const provider = this.signer?.provider as any;
+
+      // Browser extensions typically inject directly into window.ethereum
+      const isInjectedExtension = provider && (
+        provider.isMetaMask && !this.isMobileEnvironment() ||
+        provider.isCoinbaseWallet && !this.isMobileEnvironment() ||
+        provider.isRabby ||
+        provider.isBraveWallet ||
+        provider.isFrame
+      );
+
+      console.log('🌐 Browser extension detection:', {
+        isInjectedExtension,
+        isMetaMask: provider?.isMetaMask,
+        isCoinbaseWallet: provider?.isCoinbaseWallet,
+        isRabby: provider?.isRabby,
+        isBraveWallet: provider?.isBraveWallet,
+        isFrame: provider?.isFrame,
+        isMobileEnv: this.isMobileEnvironment()
+      });
+
+      return !!isInjectedExtension;
+    } catch (error) {
+      console.warn('Browser extension detection error:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Detect if we're dealing with a mobile wallet app (via WalletConnect or direct)
+   */
+  private isMobileWallet(): boolean {
+    try {
+      const provider = this.signer?.provider as any;
+
+      // Mobile wallets connecting via WalletConnect or mobile-specific indicators
+      const isMobileWalletApp = provider && (
+        // Uniswap Wallet indicators
+        provider.isUniswap ||
+        provider.isUniswapWallet ||
+        // Trust Wallet indicators
+        provider.isTrust ||
+        // Other mobile wallet indicators
+        provider.isImToken ||
+        // Mobile MetaMask (when connected via WalletConnect)
+        (provider.isMetaMask && this.isMobileEnvironment()) ||
+        // Mobile Coinbase Wallet (when connected via WalletConnect)
+        (provider.isCoinbaseWallet && this.isMobileEnvironment()) ||
+        // Session metadata indicates mobile wallet
+        (provider.session?.peer?.metadata?.name?.toLowerCase().includes('uniswap')) ||
+        (provider.session?.peer?.metadata?.name?.toLowerCase().includes('trust')) ||
+        (provider.connector?.session?.peer?.metadata?.name?.toLowerCase().includes('uniswap')) ||
+        (provider.connector?.session?.peer?.metadata?.name?.toLowerCase().includes('trust'))
+      );
+
+      console.log('📱 Mobile wallet detection:', {
+        isMobileWalletApp,
+        isUniswap: provider?.isUniswap,
+        isUniswapWallet: provider?.isUniswapWallet,
+        isTrust: provider?.isTrust,
+        sessionPeerName: provider?.session?.peer?.metadata?.name,
+        connectorSessionPeerName: provider?.connector?.session?.peer?.metadata?.name
+      });
+
+      return !!isMobileWalletApp;
+    } catch (error) {
+      console.warn('Mobile wallet detection error:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Legacy method - now calls the specific detection methods
+   */
+  private async detectMobileWallet(): Promise<boolean> {
+    // Use the new specific detection methods
+    const isMobileEnv = this.isMobileEnvironment();
+    const isMobileWallet = this.isMobileWallet();
+    const isWalletConnect = this.isWalletConnect();
+
+    const result = isMobileEnv || isMobileWallet || isWalletConnect;
+
+    console.log('🔍 Legacy detectMobileWallet result:', {
+      isMobileEnv,
+      isMobileWallet,
+      isWalletConnect,
+      result
+    });
+
+    return result;
   }
 
   /**
@@ -1094,17 +1090,25 @@ export class SafeWalletService {
 
   /**
    * Execute Safe transaction via WalletConnect using eth_sendTransaction
-   * This is required for wallets like Uniswap Wallet that connect via WalletConnect
+   * This is required for mobile wallets that connect via WalletConnect protocol
+   * (Uniswap Wallet, Trust Wallet, MetaMask Mobile, etc.)
    */
   private async executeTransactionViaWalletConnect(
     safeTransaction: SafeTransactionData,
     combinedSignatures: string
   ): Promise<ethers.ContractTransaction> {
-    console.log('🔗 WALLETCONNECT: Preparing transaction for WalletConnect execution');
+    console.log('🔗 WALLETCONNECT EXECUTION: Preparing transaction for mobile wallet via WalletConnect');
 
-    // Check if this is specifically Uniswap Wallet
-    const isUniswapWallet = this.isUniswapWallet();
-    console.log('🦄 UNISWAP WALLET detected:', isUniswapWallet);
+    // Identify the specific mobile wallet type
+    const isMobileWallet = this.isMobileWallet();
+    const isWalletConnect = this.isWalletConnect();
+    const isMobileEnv = this.isMobileEnvironment();
+
+    console.log('📱 Mobile wallet execution context:', {
+      isMobileWallet,
+      isWalletConnect,
+      isMobileEnv
+    });
 
     try {
       // Encode the execTransaction call data
@@ -1181,7 +1185,7 @@ export class SafeWalletService {
 
             // Strategy 4: Uniswap Wallet optimized defaults
             console.log('🔗 Strategy 4: Uniswap Wallet optimized defaults...');
-            if (isUniswapWallet) {
+            if (this.isUniswapWallet()) {
               gasLimit = ethers.BigNumber.from('1200000'); // 1.2M gas specifically for Uniswap Wallet
               console.log('🦄 UNISWAP WALLET: Using optimized gas limit:', gasLimit.toString());
             } else {
@@ -1225,9 +1229,9 @@ export class SafeWalletService {
         dataLength: txData.length
       });
 
-      // For Uniswap Wallet, try multiple approaches to enable the accept button
-      if (isUniswapWallet) {
-        console.log('🦄 UNISWAP WALLET: Trying multiple transaction formats for compatibility...');
+      // For mobile wallets, try multiple approaches to enable the accept button
+      if (isMobileWallet || isMobileEnv) {
+        console.log('📱 MOBILE WALLET: Trying multiple transaction formats for compatibility...');
 
         // Approach 1: Minimal transaction (let wallet handle everything)
         try {
