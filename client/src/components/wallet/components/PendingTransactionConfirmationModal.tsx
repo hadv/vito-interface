@@ -425,6 +425,14 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
   const handleExecute = async () => {
     if (!currentUserAddress || !isFullySigned) return;
 
+    console.log('🚀 EXECUTE BUTTON CLICKED - Starting transaction execution...');
+    console.log('📱 User agent:', navigator.userAgent);
+    console.log('🔗 Wallet info:', {
+      currentUserAddress,
+      isFullySigned,
+      signaturesCount: transaction.signatures.length
+    });
+
     setIsLoading(true);
     try {
       // Get the signer from wallet connection service (supports both MetaMask and WalletConnect)

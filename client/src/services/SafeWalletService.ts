@@ -799,11 +799,21 @@ export class SafeWalletService {
       // Check if we're dealing with WalletConnect or mobile wallet
       const isMobileWallet = await this.detectMobileWallet();
       const isWalletConnect = this.isWalletConnect();
-      console.log('📱 Wallet type detected:', { isMobileWallet, isWalletConnect });
+      const isUniswapWallet = this.isUniswapWallet();
+
+      // Force WalletConnect execution if we detect any mobile/WalletConnect indicators
+      const shouldUseWalletConnect = isWalletConnect || isUniswapWallet || isMobileWallet;
+
+      console.log('📱 Wallet type detected:', {
+        isMobileWallet,
+        isWalletConnect,
+        isUniswapWallet,
+        shouldUseWalletConnect
+      });
 
       let tx: ethers.ContractTransaction;
 
-      if (isWalletConnect) {
+      if (shouldUseWalletConnect) {
         console.log('🔗 WALLETCONNECT: Using WalletConnect-specific execution method');
         tx = await this.executeTransactionViaWalletConnect(
           safeTransaction,
@@ -905,24 +915,51 @@ export class SafeWalletService {
 
       // Check if the signer is from a mobile wallet or WalletConnect
       const provider = this.signer!.provider as any;
-      const isWalletConnect = provider && provider.isWalletConnect;
-      const isMobileProvider = provider && (
-        (provider.isMetaMask && isMobile) ||
+
+      // Enhanced WalletConnect detection
+      const isWalletConnect = provider && (
         provider.isWalletConnect ||
-        (provider.isCoinbaseWallet && isMobile) ||
-        provider.isTrust ||
-        provider.isImToken ||
-        provider.isUniswap // Uniswap Wallet
+        provider.connector ||
+        provider.session ||
+        (provider.constructor && provider.constructor.name?.includes('WalletConnect')) ||
+        (provider._events && provider._events['connect']) // WalletConnect event pattern
       );
 
-      console.log('🔍 Wallet detection:', {
+      // Enhanced Uniswap Wallet detection
+      const isUniswapWallet = provider && (
+        provider.isUniswap ||
+        provider.isUniswapWallet ||
+        (provider.session && provider.session.peer &&
+         provider.session.peer.metadata &&
+         provider.session.peer.metadata.name?.toLowerCase().includes('uniswap')) ||
+        (provider.connector && provider.connector.session &&
+         provider.connector.session.peer &&
+         provider.connector.session.peer.metadata &&
+         provider.connector.session.peer.metadata.name?.toLowerCase().includes('uniswap'))
+      );
+
+      const isMobileProvider = provider && (
+        (provider.isMetaMask && isMobile) ||
+        isWalletConnect ||
+        isUniswapWallet ||
+        (provider.isCoinbaseWallet && isMobile) ||
+        provider.isTrust ||
+        provider.isImToken
+      );
+
+      console.log('🔍 Enhanced wallet detection:', {
         isMobile,
         isWalletConnect,
+        isUniswapWallet,
         isMobileProvider,
-        providerType: provider?.constructor?.name
+        providerType: provider?.constructor?.name,
+        hasConnector: !!provider?.connector,
+        hasSession: !!provider?.session,
+        sessionPeerName: provider?.session?.peer?.metadata?.name || provider?.connector?.session?.peer?.metadata?.name
       });
 
-      return isMobile || !!isMobileProvider || !!isWalletConnect;
+      // Return true if any mobile/WalletConnect indicators are found
+      return isMobile || !!isMobileProvider || !!isWalletConnect || !!isUniswapWallet;
     } catch (error) {
       console.warn('Could not detect mobile wallet, assuming desktop:', error);
       return false;
@@ -935,8 +972,27 @@ export class SafeWalletService {
   private isWalletConnect(): boolean {
     try {
       const provider = this.signer?.provider as any;
-      return !!(provider && provider.isWalletConnect);
+
+      // Multiple ways to detect WalletConnect
+      const isWC = provider && (
+        provider.isWalletConnect ||
+        provider.connector ||
+        provider.session ||
+        (provider.constructor && provider.constructor.name?.includes('WalletConnect')) ||
+        (provider._events && provider._events['connect']) ||
+        (provider.request && provider.connector) // WalletConnect v2 pattern
+      );
+
+      console.log('🔗 WalletConnect detection result:', {
+        isWalletConnect: !!isWC,
+        hasConnector: !!provider?.connector,
+        hasSession: !!provider?.session,
+        constructorName: provider?.constructor?.name
+      });
+
+      return !!isWC;
     } catch (error) {
+      console.warn('WalletConnect detection error:', error);
       return false;
     }
   }
@@ -948,17 +1004,36 @@ export class SafeWalletService {
     try {
       const provider = this.signer?.provider as any;
 
-      // Check for Uniswap Wallet specific properties
+      // Multiple ways to detect Uniswap Wallet
       const isUniswap = provider && (
         provider.isUniswap ||
         provider.isUniswapWallet ||
+        // Check session metadata (WalletConnect)
         (provider.session && provider.session.peer &&
          provider.session.peer.metadata &&
-         provider.session.peer.metadata.name?.toLowerCase().includes('uniswap'))
+         provider.session.peer.metadata.name?.toLowerCase().includes('uniswap')) ||
+        // Check connector session metadata (WalletConnect v2)
+        (provider.connector && provider.connector.session &&
+         provider.connector.session.peer &&
+         provider.connector.session.peer.metadata &&
+         provider.connector.session.peer.metadata.name?.toLowerCase().includes('uniswap')) ||
+        // Check if window.uniswap exists (injected wallet)
+        (typeof window !== 'undefined' && (window as any).uniswap) ||
+        // Check provider constructor name
+        (provider.constructor && provider.constructor.name?.toLowerCase().includes('uniswap'))
       );
+
+      console.log('🦄 Uniswap Wallet detection result:', {
+        isUniswap: !!isUniswap,
+        sessionPeerName: provider?.session?.peer?.metadata?.name,
+        connectorSessionPeerName: provider?.connector?.session?.peer?.metadata?.name,
+        hasUniswapWindow: typeof window !== 'undefined' && !!(window as any).uniswap,
+        constructorName: provider?.constructor?.name
+      });
 
       return !!isUniswap;
     } catch (error) {
+      console.warn('Uniswap Wallet detection error:', error);
       return false;
     }
   }
@@ -1096,24 +1171,66 @@ export class SafeWalletService {
         dataLength: txData.length
       });
 
-      // For Uniswap Wallet, try to send without gas parameters first (let wallet estimate)
+      // For Uniswap Wallet, try multiple approaches to enable the accept button
       if (isUniswapWallet) {
-        console.log('🦄 UNISWAP WALLET: Attempting transaction without gas parameters (wallet estimation)...');
+        console.log('🦄 UNISWAP WALLET: Trying multiple transaction formats for compatibility...');
+
+        // Approach 1: Minimal transaction (let wallet handle everything)
         try {
-          const simpleRequest = {
+          console.log('🦄 Approach 1: Minimal transaction format...');
+          const minimalRequest = {
             to: this.config!.safeAddress,
             data: txData,
             value: '0x0'
-            // Let Uniswap Wallet estimate gas itself
           };
 
-          const tx = await this.signer!.sendTransaction(simpleRequest);
-          console.log('✅ UNISWAP WALLET: Transaction sent with wallet gas estimation:', tx.hash);
+          console.log('🦄 UNISWAP WALLET: Sending minimal request:', minimalRequest);
+          const tx = await this.signer!.sendTransaction(minimalRequest);
+          console.log('✅ UNISWAP WALLET: Success with minimal format:', tx.hash);
           return tx;
-        } catch (simpleError) {
-          console.warn('🦄 UNISWAP WALLET: Wallet gas estimation failed, trying with manual gas:', simpleError);
-          // Fall through to manual gas estimation
+        } catch (minimalError) {
+          console.warn('🦄 Approach 1 failed:', minimalError);
         }
+
+        // Approach 2: Standard format with reasonable gas
+        try {
+          console.log('🦄 Approach 2: Standard format with conservative gas...');
+          const standardRequest = {
+            to: this.config!.safeAddress,
+            data: txData,
+            value: '0x0',
+            gasLimit: '0x124F80', // 1.2M in hex
+            gasPrice: gasPrice.toHexString()
+          };
+
+          console.log('🦄 UNISWAP WALLET: Sending standard request:', standardRequest);
+          const tx = await this.signer!.sendTransaction(standardRequest);
+          console.log('✅ UNISWAP WALLET: Success with standard format:', tx.hash);
+          return tx;
+        } catch (standardError) {
+          console.warn('🦄 Approach 2 failed:', standardError);
+        }
+
+        // Approach 3: Legacy format (some wallets prefer this)
+        try {
+          console.log('🦄 Approach 3: Legacy format...');
+          const legacyRequest = {
+            to: this.config!.safeAddress,
+            data: txData,
+            value: 0, // Number instead of hex string
+            gas: '0x124F80', // Use 'gas' instead of 'gasLimit'
+            gasPrice: gasPrice.toHexString()
+          };
+
+          console.log('🦄 UNISWAP WALLET: Sending legacy request:', legacyRequest);
+          const tx = await this.signer!.sendTransaction(legacyRequest);
+          console.log('✅ UNISWAP WALLET: Success with legacy format:', tx.hash);
+          return tx;
+        } catch (legacyError) {
+          console.warn('🦄 Approach 3 failed:', legacyError);
+        }
+
+        console.warn('🦄 UNISWAP WALLET: All approaches failed, falling back to manual gas...');
       }
 
       console.log('🔗 WALLETCONNECT: Sending transaction via sendTransaction with manual gas:', {
@@ -1138,9 +1255,114 @@ export class SafeWalletService {
         throw new Error('Gas estimation failed. This is common with WalletConnect. Please try again.');
       } else if (error.message?.includes('insufficient funds')) {
         throw new Error('Insufficient funds to execute transaction');
+      } else if (error.message?.includes('invalid') || error.message?.includes('Invalid')) {
+        throw new Error('Transaction format not supported by Uniswap Wallet. This may be a compatibility issue.');
       }
 
-      throw new Error(`WalletConnect execution failed: ${error.message || error}`);
+      throw new Error(`Uniswap Wallet execution failed: ${error.message || error}. Try using a different wallet or browser extension.`);
+    }
+  }
+
+  /**
+   * Try executing transaction via direct WalletConnect SignClient
+   * This bypasses ethers.js and uses WalletConnect directly
+   */
+  private async executeViaDirectWalletConnect(
+    txData: string,
+    gasLimit: ethers.BigNumber,
+    gasPrice: ethers.BigNumber
+  ): Promise<ethers.ContractTransaction | null> {
+    try {
+      console.log('🔗 DIRECT WALLETCONNECT: Attempting direct SignClient execution...');
+
+      // Get the WalletConnect provider and extract SignClient
+      const provider = this.signer?.provider as any;
+      if (!provider || !provider.connector) {
+        console.warn('🔗 No WalletConnect connector found');
+        return null;
+      }
+
+      // Try to get the SignClient from various possible locations
+      let signClient = null;
+      if (provider.connector.signClient) {
+        signClient = provider.connector.signClient;
+      } else if (provider.signClient) {
+        signClient = provider.signClient;
+      } else if ((window as any).walletConnectSignClient) {
+        signClient = (window as any).walletConnectSignClient;
+      }
+
+      if (!signClient) {
+        console.warn('🔗 No SignClient found for direct execution');
+        return null;
+      }
+
+      // Get session info
+      const sessions = signClient.session.getAll();
+      if (!sessions || sessions.length === 0) {
+        console.warn('🔗 No active WalletConnect sessions');
+        return null;
+      }
+
+      const session = sessions[0]; // Use first active session
+      const chainId = `eip155:${await this.provider!.getNetwork().then(n => n.chainId)}`;
+
+      console.log('🔗 DIRECT WALLETCONNECT: Using session:', {
+        topic: session.topic,
+        chainId,
+        peer: session.peer.metadata.name
+      });
+
+      // Prepare the request in WalletConnect format
+      const request = {
+        topic: session.topic,
+        chainId,
+        request: {
+          method: 'eth_sendTransaction',
+          params: [{
+            to: this.config!.safeAddress,
+            data: txData,
+            value: '0x0',
+            gasLimit: gasLimit.toHexString(),
+            gasPrice: gasPrice.toHexString()
+          }]
+        }
+      };
+
+      console.log('🔗 DIRECT WALLETCONNECT: Sending request:', request);
+
+      // Send the request directly via SignClient
+      const result = await signClient.request(request);
+      console.log('✅ DIRECT WALLETCONNECT: Got result:', result);
+
+      // Convert result to ethers transaction response
+      if (result && typeof result === 'string') {
+        // Create a mock transaction response
+        const mockTx = {
+          hash: result,
+          wait: async () => {
+            // Wait for transaction confirmation
+            let receipt = null;
+            for (let i = 0; i < 60; i++) { // Wait up to 5 minutes
+              try {
+                receipt = await this.provider!.getTransactionReceipt(result);
+                if (receipt) break;
+              } catch (e) {
+                // Transaction not found yet
+              }
+              await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+            }
+            return receipt;
+          }
+        } as ethers.ContractTransaction;
+
+        return mockTx;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('🔗 DIRECT WALLETCONNECT: Failed:', error);
+      return null;
     }
   }
 
