@@ -801,15 +801,23 @@ export class SafeWalletService {
       const isWalletConnect = this.isWalletConnect();
       const isUniswapWallet = this.isUniswapWallet();
 
-      // Force WalletConnect execution if we detect any mobile/WalletConnect indicators
-      const shouldUseWalletConnect = isWalletConnect || isUniswapWallet || isMobileWallet;
+      // MANUAL OVERRIDE: Force WalletConnect execution if we're clearly in a mobile environment
+      const isMobileEnvironment = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        navigator.userAgent.includes('Mobile') ||
+        window.innerWidth < 768;
+
+      // Force WalletConnect execution if we detect any mobile/WalletConnect indicators OR mobile environment
+      const shouldUseWalletConnect = isWalletConnect || isUniswapWallet || isMobileWallet || isMobileEnvironment;
 
       console.log('📱 Wallet type detected:', {
         isMobileWallet,
         isWalletConnect,
         isUniswapWallet,
+        isMobileEnvironment,
         shouldUseWalletConnect
       });
+
+      console.log('🚨 MANUAL OVERRIDE: If shouldUseWalletConnect is true, using WalletConnect execution path');
 
       let tx: ethers.ContractTransaction;
 
@@ -947,6 +955,39 @@ export class SafeWalletService {
         provider.isImToken
       );
 
+      // AGGRESSIVE DEBUGGING - Let's see EVERYTHING about this provider
+      console.log('🔍 FULL PROVIDER INSPECTION:');
+      console.log('Provider object:', provider);
+      console.log('Provider keys:', provider ? Object.keys(provider) : 'null');
+      console.log('Provider constructor:', provider?.constructor);
+      console.log('Provider constructor name:', provider?.constructor?.name);
+      console.log('Provider prototype:', Object.getPrototypeOf(provider));
+
+      // Check all possible WalletConnect indicators
+      console.log('🔗 WalletConnect indicators:');
+      console.log('- provider.isWalletConnect:', provider?.isWalletConnect);
+      console.log('- provider.connector:', provider?.connector);
+      console.log('- provider.session:', provider?.session);
+      console.log('- provider._events:', provider?._events);
+      console.log('- provider.request:', typeof provider?.request);
+      console.log('- provider.enable:', typeof provider?.enable);
+      console.log('- provider.send:', typeof provider?.send);
+      console.log('- provider.sendAsync:', typeof provider?.sendAsync);
+
+      // Check all possible Uniswap indicators
+      console.log('🦄 Uniswap indicators:');
+      console.log('- provider.isUniswap:', provider?.isUniswap);
+      console.log('- provider.isUniswapWallet:', provider?.isUniswapWallet);
+      console.log('- window.uniswap:', typeof window !== 'undefined' ? (window as any).uniswap : 'undefined');
+      console.log('- window.ethereum:', typeof window !== 'undefined' ? (window as any).ethereum : 'undefined');
+
+      // Check if this is actually a different type of provider
+      console.log('🔍 Other provider types:');
+      console.log('- provider.isMetaMask:', provider?.isMetaMask);
+      console.log('- provider.isCoinbaseWallet:', provider?.isCoinbaseWallet);
+      console.log('- provider.isTrust:', provider?.isTrust);
+      console.log('- provider.isImToken:', provider?.isImToken);
+
       console.log('🔍 Enhanced wallet detection:', {
         isMobile,
         isWalletConnect,
@@ -958,8 +999,21 @@ export class SafeWalletService {
         sessionPeerName: provider?.session?.peer?.metadata?.name || provider?.connector?.session?.peer?.metadata?.name
       });
 
+      // EMERGENCY FALLBACK: If we're clearly in a mobile environment, force mobile wallet handling
+      const emergencyMobileDetection = isMobile ||
+        navigator.userAgent.includes('Mobile') ||
+        navigator.userAgent.includes('Android') ||
+        navigator.userAgent.includes('iPhone') ||
+        window.innerWidth < 768; // Mobile screen size
+
+      console.log('🚨 EMERGENCY MOBILE DETECTION:', emergencyMobileDetection);
+
       // Return true if any mobile/WalletConnect indicators are found
-      return isMobile || !!isMobileProvider || !!isWalletConnect || !!isUniswapWallet;
+      const result = isMobile || !!isMobileProvider || !!isWalletConnect || !!isUniswapWallet || emergencyMobileDetection;
+
+      console.log('🎯 FINAL MOBILE WALLET DETECTION RESULT:', result);
+
+      return result;
     } catch (error) {
       console.warn('Could not detect mobile wallet, assuming desktop:', error);
       return false;
