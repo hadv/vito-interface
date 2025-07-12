@@ -793,8 +793,168 @@ export class SafeWalletService {
       // Combine signatures using EIP-712 utility (properly sorted)
       const combinedSignatures = combineSignatures(signatures);
 
-      // Execute the transaction on the Safe contract
-      const tx = await this.safeContract.execTransaction(
+      console.log('🚀 EXECUTING SAFE TRANSACTION');
+      console.log('📱 Mobile wallet execution - ensuring proper gas estimation');
+
+      // Check if we're dealing with WalletConnect or mobile wallet
+      const isMobileWallet = await this.detectMobileWallet();
+      const isWalletConnect = this.isWalletConnect();
+      console.log('📱 Wallet type detected:', { isMobileWallet, isWalletConnect });
+
+      let tx: ethers.ContractTransaction;
+
+      if (isWalletConnect) {
+        console.log('🔗 WALLETCONNECT: Using WalletConnect-specific execution method');
+        tx = await this.executeTransactionViaWalletConnect(
+          safeTransaction,
+          combinedSignatures
+        );
+      } else {
+        // Standard execution for browser extensions and other wallets
+        console.log('🌐 STANDARD: Using standard contract execution');
+
+        // Prepare transaction options with proper gas estimation for mobile wallets
+        let txOptions: any = {};
+
+        if (isMobileWallet) {
+          console.log('📱 MOBILE WALLET: Adding explicit gas estimation');
+
+          try {
+            // Estimate gas for mobile wallets
+            const gasEstimate = await this.safeContract.estimateGas.execTransaction(
+              safeTransaction.to,
+              safeTransaction.value,
+              safeTransaction.data,
+              safeTransaction.operation,
+              safeTransaction.safeTxGas,
+              safeTransaction.baseGas,
+              safeTransaction.gasPrice,
+              safeTransaction.gasToken,
+              safeTransaction.refundReceiver,
+              combinedSignatures
+            );
+
+            // Add 20% buffer for mobile wallets (they're more sensitive to gas issues)
+            const gasLimit = gasEstimate.mul(120).div(100);
+
+            // Get current gas price
+            const gasPrice = await this.provider!.getGasPrice();
+
+            txOptions = {
+              gasLimit,
+              gasPrice: gasPrice.mul(110).div(100) // 10% higher gas price for mobile
+            };
+
+            console.log('📱 MOBILE WALLET: Gas estimation completed', {
+              gasEstimate: gasEstimate.toString(),
+              gasLimit: gasLimit.toString(),
+              gasPrice: gasPrice.toString()
+            });
+          } catch (gasError) {
+            console.warn('📱 MOBILE WALLET: Gas estimation failed, using defaults:', gasError);
+            // Fallback to higher default gas for mobile wallets
+            txOptions = {
+              gasLimit: 500000, // Higher default for mobile
+              gasPrice: await this.provider!.getGasPrice()
+            };
+          }
+        }
+
+        // Execute the transaction on the Safe contract
+        console.log('🚀 Executing Safe transaction with options:', txOptions);
+        tx = await this.safeContract.execTransaction(
+          safeTransaction.to,
+          safeTransaction.value,
+          safeTransaction.data,
+          safeTransaction.operation,
+          safeTransaction.safeTxGas,
+          safeTransaction.baseGas,
+          safeTransaction.gasPrice,
+          safeTransaction.gasToken,
+          safeTransaction.refundReceiver,
+          combinedSignatures,
+          txOptions
+        );
+      }
+
+      console.log('✅ Safe transaction executed successfully:', tx.hash);
+      return tx;
+    } catch (error: any) {
+      console.error('❌ Error executing Safe transaction:', error);
+
+      // Provide more specific error messages for mobile wallets
+      if (error.message?.includes('gas') || error.message?.includes('Gas')) {
+        throw new Error(`Transaction failed due to gas estimation issues. This is common with mobile wallets. Please try again or use a browser extension. Details: ${error.message}`);
+      }
+
+      if (error.message?.includes('user rejected') || error.message?.includes('User rejected')) {
+        throw new Error('Transaction was cancelled by user');
+      }
+
+      throw new Error(`Failed to execute transaction: ${error.message || error}`);
+    }
+  }
+
+  /**
+   * Detect if we're dealing with a mobile wallet or WalletConnect
+   */
+  private async detectMobileWallet(): Promise<boolean> {
+    try {
+      // Check if we're in a mobile environment
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+      // Check if the signer is from a mobile wallet or WalletConnect
+      const provider = this.signer!.provider as any;
+      const isWalletConnect = provider && provider.isWalletConnect;
+      const isMobileProvider = provider && (
+        (provider.isMetaMask && isMobile) ||
+        provider.isWalletConnect ||
+        (provider.isCoinbaseWallet && isMobile) ||
+        provider.isTrust ||
+        provider.isImToken ||
+        provider.isUniswap // Uniswap Wallet
+      );
+
+      console.log('🔍 Wallet detection:', {
+        isMobile,
+        isWalletConnect,
+        isMobileProvider,
+        providerType: provider?.constructor?.name
+      });
+
+      return isMobile || !!isMobileProvider || !!isWalletConnect;
+    } catch (error) {
+      console.warn('Could not detect mobile wallet, assuming desktop:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Detect if we're using WalletConnect specifically
+   */
+  private isWalletConnect(): boolean {
+    try {
+      const provider = this.signer?.provider as any;
+      return !!(provider && provider.isWalletConnect);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Execute Safe transaction via WalletConnect using eth_sendTransaction
+   * This is required for wallets like Uniswap Wallet that connect via WalletConnect
+   */
+  private async executeTransactionViaWalletConnect(
+    safeTransaction: SafeTransactionData,
+    combinedSignatures: string
+  ): Promise<ethers.ContractTransaction> {
+    console.log('🔗 WALLETCONNECT: Preparing transaction for WalletConnect execution');
+
+    try {
+      // Encode the execTransaction call data
+      const safeInterface = new ethers.utils.Interface(SAFE_ABI);
+      const txData = safeInterface.encodeFunctionData('execTransaction', [
         safeTransaction.to,
         safeTransaction.value,
         safeTransaction.data,
@@ -805,12 +965,69 @@ export class SafeWalletService {
         safeTransaction.gasToken,
         safeTransaction.refundReceiver,
         combinedSignatures
-      );
+      ]);
 
+      console.log('🔗 WALLETCONNECT: Encoded transaction data:', {
+        to: this.config!.safeAddress,
+        data: txData.slice(0, 50) + '...',
+        dataLength: txData.length
+      });
+
+      // Estimate gas for WalletConnect transaction
+      let gasLimit: ethers.BigNumber;
+      try {
+        gasLimit = await this.provider!.estimateGas({
+          to: this.config!.safeAddress,
+          data: txData,
+          from: await this.signer!.getAddress()
+        });
+
+        // Add 30% buffer for WalletConnect (they often need more gas)
+        gasLimit = gasLimit.mul(130).div(100);
+        console.log('🔗 WALLETCONNECT: Gas estimated:', gasLimit.toString());
+      } catch (gasError) {
+        console.warn('🔗 WALLETCONNECT: Gas estimation failed, using default:', gasError);
+        gasLimit = ethers.BigNumber.from('800000'); // Higher default for WalletConnect
+      }
+
+      // Get current gas price
+      const gasPrice = await this.provider!.getGasPrice();
+      const adjustedGasPrice = gasPrice.mul(120).div(100); // 20% higher for WalletConnect
+
+      // Prepare transaction request for WalletConnect
+      const transactionRequest = {
+        to: this.config!.safeAddress,
+        data: txData,
+        gasLimit: gasLimit.toHexString(),
+        gasPrice: adjustedGasPrice.toHexString(),
+        value: '0x0'
+      };
+
+      console.log('🔗 WALLETCONNECT: Sending transaction via sendTransaction:', {
+        to: transactionRequest.to,
+        gasLimit: transactionRequest.gasLimit,
+        gasPrice: transactionRequest.gasPrice
+      });
+
+      // Use sendTransaction for WalletConnect (this triggers the wallet UI)
+      const tx = await this.signer!.sendTransaction(transactionRequest);
+
+      console.log('✅ WALLETCONNECT: Transaction sent successfully:', tx.hash);
       return tx;
-    } catch (error) {
-      console.error('Error executing Safe transaction:', error);
-      throw new Error(`Failed to execute transaction: ${error}`);
+
+    } catch (error: any) {
+      console.error('❌ WALLETCONNECT: Transaction execution failed:', error);
+
+      // Provide specific error messages for WalletConnect issues
+      if (error.message?.includes('user rejected') || error.message?.includes('User rejected')) {
+        throw new Error('Transaction was cancelled in Uniswap Wallet');
+      } else if (error.message?.includes('gas')) {
+        throw new Error('Gas estimation failed. This is common with WalletConnect. Please try again.');
+      } else if (error.message?.includes('insufficient funds')) {
+        throw new Error('Insufficient funds to execute transaction');
+      }
+
+      throw new Error(`WalletConnect execution failed: ${error.message || error}`);
     }
   }
 

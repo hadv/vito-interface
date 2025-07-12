@@ -477,15 +477,27 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
       };
 
       console.log('📋 Safe transaction data for execution:', safeTransactionData);
+      console.log('🚀 EXECUTING TRANSACTION - Mobile wallet support enabled');
+      console.log('📱 Signatures for execution:', transaction.signatures.length);
 
-      // Execute the transaction with collected signatures
+      // Execute the transaction with collected signatures (includes mobile wallet support)
       const executionTx = await walletService.executeTransaction(
         safeTransactionData,
         transaction.signatures
       );
 
-      // Wait for transaction confirmation
-      await executionTx.wait();
+      console.log('✅ Transaction submitted:', executionTx.hash);
+      console.log('⏳ Waiting for confirmation...');
+
+      // Wait for transaction confirmation with timeout for mobile wallets
+      const receipt = await Promise.race([
+        executionTx.wait(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Transaction confirmation timeout')), 60000)
+        )
+      ]) as ethers.ContractReceipt;
+
+      console.log('✅ Transaction confirmed in block:', receipt.blockNumber);
 
       // Note: The SafeTxPool will automatically mark the transaction as executed
       // through the Guard mechanism (checkAfterExecution) when the Safe executes it.
@@ -496,10 +508,26 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
       });
 
       await onConfirm();
-    } catch (error) {
-      console.error('Error executing transaction:', error);
-      toast.error('Failed to execute transaction', {
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
+    } catch (error: any) {
+      console.error('❌ Error executing transaction:', error);
+
+      // Provide specific error messages for mobile wallet issues
+      let errorMessage = 'Failed to execute transaction';
+
+      if (error.message?.includes('gas')) {
+        errorMessage = 'Transaction failed due to gas estimation. This is common with mobile wallets. Please try again.';
+      } else if (error.message?.includes('user rejected') || error.message?.includes('User rejected')) {
+        errorMessage = 'Transaction was cancelled by user';
+      } else if (error.message?.includes('timeout')) {
+        errorMessage = 'Transaction confirmation timed out. It may still be processing. Please check your wallet.';
+      } else if (error.message?.includes('insufficient funds')) {
+        errorMessage = 'Insufficient funds to execute transaction';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error('Execution Failed', {
+        message: errorMessage
       });
     } finally {
       setIsLoading(false);
