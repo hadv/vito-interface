@@ -1,7 +1,7 @@
 /**
  * Transaction Proposal Modal
- * Allows users to create and propose transactions without requiring signatures
- * This is the first step in the separated transaction flow
+ * Rich interface for creating and proposing transactions without requiring signatures
+ * This is the first step in the separated transaction flow - maintains all original features
  */
 
 import React, { useState, useEffect } from 'react';
@@ -15,6 +15,11 @@ import { useWalletConnection } from '../../../hooks/useWalletConnection';
 import { transactionProposalService, TransactionProposalRequest } from '../../../services/TransactionProposalService';
 import { isSafeTxPoolConfigured } from '../../../contracts/abis';
 import { Asset } from '../types';
+import { TransactionDecoder, DecodedTransactionData } from '../../../utils/transactionDecoder';
+import { TokenService } from '../../../services/TokenService';
+import { getRpcUrl } from '../../../contracts/abis';
+import AddressDisplay from './AddressDisplay';
+import ParameterDisplay from './ParameterDisplay';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -22,141 +27,206 @@ const ModalOverlay = styled.div<{ isOpen: boolean }>`
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.75);
+  background-color: rgba(0, 0, 0, 0.7);
   display: ${props => props.isOpen ? 'flex' : 'none'};
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(8px);
 `;
 
 const ModalContainer = styled.div`
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 20px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 32px;
   width: 95%;
-  max-width: 600px;
-  max-height: 90vh;
+  max-width: 800px;
+  max-height: 95vh;
   overflow-y: auto;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
 `;
 
 const ModalHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px 32px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  margin-bottom: 24px;
 `;
 
 const ModalTitle = styled.h2`
-  color: #f8fafc;
-  font-size: 1.5rem;
-  font-weight: 600;
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 700;
   margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
 `;
 
 const CloseButton = styled.button`
   background: none;
   border: none;
-  color: #94a3b8;
-  font-size: 1.5rem;
+  color: #CBD5E1;
+  font-size: 32px;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
+  padding: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  transition: all 0.3s ease;
 
   &:hover {
-    color: #f8fafc;
-    background-color: rgba(148, 163, 184, 0.1);
+    background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+    color: #fff;
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(255, 107, 107, 0.4);
   }
 `;
 
-const ModalContent = styled.div`
-  padding: 32px;
-`;
-
-const ProposalBadge = styled.div`
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  text-align: center;
-  margin-bottom: 24px;
-`;
-
-const InfoSection = styled.div`
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 24px;
-`;
-
-const InfoTitle = styled.h3`
-  color: #3b82f6;
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0 0 8px 0;
-`;
-
-const InfoText = styled.p`
-  color: #cbd5e1;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  margin: 0;
-`;
-
-const FormSection = styled.div`
-  margin-bottom: 24px;
+const FormGroup = styled.div`
+  margin-bottom: 32px;
 `;
 
 const Label = styled.label`
   display: block;
-  color: #f8fafc;
-  font-size: 0.875rem;
+  color: #4ECDC4;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  text-shadow: 0 0 10px rgba(78, 205, 196, 0.3);
+`;
+
+const AssetSection = styled.div`
+  background: rgba(78, 205, 196, 0.1);
+  border: 1px solid rgba(78, 205, 196, 0.3);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+`;
+
+const AssetHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+`;
+
+const AssetIcon = styled.div`
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(45deg, #4ECDC4, #44A08D);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+`;
+
+const AssetInfo = styled.div`
+  flex: 1;
+`;
+
+const AssetName = styled.h3`
+  color: #4ECDC4;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  text-shadow: 0 0 8px rgba(78, 205, 196, 0.3);
+`;
+
+const AssetDescription = styled.p`
+  color: #CBD5E1;
+  font-size: 14px;
+  margin: 0 0 8px 0;
+`;
+
+const AssetBalance = styled.div`
+  color: #96CEB4;
+  font-size: 14px;
   font-weight: 500;
-  margin-bottom: 8px;
+`;
+
+const TransactionDetails = styled.div`
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(78, 205, 196, 0.3);
+  border-radius: 16px;
+  padding: 24px;
+  margin: 24px 0;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+`;
+
+const DetailRow = styled.div`
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 24px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+  &:last-child {
+    margin-bottom: 0;
+    border-bottom: none;
+  }
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    text-align: left;
+  }
+`;
+
+const DetailLabel = styled.span`
+  color: #4ECDC4;
+  font-size: 14px;
+  font-weight: 600;
+  text-shadow: 0 0 8px rgba(78, 205, 196, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const DetailValue = styled.div`
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  word-break: break-word;
+  line-height: 1.5;
 `;
 
 const ErrorMessage = styled.div`
-  color: #ef4444;
-  font-size: 0.875rem;
+  color: #FF6B6B;
+  font-size: 16px;
+  font-weight: 600;
   margin-top: 8px;
-  padding: 8px 12px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: 6px;
+  padding: 16px;
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  border-radius: 12px;
+  text-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
 `;
 
 const SuccessMessage = styled.div`
-  color: #10b981;
-  font-size: 0.875rem;
+  color: #96CEB4;
+  font-size: 16px;
+  font-weight: 600;
   margin-top: 8px;
-  padding: 8px 12px;
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.2);
-  border-radius: 6px;
+  padding: 16px;
+  background: rgba(150, 206, 180, 0.1);
+  border: 1px solid rgba(150, 206, 180, 0.3);
+  border-radius: 12px;
+  text-shadow: 0 0 10px rgba(150, 206, 180, 0.3);
 `;
 
-const LoadingSpinner = styled.div`
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid #374151;
-  border-radius: 50%;
-  border-top-color: #fff;
-  animation: spin 1s ease-in-out infinite;
-  margin-right: 8px;
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 20px;
+  justify-content: flex-end;
+  margin-top: 40px;
+  flex-wrap: wrap;
 `;
 
 
@@ -181,7 +251,8 @@ const TransactionProposalModal: React.FC<TransactionProposalModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+  const [decodedTransaction, setDecodedTransaction] = useState<DecodedTransactionData | null>(null);
+
   const toast = useToast();
   const { connectionState } = useWalletConnection();
 
@@ -192,14 +263,74 @@ const TransactionProposalModal: React.FC<TransactionProposalModalProps> = ({
       setAmount('');
       setError('');
       setSuccess('');
+      setDecodedTransaction(null);
     }
   }, [isOpen]);
+
+  // Decode transaction data when inputs change
+  useEffect(() => {
+    const decodeTransaction = async () => {
+      if (!toAddress || !amount || parseFloat(amount) <= 0) {
+        setDecodedTransaction(null);
+        return;
+      }
+
+      try {
+        // Initialize decoder with current network
+        const network = connectionState.network || 'ethereum';
+        const rpcUrl = getRpcUrl(network);
+        const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+        const tokenService = new TokenService(provider, network);
+        const decoder = new TransactionDecoder(tokenService, network);
+
+        let transactionTo: string;
+        let transactionValue: string;
+        let transactionData: string;
+
+        if (preSelectedAsset && preSelectedAsset.type === 'erc20' && preSelectedAsset.contractAddress) {
+          // ERC-20 token transfer
+          const transferInterface = new ethers.utils.Interface([
+            'function transfer(address to, uint256 amount) returns (bool)'
+          ]);
+
+          const decimals = preSelectedAsset.decimals || 18;
+          const parsedAmount = ethers.utils.parseUnits(amount, decimals);
+          const data = transferInterface.encodeFunctionData('transfer', [toAddress, parsedAmount]);
+
+          transactionTo = preSelectedAsset.contractAddress;
+          transactionValue = '0';
+          transactionData = data;
+        } else {
+          // ETH transfer
+          transactionTo = toAddress;
+          transactionValue = ethers.utils.parseEther(amount).toString();
+          transactionData = '0x';
+        }
+
+        const decoded = await decoder.decodeTransactionData(
+          transactionTo,
+          transactionValue,
+          transactionData,
+          toAddress
+        );
+
+        setDecodedTransaction(decoded);
+      } catch (error) {
+        console.error('Error decoding transaction:', error);
+        setDecodedTransaction(null);
+      }
+    };
+
+    decodeTransaction();
+  }, [toAddress, amount, preSelectedAsset, connectionState.network]);
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       onClose();
     }
   };
+
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -311,81 +442,212 @@ const TransactionProposalModal: React.FC<TransactionProposalModalProps> = ({
 
   if (!isOpen) return null;
 
+  // Mock values for gas estimation (in production, these would be calculated)
+  const estimatedGas = '0.001';
+  const networkFee = '0.002';
+
   return (
     <ModalOverlay isOpen={isOpen} onClick={handleOverlayClick}>
       <ModalContainer>
         <ModalHeader>
           <ModalTitle>
-            📝 Propose Transaction
+            {preSelectedAsset?.type === 'native' ? 'Send ETH' : 'Send Transaction'}
           </ModalTitle>
           <CloseButton onClick={onClose}>&times;</CloseButton>
         </ModalHeader>
 
-        <ModalContent>
-          <ProposalBadge>
-            Step 1: Create Transaction Proposal
-          </ProposalBadge>
+        {preSelectedAsset?.type === 'native' && (
+          <AssetSection>
+            <AssetHeader>
+              <AssetIcon>ETH</AssetIcon>
+              <AssetInfo>
+                <AssetName>Native Ethereum Transfer</AssetName>
+                <AssetDescription>Send ETH directly to any Ethereum address</AssetDescription>
+              </AssetInfo>
+            </AssetHeader>
+          </AssetSection>
+        )}
 
-          <InfoSection>
-            <InfoTitle>Transaction Proposal</InfoTitle>
-            <InfoText>
-              Create a transaction proposal without requiring signatures. 
-              The transaction will be added to the pending queue and can be signed later 
-              by you or other Safe owners.
-            </InfoText>
-          </InfoSection>
+        <form onSubmit={handleSubmit}>
+          <FormGroup>
+            <Label htmlFor="toAddress">Recipient Address</Label>
+            <Input
+              id="toAddress"
+              type="text"
+              value={toAddress}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setToAddress(e.target.value)}
+              placeholder="0x..."
+              disabled={isLoading}
+              autoComplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-form-type="other"
+            />
+          </FormGroup>
 
-          <form onSubmit={handleSubmit}>
-            <FormSection>
-              <Label htmlFor="toAddress">Recipient Address</Label>
-              <Input
-                id="toAddress"
-                type="text"
-                value={toAddress}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setToAddress(e.target.value)}
-                placeholder="0x..."
-                disabled={isLoading}
-              />
-            </FormSection>
+          {preSelectedAsset && (
+            <FormGroup>
+              <Label>Sending Asset</Label>
+              <AssetSection>
+                <AssetHeader>
+                  <AssetIcon>{preSelectedAsset.symbol.charAt(0)}</AssetIcon>
+                  <AssetInfo>
+                    <AssetName>{preSelectedAsset.name}</AssetName>
+                    <AssetBalance>Balance: {preSelectedAsset.balance} {preSelectedAsset.symbol}</AssetBalance>
+                  </AssetInfo>
+                </AssetHeader>
+              </AssetSection>
+            </FormGroup>
+          )}
 
-            <FormSection>
-              <Label htmlFor="amount">
-                Amount ({preSelectedAsset?.symbol || 'ETH'})
-              </Label>
-              <Input
-                id="amount"
-                type="number"
-                step="any"
-                value={amount}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)}
-                placeholder="0.0"
-                disabled={isLoading}
-              />
-            </FormSection>
+          <FormGroup>
+            <Label htmlFor="amount">
+              Amount ({preSelectedAsset?.symbol || 'ETH'})
+            </Label>
+            <Input
+              id="amount"
+              type="number"
+              step="any"
+              value={amount}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)}
+              placeholder="0.0"
+              disabled={isLoading}
+              autoComplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-form-type="other"
+            />
+          </FormGroup>
 
-            {error && <ErrorMessage>{error}</ErrorMessage>}
-            {success && <SuccessMessage>{success}</SuccessMessage>}
+          {(toAddress && amount && parseFloat(amount) > 0) && (
+            <TransactionDetails>
+              {decodedTransaction && (
+                <DetailRow>
+                  <DetailLabel>Transaction Type:</DetailLabel>
+                  <DetailValue>{decodedTransaction.description}</DetailValue>
+                </DetailRow>
+              )}
 
-            <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end', marginTop: '24px' }}>
-              <Button
-                variant="secondary"
-                onClick={onClose}
-                disabled={isLoading}
-                type="button"
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                type="submit"
-                disabled={isLoading}
-              >
-                {isLoading && <LoadingSpinner />}
-                {isLoading ? 'Proposing...' : 'Propose Transaction'}
-              </Button>
-            </div>
-          </form>
-        </ModalContent>
+              <DetailRow>
+                <DetailLabel>Recipient:</DetailLabel>
+                <DetailValue>
+                  <AddressDisplay address={toAddress} />
+                </DetailValue>
+              </DetailRow>
+
+              <DetailRow>
+                <DetailLabel>Amount:</DetailLabel>
+                <DetailValue>{amount} {preSelectedAsset?.symbol || 'ETH'}</DetailValue>
+              </DetailRow>
+
+              {decodedTransaction?.details.token && (
+                <>
+                  <DetailRow>
+                    <DetailLabel>Token:</DetailLabel>
+                    <DetailValue>
+                      {decodedTransaction.details.token.name} ({decodedTransaction.details.token.symbol})
+                    </DetailValue>
+                  </DetailRow>
+                  <DetailRow>
+                    <DetailLabel>Token Address:</DetailLabel>
+                    <DetailValue>
+                      <AddressDisplay address={decodedTransaction.details.token.address} />
+                    </DetailValue>
+                  </DetailRow>
+                </>
+              )}
+
+              {/* Show decoded parameters if available */}
+              {decodedTransaction?.details?.decodedInputs && decodedTransaction.details.decodedInputs.length > 0 && (
+                <DetailRow>
+                  <DetailLabel>Parameters:</DetailLabel>
+                  <DetailValue>
+                    <ParameterDisplay
+                      parameters={decodedTransaction.details.decodedInputs}
+                      network={connectionState.network || 'ethereum'}
+                      compact={true}
+                    />
+                  </DetailValue>
+                </DetailRow>
+              )}
+
+              {preSelectedAsset?.type === 'erc20' && (
+                <>
+                  <DetailRow>
+                    <DetailLabel>Function:</DetailLabel>
+                    <DetailValue>ERC-20 Transfer Function</DetailValue>
+                  </DetailRow>
+                  <DetailRow>
+                    <DetailLabel>Raw Data:</DetailLabel>
+                    <DetailValue
+                      onClick={() => {
+                        // Calculate the hex data for copying
+                        if (preSelectedAsset?.contractAddress) {
+                          const transferInterface = new ethers.utils.Interface([
+                            'function transfer(address to, uint256 amount) returns (bool)'
+                          ]);
+                          const decimals = preSelectedAsset.decimals || 18;
+                          const parsedAmount = ethers.utils.parseUnits(amount, decimals);
+                          const data = transferInterface.encodeFunctionData('transfer', [toAddress, parsedAmount]);
+                          navigator.clipboard.writeText(data);
+                          toast.success('Transaction data copied to clipboard');
+                        }
+                      }}
+                      title="Click to copy raw transaction data"
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {(() => {
+                        if (preSelectedAsset?.contractAddress) {
+                          const transferInterface = new ethers.utils.Interface([
+                            'function transfer(address to, uint256 amount) returns (bool)'
+                          ]);
+                          const decimals = preSelectedAsset.decimals || 18;
+                          const parsedAmount = ethers.utils.parseUnits(amount, decimals);
+                          const data = transferInterface.encodeFunctionData('transfer', [toAddress, parsedAmount]);
+                          return data.length > 50 ? `${data.slice(0, 50)}...` : data;
+                        }
+                        return 'Calculating...';
+                      })()}
+                    </DetailValue>
+                  </DetailRow>
+                </>
+              )}
+
+              <DetailRow>
+                <DetailLabel>Estimated Gas:</DetailLabel>
+                <DetailValue>{estimatedGas} ETH</DetailValue>
+              </DetailRow>
+
+              <DetailRow>
+                <DetailLabel>Network Fee:</DetailLabel>
+                <DetailValue>{networkFee} ETH</DetailValue>
+              </DetailRow>
+            </TransactionDetails>
+          )}
+
+          {error && <ErrorMessage>{error}</ErrorMessage>}
+          {success && <SuccessMessage>{success}</SuccessMessage>}
+
+          <ButtonGroup>
+            <Button
+              variant="secondary"
+              onClick={onClose}
+              disabled={isLoading}
+              type="button"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              type="submit"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Creating Proposal...' : 'Create Transaction Proposal'}
+            </Button>
+          </ButtonGroup>
+        </form>
+
+
       </ModalContainer>
     </ModalOverlay>
   );
