@@ -942,6 +942,28 @@ export class SafeWalletService {
   }
 
   /**
+   * Detect if we're using Uniswap Wallet specifically
+   */
+  private isUniswapWallet(): boolean {
+    try {
+      const provider = this.signer?.provider as any;
+
+      // Check for Uniswap Wallet specific properties
+      const isUniswap = provider && (
+        provider.isUniswap ||
+        provider.isUniswapWallet ||
+        (provider.session && provider.session.peer &&
+         provider.session.peer.metadata &&
+         provider.session.peer.metadata.name?.toLowerCase().includes('uniswap'))
+      );
+
+      return !!isUniswap;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
    * Execute Safe transaction via WalletConnect using eth_sendTransaction
    * This is required for wallets like Uniswap Wallet that connect via WalletConnect
    */
@@ -950,6 +972,10 @@ export class SafeWalletService {
     combinedSignatures: string
   ): Promise<ethers.ContractTransaction> {
     console.log('🔗 WALLETCONNECT: Preparing transaction for WalletConnect execution');
+
+    // Check if this is specifically Uniswap Wallet
+    const isUniswapWallet = this.isUniswapWallet();
+    console.log('🦄 UNISWAP WALLET detected:', isUniswapWallet);
 
     try {
       // Encode the execTransaction call data
@@ -973,37 +999,124 @@ export class SafeWalletService {
         dataLength: txData.length
       });
 
-      // Estimate gas for WalletConnect transaction
+      // Estimate gas for WalletConnect transaction with multiple fallback strategies
       let gasLimit: ethers.BigNumber;
+      const signerAddress = await this.signer!.getAddress();
+
+      console.log('🔗 WALLETCONNECT: Starting gas estimation for Uniswap Wallet...');
+
+      // Strategy 1: Try direct gas estimation
       try {
+        console.log('🔗 Strategy 1: Direct gas estimation...');
         gasLimit = await this.provider!.estimateGas({
           to: this.config!.safeAddress,
           data: txData,
-          from: await this.signer!.getAddress()
+          from: signerAddress
         });
 
-        // Add 30% buffer for WalletConnect (they often need more gas)
-        gasLimit = gasLimit.mul(130).div(100);
-        console.log('🔗 WALLETCONNECT: Gas estimated:', gasLimit.toString());
-      } catch (gasError) {
-        console.warn('🔗 WALLETCONNECT: Gas estimation failed, using default:', gasError);
-        gasLimit = ethers.BigNumber.from('800000'); // Higher default for WalletConnect
+        // Add 50% buffer for Uniswap Wallet (they need even more gas)
+        gasLimit = gasLimit.mul(150).div(100);
+        console.log('✅ WALLETCONNECT: Gas estimated (Strategy 1):', gasLimit.toString());
+      } catch (gasError1) {
+        console.warn('❌ Strategy 1 failed:', gasError1);
+
+        // Strategy 2: Try with a static provider (bypass WalletConnect for estimation)
+        try {
+          console.log('🔗 Strategy 2: Using static provider for gas estimation...');
+          const staticProvider = new ethers.providers.JsonRpcProvider(getRpcUrl(this.config!.network));
+          gasLimit = await staticProvider.estimateGas({
+            to: this.config!.safeAddress,
+            data: txData,
+            from: signerAddress
+          });
+
+          // Add 60% buffer for Uniswap Wallet with static estimation
+          gasLimit = gasLimit.mul(160).div(100);
+          console.log('✅ WALLETCONNECT: Gas estimated (Strategy 2):', gasLimit.toString());
+        } catch (gasError2) {
+          console.warn('❌ Strategy 2 failed:', gasError2);
+
+          // Strategy 3: Use Safe-specific gas calculation
+          try {
+            console.log('🔗 Strategy 3: Safe-specific gas calculation...');
+            // Base gas for Safe execution + transaction-specific gas
+            const baseGas = 21000; // Base transaction gas
+            const safeOverhead = 50000; // Safe contract overhead
+            const dataGas = Math.ceil(txData.length / 2) * 16; // Gas for calldata
+            const calculatedGas = baseGas + safeOverhead + dataGas;
+
+            gasLimit = ethers.BigNumber.from(calculatedGas.toString()).mul(200).div(100); // 100% buffer
+            console.log('✅ WALLETCONNECT: Gas calculated (Strategy 3):', gasLimit.toString());
+          } catch (gasError3) {
+            console.warn('❌ Strategy 3 failed:', gasError3);
+
+            // Strategy 4: Uniswap Wallet optimized defaults
+            console.log('🔗 Strategy 4: Uniswap Wallet optimized defaults...');
+            if (isUniswapWallet) {
+              gasLimit = ethers.BigNumber.from('1200000'); // 1.2M gas specifically for Uniswap Wallet
+              console.log('🦄 UNISWAP WALLET: Using optimized gas limit:', gasLimit.toString());
+            } else {
+              gasLimit = ethers.BigNumber.from('800000'); // 800k for other WalletConnect wallets
+              console.log('✅ WALLETCONNECT: Using default WalletConnect gas:', gasLimit.toString());
+            }
+          }
+        }
       }
 
-      // Get current gas price
-      const gasPrice = await this.provider!.getGasPrice();
-      const adjustedGasPrice = gasPrice.mul(120).div(100); // 20% higher for WalletConnect
+      // Get current gas price with Uniswap Wallet optimizations
+      let gasPrice: ethers.BigNumber;
+      try {
+        console.log('🔗 WALLETCONNECT: Getting gas price...');
+        gasPrice = await this.provider!.getGasPrice();
 
-      // Prepare transaction request for WalletConnect
+        // Uniswap Wallet needs higher gas prices for reliable execution
+        const adjustedGasPrice = gasPrice.mul(150).div(100); // 50% higher for Uniswap Wallet
+        gasPrice = adjustedGasPrice;
+
+        console.log('✅ WALLETCONNECT: Gas price adjusted for Uniswap Wallet:', gasPrice.toString());
+      } catch (gasPriceError) {
+        console.warn('❌ Gas price estimation failed, using fallback:', gasPriceError);
+        // Fallback to a reasonable gas price (20 gwei)
+        gasPrice = ethers.utils.parseUnits('20', 'gwei');
+      }
+
+      // Prepare transaction request for WalletConnect with explicit hex formatting
       const transactionRequest = {
         to: this.config!.safeAddress,
         data: txData,
-        gasLimit: gasLimit.toHexString(),
-        gasPrice: adjustedGasPrice.toHexString(),
+        gasLimit: gasLimit.toHexString(), // Use toHexString() method
+        gasPrice: gasPrice.toHexString(), // Use toHexString() method
         value: '0x0'
       };
 
-      console.log('🔗 WALLETCONNECT: Sending transaction via sendTransaction:', {
+      console.log('🔗 WALLETCONNECT: Final transaction request for Uniswap Wallet:', {
+        to: transactionRequest.to,
+        gasLimit: transactionRequest.gasLimit,
+        gasPrice: transactionRequest.gasPrice,
+        dataLength: txData.length
+      });
+
+      // For Uniswap Wallet, try to send without gas parameters first (let wallet estimate)
+      if (isUniswapWallet) {
+        console.log('🦄 UNISWAP WALLET: Attempting transaction without gas parameters (wallet estimation)...');
+        try {
+          const simpleRequest = {
+            to: this.config!.safeAddress,
+            data: txData,
+            value: '0x0'
+            // Let Uniswap Wallet estimate gas itself
+          };
+
+          const tx = await this.signer!.sendTransaction(simpleRequest);
+          console.log('✅ UNISWAP WALLET: Transaction sent with wallet gas estimation:', tx.hash);
+          return tx;
+        } catch (simpleError) {
+          console.warn('🦄 UNISWAP WALLET: Wallet gas estimation failed, trying with manual gas:', simpleError);
+          // Fall through to manual gas estimation
+        }
+      }
+
+      console.log('🔗 WALLETCONNECT: Sending transaction via sendTransaction with manual gas:', {
         to: transactionRequest.to,
         gasLimit: transactionRequest.gasLimit,
         gasPrice: transactionRequest.gasPrice
