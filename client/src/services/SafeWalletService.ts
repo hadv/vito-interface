@@ -597,6 +597,40 @@ export class SafeWalletService {
   }
 
   /**
+   * Propose transaction without signature (for separated flows)
+   */
+  async proposeUnsignedTransaction(
+    safeTransactionData: SafeTransactionData,
+    txHash: string
+  ): Promise<void> {
+    this.ensureInitialized();
+
+    if (!this.safeTxPoolService || !this.provider) {
+      throw new Error('SafeTxPool service or provider not initialized');
+    }
+
+    try {
+      // Get network info
+      const network = await this.provider.getNetwork();
+
+      // Propose transaction to SafeTxPool contract without signatures
+      await this.safeTxPoolService.proposeTx({
+        safe: this.config!.safeAddress,
+        to: safeTransactionData.to,
+        value: safeTransactionData.value,
+        data: safeTransactionData.data,
+        operation: safeTransactionData.operation,
+        nonce: safeTransactionData.nonce
+      }, network.chainId);
+
+      console.log('✅ Transaction proposed successfully to SafeTxPool');
+    } catch (error) {
+      console.error('❌ Error proposing transaction to SafeTxPool:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Step 3: Use signed transaction data to propose transaction on SafeTxPool contract
    */
   async proposeSignedTransaction(
