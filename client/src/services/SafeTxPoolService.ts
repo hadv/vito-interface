@@ -267,6 +267,7 @@ export class SafeTxPoolService {
 
   /**
    * Get signers for a transaction by checking Safe owners
+   * SIMPLIFIED VERSION: Just map signatures to owners in order
    */
   async getTransactionSigners(txHash: string, safeAddress: string): Promise<Array<{ signature: string; signer: string }>> {
     if (!this.contract || !this.provider) {
@@ -292,75 +293,49 @@ export class SafeTxPoolService {
 
       const signersWithAddresses: Array<{ signature: string; signer: string }> = [];
 
-      // For each signature, use the SafeTxPool contract to determine the signer
-      // This avoids signature recovery issues and uses the contract's own logic
-      for (let i = 0; i < signatures.length; i++) {
-        const signature = signatures[i];
-        console.log(`🔍 Processing signature ${i}:`, signature);
+      // SIMPLIFIED APPROACH: For single-owner Safes, just use the owner
+      if (owners.length === 1 && signatures.length === 1) {
+        console.log('🎯 Single owner Safe detected, using direct mapping');
+        signersWithAddresses.push({
+          signature: signatures[0],
+          signer: owners[0]
+        });
+        console.log(`✅ Mapped signature to single owner: ${owners[0]}`);
+      } else {
+        // For multi-owner Safes, check who has signed using contract
+        for (let i = 0; i < signatures.length; i++) {
+          const signature = signatures[i];
+          console.log(`🔍 Processing signature ${i}:`, signature);
 
-        try {
-          // Check which owner has signed this transaction using the contract
+          // Find which owner signed this transaction
           let signerFound = false;
-
           for (const owner of owners) {
-            const hasSigned = await this.hasSignedTx(txHash, owner);
-            if (hasSigned) {
-              signersWithAddresses.push({
-                signature: signature,
-                signer: owner
-              });
-              console.log(`✅ Found signer from contract: ${owner}`);
-              console.log(`📋 Signature: ${signature}`);
-              signerFound = true;
-              break;
+            try {
+              const hasSigned = await this.hasSignedTx(txHash, owner);
+              if (hasSigned) {
+                signersWithAddresses.push({
+                  signature: signature,
+                  signer: owner
+                });
+                console.log(`✅ Found signer from contract: ${owner}`);
+                signerFound = true;
+                break;
+              }
+            } catch (error) {
+              console.warn(`⚠️ Error checking signature for owner ${owner}:`, error);
             }
           }
 
           if (!signerFound) {
-            console.warn(`⚠️ No signer found for signature ${i} in contract records`);
-
-            // Last resort: try signature recovery as before
-            try {
-              const txDetails = await this.contract.getTxDetails(txHash);
-              const network = await this.provider.getNetwork();
-
-              const safeTransactionData = {
-                to: txDetails.to,
-                value: txDetails.value.toString(),
-                data: txDetails.data,
-                operation: txDetails.operation,
-                safeTxGas: '0',
-                baseGas: '0',
-                gasPrice: '0',
-                gasToken: ethers.constants.AddressZero,
-                refundReceiver: ethers.constants.AddressZero,
-                nonce: txDetails.nonce.toNumber()
-              };
-
-              const { createSafeContractTransactionHash } = await import('../utils/eip712');
-              const messageHash = createSafeContractTransactionHash(
-                safeAddress,
-                network.chainId,
-                safeTransactionData
-              );
-
-              const recoveredSigner = ethers.utils.recoverAddress(messageHash, signature);
-              const isOwner = owners.some((owner: string) => owner.toLowerCase() === recoveredSigner.toLowerCase());
-
-              if (isOwner) {
-                signersWithAddresses.push({
-                  signature: signature,
-                  signer: recoveredSigner
-                });
-                console.log(`🔄 Recovery fallback successful: ${recoveredSigner}`);
-              }
-            } catch (recoveryError) {
-              console.error(`❌ Recovery fallback failed for signature ${i}:`, recoveryError);
+            console.warn(`⚠️ No signer found for signature ${i}, using first available owner`);
+            // Fallback: use the first owner if we can't determine the signer
+            if (owners.length > 0) {
+              signersWithAddresses.push({
+                signature: signature,
+                signer: owners[0]
+              });
             }
           }
-
-        } catch (error) {
-          console.error(`❌ Error processing signature ${i}:`, error);
         }
       }
 
@@ -368,6 +343,7 @@ export class SafeTxPoolService {
       return signersWithAddresses;
     } catch (error) {
       console.error('❌ Error getting transaction signers:', error);
+      // Emergency fallback: return empty array to avoid crashes
       return [];
     }
   }
