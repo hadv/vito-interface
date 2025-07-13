@@ -292,79 +292,75 @@ export class SafeTxPoolService {
 
       const signersWithAddresses: Array<{ signature: string; signer: string }> = [];
 
-      // For each signature, recover the signer address and validate
+      // For each signature, use the SafeTxPool contract to determine the signer
+      // This avoids signature recovery issues and uses the contract's own logic
       for (let i = 0; i < signatures.length; i++) {
         const signature = signatures[i];
         console.log(`🔍 Processing signature ${i}:`, signature);
 
         try {
-          // Get the transaction details to reconstruct the hash for signature recovery
-          const txDetails = await this.contract.getTxDetails(txHash);
+          // Check which owner has signed this transaction using the contract
+          let signerFound = false;
 
-          // Get network info
-          const network = await this.provider.getNetwork();
-
-          // Use the EXACT same hash generation method that was used during signing
-          // This must match the createSafeContractTransactionHash function
-
-          // Create the Safe transaction data structure with the actual transaction details
-          const safeTransactionData = {
-            to: txDetails.to,
-            value: txDetails.value.toString(),
-            data: txDetails.data,
-            operation: txDetails.operation,
-            safeTxGas: '0', // These are hardcoded in SafeTxPoolService.generateTxHash()
-            baseGas: '0',
-            gasPrice: '0',
-            gasToken: ethers.constants.AddressZero,
-            refundReceiver: ethers.constants.AddressZero,
-            nonce: txDetails.nonce.toNumber()
-          };
-
-          // Import the exact same hash generation function used during signing
-          const { createSafeContractTransactionHash } = await import('../utils/eip712');
-
-          // Generate the exact same hash that was signed
-          const messageHash = createSafeContractTransactionHash(
-            safeAddress,
-            network.chainId,
-            safeTransactionData
-          );
-
-          console.log('📋 Using exact same hash generation as signing:', messageHash);
-          console.log('📋 Transaction data used for hash:', safeTransactionData);
-
-          // Recover the signer address from the signature
-          // The signature should be in standard ECDSA format (v=27/28) for recovery
-          const recoveredSigner = ethers.utils.recoverAddress(messageHash, signature);
-          console.log(`🔍 Recovered signer for signature ${i}:`, recoveredSigner);
-
-          // Validate that the recovered signer is an owner of the Safe
-          const isOwner = owners.some((owner: string) => owner.toLowerCase() === recoveredSigner.toLowerCase());
-
-          if (isOwner) {
-            signersWithAddresses.push({
-              signature: signature, // Keep original signature format for now
-              signer: recoveredSigner
-            });
-            console.log(`✅ Valid signature from owner: ${recoveredSigner}`);
-            console.log(`📋 Signature: ${signature}`);
-          } else {
-            console.warn(`⚠️ Signature ${i} recovered to non-owner address: ${recoveredSigner}`);
+          for (const owner of owners) {
+            const hasSigned = await this.hasSignedTx(txHash, owner);
+            if (hasSigned) {
+              signersWithAddresses.push({
+                signature: signature,
+                signer: owner
+              });
+              console.log(`✅ Found signer from contract: ${owner}`);
+              console.log(`📋 Signature: ${signature}`);
+              signerFound = true;
+              break;
+            }
           }
 
-        } catch (recoveryError) {
-          console.error(`❌ Failed to recover signer for signature ${i}:`, recoveryError);
+          if (!signerFound) {
+            console.warn(`⚠️ No signer found for signature ${i} in contract records`);
 
-          // Fallback: Use the old method for this signature
-          const hasSigned = await this.hasSignedTx(txHash, owners[i % owners.length]);
-          if (hasSigned) {
-            signersWithAddresses.push({
-              signature: signature,
-              signer: owners[i % owners.length]
-            });
-            console.log(`🔄 Fallback: Using owner ${owners[i % owners.length]} for signature ${i}`);
+            // Last resort: try signature recovery as before
+            try {
+              const txDetails = await this.contract.getTxDetails(txHash);
+              const network = await this.provider.getNetwork();
+
+              const safeTransactionData = {
+                to: txDetails.to,
+                value: txDetails.value.toString(),
+                data: txDetails.data,
+                operation: txDetails.operation,
+                safeTxGas: '0',
+                baseGas: '0',
+                gasPrice: '0',
+                gasToken: ethers.constants.AddressZero,
+                refundReceiver: ethers.constants.AddressZero,
+                nonce: txDetails.nonce.toNumber()
+              };
+
+              const { createSafeContractTransactionHash } = await import('../utils/eip712');
+              const messageHash = createSafeContractTransactionHash(
+                safeAddress,
+                network.chainId,
+                safeTransactionData
+              );
+
+              const recoveredSigner = ethers.utils.recoverAddress(messageHash, signature);
+              const isOwner = owners.some((owner: string) => owner.toLowerCase() === recoveredSigner.toLowerCase());
+
+              if (isOwner) {
+                signersWithAddresses.push({
+                  signature: signature,
+                  signer: recoveredSigner
+                });
+                console.log(`🔄 Recovery fallback successful: ${recoveredSigner}`);
+              }
+            } catch (recoveryError) {
+              console.error(`❌ Recovery fallback failed for signature ${i}:`, recoveryError);
+            }
           }
+
+        } catch (error) {
+          console.error(`❌ Error processing signature ${i}:`, error);
         }
       }
 
