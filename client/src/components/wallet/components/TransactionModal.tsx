@@ -374,6 +374,11 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     }
 
     // Check if address is in address book (required by SafeTxPool guard)
+    if (!fromAddress) {
+      setError('Safe address not available. Please connect your wallet and select a Safe.');
+      return;
+    }
+
     try {
       const safeTxPoolService = createSafeTxPoolService(connectionState.network || 'ethereum');
       const entries = await safeTxPoolService.getAddressBookEntries(fromAddress);
