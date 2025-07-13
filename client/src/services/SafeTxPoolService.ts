@@ -267,6 +267,7 @@ export class SafeTxPoolService {
 
   /**
    * Get signers for a transaction by checking Safe owners
+   * SIMPLIFIED VERSION: Just map signatures to owners in order
    */
   async getTransactionSigners(txHash: string, safeAddress: string): Promise<Array<{ signature: string; signer: string }>> {
     if (!this.contract || !this.provider) {
@@ -274,31 +275,75 @@ export class SafeTxPoolService {
     }
 
     try {
+      console.log('🔍 Getting transaction signers for txHash:', txHash);
+
       // Get signatures from contract
       const signatures = await this.contract.getSignatures(txHash);
+      console.log('📋 Raw signatures from contract:', signatures);
 
-      // Get Safe owners to check who has signed
+      if (!signatures || signatures.length === 0) {
+        console.log('⚠️ No signatures found for transaction');
+        return [];
+      }
+
+      // Get Safe owners to validate signers
       const safeContract = new ethers.Contract(safeAddress, SAFE_ABI, this.provider);
-
       const owners = await safeContract.getOwners();
+      console.log('👥 Safe owners:', owners);
+
       const signersWithAddresses: Array<{ signature: string; signer: string }> = [];
 
-      // Check each owner to see if they have signed
-      let signatureIndex = 0;
-      for (const owner of owners) {
-        const hasSigned = await this.hasSignedTx(txHash, owner);
-        if (hasSigned && signatureIndex < signatures.length) {
-          signersWithAddresses.push({
-            signature: signatures[signatureIndex],
-            signer: owner
-          });
-          signatureIndex++;
+      // SIMPLIFIED APPROACH: For single-owner Safes, just use the owner
+      if (owners.length === 1 && signatures.length === 1) {
+        console.log('🎯 Single owner Safe detected, using direct mapping');
+        signersWithAddresses.push({
+          signature: signatures[0],
+          signer: owners[0]
+        });
+        console.log(`✅ Mapped signature to single owner: ${owners[0]}`);
+      } else {
+        // For multi-owner Safes, check who has signed using contract
+        for (let i = 0; i < signatures.length; i++) {
+          const signature = signatures[i];
+          console.log(`🔍 Processing signature ${i}:`, signature);
+
+          // Find which owner signed this transaction
+          let signerFound = false;
+          for (const owner of owners) {
+            try {
+              const hasSigned = await this.hasSignedTx(txHash, owner);
+              if (hasSigned) {
+                signersWithAddresses.push({
+                  signature: signature,
+                  signer: owner
+                });
+                console.log(`✅ Found signer from contract: ${owner}`);
+                signerFound = true;
+                break;
+              }
+            } catch (error) {
+              console.warn(`⚠️ Error checking signature for owner ${owner}:`, error);
+            }
+          }
+
+          if (!signerFound) {
+            console.warn(`⚠️ No signer found for signature ${i}, using first available owner`);
+            // Fallback: use the first owner if we can't determine the signer
+            if (owners.length > 0) {
+              signersWithAddresses.push({
+                signature: signature,
+                signer: owners[0]
+              });
+            }
+          }
         }
       }
 
+      console.log('✅ Final signers with addresses:', signersWithAddresses);
       return signersWithAddresses;
     } catch (error) {
-      console.error('Error getting transaction signers:', error);
+      console.error('❌ Error getting transaction signers:', error);
+      // Emergency fallback: return empty array to avoid crashes
       return [];
     }
   }

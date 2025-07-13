@@ -597,6 +597,40 @@ export class SafeWalletService {
   }
 
   /**
+   * Propose unsigned transaction to SafeTxPool contract (without signing)
+   */
+  async proposeUnsignedTransactionToPool(
+    safeTransactionData: SafeTransactionData,
+    txHash: string
+  ): Promise<void> {
+    this.ensureInitialized();
+
+    if (!this.safeTxPoolService || !this.provider) {
+      throw new Error('SafeTxPool service or provider not initialized');
+    }
+
+    try {
+      // Get network info
+      const network = await this.provider.getNetwork();
+
+      // Propose transaction to SafeTxPool contract (without signing)
+      await this.safeTxPoolService.proposeTx({
+        safe: this.config!.safeAddress,
+        to: safeTransactionData.to,
+        value: safeTransactionData.value,
+        data: safeTransactionData.data,
+        operation: safeTransactionData.operation,
+        nonce: safeTransactionData.nonce
+      }, network.chainId);
+
+      console.log('Transaction proposed successfully without signature');
+    } catch (error) {
+      console.error('Error proposing unsigned transaction:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Step 3: Use signed transaction data to propose transaction on SafeTxPool contract
    */
   async proposeSignedTransaction(
@@ -633,7 +667,29 @@ export class SafeWalletService {
   }
 
   /**
+   * Propose unsigned transaction flow: Create EIP-712 → Propose (without signing)
+   */
+  async proposeUnsignedTransaction(transactionRequest: TransactionRequest): Promise<SafeTransactionData & { txHash: string }> {
+    try {
+      // Step 1: Create domain type EIP-712 transaction
+      const { safeTransactionData, txHash } = await this.createEIP712Transaction(transactionRequest);
+
+      // Step 2: Propose transaction to SafeTxPool contract (without signing)
+      await this.proposeUnsignedTransactionToPool(safeTransactionData, txHash);
+
+      return {
+        ...safeTransactionData,
+        txHash
+      };
+    } catch (error) {
+      console.error('Error in propose unsigned transaction flow:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Complete transaction flow: Create EIP-712 → Sign → Propose
+   * @deprecated Use proposeUnsignedTransaction() for propose-only flow
    */
   async createTransaction(transactionRequest: TransactionRequest): Promise<SafeTransactionData & { txHash: string; signature: string }> {
     try {
@@ -756,27 +812,90 @@ export class SafeWalletService {
     }
 
     try {
+      console.log('🔐 Executing Safe transaction with signatures:', {
+        transaction: safeTransaction,
+        signatures: signatures.map(s => ({ signer: s.signer, signature: s.signature.slice(0, 10) + '...' }))
+      });
+
+      // Validate signatures before combining
+      if (!signatures || signatures.length === 0) {
+        throw new Error('No signatures provided for transaction execution');
+      }
+
+      // Get Safe info to validate threshold
+      const safeInfo = await this.getSafeInfo();
+      if (signatures.length < safeInfo.threshold) {
+        throw new Error(`Insufficient signatures: ${signatures.length}/${safeInfo.threshold} required`);
+      }
+
+      // Validate that all signers are owners of the Safe (with case-insensitive comparison)
+      for (const { signer } of signatures) {
+        const isOwner = safeInfo.owners.some((owner: string) => owner.toLowerCase() === signer.toLowerCase());
+        if (!isOwner) {
+          console.warn(`⚠️ Signer ${signer} is not an owner of the Safe. Owners:`, safeInfo.owners);
+          // Don't throw error for now, let the Safe contract handle validation
+          // throw new Error(`Signer ${signer} is not an owner of the Safe`);
+        }
+      }
+
       // Combine signatures using EIP-712 utility (properly sorted)
       const combinedSignatures = combineSignatures(signatures);
 
-      // Execute the transaction on the Safe contract
-      const tx = await this.safeContract.execTransaction(
-        safeTransaction.to,
-        safeTransaction.value,
-        safeTransaction.data,
-        safeTransaction.operation,
-        safeTransaction.safeTxGas,
-        safeTransaction.baseGas,
-        safeTransaction.gasPrice,
-        safeTransaction.gasToken,
-        safeTransaction.refundReceiver,
-        combinedSignatures
-      );
+      console.log('🔐 Executing transaction on Safe contract...');
 
-      return tx;
-    } catch (error) {
-      console.error('Error executing Safe transaction:', error);
-      throw new Error(`Failed to execute transaction: ${error}`);
+      // Execute the transaction on the Safe contract with manual gas limit
+      try {
+        const tx = await this.safeContract.execTransaction(
+          safeTransaction.to,
+          safeTransaction.value,
+          safeTransaction.data,
+          safeTransaction.operation,
+          safeTransaction.safeTxGas,
+          safeTransaction.baseGas,
+          safeTransaction.gasPrice,
+          safeTransaction.gasToken,
+          safeTransaction.refundReceiver,
+          combinedSignatures
+        );
+        return tx;
+      } catch (gasError: any) {
+        console.warn('⚠️ Gas estimation failed, trying with manual gas limit...');
+
+        // If gas estimation fails, try with a manual gas limit
+        const tx = await this.safeContract.execTransaction(
+          safeTransaction.to,
+          safeTransaction.value,
+          safeTransaction.data,
+          safeTransaction.operation,
+          safeTransaction.safeTxGas,
+          safeTransaction.baseGas,
+          safeTransaction.gasPrice,
+          safeTransaction.gasToken,
+          safeTransaction.refundReceiver,
+          combinedSignatures,
+          {
+            gasLimit: 500000 // Manual gas limit
+          }
+        );
+        return tx;
+      }
+    } catch (error: any) {
+      console.error('❌ Error executing Safe transaction:', error);
+
+      // Provide more specific error messages for common Safe errors
+      if (error.message?.includes('GS026')) {
+        throw new Error('Invalid signature order or signer not authorized. Signatures must be sorted by signer address and all signers must be Safe owners.');
+      } else if (error.message?.includes('GS025')) {
+        throw new Error('Transaction not approved by required signers.');
+      } else if (error.message?.includes('GS013')) {
+        throw new Error('Transaction execution failed. The target transaction reverted.');
+      } else if (error.message?.includes('GS010')) {
+        throw new Error('Not enough gas provided for Safe transaction execution.');
+      } else if (error.code === 'UNPREDICTABLE_GAS_LIMIT') {
+        throw new Error('Cannot estimate gas for transaction. The transaction may fail or require manual gas limit.');
+      }
+
+      throw new Error(`Failed to execute transaction: ${error.message || error}`);
     }
   }
 

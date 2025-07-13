@@ -3,10 +3,11 @@ import styled from 'styled-components';
 import { ethers } from 'ethers';
 import { Button, Input } from '@components/ui';
 import { isValidEthereumAddress } from '../../../utils/ens';
-import EIP712SigningModal from './EIP712SigningModal';
-import { SafeTransactionData, SafeDomain } from '../../../utils/eip712';
+
+
 import { safeWalletService } from '../../../services/SafeWalletService';
 import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
+import { createSafeTxPoolService, AddressBookEntry } from '../../../services/SafeTxPoolService';
 import { isSafeTxPoolConfigured } from '../../../contracts/abis';
 import { useToast } from '../../../hooks/useToast';
 import { ErrorHandler } from '../../../utils/errorHandling';
@@ -249,15 +250,10 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(''); // Keep for critical validation errors only
   const [success, setSuccess] = useState(''); // Keep for success messages
-  const [currentStep, setCurrentStep] = useState<'form' | 'signing' | 'proposing'>('form');
-  const [showEIP712Modal, setShowEIP712Modal] = useState(false);
+  const [currentStep, setCurrentStep] = useState<'form' | 'proposing'>('form');
   const [connectionState, setConnectionState] = useState<WalletConnectionState>({ isConnected: false });
-  const [pendingTransaction, setPendingTransaction] = useState<{
-    data: SafeTransactionData;
-    domain: SafeDomain;
-    txHash: string;
-  } | null>(null);
   const [decodedTransaction, setDecodedTransaction] = useState<DecodedTransactionData | null>(null);
+  const [showAddressBookWarning, setShowAddressBookWarning] = useState(false);
   // const [retryCount, setRetryCount] = useState(0); // Reserved for future retry functionality
 
   // Initialize toast system
@@ -377,11 +373,33 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       return;
     }
 
-    setIsLoading(true);
-    setCurrentStep('form');
+    // Check if address is in address book (required by SafeTxPool guard)
+    if (!fromAddress) {
+      setError('Safe address not available. Please connect your wallet and select a Safe.');
+      return;
+    }
 
     try {
-      // Step 1: Create domain type EIP-712 transaction with retry logic
+      const safeTxPoolService = createSafeTxPoolService(connectionState.network || 'ethereum');
+      const entries = await safeTxPoolService.getAddressBookEntries(fromAddress);
+      const isInAddressBook = entries.some((entry: AddressBookEntry) => entry.walletAddress.toLowerCase() === toAddress.toLowerCase());
+
+      if (!isInAddressBook) {
+        setShowAddressBookWarning(true);
+        setError(`This address is not in your address book. The SafeTxPool guard requires all transaction destinations to be pre-approved. Please add "${toAddress}" to your address book first.`);
+        return;
+      }
+    } catch (addressBookError) {
+      console.error('Error checking address book:', addressBookError);
+      setError('Unable to verify address book. Please ensure the address is in your address book before proceeding.');
+      return;
+    }
+
+    setIsLoading(true);
+    setCurrentStep('proposing');
+
+    try {
+      // Create and propose transaction directly (without signing)
       const result = await errorRecoveryService.retry(async () => {
         // Handle ERC-20 token transfers vs ETH transfers
         if (preSelectedAsset && preSelectedAsset.type === 'erc20' && preSelectedAsset.contractAddress) {
@@ -394,7 +412,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
           const parsedAmount = ethers.utils.parseUnits(amount, decimals);
           const data = transferInterface.encodeFunctionData('transfer', [toAddress, parsedAmount]);
 
-          return await safeWalletService.createEIP712Transaction({
+          return await safeWalletService.proposeUnsignedTransaction({
             to: preSelectedAsset.contractAddress,
             value: '0',
             data,
@@ -402,7 +420,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
           });
         } else {
           // ETH transfer
-          return await safeWalletService.createEIP712Transaction({
+          return await safeWalletService.proposeUnsignedTransaction({
             to: toAddress,
             value: ethers.utils.parseEther(amount).toString(),
             data: '0x',
@@ -417,27 +435,28 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         }
       });
 
-      // Set up for Step 2: Request user to sign
-      console.log('🔐 TRANSACTION MODAL: Transaction created successfully');
-      console.log('📋 Result from createEIP712Transaction:', result);
-      console.log('🔐 TRANSACTION MODAL: Setting up pending transaction for signing');
+      console.log('✅ TRANSACTION MODAL: Transaction proposed successfully');
+      console.log('📋 Result:', result);
 
-      setPendingTransaction({
-        data: result.safeTransactionData,
-        domain: result.domain,
-        txHash: result.txHash
-      });
+      setSuccess(`Transaction proposed successfully! Hash: ${result.txHash}`);
 
-      console.log('🔐 TRANSACTION MODAL: Setting current step to "signing"');
-      setCurrentStep('signing');
+      toast.transactionSuccess(result.txHash, 'Transaction proposed successfully');
 
-      console.log('🔐 TRANSACTION MODAL: Showing EIP712 modal');
-      setShowEIP712Modal(true);
+      if (onTransactionCreated) {
+        onTransactionCreated({
+          ...result,
+          signature: '' // No signature for unsigned proposals
+        });
+      }
 
-      console.log('📱 TRANSACTION MODAL: User should now see signing modal');
-      toast.info('Transaction Created', {
-        message: 'Please sign the transaction in your wallet'
-      });
+      // Reset form
+      setTimeout(() => {
+        setToAddress('');
+        setAmount('');
+        setSuccess('');
+        setCurrentStep('form');
+        onClose();
+      }, 2000);
 
     } catch (error: any) {
       console.error('❌ TRANSACTION MODAL: Error creating transaction:', error);
@@ -460,98 +479,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     }
   };
 
-  const handleEIP712Sign = async () => {
-    if (!pendingTransaction) return;
 
-    setCurrentStep('signing');
-
-    try {
-      // Step 2: Request user to sign with retry logic
-      console.log('🔐 TRANSACTION MODAL: About to call signEIP712Transaction');
-      console.log('📋 Pending transaction data:', pendingTransaction);
-      console.log('📱 MOBILE WALLET: This should trigger signing now!');
-
-      const signature = await errorRecoveryService.retry(async () => {
-        console.log('🔐 RETRY SERVICE: Calling safeWalletService.signEIP712Transaction');
-        return await safeWalletService.signEIP712Transaction(
-          pendingTransaction.data,
-          pendingTransaction.domain
-        );
-      }, {
-        maxAttempts: 2, // Fewer retries for user actions
-        retryCondition: (error) => {
-          const errorDetails = ErrorHandler.classifyError(error);
-          // Don't retry user rejections
-          return errorDetails.code !== 'USER_REJECTED' && ErrorHandler.shouldAutoRetry(errorDetails);
-        }
-      });
-
-      setShowEIP712Modal(false);
-      setCurrentStep('proposing');
-
-      toast.info('Transaction Signed', {
-        message: 'Submitting to Safe TX Pool...'
-      });
-
-      // Step 3: Use signed transaction data to propose transaction on SafeTxPool contract
-      await errorRecoveryService.retry(async () => {
-        return await safeWalletService.proposeSignedTransaction(
-          pendingTransaction.data,
-          pendingTransaction.txHash,
-          signature
-        );
-      }, {
-        maxAttempts: 3,
-        retryCondition: (error) => {
-          const errorDetails = ErrorHandler.classifyError(error);
-          return ErrorHandler.shouldAutoRetry(errorDetails);
-        }
-      });
-
-      setSuccess(`Transaction flow completed! Hash: ${pendingTransaction.txHash}`);
-
-      toast.transactionSuccess(pendingTransaction.txHash, 'Transaction submitted successfully');
-
-      if (onTransactionCreated) {
-        onTransactionCreated({
-          ...pendingTransaction.data,
-          txHash: pendingTransaction.txHash,
-          signature
-        });
-      }
-
-      // Reset form
-      setTimeout(() => {
-        setToAddress('');
-        setAmount('');
-        setSuccess('');
-        setCurrentStep('form');
-        setPendingTransaction(null);
-        // setRetryCount(0); // Reset retry count when transaction completes
-        onClose();
-      }, 2000);
-
-    } catch (error: any) {
-      const errorDetails = ErrorHandler.classifyError(error);
-      // Only show in modal for critical errors, use toast for others
-      if (errorDetails.severity === 'critical' || errorDetails.category === 'validation') {
-        setError(errorDetails.userMessage);
-      }
-      setShowEIP712Modal(false);
-      setCurrentStep('form');
-
-      // Show appropriate toast based on error type
-      if (errorDetails.code === 'USER_REJECTED') {
-        toast.warning('Transaction Cancelled', {
-          message: 'Transaction was cancelled by user'
-        });
-      } else {
-        toast.transactionError(errorDetails.userMessage, errorDetails.message);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
@@ -573,26 +501,17 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         </ModalHeader>
 
         <StepIndicator>
-          <StepBadge active={currentStep === 'form'} completed={currentStep !== 'form'}>
+          <StepBadge active={currentStep === 'form'} completed={currentStep === 'proposing'}>
             1
           </StepBadge>
-          <StepText active={currentStep === 'form'} completed={currentStep !== 'form'}>
-            Create EIP-712
-          </StepText>
-
-          <StepSeparator />
-
-          <StepBadge active={currentStep === 'signing'} completed={currentStep === 'proposing'}>
-            2
-          </StepBadge>
-          <StepText active={currentStep === 'signing'} completed={currentStep === 'proposing'}>
-            Sign Transaction
+          <StepText active={currentStep === 'form'} completed={currentStep === 'proposing'}>
+            Create Transaction
           </StepText>
 
           <StepSeparator />
 
           <StepBadge active={currentStep === 'proposing'} completed={false}>
-            3
+            2
           </StepBadge>
           <StepText active={currentStep === 'proposing'} completed={false}>
             Propose to Pool
@@ -640,7 +559,11 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             <Label>Recipient Address</Label>
             <AddressBookSelector
               value={toAddress}
-              onChange={setToAddress}
+              onChange={(newAddress) => {
+                setToAddress(newAddress);
+                setShowAddressBookWarning(false);
+                setError('');
+              }}
               placeholder="Select from address book or enter address..."
               disabled={isLoading}
               network={connectionState.network || 'ethereum'}
@@ -822,7 +745,25 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             </TransactionDetails>
           )}
 
-          {error && <ErrorMessage>{error}</ErrorMessage>}
+          {error && (
+            <ErrorMessage>
+              {error}
+              {showAddressBookWarning && (
+                <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#495057' }}>
+                    💡 How to add an address to your address book:
+                  </div>
+                  <ol style={{ margin: 0, paddingLeft: '20px', color: '#6c757d', fontSize: '14px' }}>
+                    <li>Go to the <strong>Address Book</strong> page</li>
+                    <li>Click <strong>"Add Address"</strong></li>
+                    <li>Enter the recipient's address and a name</li>
+                    <li>Submit the transaction to add them</li>
+                    <li>Return here to send your transaction</li>
+                  </ol>
+                </div>
+              )}
+            </ErrorMessage>
+          )}
           {success && <SuccessMessage>{success}</SuccessMessage>}
 
           <ButtonGroup>
@@ -861,34 +802,15 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                 ) : undefined}
               >
                 {isLoading ?
-                  (currentStep === 'form' ? 'Creating EIP-712 Transaction...' :
-                   currentStep === 'signing' ? 'Waiting for Signature...' :
-                   'Proposing to SafeTxPool...') :
-                  'Create EIP-712 Transaction'
+                  (currentStep === 'proposing' ? 'Proposing Transaction...' : 'Creating Transaction...') :
+                  'Propose Transaction'
                 }
               </Button>
             )}
           </ButtonGroup>
         </form>
 
-        {/* EIP-712 Signing Modal */}
-        {pendingTransaction && (
-          <EIP712SigningModal
-            isOpen={showEIP712Modal}
-            onClose={() => {
-              setShowEIP712Modal(false);
-              setPendingTransaction(null);
-              setCurrentStep('form');
-              setIsLoading(false);
-            }}
-            onSign={handleEIP712Sign}
-            transactionData={pendingTransaction.data}
-            safeAddress={pendingTransaction.domain.verifyingContract}
-            chainId={pendingTransaction.domain.chainId}
-            decodedTransaction={decodedTransaction}
-            network={connectionState.network || 'ethereum'}
-          />
-        )}
+
       </ModalContainer>
     </ModalOverlay>
   );
