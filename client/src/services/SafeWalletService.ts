@@ -597,6 +597,40 @@ export class SafeWalletService {
   }
 
   /**
+   * Propose unsigned transaction to SafeTxPool contract (without signing)
+   */
+  async proposeUnsignedTransactionToPool(
+    safeTransactionData: SafeTransactionData,
+    txHash: string
+  ): Promise<void> {
+    this.ensureInitialized();
+
+    if (!this.safeTxPoolService || !this.provider) {
+      throw new Error('SafeTxPool service or provider not initialized');
+    }
+
+    try {
+      // Get network info
+      const network = await this.provider.getNetwork();
+
+      // Propose transaction to SafeTxPool contract (without signing)
+      await this.safeTxPoolService.proposeTx({
+        safe: this.config!.safeAddress,
+        to: safeTransactionData.to,
+        value: safeTransactionData.value,
+        data: safeTransactionData.data,
+        operation: safeTransactionData.operation,
+        nonce: safeTransactionData.nonce
+      }, network.chainId);
+
+      console.log('Transaction proposed successfully without signature');
+    } catch (error) {
+      console.error('Error proposing unsigned transaction:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Step 3: Use signed transaction data to propose transaction on SafeTxPool contract
    */
   async proposeSignedTransaction(
@@ -633,7 +667,29 @@ export class SafeWalletService {
   }
 
   /**
+   * Propose unsigned transaction flow: Create EIP-712 → Propose (without signing)
+   */
+  async proposeUnsignedTransaction(transactionRequest: TransactionRequest): Promise<SafeTransactionData & { txHash: string }> {
+    try {
+      // Step 1: Create domain type EIP-712 transaction
+      const { safeTransactionData, txHash } = await this.createEIP712Transaction(transactionRequest);
+
+      // Step 2: Propose transaction to SafeTxPool contract (without signing)
+      await this.proposeUnsignedTransactionToPool(safeTransactionData, txHash);
+
+      return {
+        ...safeTransactionData,
+        txHash
+      };
+    } catch (error) {
+      console.error('Error in propose unsigned transaction flow:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Complete transaction flow: Create EIP-712 → Sign → Propose
+   * @deprecated Use proposeUnsignedTransaction() for propose-only flow
    */
   async createTransaction(transactionRequest: TransactionRequest): Promise<SafeTransactionData & { txHash: string; signature: string }> {
     try {
