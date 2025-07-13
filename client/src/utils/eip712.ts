@@ -317,32 +317,70 @@ export function parseSignature(signature: string): { v: number; r: string; s: st
  * Adjusts v values for Safe contract compatibility
  */
 export function combineSignatures(signatures: Array<{ signature: string; signer: string }>): string {
+  console.log('🔐 Combining signatures for Safe execution:', signatures);
+
+  // Validate input signatures
+  if (!signatures || signatures.length === 0) {
+    throw new Error('No signatures provided for combination');
+  }
+
   // Sort signatures by signer address (required by Safe)
   const sortedSignatures = signatures.sort((a, b) =>
     a.signer.toLowerCase().localeCompare(b.signer.toLowerCase())
   );
 
+  console.log('🔐 Sorted signatures by signer address:', sortedSignatures);
+
   let combinedSignatures = '0x';
 
-  for (const { signature } of sortedSignatures) {
+  for (const { signature, signer } of sortedSignatures) {
+    console.log(`🔐 Processing signature for signer ${signer}:`, signature);
+
     let adjustedSignature = signature;
 
-    // Adjust v value for Safe contract compatibility (eth_sign format)
-    // Safe expects v values to be adjusted: 27->31, 28->32 for eth_sign compatibility
-    if (adjustedSignature.length === 132) { // 0x + 64 + 64 + 2 = 132 chars
-      const v = parseInt(adjustedSignature.slice(-2), 16);
-      if (v === 27) {
-        adjustedSignature = adjustedSignature.slice(0, -2) + '1f'; // 27 -> 31
-      } else if (v === 28) {
-        adjustedSignature = adjustedSignature.slice(0, -2) + '20'; // 28 -> 32
-      }
+    // Ensure signature has 0x prefix
+    if (!adjustedSignature.startsWith('0x')) {
+      adjustedSignature = '0x' + adjustedSignature;
     }
 
-    // Remove 0x prefix and append
-    combinedSignatures += adjustedSignature.slice(2);
+    // Validate signature length (should be 132 chars: 0x + 64 + 64 + 2)
+    if (adjustedSignature.length !== 132) {
+      console.error(`❌ Invalid signature length for ${signer}: ${adjustedSignature.length}, expected 132`);
+      throw new Error(`Invalid signature length for ${signer}: ${adjustedSignature.length}, expected 132`);
+    }
+
+    // Parse signature components
+    const r = adjustedSignature.slice(2, 66);
+    const s = adjustedSignature.slice(66, 130);
+    const v = parseInt(adjustedSignature.slice(130, 132), 16);
+
+    console.log(`🔐 Signature components for ${signer}: r=${r}, s=${s}, v=${v}`);
+
+    // Adjust v value for Safe contract compatibility
+    // Safe expects v values to be adjusted for eth_sign compatibility
+    // Standard ECDSA: v = 27 or 28
+    // Safe eth_sign format: v = 31 or 32 (27+4 or 28+4)
+    let adjustedV = v;
+    if (v === 27) {
+      adjustedV = 31; // 27 + 4
+    } else if (v === 28) {
+      adjustedV = 32; // 28 + 4
+    } else if (v === 0 || v === 1) {
+      // Some wallets return v as 0/1, convert to 27/28 first, then adjust
+      adjustedV = v === 0 ? 31 : 32;
+    }
+
+    // Reconstruct signature with adjusted v
+    const adjustedVHex = adjustedV.toString(16).padStart(2, '0');
+    const finalSignature = r + s + adjustedVHex;
+
+    console.log(`🔐 Adjusted signature for ${signer}: v=${v}->${adjustedV}, final=${finalSignature}`);
+
+    // Append to combined signatures
+    combinedSignatures += finalSignature;
   }
 
-  console.log('🔐 Combined signatures for Safe execution:', combinedSignatures);
+  console.log('🔐 Final combined signatures for Safe execution:', combinedSignatures);
   return combinedSignatures;
 }
 

@@ -274,31 +274,113 @@ export class SafeTxPoolService {
     }
 
     try {
+      console.log('🔍 Getting transaction signers for txHash:', txHash);
+
       // Get signatures from contract
       const signatures = await this.contract.getSignatures(txHash);
+      console.log('📋 Raw signatures from contract:', signatures);
 
-      // Get Safe owners to check who has signed
+      if (!signatures || signatures.length === 0) {
+        console.log('⚠️ No signatures found for transaction');
+        return [];
+      }
+
+      // Get Safe owners to validate signers
       const safeContract = new ethers.Contract(safeAddress, SAFE_ABI, this.provider);
-
       const owners = await safeContract.getOwners();
+      console.log('👥 Safe owners:', owners);
+
       const signersWithAddresses: Array<{ signature: string; signer: string }> = [];
 
-      // Check each owner to see if they have signed
-      let signatureIndex = 0;
-      for (const owner of owners) {
-        const hasSigned = await this.hasSignedTx(txHash, owner);
-        if (hasSigned && signatureIndex < signatures.length) {
-          signersWithAddresses.push({
-            signature: signatures[signatureIndex],
-            signer: owner
-          });
-          signatureIndex++;
+      // For each signature, recover the signer address and validate
+      for (let i = 0; i < signatures.length; i++) {
+        const signature = signatures[i];
+        console.log(`🔍 Processing signature ${i}:`, signature);
+
+        try {
+          // Get the transaction details to reconstruct the hash for signature recovery
+          const txDetails = await this.contract.getTxDetails(txHash);
+
+          // Import the EIP-712 utilities to create the transaction hash
+          const { createSafeContractTransactionHash } = await import('../utils/eip712');
+
+          // Get network info
+          const network = await this.provider.getNetwork();
+
+          // Create the Safe transaction data structure
+          const safeTransactionData = {
+            to: txDetails.to,
+            value: txDetails.value.toString(),
+            data: txDetails.data,
+            operation: txDetails.operation,
+            safeTxGas: '0',
+            baseGas: '0',
+            gasPrice: '0',
+            gasToken: ethers.constants.AddressZero,
+            refundReceiver: ethers.constants.AddressZero,
+            nonce: txDetails.nonce.toNumber()
+          };
+
+          // Create the transaction hash that was signed
+          const messageHash = createSafeContractTransactionHash(
+            safeAddress,
+            network.chainId,
+            safeTransactionData
+          );
+
+          console.log('📋 Message hash for signature recovery:', messageHash);
+
+          // Recover the signer address from the signature
+          // Note: Safe signatures are in eth_sign format, so we need to handle the v value adjustment
+          let adjustedSignature = signature;
+
+          // Parse the signature to check v value
+          if (signature.length === 132) { // 0x + 64 + 64 + 2
+            const v = parseInt(signature.slice(-2), 16);
+            // If v is 31 or 32 (Safe eth_sign format), convert back to 27/28 for recovery
+            if (v === 31) {
+              adjustedSignature = signature.slice(0, -2) + '1b'; // 31 -> 27
+            } else if (v === 32) {
+              adjustedSignature = signature.slice(0, -2) + '1c'; // 32 -> 28
+            }
+          }
+
+          // Recover signer address
+          const recoveredSigner = ethers.utils.recoverAddress(messageHash, adjustedSignature);
+          console.log(`🔍 Recovered signer for signature ${i}:`, recoveredSigner);
+
+          // Validate that the recovered signer is an owner of the Safe
+          const isOwner = owners.some((owner: string) => owner.toLowerCase() === recoveredSigner.toLowerCase());
+
+          if (isOwner) {
+            signersWithAddresses.push({
+              signature: signature, // Keep original signature format for Safe execution
+              signer: recoveredSigner
+            });
+            console.log(`✅ Valid signature from owner: ${recoveredSigner}`);
+          } else {
+            console.warn(`⚠️ Signature ${i} recovered to non-owner address: ${recoveredSigner}`);
+          }
+
+        } catch (recoveryError) {
+          console.error(`❌ Failed to recover signer for signature ${i}:`, recoveryError);
+
+          // Fallback: Use the old method for this signature
+          const hasSigned = await this.hasSignedTx(txHash, owners[i % owners.length]);
+          if (hasSigned) {
+            signersWithAddresses.push({
+              signature: signature,
+              signer: owners[i % owners.length]
+            });
+            console.log(`🔄 Fallback: Using owner ${owners[i % owners.length]} for signature ${i}`);
+          }
         }
       }
 
+      console.log('✅ Final signers with addresses:', signersWithAddresses);
       return signersWithAddresses;
     } catch (error) {
-      console.error('Error getting transaction signers:', error);
+      console.error('❌ Error getting transaction signers:', error);
       return [];
     }
   }

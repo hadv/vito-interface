@@ -812,8 +812,33 @@ export class SafeWalletService {
     }
 
     try {
+      console.log('🔐 Executing Safe transaction with signatures:', {
+        transaction: safeTransaction,
+        signatures: signatures.map(s => ({ signer: s.signer, signature: s.signature.slice(0, 10) + '...' }))
+      });
+
+      // Validate signatures before combining
+      if (!signatures || signatures.length === 0) {
+        throw new Error('No signatures provided for transaction execution');
+      }
+
+      // Get Safe info to validate threshold
+      const safeInfo = await this.getSafeInfo();
+      if (signatures.length < safeInfo.threshold) {
+        throw new Error(`Insufficient signatures: ${signatures.length}/${safeInfo.threshold} required`);
+      }
+
+      // Validate that all signers are owners of the Safe
+      for (const { signer } of signatures) {
+        if (!safeInfo.owners.includes(signer)) {
+          throw new Error(`Signer ${signer} is not an owner of the Safe`);
+        }
+      }
+
       // Combine signatures using EIP-712 utility (properly sorted)
       const combinedSignatures = combineSignatures(signatures);
+
+      console.log('🔐 Executing transaction on Safe contract...');
 
       // Execute the transaction on the Safe contract
       const tx = await this.safeContract.execTransaction(
@@ -829,10 +854,25 @@ export class SafeWalletService {
         combinedSignatures
       );
 
+      console.log('✅ Safe transaction executed successfully:', tx.hash);
       return tx;
-    } catch (error) {
-      console.error('Error executing Safe transaction:', error);
-      throw new Error(`Failed to execute transaction: ${error}`);
+    } catch (error: any) {
+      console.error('❌ Error executing Safe transaction:', error);
+
+      // Provide more specific error messages for common Safe errors
+      if (error.message?.includes('GS026')) {
+        throw new Error('Invalid signature order or signer not authorized. Signatures must be sorted by signer address and all signers must be Safe owners.');
+      } else if (error.message?.includes('GS025')) {
+        throw new Error('Transaction not approved by required signers.');
+      } else if (error.message?.includes('GS013')) {
+        throw new Error('Transaction execution failed. The target transaction reverted.');
+      } else if (error.message?.includes('GS010')) {
+        throw new Error('Not enough gas provided for Safe transaction execution.');
+      } else if (error.code === 'UNPREDICTABLE_GAS_LIMIT') {
+        throw new Error('Cannot estimate gas for transaction. The transaction may fail or require manual gas limit.');
+      }
+
+      throw new Error(`Failed to execute transaction: ${error.message || error}`);
     }
   }
 
