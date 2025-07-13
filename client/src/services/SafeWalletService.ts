@@ -830,7 +830,7 @@ export class SafeWalletService {
 
       // Validate that all signers are owners of the Safe (with case-insensitive comparison)
       for (const { signer } of signatures) {
-        const isOwner = safeInfo.owners.some(owner => owner.toLowerCase() === signer.toLowerCase());
+        const isOwner = safeInfo.owners.some((owner: string) => owner.toLowerCase() === signer.toLowerCase());
         if (!isOwner) {
           console.warn(`⚠️ Signer ${signer} is not an owner of the Safe. Owners:`, safeInfo.owners);
           // Don't throw error for now, let the Safe contract handle validation
