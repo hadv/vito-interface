@@ -358,17 +358,18 @@ export function combineSignatures(signatures: Array<{ signature: string; signer:
 
     console.log(`🔐 Signature components for ${signer}: r=${r}, s=${s}, v=${v}`);
 
-    // Convert signature from ECDSA format (v=27/28) to Safe format (v=31/32)
+    // Keep signature in ECDSA format (v=27/28) - Safe contract expects this!
     let adjustedV = v;
-    if (v === 27) {
-      adjustedV = 31; // 27 + 4 for eth_sign compatibility
-    } else if (v === 28) {
-      adjustedV = 32; // 28 + 4 for eth_sign compatibility
+    if (v === 31) {
+      adjustedV = 27; // Convert Safe format back to ECDSA
+    } else if (v === 32) {
+      adjustedV = 28; // Convert Safe format back to ECDSA
     } else if (v === 0) {
-      adjustedV = 31; // Some wallets use 0 instead of 27
+      adjustedV = 27; // Some wallets use 0 instead of 27
     } else if (v === 1) {
-      adjustedV = 32; // Some wallets use 1 instead of 28
+      adjustedV = 28; // Some wallets use 1 instead of 28
     }
+    // If already 27/28, keep as-is
 
     // Reconstruct signature with adjusted v value
     const adjustedVHex = adjustedV.toString(16).padStart(2, '0');
