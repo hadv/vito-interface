@@ -304,52 +304,35 @@ export class SafeTxPoolService {
           // Get network info
           const network = await this.provider.getNetwork();
 
-          // Reconstruct the EXACT EIP-712 hash that SafeTxPool contract uses
-          // This must match the _getEIP712Hash function in SafeTxPool.sol
+          // Use the EXACT same hash generation method that was used during signing
+          // This must match the createSafeContractTransactionHash function
 
-          // 1. Create domain separator (matches SafeTxPool contract)
-          const domainSeparator = ethers.utils.keccak256(
-            ethers.utils.defaultAbiCoder.encode(
-              ['bytes32', 'uint256', 'address'],
-              [
-                ethers.utils.keccak256(ethers.utils.toUtf8Bytes('EIP712Domain(uint256 chainId,address verifyingContract)')),
-                network.chainId,
-                safeAddress // This is the Safe address, not the SafeTxPool address
-              ]
-            )
+          // Create the Safe transaction data structure with the actual transaction details
+          const safeTransactionData = {
+            to: txDetails.to,
+            value: txDetails.value.toString(),
+            data: txDetails.data,
+            operation: txDetails.operation,
+            safeTxGas: '0', // These are hardcoded in SafeTxPoolService.generateTxHash()
+            baseGas: '0',
+            gasPrice: '0',
+            gasToken: ethers.constants.AddressZero,
+            refundReceiver: ethers.constants.AddressZero,
+            nonce: txDetails.nonce.toNumber()
+          };
+
+          // Import the exact same hash generation function used during signing
+          const { createSafeContractTransactionHash } = await import('../utils/eip712');
+
+          // Generate the exact same hash that was signed
+          const messageHash = createSafeContractTransactionHash(
+            safeAddress,
+            network.chainId,
+            safeTransactionData
           );
 
-          // 2. Create Safe transaction struct hash (matches SafeTxPool contract)
-          const safeTxHash = ethers.utils.keccak256(
-            ethers.utils.defaultAbiCoder.encode(
-              ['bytes32', 'address', 'uint256', 'bytes32', 'uint8', 'uint256', 'uint256', 'uint256', 'address', 'address', 'uint256'],
-              [
-                ethers.utils.keccak256(ethers.utils.toUtf8Bytes('SafeTx(address to,uint256 value,bytes data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,uint256 nonce)')),
-                txDetails.to,
-                txDetails.value,
-                ethers.utils.keccak256(txDetails.data),
-                txDetails.operation,
-                0, // safeTxGas - hardcoded to 0 in SafeTxPool
-                0, // baseGas - hardcoded to 0 in SafeTxPool
-                0, // gasPrice - hardcoded to 0 in SafeTxPool
-                ethers.constants.AddressZero, // gasToken - hardcoded to address(0) in SafeTxPool
-                ethers.constants.AddressZero, // refundReceiver - hardcoded to address(0) in SafeTxPool
-                txDetails.nonce
-              ]
-            )
-          );
-
-          // 3. Create final EIP-712 hash (matches SafeTxPool contract)
-          const messageHash = ethers.utils.keccak256(
-            ethers.utils.solidityPack(
-              ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
-              ['0x19', '0x01', domainSeparator, safeTxHash]
-            )
-          );
-
-          console.log('📋 Reconstructed EIP-712 hash for signature recovery:', messageHash);
-          console.log('📋 Domain separator:', domainSeparator);
-          console.log('📋 Safe tx hash:', safeTxHash);
+          console.log('📋 Using exact same hash generation as signing:', messageHash);
+          console.log('📋 Transaction data used for hash:', safeTransactionData);
 
           // Recover the signer address from the signature
           // The signature should be in standard ECDSA format (v=27/28) for recovery
@@ -360,24 +343,12 @@ export class SafeTxPoolService {
           const isOwner = owners.some((owner: string) => owner.toLowerCase() === recoveredSigner.toLowerCase());
 
           if (isOwner) {
-            // Convert signature to Safe execution format (v=31/32 for eth_sign compatibility)
-            let safeSignature = signature;
-            if (signature.length === 132) { // 0x + 64 + 64 + 2
-              const v = parseInt(signature.slice(-2), 16);
-              if (v === 27) {
-                safeSignature = signature.slice(0, -2) + '1f'; // 27 -> 31
-              } else if (v === 28) {
-                safeSignature = signature.slice(0, -2) + '20'; // 28 -> 32
-              }
-            }
-
             signersWithAddresses.push({
-              signature: safeSignature, // Use Safe-compatible signature format
+              signature: signature, // Keep original signature format for now
               signer: recoveredSigner
             });
             console.log(`✅ Valid signature from owner: ${recoveredSigner}`);
-            console.log(`📋 Original signature: ${signature}`);
-            console.log(`📋 Safe-compatible signature: ${safeSignature}`);
+            console.log(`📋 Signature: ${signature}`);
           } else {
             console.warn(`⚠️ Signature ${i} recovered to non-owner address: ${recoveredSigner}`);
           }

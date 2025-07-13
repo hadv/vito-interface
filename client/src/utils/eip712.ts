@@ -351,9 +351,33 @@ export function combineSignatures(signatures: Array<{ signature: string; signer:
 
     console.log(`🔐 Processing signature for ${signer}: ${adjustedSignature}`);
 
-    // Remove 0x prefix and append to combined signatures
-    // The signature should already be in the correct format (v=31/32) from SafeTxPoolService
-    combinedSignatures += adjustedSignature.slice(2);
+    // Parse signature components
+    const r = adjustedSignature.slice(2, 66);
+    const s = adjustedSignature.slice(66, 130);
+    const v = parseInt(adjustedSignature.slice(130, 132), 16);
+
+    console.log(`🔐 Signature components for ${signer}: r=${r}, s=${s}, v=${v}`);
+
+    // Convert signature from ECDSA format (v=27/28) to Safe format (v=31/32)
+    let adjustedV = v;
+    if (v === 27) {
+      adjustedV = 31; // 27 + 4 for eth_sign compatibility
+    } else if (v === 28) {
+      adjustedV = 32; // 28 + 4 for eth_sign compatibility
+    } else if (v === 0) {
+      adjustedV = 31; // Some wallets use 0 instead of 27
+    } else if (v === 1) {
+      adjustedV = 32; // Some wallets use 1 instead of 28
+    }
+
+    // Reconstruct signature with adjusted v value
+    const adjustedVHex = adjustedV.toString(16).padStart(2, '0');
+    const finalSignature = r + s + adjustedVHex;
+
+    console.log(`🔐 Converted signature for ${signer}: v=${v}->${adjustedV}, final=${finalSignature}`);
+
+    // Append to combined signatures
+    combinedSignatures += finalSignature;
   }
 
   console.log('🔐 Final combined signatures for Safe execution:', combinedSignatures);
