@@ -252,6 +252,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   const [currentStep, setCurrentStep] = useState<'form' | 'proposing'>('form');
   const [connectionState, setConnectionState] = useState<WalletConnectionState>({ isConnected: false });
   const [decodedTransaction, setDecodedTransaction] = useState<DecodedTransactionData | null>(null);
+  const [showAddressBookWarning, setShowAddressBookWarning] = useState(false);
   // const [retryCount, setRetryCount] = useState(0); // Reserved for future retry functionality
 
   // Initialize toast system
@@ -368,6 +369,23 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     // Check if Safe TX Pool is configured for the current network
     if (!isSafeTxPoolConfigured(connectionState.network || 'ethereum')) {
       setError(`Safe TX Pool contract is not configured for ${connectionState.network}. Please configure the contract address to enable transactions.`);
+      return;
+    }
+
+    // Check if address is in address book (required by SafeTxPool guard)
+    try {
+      const safeTxPoolService = createSafeTxPoolService(connectionState.network || 'ethereum');
+      const entries = await safeTxPoolService.getAddressBookEntries(fromAddress);
+      const isInAddressBook = entries.some(entry => entry.walletAddress.toLowerCase() === toAddress.toLowerCase());
+
+      if (!isInAddressBook) {
+        setShowAddressBookWarning(true);
+        setError(`This address is not in your address book. The SafeTxPool guard requires all transaction destinations to be pre-approved. Please add "${toAddress}" to your address book first.`);
+        return;
+      }
+    } catch (addressBookError) {
+      console.error('Error checking address book:', addressBookError);
+      setError('Unable to verify address book. Please ensure the address is in your address book before proceeding.');
       return;
     }
 
@@ -535,7 +553,11 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             <Label>Recipient Address</Label>
             <AddressBookSelector
               value={toAddress}
-              onChange={setToAddress}
+              onChange={(newAddress) => {
+                setToAddress(newAddress);
+                setShowAddressBookWarning(false);
+                setError('');
+              }}
               placeholder="Select from address book or enter address..."
               disabled={isLoading}
               network={connectionState.network || 'ethereum'}
@@ -717,7 +739,25 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             </TransactionDetails>
           )}
 
-          {error && <ErrorMessage>{error}</ErrorMessage>}
+          {error && (
+            <ErrorMessage>
+              {error}
+              {showAddressBookWarning && (
+                <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#495057' }}>
+                    💡 How to add an address to your address book:
+                  </div>
+                  <ol style={{ margin: 0, paddingLeft: '20px', color: '#6c757d', fontSize: '14px' }}>
+                    <li>Go to the <strong>Address Book</strong> page</li>
+                    <li>Click <strong>"Add Address"</strong></li>
+                    <li>Enter the recipient's address and a name</li>
+                    <li>Submit the transaction to add them</li>
+                    <li>Return here to send your transaction</li>
+                  </ol>
+                </div>
+              )}
+            </ErrorMessage>
+          )}
           {success && <SuccessMessage>{success}</SuccessMessage>}
 
           <ButtonGroup>
