@@ -301,63 +301,83 @@ export class SafeTxPoolService {
           // Get the transaction details to reconstruct the hash for signature recovery
           const txDetails = await this.contract.getTxDetails(txHash);
 
-          // Import the EIP-712 utilities to create the transaction hash
-          const { createSafeContractTransactionHash } = await import('../utils/eip712');
-
           // Get network info
           const network = await this.provider.getNetwork();
 
-          // Create the Safe transaction data structure
-          const safeTransactionData = {
-            to: txDetails.to,
-            value: txDetails.value.toString(),
-            data: txDetails.data,
-            operation: txDetails.operation,
-            safeTxGas: '0',
-            baseGas: '0',
-            gasPrice: '0',
-            gasToken: ethers.constants.AddressZero,
-            refundReceiver: ethers.constants.AddressZero,
-            nonce: txDetails.nonce.toNumber()
-          };
+          // Reconstruct the EXACT EIP-712 hash that SafeTxPool contract uses
+          // This must match the _getEIP712Hash function in SafeTxPool.sol
 
-          // Create the transaction hash that was signed
-          const messageHash = createSafeContractTransactionHash(
-            safeAddress,
-            network.chainId,
-            safeTransactionData
+          // 1. Create domain separator (matches SafeTxPool contract)
+          const domainSeparator = ethers.utils.keccak256(
+            ethers.utils.defaultAbiCoder.encode(
+              ['bytes32', 'uint256', 'address'],
+              [
+                ethers.utils.keccak256(ethers.utils.toUtf8Bytes('EIP712Domain(uint256 chainId,address verifyingContract)')),
+                network.chainId,
+                safeAddress // This is the Safe address, not the SafeTxPool address
+              ]
+            )
           );
 
-          console.log('📋 Message hash for signature recovery:', messageHash);
+          // 2. Create Safe transaction struct hash (matches SafeTxPool contract)
+          const safeTxHash = ethers.utils.keccak256(
+            ethers.utils.defaultAbiCoder.encode(
+              ['bytes32', 'address', 'uint256', 'bytes32', 'uint8', 'uint256', 'uint256', 'uint256', 'address', 'address', 'uint256'],
+              [
+                ethers.utils.keccak256(ethers.utils.toUtf8Bytes('SafeTx(address to,uint256 value,bytes data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,uint256 nonce)')),
+                txDetails.to,
+                txDetails.value,
+                ethers.utils.keccak256(txDetails.data),
+                txDetails.operation,
+                0, // safeTxGas - hardcoded to 0 in SafeTxPool
+                0, // baseGas - hardcoded to 0 in SafeTxPool
+                0, // gasPrice - hardcoded to 0 in SafeTxPool
+                ethers.constants.AddressZero, // gasToken - hardcoded to address(0) in SafeTxPool
+                ethers.constants.AddressZero, // refundReceiver - hardcoded to address(0) in SafeTxPool
+                txDetails.nonce
+              ]
+            )
+          );
+
+          // 3. Create final EIP-712 hash (matches SafeTxPool contract)
+          const messageHash = ethers.utils.keccak256(
+            ethers.utils.solidityPack(
+              ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
+              ['0x19', '0x01', domainSeparator, safeTxHash]
+            )
+          );
+
+          console.log('📋 Reconstructed EIP-712 hash for signature recovery:', messageHash);
+          console.log('📋 Domain separator:', domainSeparator);
+          console.log('📋 Safe tx hash:', safeTxHash);
 
           // Recover the signer address from the signature
-          // Note: Safe signatures are in eth_sign format, so we need to handle the v value adjustment
-          let adjustedSignature = signature;
-
-          // Parse the signature to check v value
-          if (signature.length === 132) { // 0x + 64 + 64 + 2
-            const v = parseInt(signature.slice(-2), 16);
-            // If v is 31 or 32 (Safe eth_sign format), convert back to 27/28 for recovery
-            if (v === 31) {
-              adjustedSignature = signature.slice(0, -2) + '1b'; // 31 -> 27
-            } else if (v === 32) {
-              adjustedSignature = signature.slice(0, -2) + '1c'; // 32 -> 28
-            }
-          }
-
-          // Recover signer address
-          const recoveredSigner = ethers.utils.recoverAddress(messageHash, adjustedSignature);
+          // The signature should be in standard ECDSA format (v=27/28) for recovery
+          const recoveredSigner = ethers.utils.recoverAddress(messageHash, signature);
           console.log(`🔍 Recovered signer for signature ${i}:`, recoveredSigner);
 
           // Validate that the recovered signer is an owner of the Safe
           const isOwner = owners.some((owner: string) => owner.toLowerCase() === recoveredSigner.toLowerCase());
 
           if (isOwner) {
+            // Convert signature to Safe execution format (v=31/32 for eth_sign compatibility)
+            let safeSignature = signature;
+            if (signature.length === 132) { // 0x + 64 + 64 + 2
+              const v = parseInt(signature.slice(-2), 16);
+              if (v === 27) {
+                safeSignature = signature.slice(0, -2) + '1f'; // 27 -> 31
+              } else if (v === 28) {
+                safeSignature = signature.slice(0, -2) + '20'; // 28 -> 32
+              }
+            }
+
             signersWithAddresses.push({
-              signature: signature, // Keep original signature format for Safe execution
+              signature: safeSignature, // Use Safe-compatible signature format
               signer: recoveredSigner
             });
             console.log(`✅ Valid signature from owner: ${recoveredSigner}`);
+            console.log(`📋 Original signature: ${signature}`);
+            console.log(`📋 Safe-compatible signature: ${safeSignature}`);
           } else {
             console.warn(`⚠️ Signature ${i} recovered to non-owner address: ${recoveredSigner}`);
           }

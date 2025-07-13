@@ -349,35 +349,11 @@ export function combineSignatures(signatures: Array<{ signature: string; signer:
       throw new Error(`Invalid signature length for ${signer}: ${adjustedSignature.length}, expected 132`);
     }
 
-    // Parse signature components
-    const r = adjustedSignature.slice(2, 66);
-    const s = adjustedSignature.slice(66, 130);
-    const v = parseInt(adjustedSignature.slice(130, 132), 16);
+    console.log(`🔐 Processing signature for ${signer}: ${adjustedSignature}`);
 
-    console.log(`🔐 Signature components for ${signer}: r=${r}, s=${s}, v=${v}`);
-
-    // Adjust v value for Safe contract compatibility
-    // Safe expects v values to be adjusted for eth_sign compatibility
-    // Standard ECDSA: v = 27 or 28
-    // Safe eth_sign format: v = 31 or 32 (27+4 or 28+4)
-    let adjustedV = v;
-    if (v === 27) {
-      adjustedV = 31; // 27 + 4
-    } else if (v === 28) {
-      adjustedV = 32; // 28 + 4
-    } else if (v === 0 || v === 1) {
-      // Some wallets return v as 0/1, convert to 27/28 first, then adjust
-      adjustedV = v === 0 ? 31 : 32;
-    }
-
-    // Reconstruct signature with adjusted v
-    const adjustedVHex = adjustedV.toString(16).padStart(2, '0');
-    const finalSignature = r + s + adjustedVHex;
-
-    console.log(`🔐 Adjusted signature for ${signer}: v=${v}->${adjustedV}, final=${finalSignature}`);
-
-    // Append to combined signatures
-    combinedSignatures += finalSignature;
+    // Remove 0x prefix and append to combined signatures
+    // The signature should already be in the correct format (v=31/32) from SafeTxPoolService
+    combinedSignatures += adjustedSignature.slice(2);
   }
 
   console.log('🔐 Final combined signatures for Safe execution:', combinedSignatures);
