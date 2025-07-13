@@ -7,6 +7,7 @@ import { isValidEthereumAddress } from '../../../utils/ens';
 
 import { safeWalletService } from '../../../services/SafeWalletService';
 import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
+import { createSafeTxPoolService, AddressBookEntry } from '../../../services/SafeTxPoolService';
 import { isSafeTxPoolConfigured } from '../../../contracts/abis';
 import { useToast } from '../../../hooks/useToast';
 import { ErrorHandler } from '../../../utils/errorHandling';
@@ -376,7 +377,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     try {
       const safeTxPoolService = createSafeTxPoolService(connectionState.network || 'ethereum');
       const entries = await safeTxPoolService.getAddressBookEntries(fromAddress);
-      const isInAddressBook = entries.some(entry => entry.walletAddress.toLowerCase() === toAddress.toLowerCase());
+      const isInAddressBook = entries.some((entry: AddressBookEntry) => entry.walletAddress.toLowerCase() === toAddress.toLowerCase());
 
       if (!isInAddressBook) {
         setShowAddressBookWarning(true);
