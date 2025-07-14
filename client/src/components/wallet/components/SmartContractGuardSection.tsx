@@ -13,6 +13,7 @@ import Input from '../../ui/Input';
 import AddressDisplay from './AddressDisplay';
 import WalletConnectionModal from '../../ui/WalletConnectionModal';
 import GuardConfirmationModal from './GuardConfirmationModal';
+import GuardTransactionModal from './GuardTransactionModal';
 import DelegateCallControlSection from './DelegateCallControlSection';
 import SafeGuardDiagnostic from './SafeGuardDiagnostic';
 import GuardAddressBookManager from './GuardAddressBookManager';
@@ -161,6 +162,7 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
   });
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<'set' | 'remove' | null>(null);
   const [successMessage, setSuccessMessage] = useState<string>('');
 
@@ -310,7 +312,7 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
       }
 
       setPendingAction('set');
-      setShowConfirmationModal(true);
+      setShowTransactionModal(true);
     });
   };
 
@@ -344,7 +346,7 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
   const handleRemoveGuard = () => {
     handleWalletConnectionRequired(() => {
       setPendingAction('remove');
-      setShowConfirmationModal(true);
+      setShowTransactionModal(true);
     });
   };
 
@@ -371,6 +373,20 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
     } finally {
       setIsSubmitting(false);
       setPendingAction(null);
+    }
+  };
+
+  const handleTransactionSuccess = (message: string) => {
+    setSuccessMessage(message);
+    setShowTransactionModal(false);
+    setPendingAction(null);
+
+    // Refresh guard status
+    loadCurrentGuard();
+
+    // Clear form if setting guard
+    if (pendingAction === 'set') {
+      setNewGuardAddress('');
     }
   };
 
@@ -547,6 +563,22 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
           safeAddress={connectionState.safeAddress || ''}
           network={network}
           isRemoving={pendingAction === 'remove'}
+        />
+      )}
+
+      {/* Guard Transaction Modal */}
+      {showTransactionModal && (
+        <GuardTransactionModal
+          isOpen={showTransactionModal}
+          onClose={() => {
+            setShowTransactionModal(false);
+            setPendingAction(null);
+          }}
+          onSuccess={handleTransactionSuccess}
+          safeAddress={connectionState.safeAddress || ''}
+          network={network}
+          isRemoving={pendingAction === 'remove'}
+          currentGuardAddress={newGuardAddress}
         />
       )}
     </Container>

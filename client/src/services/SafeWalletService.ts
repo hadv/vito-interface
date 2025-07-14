@@ -1369,7 +1369,7 @@ export class SafeWalletService {
   /**
    * Set a guard for the Safe wallet
    */
-  async setGuard(guardAddress: string): Promise<SafeTransactionData & { txHash: string; signature: string }> {
+  async setGuard(guardAddress: string, customNonce?: number): Promise<SafeTransactionData & { txHash: string; signature: string }> {
     this.ensureInitialized();
 
     if (!this.signer) {
@@ -1381,8 +1381,8 @@ export class SafeWalletService {
     }
 
     try {
-      // Get current nonce
-      const nonce = await this.getNonce();
+      // Use custom nonce if provided, otherwise get current nonce
+      const nonce = customNonce !== undefined ? customNonce : await this.getNonce();
 
       // Import SafeGuardService to create the transaction
       const { SafeGuardService } = await import('./SafeGuardService');
@@ -1410,7 +1410,7 @@ export class SafeWalletService {
   /**
    * Remove the current guard from the Safe wallet
    */
-  async removeGuard(): Promise<SafeTransactionData & { txHash: string; signature: string }> {
+  async removeGuard(customNonce?: number): Promise<SafeTransactionData & { txHash: string; signature: string }> {
     this.ensureInitialized();
 
     if (!this.signer) {
@@ -1422,8 +1422,8 @@ export class SafeWalletService {
     }
 
     try {
-      // Get current nonce
-      const nonce = await this.getNonce();
+      // Use custom nonce if provided, otherwise get current nonce
+      const nonce = customNonce !== undefined ? customNonce : await this.getNonce();
 
       // Import SafeGuardService to create the transaction
       const { SafeGuardService } = await import('./SafeGuardService');
