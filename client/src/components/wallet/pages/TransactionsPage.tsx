@@ -251,8 +251,12 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         return isValid;
       });
 
-      console.log(`Showing ${validPending.length} valid transactions (filtered out ${allPending.length - validPending.length})`);
-      setPendingTxs(validPending);
+      // Sort transactions by nonce (ascending order) to show proper execution sequence
+      const sortedPending = validPending.sort((a, b) => a.nonce - b.nonce);
+      console.log(`Showing ${sortedPending.length} valid transactions (filtered out ${allPending.length - sortedPending.length}), sorted by nonce`);
+      console.log('Transaction order by nonce:', sortedPending.map(tx => ({ txHash: tx.txHash.slice(0, 10), nonce: tx.nonce })));
+
+      setPendingTxs(sortedPending);
 
       // Decode transactions for better display
       if (validPending.length > 0) {
@@ -394,7 +398,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
   };
 
   // Render pending transaction from Safe TX pool smart contract
-  const renderPendingTxItem = (tx: SafeTxPoolTransaction, isSelected: boolean, isFocused: boolean) => {
+  const renderPendingTxItem = (tx: SafeTxPoolTransaction, isSelected: boolean, isFocused: boolean, index: number) => {
     // Use actual threshold from Safe info, fallback to 2 if not loaded yet
     const threshold = safeInfo?.threshold || 2;
     const confirmationProgress = `${tx.signatures.length} of ${threshold} signatures`;
@@ -402,6 +406,10 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
     // Get decoded transaction data
     const decodedTx = decodedTransactions.get(tx.txHash);
+
+    // Determine execution order indicator
+    const isNextToExecute = index === 0;
+    const executionOrderText = isNextToExecute ? 'Next to Execute' : `Queue Position: ${index + 1}`;
 
     // Check if current user can delete this transaction (is the proposer)
     const connectionState = walletConnectionService.getState();
@@ -446,9 +454,12 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
             <div className="text-sm text-gray-400">To:</div>
             <div className="text-sm font-mono text-gray-300">{formatWalletAddress(tx.to)}</div>
           </div>
-          <div>
+          <div className="text-right">
             <div className="text-sm text-gray-400">Nonce:</div>
-            <div className="text-sm text-gray-300">{tx.nonce}</div>
+            <div className="text-sm font-semibold text-blue-400">#{tx.nonce}</div>
+            <div className={`text-xs mt-1 ${isNextToExecute ? 'text-green-400' : 'text-yellow-400'}`}>
+              {executionOrderText}
+            </div>
           </div>
         </div>
 
@@ -607,7 +618,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 Showing actionable transactions from Safe TX pool smart contract
                 <br />
                 <span className="text-xs text-gray-500">
-                  Transactions with nonce &lt; current Safe nonce are automatically filtered out
+                  Transactions ordered by nonce (execution sequence) • Nonce &lt; current Safe nonce filtered out
                 </span>
               </div>
               <button
@@ -647,7 +658,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     // For pending transactions, we could open Safe app or show transaction details
                     console.log('Pending transaction selected:', tx.txHash);
                   }}>
-                    {renderPendingTxItem(tx, false, false)}
+                    {renderPendingTxItem(tx, false, false, index)}
                   </div>
                 ))}
               </div>
