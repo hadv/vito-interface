@@ -5,7 +5,7 @@ import { Button, Input } from '@components/ui';
 import { isValidEthereumAddress } from '../../../utils/ens';
 
 
-import { safeWalletService } from '../../../services/SafeWalletService';
+import { safeWalletService, SafeWalletService } from '../../../services/SafeWalletService';
 import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
 import { createSafeTxPoolService, AddressBookEntry } from '../../../services/SafeTxPoolService';
 import { isSafeTxPoolConfigured } from '../../../contracts/abis';
@@ -230,6 +230,26 @@ const DetailValue = styled.div`
   line-height: 1.5;
 `;
 
+const InputGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+`;
+
+const InputLabel = styled.span`
+  font-size: 14px;
+  color: #94a3b8;
+  white-space: nowrap;
+`;
+
+const NonceDescription = styled.p`
+  margin: 8px 0 0 0;
+  font-size: 14px;
+  color: #94a3b8;
+  line-height: 1.5;
+`;
+
 interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -256,6 +276,12 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   const [showAddressBookWarning, setShowAddressBookWarning] = useState(false);
   // const [retryCount, setRetryCount] = useState(0); // Reserved for future retry functionality
 
+  // Nonce management state
+  const [currentNonce, setCurrentNonce] = useState(0);
+  const [customNonce, setCustomNonce] = useState(0);
+  const [nonceLoading, setNonceLoading] = useState(false);
+  const recommendedNonce = currentNonce;
+
   // Initialize toast system
   const toast = useToast();
 
@@ -269,6 +295,52 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
     return unsubscribe;
   }, []);
+
+  // Fetch current nonce when modal opens and Safe address is available
+  useEffect(() => {
+    const fetchNonce = async () => {
+      if (!isOpen || !fromAddress || !connectionState.network) {
+        return;
+      }
+
+      setNonceLoading(true);
+      try {
+        // Initialize SafeWalletService to get current nonce
+        const walletService = new SafeWalletService();
+        await walletService.initialize({
+          safeAddress: fromAddress,
+          network: connectionState.network
+        });
+
+        const nonce = await walletService.getNonce();
+        setCurrentNonce(nonce);
+        setCustomNonce(nonce);
+        console.log(`Current Safe nonce: ${nonce}`);
+      } catch (error) {
+        console.error('Failed to fetch Safe nonce:', error);
+        // Set default values if nonce fetch fails
+        setCurrentNonce(0);
+        setCustomNonce(0);
+      } finally {
+        setNonceLoading(false);
+      }
+    };
+
+    fetchNonce();
+  }, [isOpen, fromAddress, connectionState.network]);
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setToAddress('');
+      setAmount('');
+      setError('');
+      setSuccess('');
+      setCurrentStep('form');
+      setShowAddressBookWarning(false);
+      // Nonce will be reset when fetchNonce completes
+    }
+  }, [isOpen]);
 
   // Decode transaction data when inputs change
   useEffect(() => {
@@ -417,7 +489,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             value: '0',
             data,
             operation: 0
-          });
+          }, customNonce);
         } else {
           // ETH transfer
           return await safeWalletService.proposeUnsignedTransaction({
@@ -425,7 +497,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             value: ethers.utils.parseEther(amount).toString(),
             data: '0x',
             operation: 0
-          });
+          }, customNonce);
         }
       }, {
         maxAttempts: 3,
@@ -453,6 +525,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       setTimeout(() => {
         setToAddress('');
         setAmount('');
+        setCustomNonce(currentNonce); // Reset to current nonce
         setSuccess('');
         setCurrentStep('form');
         onClose();
@@ -624,6 +697,26 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             />
           </FormGroup>
 
+          <FormGroup>
+            <Label>Transaction Nonce</Label>
+            <InputGroup>
+              <Input
+                type="number"
+                min={currentNonce}
+                value={customNonce}
+                onChange={(e) => setCustomNonce(parseInt(e.target.value) || currentNonce)}
+                disabled={isLoading || nonceLoading}
+                style={{ width: '120px', textAlign: 'center' }}
+              />
+              <InputLabel>
+                {nonceLoading ? 'Loading...' : `(Recommended: ${recommendedNonce})`}
+              </InputLabel>
+            </InputGroup>
+            <NonceDescription>
+              Current Safe nonce: {nonceLoading ? 'Loading...' : currentNonce}. Use current nonce for new transactions.
+            </NonceDescription>
+          </FormGroup>
+
           {(toAddress && amount && parseFloat(amount) > 0) && (
             <TransactionDetails>
               {decodedTransaction && (
@@ -650,6 +743,21 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
               <DetailRow>
                 <DetailLabel>Amount:</DetailLabel>
                 <DetailValue>{amount} {preSelectedAsset?.symbol || 'ETH'}</DetailValue>
+              </DetailRow>
+
+              <DetailRow>
+                <DetailLabel>Transaction Nonce:</DetailLabel>
+                <DetailValue style={{
+                  color: customNonce !== currentNonce ? '#FFD700' : '#fff',
+                  fontWeight: customNonce !== currentNonce ? 'bold' : 'normal'
+                }}>
+                  {customNonce}
+                  {customNonce !== currentNonce && (
+                    <span style={{ fontSize: '12px', color: '#FFD700', marginLeft: '8px' }}>
+                      (Custom)
+                    </span>
+                  )}
+                </DetailValue>
               </DetailRow>
 
               {decodedTransaction?.details.token && (

@@ -430,7 +430,7 @@ export class SafeWalletService {
   /**
    * Step 1: Create domain type EIP-712 transaction
    */
-  async createEIP712Transaction(transactionRequest: TransactionRequest): Promise<{
+  async createEIP712Transaction(transactionRequest: TransactionRequest, customNonce?: number): Promise<{
     safeTransactionData: SafeTransactionData;
     domain: SafeDomain;
     txHash: string;
@@ -445,10 +445,16 @@ export class SafeWalletService {
     }
 
     try {
-      // Get current nonce for the Safe
-      console.log('🔐 SAFE WALLET SERVICE: Getting Safe nonce...');
-      const nonce = await this.getNonce();
-      console.log('🔐 SAFE WALLET SERVICE: Got nonce:', nonce);
+      // Get nonce for the Safe (use custom nonce if provided, otherwise get current nonce)
+      let nonce: number;
+      if (customNonce !== undefined) {
+        console.log('🔐 SAFE WALLET SERVICE: Using custom nonce:', customNonce);
+        nonce = customNonce;
+      } else {
+        console.log('🔐 SAFE WALLET SERVICE: Getting Safe nonce...');
+        nonce = await this.getNonce();
+        console.log('🔐 SAFE WALLET SERVICE: Got nonce:', nonce);
+      }
 
       // Get network info for EIP-712 domain
       const network = await this.provider.getNetwork();
@@ -669,10 +675,10 @@ export class SafeWalletService {
   /**
    * Propose unsigned transaction flow: Create EIP-712 → Propose (without signing)
    */
-  async proposeUnsignedTransaction(transactionRequest: TransactionRequest): Promise<SafeTransactionData & { txHash: string }> {
+  async proposeUnsignedTransaction(transactionRequest: TransactionRequest, customNonce?: number): Promise<SafeTransactionData & { txHash: string }> {
     try {
       // Step 1: Create domain type EIP-712 transaction
-      const { safeTransactionData, txHash } = await this.createEIP712Transaction(transactionRequest);
+      const { safeTransactionData, txHash } = await this.createEIP712Transaction(transactionRequest, customNonce);
 
       // Step 2: Propose transaction to SafeTxPool contract (without signing)
       await this.proposeUnsignedTransactionToPool(safeTransactionData, txHash);
