@@ -143,7 +143,7 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
   const { addToast } = useToast();
 
   // Local storage key for trusted contract names
-  const getStorageKey = (safeAddress: string) => `trustedContracts_${safeAddress.toLowerCase()}_${network}`;
+  const getStorageKey = useCallback((safeAddress: string) => `trustedContracts_${safeAddress.toLowerCase()}_${network}`, [network]);
 
   // Load trusted contract names from local storage
   const loadTrustedContractNames = useCallback((safeAddress: string): Record<string, { name: string; dateAdded: string }> => {
@@ -154,7 +154,7 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
       console.error('Error loading trusted contract names:', error);
       return {};
     }
-  }, [network, getStorageKey]);
+  }, [getStorageKey]);
 
   // Save trusted contract names to local storage
   const saveTrustedContractNames = useCallback((safeAddress: string, names: Record<string, { name: string; dateAdded: string }>) => {
@@ -163,7 +163,7 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
     } catch (error) {
       console.error('Error saving trusted contract names:', error);
     }
-  }, [network, getStorageKey]);
+  }, [getStorageKey]);
 
   // Subscribe to wallet connection state
   useEffect(() => {
