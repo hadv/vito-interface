@@ -113,7 +113,8 @@ const SuccessMessage = styled.div`
 
 interface TrustedContract {
   address: string;
-  name?: string;
+  name: string;
+  dateAdded?: string;
 }
 
 interface TrustedContractsSectionProps {
@@ -123,7 +124,9 @@ interface TrustedContractsSectionProps {
 const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ network }) => {
   const [trustedContracts, setTrustedContracts] = useState<TrustedContract[]>([]);
   const [newContractAddress, setNewContractAddress] = useState<string>('');
+  const [newContractName, setNewContractName] = useState<string>('');
   const [addressError, setAddressError] = useState<string>('');
+  const [nameError, setNameError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [connectionState, setConnectionState] = useState<WalletConnectionState>({
@@ -138,6 +141,29 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
   const [successMessage, setSuccessMessage] = useState<string>('');
 
   const { addToast } = useToast();
+
+  // Local storage key for trusted contract names
+  const getStorageKey = (safeAddress: string) => `trustedContracts_${safeAddress.toLowerCase()}_${network}`;
+
+  // Load trusted contract names from local storage
+  const loadTrustedContractNames = useCallback((safeAddress: string): Record<string, { name: string; dateAdded: string }> => {
+    try {
+      const stored = localStorage.getItem(getStorageKey(safeAddress));
+      return stored ? JSON.parse(stored) : {};
+    } catch (error) {
+      console.error('Error loading trusted contract names:', error);
+      return {};
+    }
+  }, [network, getStorageKey]);
+
+  // Save trusted contract names to local storage
+  const saveTrustedContractNames = useCallback((safeAddress: string, names: Record<string, { name: string; dateAdded: string }>) => {
+    try {
+      localStorage.setItem(getStorageKey(safeAddress), JSON.stringify(names));
+    } catch (error) {
+      console.error('Error saving trusted contract names:', error);
+    }
+  }, [network, getStorageKey]);
 
   // Subscribe to wallet connection state
   useEffect(() => {
@@ -160,10 +186,18 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
 
     try {
       setIsLoading(true);
-      // Note: Since we don't have a direct method to get all trusted contracts,
-      // we'll need to implement this differently or track them locally
-      // For now, we'll start with an empty list and add contracts as they're added
-      setTrustedContracts([]);
+
+      // Load stored contract names and metadata
+      const storedNames = loadTrustedContractNames(connectionState.safeAddress);
+
+      // Convert stored data to TrustedContract array
+      const contractsWithNames: TrustedContract[] = Object.entries(storedNames).map(([address, data]) => ({
+        address,
+        name: data.name,
+        dateAdded: data.dateAdded
+      }));
+
+      setTrustedContracts(contractsWithNames);
     } catch (error) {
       console.error('Error loading trusted contracts:', error);
       const errorDetails = ErrorHandler.classifyError(error);
@@ -174,7 +208,7 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
     } finally {
       setIsLoading(false);
     }
-  }, [connectionState.isConnected, connectionState.safeAddress, addToast]);
+  }, [connectionState.isConnected, connectionState.safeAddress, addToast, loadTrustedContractNames]);
 
   useEffect(() => {
     loadTrustedContracts();
@@ -201,10 +235,37 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
     return '';
   };
 
+  const validateContractName = (name: string): string => {
+    if (!name.trim()) {
+      return 'Contract name is required';
+    }
+
+    if (name.trim().length < 2) {
+      return 'Contract name must be at least 2 characters';
+    }
+
+    if (name.trim().length > 50) {
+      return 'Contract name must be less than 50 characters';
+    }
+
+    // Check if name already exists
+    if (trustedContracts.some(contract => contract.name.toLowerCase() === name.trim().toLowerCase())) {
+      return 'A contract with this name already exists';
+    }
+
+    return '';
+  };
+
   const handleAddressChange = (value: string) => {
     setNewContractAddress(value);
     setSuccessMessage('');
     setAddressError(validateContractAddress(value));
+  };
+
+  const handleNameChange = (value: string) => {
+    setNewContractName(value);
+    setSuccessMessage('');
+    setNameError(validateContractName(value));
   };
 
   const handleWalletConnectionRequired = (action: () => void) => {
@@ -227,9 +288,16 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
 
   const handleAddTrustedContract = () => {
     handleWalletConnectionRequired(async () => {
-      const validationError = validateContractAddress(newContractAddress);
-      if (validationError) {
-        setAddressError(validationError);
+      const addressValidationError = validateContractAddress(newContractAddress);
+      const nameValidationError = validateContractName(newContractName);
+
+      if (addressValidationError) {
+        setAddressError(addressValidationError);
+        return;
+      }
+
+      if (nameValidationError) {
+        setNameError(nameValidationError);
         return;
       }
 
@@ -248,14 +316,31 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
 
         await service.addTrustedContract(connectionState.safeAddress, newContractAddress.trim());
 
+        // Save name to local storage
+        const storedNames = loadTrustedContractNames(connectionState.safeAddress);
+        const dateAdded = new Date().toISOString();
+        storedNames[newContractAddress.trim().toLowerCase()] = {
+          name: newContractName.trim(),
+          dateAdded
+        };
+        saveTrustedContractNames(connectionState.safeAddress, storedNames);
+
         // Add to local list
-        setTrustedContracts(prev => [...prev, { address: newContractAddress.trim() }]);
+        const newContract: TrustedContract = {
+          address: newContractAddress.trim(),
+          name: newContractName.trim(),
+          dateAdded
+        };
+        setTrustedContracts(prev => [...prev, newContract]);
+
+        // Clear form
         setNewContractAddress('');
-        setSuccessMessage('Trusted contract has been successfully added!');
+        setNewContractName('');
+        setSuccessMessage(`Trusted contract "${newContractName.trim()}" has been successfully added!`);
 
         addToast('Trusted Contract Added', {
           type: 'success',
-          message: 'The contract has been added to your trusted contracts list.'
+          message: `"${newContractName.trim()}" has been added to your trusted contracts list.`
         });
       } catch (error) {
         console.error('Error adding trusted contract:', error);
@@ -280,6 +365,19 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
         return;
       }
 
+      // Find the contract to get its name
+      const contractToRemove = trustedContracts.find(
+        contract => contract.address.toLowerCase() === contractAddress.toLowerCase()
+      );
+
+      if (!contractToRemove) {
+        addToast('Contract Not Found', {
+          type: 'error',
+          message: 'The contract you are trying to remove was not found.'
+        });
+        return;
+      }
+
       setIsSubmitting(true);
       try {
         const service = safeTxPoolService;
@@ -287,15 +385,21 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
 
         await service.removeTrustedContract(connectionState.safeAddress, contractAddress);
 
+        // Remove from local storage
+        const storedNames = loadTrustedContractNames(connectionState.safeAddress);
+        delete storedNames[contractAddress.toLowerCase()];
+        saveTrustedContractNames(connectionState.safeAddress, storedNames);
+
         // Remove from local list
         setTrustedContracts(prev => prev.filter(contract =>
           contract.address.toLowerCase() !== contractAddress.toLowerCase()
         ));
-        setSuccessMessage('Trusted contract has been successfully removed!');
+
+        setSuccessMessage(`Trusted contract "${contractToRemove.name}" has been successfully removed!`);
 
         addToast('Trusted Contract Removed', {
           type: 'success',
-          message: 'The contract has been removed from your trusted contracts list.'
+          message: `"${contractToRemove.name}" has been removed from your trusted contracts list.`
         });
       } catch (error) {
         console.error('Error removing trusted contract:', error);
@@ -353,6 +457,16 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
         {/* Add Trusted Contract Form */}
         <TrustedContractForm>
           <Input
+            label="Contract Name"
+            placeholder="e.g., USDC Token, Uniswap V3 Router"
+            value={newContractName}
+            onChange={(e) => handleNameChange(e.target.value)}
+            error={nameError}
+            helperText="Enter a descriptive name for this contract"
+            fullWidth
+          />
+
+          <Input
             label="Contract Address"
             placeholder="0x..."
             value={newContractAddress}
@@ -366,7 +480,14 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
             <Button
               variant="primary"
               onClick={handleAddTrustedContract}
-              disabled={!newContractAddress.trim() || !!addressError || isSubmitting || !isSignerConnected}
+              disabled={
+                !newContractAddress.trim() ||
+                !newContractName.trim() ||
+                !!addressError ||
+                !!nameError ||
+                isSubmitting ||
+                !isSignerConnected
+              }
               loading={isSubmitting}
               allowClickWhenDisabled={!isSignerConnected}
               className={!isSignerConnected ? 'opacity-50' : ''}
@@ -384,7 +505,7 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
 
         {/* Trusted Contracts List */}
         <TrustedContractsList>
-          <SectionTitle>Current Trusted Contracts</SectionTitle>
+          <SectionTitle>Current Trusted Contracts ({trustedContracts.length})</SectionTitle>
           {trustedContracts.length === 0 ? (
             <EmptyState>
               No trusted contracts configured. Add contract addresses above to get started.
@@ -393,7 +514,7 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
             trustedContracts.map((contract, index) => (
               <TrustedContractItem key={index}>
                 <ContractInfo>
-                  <ContractLabel>Contract Address</ContractLabel>
+                  <ContractLabel>{contract.name}</ContractLabel>
                   <AddressDisplay
                     address={contract.address}
                     network={network}
@@ -402,6 +523,15 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
                     showCopy={true}
                     showExplorer={true}
                   />
+                  {contract.dateAdded && (
+                    <div style={{
+                      fontSize: theme.typography.fontSize.xs,
+                      color: theme.colors.text.tertiary,
+                      marginTop: theme.spacing[1]
+                    }}>
+                      Added: {new Date(contract.dateAdded).toLocaleDateString()}
+                    </div>
+                  )}
                 </ContractInfo>
                 <Button
                   variant="danger"
