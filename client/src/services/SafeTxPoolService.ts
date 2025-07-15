@@ -698,6 +698,119 @@ export class SafeTxPoolService {
 
     this.contract.on('AddressBookEntryRemoved', callback);
   }
+
+  /**
+   * Add a trusted contract for a Safe
+   */
+  async addTrustedContract(safe: string, contractAddress: string): Promise<void> {
+    if (!this.contract || !this.signer) {
+      throw new Error('Contract not initialized or signer not set');
+    }
+
+    if (!contractAddress || contractAddress === ethers.constants.AddressZero) {
+      throw new Error('Invalid contract address');
+    }
+
+    try {
+      const tx = await this.contract.addTrustedContract(safe, contractAddress);
+      await tx.wait();
+    } catch (error) {
+      console.error('Error adding trusted contract:', error);
+      throw new Error(`Failed to add trusted contract: ${error}`);
+    }
+  }
+
+  /**
+   * Remove a trusted contract for a Safe
+   */
+  async removeTrustedContract(safe: string, contractAddress: string): Promise<void> {
+    if (!this.contract || !this.signer) {
+      throw new Error('Contract not initialized or signer not set');
+    }
+
+    try {
+      const tx = await this.contract.removeTrustedContract(safe, contractAddress);
+      await tx.wait();
+    } catch (error) {
+      console.error('Error removing trusted contract:', error);
+      throw new Error(`Failed to remove trusted contract: ${error}`);
+    }
+  }
+
+  /**
+   * Check if a contract is trusted for a Safe
+   */
+  async isTrustedContract(safe: string, contractAddress: string): Promise<boolean> {
+    if (!this.contract) {
+      throw new Error('Contract not initialized');
+    }
+
+    try {
+      return await this.contract.isTrustedContract(safe, contractAddress);
+    } catch (error) {
+      console.error('Error checking trusted contract:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Create transaction data for adding a trusted contract
+   */
+  createAddTrustedContractTxData(safe: string, contractAddress: string): string {
+    if (!contractAddress || contractAddress === ethers.constants.AddressZero) {
+      throw new Error('Invalid contract address');
+    }
+
+    // Create contract interface
+    const contractInterface = new ethers.utils.Interface(SAFE_TX_POOL_ABI);
+
+    // Encode function call
+    const data = contractInterface.encodeFunctionData('addTrustedContract', [
+      safe,
+      contractAddress
+    ]);
+
+    return data;
+  }
+
+  /**
+   * Create transaction data for removing a trusted contract
+   */
+  createRemoveTrustedContractTxData(safe: string, contractAddress: string): string {
+    if (!contractAddress || contractAddress === ethers.constants.AddressZero) {
+      throw new Error('Invalid contract address');
+    }
+
+    // Create contract interface
+    const contractInterface = new ethers.utils.Interface(SAFE_TX_POOL_ABI);
+
+    // Encode function call
+    const data = contractInterface.encodeFunctionData('removeTrustedContract', [
+      safe,
+      contractAddress
+    ]);
+
+    return data;
+  }
+
+  /**
+   * Listen for trusted contract events
+   */
+  onTrustedContractAdded(callback: (safe: string, contractAddress: string) => void): void {
+    if (!this.contract) {
+      throw new Error('Contract not initialized');
+    }
+
+    this.contract.on('TrustedContractAdded', callback);
+  }
+
+  onTrustedContractRemoved(callback: (safe: string, contractAddress: string) => void): void {
+    if (!this.contract) {
+      throw new Error('Contract not initialized');
+    }
+
+    this.contract.on('TrustedContractRemoved', callback);
+  }
 }
 
 // Create singleton instances for different networks

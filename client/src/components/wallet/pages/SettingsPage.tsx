@@ -4,6 +4,7 @@ import { theme } from '../../../theme';
 import NetworkConfigStatus from '../components/NetworkConfigStatus';
 import SafeSetupTab from '../components/SafeSetupTab';
 import SmartContractGuardSection from '../components/SmartContractGuardSection';
+import TrustedContractsSection from '../components/TrustedContractsSection';
 
 const Container = styled.div`
   padding: 0;
@@ -139,7 +140,7 @@ interface SettingsPageProps {
 }
 
 const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => {
-  const [activeTab, setActiveTab] = useState<'setup' | 'security' | 'network' | 'about'>('setup');
+  const [activeTab, setActiveTab] = useState<'setup' | 'security' | 'trusted' | 'network' | 'about'>('setup');
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -147,6 +148,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => 
         return <SafeSetupTab network={network} />;
       case 'security':
         return <SmartContractGuardSection network={network} />;
+      case 'trusted':
+        return <TrustedContractsSection network={network} />;
       case 'network':
         return (
           <div style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: theme.spacing[8] }}>
@@ -199,6 +202,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => 
           onClick={() => setActiveTab('security')}
         >
           Security
+        </Tab>
+        <Tab
+          isActive={activeTab === 'trusted'}
+          onClick={() => setActiveTab('trusted')}
+        >
+          Trusted Contracts
         </Tab>
         <Tab
           isActive={activeTab === 'network'}
