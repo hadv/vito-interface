@@ -5,6 +5,7 @@ import { theme } from '../../../theme';
 import { AddressBookEntry, createAddressBookService } from '../../../services/AddressBookService';
 import { createSafeTxPoolService } from '../../../services/SafeTxPoolService';
 import { walletConnectionService } from '../../../services/WalletConnectionService';
+import { SafeWalletService } from '../../../services/SafeWalletService';
 import { toChecksumAddress, isValidAddress, isZeroAddress } from '../../../utils/addressUtils';
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
@@ -132,6 +133,26 @@ const InfoMessage = styled.div`
   font-size: ${theme.typography.fontSize.sm};
 `;
 
+const InputGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing[3]};
+  margin-top: ${theme.spacing[2]};
+`;
+
+const InputLabel = styled.span`
+  font-size: ${theme.typography.fontSize.sm};
+  color: ${theme.colors.text.secondary};
+  white-space: nowrap;
+`;
+
+const NonceDescription = styled.p`
+  margin: ${theme.spacing[2]} 0 0 0;
+  font-size: ${theme.typography.fontSize.sm};
+  color: ${theme.colors.text.secondary};
+  line-height: 1.5;
+`;
+
 interface AddressBookTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -159,6 +180,13 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
   const [currentNetwork, setCurrentNetwork] = useState<string>('sepolia');
   const [addressBookService, setAddressBookService] = useState<any>(null);
   const [safeTxPoolService, setSafeTxPoolService] = useState<any>(null);
+
+  // Nonce management state
+  const [currentNonce, setCurrentNonce] = useState(0);
+  const [customNonce, setCustomNonce] = useState(0);
+  const [nonceLoading, setNonceLoading] = useState(false);
+  const recommendedNonce = currentNonce;
+
   const { success, error: showError } = useToast();
 
   const isEditing = Boolean(editEntry);
@@ -205,6 +233,39 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
       setIsSubmitting(false);
     }
   }, [isOpen, editEntry]);
+
+  // Fetch current nonce when modal opens and Safe address is available
+  useEffect(() => {
+    const fetchNonce = async () => {
+      if (!isOpen || !safeAddress || !currentNetwork) {
+        return;
+      }
+
+      setNonceLoading(true);
+      try {
+        // Initialize SafeWalletService to get current nonce
+        const walletService = new SafeWalletService();
+        await walletService.initialize({
+          safeAddress,
+          network: currentNetwork
+        });
+
+        const nonce = await walletService.getNonce();
+        setCurrentNonce(nonce);
+        setCustomNonce(nonce);
+        console.log(`Current Safe nonce: ${nonce}`);
+      } catch (error) {
+        console.error('Failed to fetch Safe nonce:', error);
+        // Set default values if nonce fetch fails
+        setCurrentNonce(0);
+        setCustomNonce(0);
+      } finally {
+        setNonceLoading(false);
+      }
+    };
+
+    fetchNonce();
+  }, [isOpen, safeAddress, currentNetwork]);
 
   const validateForm = (): boolean => {
     let isValid = true;
@@ -296,9 +357,9 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
       let txData;
 
       if (isRemoving) {
-        txData = await addressBookService.createRemoveEntryTransaction(safeAddress, checksumWalletAddress);
+        txData = await addressBookService.createRemoveEntryTransaction(safeAddress, checksumWalletAddress, customNonce);
       } else {
-        txData = await addressBookService.createAddEntryTransaction(safeAddress, checksumWalletAddress, name.trim());
+        txData = await addressBookService.createAddEntryTransaction(safeAddress, checksumWalletAddress, name.trim(), customNonce);
       }
 
       // Propose the transaction to SafeTxPool
@@ -308,7 +369,7 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
         value: txData.value,
         data: txData.data,
         operation: txData.operation,
-        nonce: txData.nonce
+        nonce: customNonce // Use the custom nonce instead of txData.nonce
       };
 
       console.log('Proposing transaction:', proposeTxParams);
@@ -368,6 +429,26 @@ const AddressBookTransactionModal: React.FC<AddressBookTransactionModalProps> = 
               disabled={isSubmitting || isEditing}
               error={addressError || undefined}
             />
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Transaction Nonce</Label>
+            <InputGroup>
+              <Input
+                type="number"
+                min={currentNonce}
+                value={customNonce}
+                onChange={(e) => setCustomNonce(parseInt(e.target.value) || currentNonce)}
+                disabled={isSubmitting || nonceLoading}
+                style={{ width: '120px', textAlign: 'center' }}
+              />
+              <InputLabel>
+                {nonceLoading ? 'Loading...' : `(Recommended: ${recommendedNonce})`}
+              </InputLabel>
+            </InputGroup>
+            <NonceDescription>
+              Current Safe nonce: {nonceLoading ? 'Loading...' : currentNonce}. Use current nonce for new transactions.
+            </NonceDescription>
           </FormGroup>
 
           <ButtonGroup>

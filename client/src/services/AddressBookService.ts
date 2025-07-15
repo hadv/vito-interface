@@ -77,15 +77,15 @@ export class AddressBookService {
   /**
    * Create a Safe transaction for adding an address book entry
    */
-  async createAddEntryTransaction(safe: string, walletAddress: string, name: string): Promise<any> {
+  async createAddEntryTransaction(safe: string, walletAddress: string, name: string, customNonce?: number): Promise<any> {
     const validation = this.validateEntry(name, walletAddress);
     if (!validation.isValid) {
       throw new Error(validation.error);
     }
 
     try {
-      // Get the next nonce for the Safe
-      const nonce = await this.safeTransactionService.getSafeNonce(safe);
+      // Use custom nonce if provided, otherwise get the next nonce for the Safe
+      const nonce = customNonce !== undefined ? customNonce : await this.safeTransactionService.getSafeNonce(safe);
 
       // Create the Safe transaction data
       const txData = await this.safeTransactionService.createAddAddressBookEntryTransaction(
@@ -113,10 +113,10 @@ export class AddressBookService {
   /**
    * Create a Safe transaction for removing an address book entry
    */
-  async createRemoveEntryTransaction(safe: string, walletAddress: string): Promise<any> {
+  async createRemoveEntryTransaction(safe: string, walletAddress: string, customNonce?: number): Promise<any> {
     try {
-      // Get the next nonce for the Safe
-      const nonce = await this.safeTransactionService.getSafeNonce(safe);
+      // Use custom nonce if provided, otherwise get the next nonce for the Safe
+      const nonce = customNonce !== undefined ? customNonce : await this.safeTransactionService.getSafeNonce(safe);
 
       // Create the Safe transaction data
       const txData = await this.safeTransactionService.createRemoveAddressBookEntryTransaction(
