@@ -220,12 +220,12 @@ export class TrustedContractsAssetService {
    * Combine regular assets with trusted contract assets
    */
   async enhanceAssetsWithTrustedContracts(
-    regularAssets: Asset[], 
+    regularAssets: Asset[],
     safeAddress: string
   ): Promise<Asset[]> {
     try {
       const trustedAssets = await this.loadTrustedContractAssets(safeAddress);
-      
+
       // Merge assets, avoiding duplicates
       const combinedAssets = [...regularAssets];
       const existingAddresses = new Set(
@@ -235,7 +235,7 @@ export class TrustedContractsAssetService {
       );
 
       for (const trustedAsset of trustedAssets) {
-        if (trustedAsset.contractAddress && 
+        if (trustedAsset.contractAddress &&
             !existingAddresses.has(trustedAsset.contractAddress.toLowerCase())) {
           combinedAssets.push(trustedAsset);
         }
@@ -245,7 +245,7 @@ export class TrustedContractsAssetService {
       return combinedAssets.sort((a, b) => {
         if (a.type === 'native' && b.type !== 'native') return -1;
         if (a.type !== 'native' && b.type === 'native') return 1;
-        
+
         const aValue = parseFloat(a.value.replace(/[$,]/g, ''));
         const bValue = parseFloat(b.value.replace(/[$,]/g, ''));
         return bValue - aValue;
@@ -254,6 +254,71 @@ export class TrustedContractsAssetService {
     } catch (error) {
       console.error('Error enhancing assets with trusted contracts:', error);
       return regularAssets; // Return original assets if enhancement fails
+    }
+  }
+
+  /**
+   * Refresh trusted contract assets (force reload balances)
+   */
+  async refreshTrustedContractAssets(safeAddress: string): Promise<Asset[]> {
+    try {
+      console.log('🔄 Refreshing trusted contract assets...');
+
+      // Clear any cached token information for trusted contracts
+      const trustedContracts = await this.getTrustedContracts(safeAddress);
+
+      // Force refresh of token balances by creating a new TokenService instance
+      const refreshedTokenService = new TokenService(this.provider, this.network);
+
+      const assets: Asset[] = [];
+
+      for (const contract of trustedContracts) {
+        try {
+          // Check if it's an ERC20 token
+          const isERC20 = await this.isERC20Token(contract.address);
+
+          if (isERC20) {
+            console.log(`🔄 Refreshing ERC20 token: ${contract.name} (${contract.address})`);
+
+            // Force refresh token info and balance
+            const tokenInfo = await refreshedTokenService.getTokenInfo(contract.address);
+            if (tokenInfo) {
+              const balanceString = await refreshedTokenService.getTokenBalance(contract.address, safeAddress);
+              const formattedBalance = refreshedTokenService.formatTokenAmount(balanceString, tokenInfo.decimals);
+
+              if (balanceString && parseFloat(formattedBalance) > 0) {
+                // Mock price calculation (in a real app, you'd fetch from a price API)
+                const mockPrice = this.getMockTokenPrice(tokenInfo.symbol);
+                const usdValue = parseFloat(formattedBalance) * mockPrice;
+
+                assets.push({
+                  symbol: tokenInfo.symbol,
+                  name: `${contract.name} (${tokenInfo.name})`, // Include trusted name
+                  balance: formattedBalance,
+                  value: `$${usdValue.toFixed(2)}`,
+                  type: 'erc20',
+                  contractAddress: tokenInfo.address,
+                  decimals: tokenInfo.decimals,
+                  isTrusted: true // Mark as trusted
+                });
+
+                console.log(`✅ Refreshed trusted token: ${tokenInfo.symbol} - ${formattedBalance}`);
+              } else {
+                console.log(`⚠️ Trusted token ${tokenInfo.symbol} has zero balance, skipping`);
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`❌ Error refreshing trusted contract ${contract.address}:`, error);
+        }
+      }
+
+      console.log(`🔄 Refreshed ${assets.length} trusted contract assets`);
+      return assets;
+
+    } catch (error) {
+      console.error('Error refreshing trusted contract assets:', error);
+      return [];
     }
   }
 }
