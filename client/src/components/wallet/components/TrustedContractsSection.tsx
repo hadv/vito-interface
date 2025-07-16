@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { ethers } from 'ethers';
 import { theme } from '../../../theme';
 import { createSafeTxPoolService } from '../../../services/SafeTxPoolService';
+import { SafeTransactionService } from '../../../services/SafeTransactionService';
 import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
 import { useToast } from '../../../hooks/useToast';
 import { ErrorHandler } from '../../../utils/errorHandling';
@@ -352,7 +353,7 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
         );
 
         // Get current nonce from Safe contract
-        const safeTransactionService = new (await import('../../../services/SafeTransactionService')).SafeTransactionService(network);
+        const safeTransactionService = new SafeTransactionService(network);
         const nonce = await safeTransactionService.getSafeNonce(connectionState.safeAddress);
 
         // Get SafeTxPool contract address
@@ -447,7 +448,7 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
         );
 
         // Get current nonce from Safe contract
-        const safeTransactionService = new (await import('../../../services/SafeTransactionService')).SafeTransactionService(network);
+        const safeTransactionService = new SafeTransactionService(network);
         const nonce = await safeTransactionService.getSafeNonce(connectionState.safeAddress);
 
         // Get SafeTxPool contract address

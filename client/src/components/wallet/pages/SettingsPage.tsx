@@ -4,7 +4,8 @@ import { theme } from '../../../theme';
 import NetworkConfigStatus from '../components/NetworkConfigStatus';
 import SafeSetupTab from '../components/SafeSetupTab';
 import SmartContractGuardSection from '../components/SmartContractGuardSection';
-import TrustedContractsSection from '../components/TrustedContractsSection';
+// TODO: Enable after new SafeTxPool contract deployment
+// import TrustedContractsSection from '../components/TrustedContractsSection';
 
 const Container = styled.div`
   padding: 0;
