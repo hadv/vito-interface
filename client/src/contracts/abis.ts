@@ -269,6 +269,56 @@ export const SAFE_TX_POOL_ABI = [
       {"name": "safe", "type": "address", "indexed": true},
       {"name": "target", "type": "address", "indexed": true}
     ]
+  },
+  // Trusted Contracts functions
+  {
+    "type": "function",
+    "name": "addTrustedContract",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "contractAddress", "type": "address"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "removeTrustedContract",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "contractAddress", "type": "address"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "isTrustedContract",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "contractAddress", "type": "address"}
+    ],
+    "outputs": [
+      {"name": "trusted", "type": "bool"}
+    ],
+    "stateMutability": "view"
+  },
+  // Trusted Contracts events
+  {
+    "type": "event",
+    "name": "TrustedContractAdded",
+    "inputs": [
+      {"name": "safe", "type": "address", "indexed": true},
+      {"name": "contractAddress", "type": "address", "indexed": true}
+    ]
+  },
+  {
+    "type": "event",
+    "name": "TrustedContractRemoved",
+    "inputs": [
+      {"name": "safe", "type": "address", "indexed": true},
+      {"name": "contractAddress", "type": "address", "indexed": true}
+    ]
   }
 ];
 

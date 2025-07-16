@@ -6,6 +6,7 @@ export interface Asset {
   type: 'native' | 'erc20' | 'erc721';
   contractAddress?: string; // For ERC-20 tokens
   decimals?: number; // For ERC-20 tokens
+  isTrusted?: boolean; // True if this token is in the Safe's trusted contracts list
 }
 
 export interface TokenTransferInfo {

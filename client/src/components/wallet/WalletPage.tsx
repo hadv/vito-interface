@@ -25,6 +25,7 @@ import { Asset, Transaction, MenuSection, WalletPageProps } from './types';
 
 // Import services
 import { TokenService } from '../../services/TokenService';
+import { TrustedContractsAssetService } from '../../services/TrustedContractsAssetService';
 import { safeWalletService } from '../../services/SafeWalletService';
 import { getRpcUrl } from '../../contracts/abis';
 
@@ -313,17 +314,39 @@ const WalletPage: React.FC<WalletPageProps> = ({
       setIsLoading(true);
 
       // Set a maximum timeout for the entire loading process
-      const maxLoadingTime = setTimeout(() => {
+      const maxLoadingTime = setTimeout(async () => {
         console.log('⏰ FORCE STOPPING loading after 5 seconds');
-        setIsLoading(false);
-        setAssets([{
-          symbol: 'ETH',
-          name: 'Ethereum',
-          balance: '0.0',
-          value: '$0.00',
-          type: 'native'
-        }]);
+
+        // Even on timeout, try to load trusted contracts quickly
+        try {
+          const rpcUrl = getRpcUrl(network || 'ethereum');
+          const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+          const trustedAssetService = new TrustedContractsAssetService(network || 'ethereum', provider);
+
+          const baseAssets: Asset[] = [{
+            symbol: 'ETH',
+            name: 'Ethereum',
+            balance: '0.0',
+            value: '$0.00',
+            type: 'native'
+          }];
+
+          const enhancedAssets = await trustedAssetService.enhanceAssetsWithTrustedContracts(baseAssets, walletAddress);
+          setAssets(enhancedAssets);
+          console.log('⏰ Loaded trusted contracts on timeout');
+        } catch (error) {
+          console.warn('⏰ Failed to load trusted contracts on timeout:', error);
+          setAssets([{
+            symbol: 'ETH',
+            name: 'Ethereum',
+            balance: '0.0',
+            value: '$0.00',
+            type: 'native'
+          }]);
+        }
+
         setTransactions([]);
+        setIsLoading(false);
       }, 5000); // Force stop after 5 seconds
 
       try {
@@ -343,14 +366,30 @@ const WalletPage: React.FC<WalletPageProps> = ({
           const ethBalance = await Promise.race([balancePromise, timeoutPromise]);
           const formattedBalance = ethers.utils.formatEther(ethBalance as any);
 
-          setAssets([{
+          // Start with ETH asset
+          const baseAssets: Asset[] = [{
             symbol: 'ETH',
             name: 'Ethereum',
             balance: formattedBalance,
             value: `$${(parseFloat(formattedBalance) * 2000).toFixed(2)}`,
             type: 'native'
-          }]);
+          }];
+
           console.log('✅ ETH balance loaded directly:', formattedBalance);
+
+          // Try to load trusted contract assets
+          try {
+            console.log('🔍 Loading trusted contract assets...');
+            const trustedAssetService = new TrustedContractsAssetService(network || 'ethereum', provider);
+            const enhancedAssets = await trustedAssetService.enhanceAssetsWithTrustedContracts(baseAssets, walletAddress);
+
+            setAssets(enhancedAssets);
+            console.log(`✅ Loaded ${enhancedAssets.length} total assets (${enhancedAssets.length - 1} from trusted contracts)`);
+          } catch (trustedError) {
+            console.warn('⚠️ Failed to load trusted contract assets:', trustedError);
+            setAssets(baseAssets); // Fall back to just ETH
+          }
+
         } catch (ethError) {
           console.error('❌ ETH balance loading failed:', ethError);
           setAssets([{
