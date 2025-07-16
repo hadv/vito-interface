@@ -235,10 +235,11 @@ interface AssetsPageProps {
   assets: Asset[];
   isLoading: boolean;
   onSendAsset?: (asset: Asset) => void;
+  onRefresh?: () => void;
   network?: string;
 }
 
-const AssetsPage: React.FC<AssetsPageProps> = ({ assets, isLoading, onSendAsset, network = 'ethereum' }) => {
+const AssetsPage: React.FC<AssetsPageProps> = ({ assets, isLoading, onSendAsset, onRefresh, network = 'ethereum' }) => {
   const renderAssetItem = (asset: Asset, isSelected: boolean, isFocused: boolean) => (
     <AssetCard
       variant="elevated"
@@ -352,10 +353,40 @@ const AssetsPage: React.FC<AssetsPageProps> = ({ assets, isLoading, onSendAsset,
   return (
     <Container>
       <Header>
-        <Heading>Assets</Heading>
-        <SubHeading>
-          Manage your digital assets and tokens. Total assets: {assets.length}
-        </SubHeading>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+          <div>
+            <Heading>Assets</Heading>
+            <SubHeading>
+              Manage your digital assets and tokens. Total assets: {assets.length}
+            </SubHeading>
+          </div>
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              disabled={isLoading}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: theme.colors.primary[500],
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: isLoading ? 'not-allowed' : 'pointer',
+                opacity: isLoading ? 0.6 : 1,
+                fontSize: '14px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+              title="Refresh asset balances"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 4V9H4.58152M4.58152 9C5.24618 7.35652 6.43101 5.9604 7.96999 5.05552C9.50897 4.15064 11.3193 3.78719 13.1068 4.01893C14.8943 4.25067 16.5583 5.06435 17.8446 6.34587C19.1309 7.6274 19.9652 9.28755 20.2209 11.0744M4.58152 9H9M20 20V15H19.4185M19.4185 15C18.7538 16.6435 17.569 18.0396 16.03 18.9445C14.491 19.8494 12.6807 20.2128 10.8932 19.9811C9.10571 19.7493 7.44165 18.9357 6.15536 17.6541C4.86907 16.3726 4.03479 14.7125 3.77914 12.9256M19.4185 15H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              {isLoading ? 'Refreshing...' : 'Refresh'}
+            </button>
+          )}
+        </div>
       </Header>
 
       <AssetsGrid>

@@ -316,4 +316,20 @@ export class TokenService {
     this.tokenCache.clear();
     this.initializeKnownTokens();
   }
+
+  /**
+   * Invalidate cache for a specific token address
+   */
+  invalidateTokenCache(tokenAddress: string): void {
+    const address = tokenAddress.toLowerCase();
+    this.tokenCache.delete(address);
+  }
+
+  /**
+   * Refresh token information for a specific address (force reload)
+   */
+  async refreshTokenInfo(tokenAddress: string): Promise<TokenInfo | null> {
+    this.invalidateTokenCache(tokenAddress);
+    return this.getTokenInfo(tokenAddress);
+  }
 }

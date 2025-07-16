@@ -166,6 +166,57 @@ const WalletPage: React.FC<WalletPageProps> = ({
     }
   };
 
+  // Function to refresh assets including trusted contracts
+  const refreshAssetsWithTrustedContracts = async () => {
+    if (!walletAddress) return;
+
+    try {
+      console.log('🔄 Refreshing assets with trusted contracts...');
+      setIsLoading(true);
+
+      const rpcUrl = getRpcUrl(network || 'ethereum');
+      const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+      const trustedAssetService = new TrustedContractsAssetService(network || 'ethereum', provider);
+
+      // Load base ETH asset
+      const baseAssets: Asset[] = [{
+        symbol: 'ETH',
+        name: 'Ethereum',
+        balance: '0.0',
+        value: '$0.00',
+        type: 'native'
+      }];
+
+      try {
+        // Try to get current ETH balance
+        const ethBalance = await provider.getBalance(walletAddress);
+        const formattedBalance = parseFloat(ethers.utils.formatEther(ethBalance)).toFixed(4);
+        const mockEthPrice = 2000; // Mock price
+        const usdValue = parseFloat(formattedBalance) * mockEthPrice;
+
+        baseAssets[0] = {
+          symbol: 'ETH',
+          name: 'Ethereum',
+          balance: formattedBalance,
+          value: `$${usdValue.toFixed(2)}`,
+          type: 'native'
+        };
+      } catch (ethError) {
+        console.warn('⚠️ Could not refresh ETH balance:', ethError);
+      }
+
+      // Refresh trusted contract assets
+      const enhancedAssets = await trustedAssetService.enhanceAssetsWithTrustedContracts(baseAssets, walletAddress);
+      setAssets(enhancedAssets);
+      console.log(`✅ Refreshed ${enhancedAssets.length} total assets`);
+
+    } catch (error) {
+      console.error('❌ Error refreshing assets with trusted contracts:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Load real token balances for the Safe wallet
   const loadTokenBalances = async (safeAddress: string, network: string): Promise<Asset[]> => {
     try {
@@ -445,6 +496,7 @@ const WalletPage: React.FC<WalletPageProps> = ({
             assets={assets}
             isLoading={isLoading}
             onSendAsset={handleSendAsset}
+            onRefresh={refreshAssetsWithTrustedContracts}
             network={currentNetwork}
           />
         );
@@ -484,9 +536,15 @@ const WalletPage: React.FC<WalletPageProps> = ({
         >
           Home
         </MenuItem>
-        <MenuItem 
-          active={activeSection === 'assets'} 
-          onClick={() => setActiveSection('assets')}
+        <MenuItem
+          active={activeSection === 'assets'}
+          onClick={() => {
+            setActiveSection('assets');
+            // Refresh assets when navigating to assets page
+            if (activeSection !== 'assets') {
+              refreshAssetsWithTrustedContracts();
+            }
+          }}
           icon={<AssetsIcon />}
         >
           Assets
