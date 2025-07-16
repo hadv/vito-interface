@@ -269,9 +269,7 @@ export const SAFE_TX_POOL_ABI = [
       {"name": "safe", "type": "address", "indexed": true},
       {"name": "target", "type": "address", "indexed": true}
     ]
-  }
-  // TODO: Enable after new SafeTxPool contract deployment with trusted contracts functionality
-  /*
+  },
   // Trusted Contracts functions
   {
     "type": "function",
@@ -322,7 +320,6 @@ export const SAFE_TX_POOL_ABI = [
       {"name": "contractAddress", "type": "address", "indexed": true}
     ]
   }
-  */
 ];
 
 // Safe Wallet contract ABI (core methods we need)

@@ -4,8 +4,7 @@ import { theme } from '../../../theme';
 import NetworkConfigStatus from '../components/NetworkConfigStatus';
 import SafeSetupTab from '../components/SafeSetupTab';
 import SmartContractGuardSection from '../components/SmartContractGuardSection';
-// TODO: Enable after new SafeTxPool contract deployment
-// import TrustedContractsSection from '../components/TrustedContractsSection';
+import TrustedContractsSection from '../components/TrustedContractsSection';
 
 const Container = styled.div`
   padding: 0;
@@ -141,8 +140,7 @@ interface SettingsPageProps {
 }
 
 const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => {
-  // TODO: Add 'trusted' back to union type after new SafeTxPool contract deployment
-  const [activeTab, setActiveTab] = useState<'setup' | 'security' | 'network' | 'about'>('setup');
+  const [activeTab, setActiveTab] = useState<'setup' | 'security' | 'trusted' | 'network' | 'about'>('setup');
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -150,9 +148,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => 
         return <SafeSetupTab network={network} />;
       case 'security':
         return <SmartContractGuardSection network={network} />;
-      // TODO: Enable after new SafeTxPool contract deployment
-      // case 'trusted':
-      //   return <TrustedContractsSection network={network} />;
+      case 'trusted':
+        return <TrustedContractsSection network={network} />;
       case 'network':
         return (
           <div style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: theme.spacing[8] }}>
@@ -206,13 +203,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => 
         >
           Security
         </Tab>
-        {/* TODO: Enable after new SafeTxPool contract deployment */}
-        {/* <Tab
+        <Tab
           isActive={activeTab === 'trusted'}
           onClick={() => setActiveTab('trusted')}
         >
           Trusted Contracts
-        </Tab> */}
+        </Tab>
         <Tab
           isActive={activeTab === 'network'}
           onClick={() => setActiveTab('network')}

@@ -699,11 +699,9 @@ export class SafeTxPoolService {
     this.contract.on('AddressBookEntryRemoved', callback);
   }
 
-  // TODO: Enable after new SafeTxPool contract deployment
   /**
    * Add a trusted contract for a Safe
    */
-  /*
   async addTrustedContract(safe: string, contractAddress: string): Promise<void> {
     if (!this.contract || !this.signer) {
       throw new Error('Contract not initialized or signer not set');
@@ -721,7 +719,6 @@ export class SafeTxPoolService {
       throw new Error(`Failed to add trusted contract: ${error}`);
     }
   }
-  */
 
   /**
    * Remove a trusted contract for a Safe
