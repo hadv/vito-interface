@@ -160,14 +160,7 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
     }
   }, [getStorageKey]);
 
-  // Save trusted contract names to local storage
-  const saveTrustedContractNames = useCallback((safeAddress: string, names: Record<string, { name: string; dateAdded: string }>) => {
-    try {
-      localStorage.setItem(getStorageKey(safeAddress), JSON.stringify(names));
-    } catch (error) {
-      console.error('Error saving trusted contract names:', error);
-    }
-  }, [getStorageKey]);
+
 
   // Subscribe to wallet connection state
   useEffect(() => {
