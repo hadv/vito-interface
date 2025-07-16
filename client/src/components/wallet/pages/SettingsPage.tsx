@@ -140,7 +140,8 @@ interface SettingsPageProps {
 }
 
 const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => {
-  const [activeTab, setActiveTab] = useState<'setup' | 'security' | 'trusted' | 'network' | 'about'>('setup');
+  // TODO: Add 'trusted' back to union type after new SafeTxPool contract deployment
+  const [activeTab, setActiveTab] = useState<'setup' | 'security' | 'network' | 'about'>('setup');
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -148,8 +149,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => 
         return <SafeSetupTab network={network} />;
       case 'security':
         return <SmartContractGuardSection network={network} />;
-      case 'trusted':
-        return <TrustedContractsSection network={network} />;
+      // TODO: Enable after new SafeTxPool contract deployment
+      // case 'trusted':
+      //   return <TrustedContractsSection network={network} />;
       case 'network':
         return (
           <div style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: theme.spacing[8] }}>
@@ -203,12 +205,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => 
         >
           Security
         </Tab>
-        <Tab
+        {/* TODO: Enable after new SafeTxPool contract deployment */}
+        {/* <Tab
           isActive={activeTab === 'trusted'}
           onClick={() => setActiveTab('trusted')}
         >
           Trusted Contracts
-        </Tab>
+        </Tab> */}
         <Tab
           isActive={activeTab === 'network'}
           onClick={() => setActiveTab('network')}

@@ -193,14 +193,32 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
       // Load stored contract names and metadata
       const storedNames = loadTrustedContractNames(connectionState.safeAddress);
 
-      // Convert stored data to TrustedContract array
-      const contractsWithNames: TrustedContract[] = Object.entries(storedNames).map(([address, data]) => ({
-        address,
-        name: data.name,
-        dateAdded: data.dateAdded
-      }));
+      // Filter to only include contracts that are actually trusted on-chain
+      const verifiedContracts: TrustedContract[] = [];
 
-      setTrustedContracts(contractsWithNames);
+      for (const [address, data] of Object.entries(storedNames)) {
+        try {
+          // Check if contract is actually trusted on-chain
+          const isTrusted = await safeTxPoolService.isTrustedContract(connectionState.safeAddress, address);
+          if (isTrusted) {
+            verifiedContracts.push({
+              address,
+              name: data.name,
+              dateAdded: data.dateAdded
+            });
+          }
+        } catch (error) {
+          console.warn(`Failed to verify trusted status for ${address}:`, error);
+          // Include in list anyway, but user will see if it's not actually trusted when they try to use it
+          verifiedContracts.push({
+            address,
+            name: data.name,
+            dateAdded: data.dateAdded
+          });
+        }
+      }
+
+      setTrustedContracts(verifiedContracts);
     } catch (error) {
       console.error('Error loading trusted contracts:', error);
       const errorDetails = ErrorHandler.classifyError(error);
@@ -211,7 +229,7 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
     } finally {
       setIsLoading(false);
     }
-  }, [connectionState.isConnected, connectionState.safeAddress, addToast, loadTrustedContractNames]);
+  }, [connectionState.isConnected, connectionState.safeAddress, addToast, loadTrustedContractNames, safeTxPoolService]);
 
   useEffect(() => {
     loadTrustedContracts();
@@ -327,7 +345,31 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
 
         safeTxPoolService.setSigner(signer);
 
-        await safeTxPoolService.addTrustedContract(connectionState.safeAddress, newContractAddress.trim());
+        // Create transaction data for adding trusted contract
+        const txData = safeTxPoolService.createAddTrustedContractTxData(
+          connectionState.safeAddress,
+          newContractAddress.trim()
+        );
+
+        // Get current nonce from Safe contract
+        const safeTransactionService = new (await import('../../../services/SafeTransactionService')).SafeTransactionService(network);
+        const nonce = await safeTransactionService.getSafeNonce(connectionState.safeAddress);
+
+        // Get SafeTxPool contract address
+        const contractAddress = safeTxPoolService.getContractAddress();
+        if (!contractAddress) {
+          throw new Error('SafeTxPool contract address not available');
+        }
+
+        // Propose the transaction to the Safe
+        await safeTxPoolService.proposeTx({
+          safe: connectionState.safeAddress,
+          to: contractAddress, // SafeTxPool contract address
+          value: '0', // value as string
+          data: txData, // encoded function call
+          operation: 0, // operation (CALL)
+          nonce: nonce
+        });
 
         // Save name to local storage
         const storedNames = loadTrustedContractNames(connectionState.safeAddress);
@@ -338,22 +380,14 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
         };
         saveTrustedContractNames(connectionState.safeAddress, storedNames);
 
-        // Add to local list
-        const newContract: TrustedContract = {
-          address: newContractAddress.trim(),
-          name: newContractName.trim(),
-          dateAdded
-        };
-        setTrustedContracts(prev => [...prev, newContract]);
-
         // Clear form
         setNewContractAddress('');
         setNewContractName('');
-        setSuccessMessage(`Trusted contract "${newContractName.trim()}" has been successfully added!`);
+        setSuccessMessage(`Transaction to add trusted contract "${newContractName.trim()}" has been proposed! Please check the Transactions tab to execute it.`);
 
-        addToast('Trusted Contract Added', {
+        addToast('Transaction Proposed', {
           type: 'success',
-          message: `"${newContractName.trim()}" has been added to your trusted contracts list.`
+          message: `Transaction to add "${newContractName.trim()}" has been proposed. Check the Transactions tab to execute it.`
         });
       } catch (error) {
         console.error('Error adding trusted contract:', error);
@@ -368,7 +402,7 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
     });
   };
 
-  const handleRemoveTrustedContract = (contractAddress: string) => {
+  const handleRemoveTrustedContract = (trustedContractAddress: string) => {
     handleWalletConnectionRequired(async () => {
       if (!connectionState.safeAddress) {
         addToast('No Safe Connected', {
@@ -380,7 +414,7 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
 
       // Find the contract to get its name
       const contractToRemove = trustedContracts.find(
-        contract => contract.address.toLowerCase() === contractAddress.toLowerCase()
+        contract => contract.address.toLowerCase() === trustedContractAddress.toLowerCase()
       );
 
       if (!contractToRemove) {
@@ -406,23 +440,37 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
 
         safeTxPoolService.setSigner(signer);
 
-        await safeTxPoolService.removeTrustedContract(connectionState.safeAddress, contractAddress);
+        // Create transaction data for removing trusted contract
+        const txData = safeTxPoolService.createRemoveTrustedContractTxData(
+          connectionState.safeAddress,
+          trustedContractAddress
+        );
 
-        // Remove from local storage
-        const storedNames = loadTrustedContractNames(connectionState.safeAddress);
-        delete storedNames[contractAddress.toLowerCase()];
-        saveTrustedContractNames(connectionState.safeAddress, storedNames);
+        // Get current nonce from Safe contract
+        const safeTransactionService = new (await import('../../../services/SafeTransactionService')).SafeTransactionService(network);
+        const nonce = await safeTransactionService.getSafeNonce(connectionState.safeAddress);
 
-        // Remove from local list
-        setTrustedContracts(prev => prev.filter(contract =>
-          contract.address.toLowerCase() !== contractAddress.toLowerCase()
-        ));
+        // Get SafeTxPool contract address
+        const safeTxPoolAddress = safeTxPoolService.getContractAddress();
+        if (!safeTxPoolAddress) {
+          throw new Error('SafeTxPool contract address not available');
+        }
 
-        setSuccessMessage(`Trusted contract "${contractToRemove.name}" has been successfully removed!`);
+        // Propose the transaction to the Safe
+        await safeTxPoolService.proposeTx({
+          safe: connectionState.safeAddress,
+          to: safeTxPoolAddress, // SafeTxPool contract address
+          value: '0', // value as string
+          data: txData, // encoded function call
+          operation: 0, // operation (CALL)
+          nonce: nonce
+        });
 
-        addToast('Trusted Contract Removed', {
+        setSuccessMessage(`Transaction to remove trusted contract "${contractToRemove.name}" has been proposed! Please check the Transactions tab to execute it.`);
+
+        addToast('Transaction Proposed', {
           type: 'success',
-          message: `"${contractToRemove.name}" has been removed from your trusted contracts list.`
+          message: `Transaction to remove "${contractToRemove.name}" has been proposed. Check the Transactions tab to execute it.`
         });
       } catch (error) {
         console.error('Error removing trusted contract:', error);
@@ -465,9 +513,12 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
       <Section>
         <SectionTitle>Trusted Contracts</SectionTitle>
         <Description>
-          Trusted contracts are pre-approved contract addresses that can be called without requiring 
-          them to be in your address book. This streamlines interactions with frequently used contracts 
+          Trusted contracts are pre-approved contract addresses that can be called without requiring
+          them to be in your address book. This streamlines interactions with frequently used contracts
           while maintaining security through the Safe's multi-signature requirements.
+          <br /><br />
+          <strong>Note:</strong> Adding or removing trusted contracts requires a Safe transaction.
+          After proposing changes here, you'll need to execute the transaction through the Transactions tab.
         </Description>
 
         {/* Success Message */}

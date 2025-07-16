@@ -255,6 +255,13 @@ const AssetsPage: React.FC<AssetsPageProps> = ({ assets, isLoading, onSendAsset,
             <Badge variant={asset.type === 'native' ? 'primary' : 'secondary'} size="sm">
               {asset.type.toUpperCase()}
             </Badge>
+            {asset.isTrusted && (
+              <div title="This token is in your trusted contracts list">
+                <Badge variant="success" size="sm">
+                  ✓ TRUSTED
+                </Badge>
+              </div>
+            )}
           </AssetHeader>
           <AssetSymbol>{asset.symbol}</AssetSymbol>
           {asset.type === 'erc20' && asset.contractAddress && (
