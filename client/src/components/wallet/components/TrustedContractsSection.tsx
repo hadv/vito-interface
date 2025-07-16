@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { ethers } from 'ethers';
 import { theme } from '../../../theme';
-import { safeTxPoolService } from '../../../services/SafeTxPoolService';
+import { createSafeTxPoolService } from '../../../services/SafeTxPoolService';
 import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
 import { useToast } from '../../../hooks/useToast';
 import { ErrorHandler } from '../../../utils/errorHandling';
@@ -129,6 +129,9 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
   const [nameError, setNameError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Create network-specific SafeTxPoolService instance
+  const [safeTxPoolService] = useState(() => createSafeTxPoolService(network));
   const [connectionState, setConnectionState] = useState<WalletConnectionState>({
     isConnected: false,
     signerConnected: false,
@@ -311,10 +314,20 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
 
       setIsSubmitting(true);
       try {
-        const service = safeTxPoolService;
-        service.setSigner(walletConnectionService.getSigner());
+        // Check if SafeTxPoolService is properly initialized
+        if (!safeTxPoolService.isInitialized()) {
+          throw new Error(`SafeTxPool contract is not configured for ${network} network. Please check the contract address configuration.`);
+        }
 
-        await service.addTrustedContract(connectionState.safeAddress, newContractAddress.trim());
+        // Set signer for SafeTxPoolService
+        const signer = walletConnectionService.getSigner();
+        if (!signer) {
+          throw new Error('No signer available. Please connect your wallet.');
+        }
+
+        safeTxPoolService.setSigner(signer);
+
+        await safeTxPoolService.addTrustedContract(connectionState.safeAddress, newContractAddress.trim());
 
         // Save name to local storage
         const storedNames = loadTrustedContractNames(connectionState.safeAddress);
@@ -380,10 +393,20 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
 
       setIsSubmitting(true);
       try {
-        const service = safeTxPoolService;
-        service.setSigner(walletConnectionService.getSigner());
+        // Check if SafeTxPoolService is properly initialized
+        if (!safeTxPoolService.isInitialized()) {
+          throw new Error(`SafeTxPool contract is not configured for ${network} network. Please check the contract address configuration.`);
+        }
 
-        await service.removeTrustedContract(connectionState.safeAddress, contractAddress);
+        // Set signer for SafeTxPoolService
+        const signer = walletConnectionService.getSigner();
+        if (!signer) {
+          throw new Error('No signer available. Please connect your wallet.');
+        }
+
+        safeTxPoolService.setSigner(signer);
+
+        await safeTxPoolService.removeTrustedContract(connectionState.safeAddress, contractAddress);
 
         // Remove from local storage
         const storedNames = loadTrustedContractNames(connectionState.safeAddress);
