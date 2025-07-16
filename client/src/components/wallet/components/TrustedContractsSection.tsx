@@ -5,6 +5,7 @@ import { theme } from '../../../theme';
 import { createSafeTxPoolService } from '../../../services/SafeTxPoolService';
 import { SafeTransactionService } from '../../../services/SafeTransactionService';
 import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
+import { getRpcUrl } from '../../../contracts/abis';
 import { useToast } from '../../../hooks/useToast';
 import { ErrorHandler } from '../../../utils/errorHandling';
 import { isValidAddress } from '../../../utils/addressUtils';
@@ -346,7 +347,10 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
         );
 
         // Get current nonce from Safe contract
+        const rpcUrl = getRpcUrl(network);
+        const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
         const safeTransactionService = new SafeTransactionService(network);
+        safeTransactionService.initialize(provider, signer);
         const nonce = await safeTransactionService.getSafeNonce(connectionState.safeAddress);
 
         // Get SafeTxPool contract address
@@ -432,7 +436,10 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
         );
 
         // Get current nonce from Safe contract
+        const rpcUrl = getRpcUrl(network);
+        const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
         const safeTransactionService = new SafeTransactionService(network);
+        safeTransactionService.initialize(provider, signer);
         const nonce = await safeTransactionService.getSafeNonce(connectionState.safeAddress);
 
         // Get SafeTxPool contract address
