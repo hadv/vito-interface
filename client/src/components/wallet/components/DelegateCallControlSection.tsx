@@ -119,7 +119,7 @@ const TargetItem = styled.div`
 const AddTargetForm = styled.div`
   display: flex;
   gap: ${theme.spacing[3]};
-  align-items: flex-end;
+  align-items: flex-start;
   flex-wrap: nowrap;
 
   /* Ensure input takes available space and button doesn't wrap */
@@ -128,11 +128,13 @@ const AddTargetForm = styled.div`
     min-width: 0;
   }
 
-  /* Prevent button from wrapping and maintain minimum width */
+  /* Align button with the input field, not the bottom of the input container */
   > button {
     flex-shrink: 0;
     white-space: nowrap;
     min-width: fit-content;
+    margin-top: 28px; /* Offset for label height (text-sm + gap) to align with input field */
+    height: 48px; /* Match input field height (h-12 = 48px) */
   }
 `;
 
