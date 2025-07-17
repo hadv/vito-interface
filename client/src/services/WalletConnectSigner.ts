@@ -11,6 +11,9 @@ export class WalletConnectSigner extends ethers.Signer {
   private address: string;
   private chainId: number;
 
+  // Add identifier property for detection in signing methods
+  public readonly isWalletConnectSigner = true;
+
   constructor(
     walletConnectService: WalletConnectService,
     address: string,
@@ -21,7 +24,7 @@ export class WalletConnectSigner extends ethers.Signer {
     this.walletConnectService = walletConnectService;
     this.address = address;
     this.chainId = chainId;
-    
+
     // Set provider if provided
     if (provider) {
       ethers.utils.defineReadOnly(this, 'provider', provider);

@@ -176,6 +176,42 @@ export async function signSafeTransaction(
     console.log('🔐 REAL SAFE TRANSACTION SIGNING STARTED');
     console.log('📱 This should trigger your mobile wallet now!');
 
+    // Check if this is a WalletConnect signer (has identifier property)
+    const isWalletConnectSigner = (signer as any).isWalletConnectSigner === true;
+
+    if (isWalletConnectSigner) {
+      console.log('🔐 WalletConnect signer detected - using direct EIP-712 method');
+      console.log('📱 MOBILE WALLET: You should see an EIP-712 signing request now!');
+      console.log('📋 This will be the ONLY signing popup for WalletConnect');
+
+      try {
+        // For WalletConnect, use _signTypedData directly (it's implemented properly)
+        const signature = await (signer as any)._signTypedData(
+          typedData.domain,
+          { SafeTx: typedData.types.SafeTx },
+          typedData.message
+        );
+        console.log('✅ WalletConnect EIP-712 signing successful');
+        console.log('📋 Signature received:', signature);
+        return signature;
+      } catch (wcError: any) {
+        console.error('❌ WalletConnect EIP-712 signing failed:', wcError);
+
+        // Provide user-friendly error messages for WalletConnect
+        const errorMessage = wcError?.message || wcError?.reason || 'Unknown WalletConnect signing error';
+
+        if (errorMessage.includes('rejected') || errorMessage.includes('denied')) {
+          throw new Error('Transaction signing was rejected by user');
+        }
+
+        if (errorMessage.includes('timeout')) {
+          throw new Error('Signing timeout - Please ensure your mobile wallet app is open and check for pending signing requests');
+        }
+
+        throw new Error(`WalletConnect signing failed: ${errorMessage}`);
+      }
+    }
+
     // Method 1: Try to use _signTypedData if available (MetaMask, etc.) with timeout
     if ('_signTypedData' in signer) {
       console.log('🔐 Method 1: Using _signTypedData (MetaMask style)...');
