@@ -120,6 +120,20 @@ const AddTargetForm = styled.div`
   display: flex;
   gap: ${theme.spacing[3]};
   align-items: flex-end;
+  flex-wrap: nowrap;
+
+  /* Ensure input takes available space and button doesn't wrap */
+  > div:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Prevent button from wrapping and maintain minimum width */
+  > button {
+    flex-shrink: 0;
+    white-space: nowrap;
+    min-width: fit-content;
+  }
 `;
 
 const StatusBadge = styled.div<{ enabled: boolean }>`
