@@ -297,11 +297,14 @@ const DelegateCallControlSection: React.FC<DelegateCallControlSectionProps> = ({
         // Create the Safe transaction (this will sign and propose it)
         await safeWalletService.createTransaction(transactionRequest);
 
-        setIsDelegateCallEnabled(newState);
-        addToast('Delegate Call Setting Updated', {
+        // Don't update local state immediately - wait for transaction execution
+        addToast('Transaction Proposed', {
           type: 'success',
-          message: `Delegate calls have been ${newState ? 'enabled' : 'disabled'} for this Safe.`
+          message: `Delegate call ${newState ? 'enable' : 'disable'} transaction has been proposed. It will be executed when the required signatures are collected.`
         });
+
+        // Optionally monitor transaction status and update UI when executed
+        // For now, user can refresh or the status will update on next load
       } catch (error) {
         console.error('Error toggling delegate call:', error);
         const errorDetails = ErrorHandler.classifyError(error);
@@ -337,11 +340,11 @@ const DelegateCallControlSection: React.FC<DelegateCallControlSectionProps> = ({
         // Create the Safe transaction (this will sign and propose it)
         await safeWalletService.createTransaction(transactionRequest);
 
-        setAllowedTargets([...allowedTargets, targetAddress.toLowerCase()]);
+        // Don't update local state immediately - wait for transaction execution
         setNewTargetAddress('');
-        addToast('Target Added', {
+        addToast('Transaction Proposed', {
           type: 'success',
-          message: 'Delegate call target has been added successfully.'
+          message: 'Add delegate call target transaction has been proposed. It will be executed when the required signatures are collected.'
         });
       } catch (error) {
         console.error('Error adding delegate call target:', error);
@@ -376,10 +379,10 @@ const DelegateCallControlSection: React.FC<DelegateCallControlSectionProps> = ({
         // Create the Safe transaction (this will sign and propose it)
         await safeWalletService.createTransaction(transactionRequest);
 
-        setAllowedTargets(allowedTargets.filter(t => t !== target.toLowerCase()));
-        addToast('Target Removed', {
+        // Don't update local state immediately - wait for transaction execution
+        addToast('Transaction Proposed', {
           type: 'success',
-          message: 'Delegate call target has been removed successfully.'
+          message: 'Remove delegate call target transaction has been proposed. It will be executed when the required signatures are collected.'
         });
       } catch (error) {
         console.error('Error removing delegate call target:', error);
@@ -419,9 +422,24 @@ const DelegateCallControlSection: React.FC<DelegateCallControlSectionProps> = ({
     <Container>
       <SectionTitle>Delegate Call Control</SectionTitle>
       <Description>
-        Delegate calls allow your Safe to execute code in the context of another contract. 
-        This is a powerful but potentially dangerous feature that should be used with extreme caution. 
+        Delegate calls allow your Safe to execute code in the context of another contract.
+        This is a powerful but potentially dangerous feature that should be used with extreme caution.
         Only enable delegate calls to trusted contracts.
+      </Description>
+
+      <Description style={{
+        color: theme.colors.text.muted,
+        fontSize: theme.typography.fontSize.sm,
+        fontStyle: 'italic',
+        marginTop: theme.spacing[2],
+        padding: theme.spacing[3],
+        backgroundColor: theme.colors.neutral[800],
+        borderRadius: theme.borderRadius.md,
+        border: `1px solid ${theme.colors.neutral[700]}`
+      }}>
+        💡 Note: Changes to delegate call settings require Safe transaction execution.
+        After proposing a transaction, the status will update once the transaction is executed on-chain.
+        Use the refresh button (↻) to check for updates.
       </Description>
 
       {/* Delegate Call Toggle */}
@@ -432,13 +450,28 @@ const DelegateCallControlSection: React.FC<DelegateCallControlSectionProps> = ({
             <StatusBadge enabled={isDelegateCallEnabled}>
               {isDelegateCallEnabled ? 'Enabled' : 'Disabled'}
             </StatusBadge>
+            {isLoading && (
+              <span style={{ marginLeft: theme.spacing[2], color: theme.colors.text.muted, fontSize: theme.typography.fontSize.sm }}>
+                Loading...
+              </span>
+            )}
           </ToggleDescription>
         </ToggleLabel>
-        <Toggle
-          enabled={isDelegateCallEnabled}
-          disabled={!isSignerConnected || isSubmitting}
-          onClick={handleToggleDelegateCall}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing[2] }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={loadDelegateCallSettings}
+            disabled={isLoading}
+          >
+            ↻
+          </Button>
+          <Toggle
+            enabled={isDelegateCallEnabled}
+            disabled={!isSignerConnected || isSubmitting}
+            onClick={handleToggleDelegateCall}
+          />
+        </div>
       </ToggleSection>
 
       {/* Allowed Targets Section */}
