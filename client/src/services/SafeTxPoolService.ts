@@ -435,63 +435,84 @@ export class SafeTxPoolService {
 
   /**
    * Enable or disable delegate calls for a Safe
+   * This creates a Safe transaction that calls the SafeTxPool contract
    */
-  async setDelegateCallEnabled(safe: string, enabled: boolean): Promise<ethers.ContractTransaction> {
+  async setDelegateCallEnabled(safe: string, enabled: boolean): Promise<ProposeTransactionParams> {
     if (!this.contract) {
       throw new Error('Contract not initialized');
     }
 
-    if (!this.signer) {
-      throw new Error('Signer required for write operations');
-    }
-
     try {
-      const tx = await this.contract.setDelegateCallEnabled(safe, enabled);
-      return tx;
+      // Encode the function call data
+      const data = this.contract.interface.encodeFunctionData('setDelegateCallEnabled', [safe, enabled]);
+
+      // Return transaction parameters for Safe execution
+      return {
+        safe: safe,
+        to: this.contract.address,
+        value: '0',
+        data: data,
+        operation: 0, // Call operation
+        nonce: 0 // Will be set by the calling service
+      };
     } catch (error) {
-      console.error('Error setting delegate call enabled:', error);
+      console.error('Error creating delegate call enabled transaction:', error);
       throw error;
     }
   }
 
   /**
    * Add an allowed delegate call target for a Safe
+   * This creates a Safe transaction that calls the SafeTxPool contract
    */
-  async addDelegateCallTarget(safe: string, target: string): Promise<ethers.ContractTransaction> {
+  async addDelegateCallTarget(safe: string, target: string): Promise<ProposeTransactionParams> {
     if (!this.contract) {
       throw new Error('Contract not initialized');
     }
 
-    if (!this.signer) {
-      throw new Error('Signer required for write operations');
-    }
-
     try {
-      const tx = await this.contract.addDelegateCallTarget(safe, target);
-      return tx;
+      // Encode the function call data
+      const data = this.contract.interface.encodeFunctionData('addDelegateCallTarget', [safe, target]);
+
+      // Return transaction parameters for Safe execution
+      return {
+        safe: safe,
+        to: this.contract.address,
+        value: '0',
+        data: data,
+        operation: 0, // Call operation
+        nonce: 0 // Will be set by the calling service
+      };
     } catch (error) {
-      console.error('Error adding delegate call target:', error);
+      console.error('Error creating add delegate call target transaction:', error);
       throw error;
     }
   }
 
   /**
    * Remove an allowed delegate call target for a Safe
+   * This creates a Safe transaction that calls the SafeTxPool contract
    */
-  async removeDelegateCallTarget(safe: string, target: string): Promise<ethers.ContractTransaction> {
+  async removeDelegateCallTarget(safe: string, target: string): Promise<ProposeTransactionParams> {
     if (!this.contract) {
       throw new Error('Contract not initialized');
     }
 
-    if (!this.signer) {
-      throw new Error('Signer required for write operations');
-    }
-
     try {
-      const tx = await this.contract.removeDelegateCallTarget(safe, target);
-      return tx;
+      // Encode the function call data
+      const data = this.contract.interface.encodeFunctionData('removeDelegateCallTarget', [safe, target]);
+
+      // Return transaction parameters for Safe execution
+      return {
+        safe: safe,
+        to: this.contract.address,
+        value: '0',
+        data: data,
+        operation: 0, // Call operation
+        nonce: 0 // Will be set by the calling service
+      };
     } catch (error) {
-      console.error('Error removing delegate call target:', error);
+      console.error('Error creating remove delegate call target transaction:', error);
       throw error;
     }
   }

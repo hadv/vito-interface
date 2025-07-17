@@ -4,6 +4,7 @@ import { ethers } from 'ethers';
 import { theme } from '../../../theme';
 import { SafeTxPoolService } from '../../../services/SafeTxPoolService';
 import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
+import { safeWalletService } from '../../../services/SafeWalletService';
 import { useToast } from '../../../hooks/useToast';
 import { ErrorHandler } from '../../../utils/errorHandling';
 import Button from '../../ui/Button';
@@ -266,15 +267,22 @@ const DelegateCallControlSection: React.FC<DelegateCallControlSectionProps> = ({
 
       setIsSubmitting(true);
       try {
-        // Set signer for SafeTxPoolService
-        const signer = walletConnectionService.getSigner();
-        if (signer) {
-          safeTxPoolService.setSigner(signer);
-        }
-
         const newState = !isDelegateCallEnabled;
-        await safeTxPoolService.setDelegateCallEnabled(connectionState.safeAddress, newState);
-        
+
+        // Create Safe transaction parameters
+        const txParams = await safeTxPoolService.setDelegateCallEnabled(connectionState.safeAddress, newState);
+
+        // Create and execute Safe transaction
+        const transactionRequest = {
+          to: txParams.to,
+          value: txParams.value,
+          data: txParams.data,
+          operation: txParams.operation
+        };
+
+        // Create the Safe transaction (this will sign and propose it)
+        await safeWalletService.createTransaction(transactionRequest);
+
         setIsDelegateCallEnabled(newState);
         addToast('Delegate Call Setting Updated', {
           type: 'success',
@@ -299,14 +307,23 @@ const DelegateCallControlSection: React.FC<DelegateCallControlSectionProps> = ({
 
       setIsSubmitting(true);
       try {
-        const signer = walletConnectionService.getSigner();
-        if (signer) {
-          safeTxPoolService.setSigner(signer);
-        }
+        const targetAddress = newTargetAddress.trim();
 
-        await safeTxPoolService.addDelegateCallTarget(connectionState.safeAddress, newTargetAddress.trim());
-        
-        setAllowedTargets([...allowedTargets, newTargetAddress.toLowerCase()]);
+        // Create Safe transaction parameters
+        const txParams = await safeTxPoolService.addDelegateCallTarget(connectionState.safeAddress, targetAddress);
+
+        // Create and execute Safe transaction
+        const transactionRequest = {
+          to: txParams.to,
+          value: txParams.value,
+          data: txParams.data,
+          operation: txParams.operation
+        };
+
+        // Create the Safe transaction (this will sign and propose it)
+        await safeWalletService.createTransaction(transactionRequest);
+
+        setAllowedTargets([...allowedTargets, targetAddress.toLowerCase()]);
         setNewTargetAddress('');
         addToast('Target Added', {
           type: 'success',
@@ -331,13 +348,20 @@ const DelegateCallControlSection: React.FC<DelegateCallControlSectionProps> = ({
 
       setIsSubmitting(true);
       try {
-        const signer = walletConnectionService.getSigner();
-        if (signer) {
-          safeTxPoolService.setSigner(signer);
-        }
+        // Create Safe transaction parameters
+        const txParams = await safeTxPoolService.removeDelegateCallTarget(connectionState.safeAddress, target);
 
-        await safeTxPoolService.removeDelegateCallTarget(connectionState.safeAddress, target);
-        
+        // Create and execute Safe transaction
+        const transactionRequest = {
+          to: txParams.to,
+          value: txParams.value,
+          data: txParams.data,
+          operation: txParams.operation
+        };
+
+        // Create the Safe transaction (this will sign and propose it)
+        await safeWalletService.createTransaction(transactionRequest);
+
         setAllowedTargets(allowedTargets.filter(t => t !== target.toLowerCase()));
         addToast('Target Removed', {
           type: 'success',
