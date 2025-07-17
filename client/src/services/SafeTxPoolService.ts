@@ -550,6 +550,40 @@ export class SafeTxPoolService {
   }
 
   /**
+   * Get all allowed delegate call targets for a Safe
+   */
+  async getAllowedDelegateCallTargets(safe: string): Promise<string[]> {
+    if (!this.contract) {
+      throw new Error('Contract not initialized');
+    }
+
+    try {
+      const targets = await this.contract.getDelegateCallTargets(safe);
+      return targets.map((target: string) => target.toLowerCase());
+    } catch (error) {
+      console.error('Error getting allowed delegate call targets:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get the number of allowed delegate call targets for a Safe
+   */
+  async getDelegateCallTargetsCount(safe: string): Promise<number> {
+    if (!this.contract) {
+      throw new Error('Contract not initialized');
+    }
+
+    try {
+      const count = await this.contract.getDelegateCallTargetsCount(safe);
+      return count.toNumber();
+    } catch (error) {
+      console.error('Error getting delegate call targets count:', error);
+      return 0;
+    }
+  }
+
+  /**
    * Delete a proposed transaction
    */
   async deleteTx(txHash: string): Promise<void> {

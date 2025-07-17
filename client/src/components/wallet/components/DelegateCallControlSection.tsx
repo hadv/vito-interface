@@ -218,9 +218,9 @@ const DelegateCallControlSection: React.FC<DelegateCallControlSectionProps> = ({
       const enabled = await safeTxPoolService.isDelegateCallEnabled(connectionState.safeAddress);
       setIsDelegateCallEnabled(enabled);
 
-      // For now, we'll track targets in component state
-      // In a full implementation, you might want to track them via events or additional contract methods
-      setAllowedTargets([]);
+      // Load allowed delegate call targets from contract events
+      const targets = await safeTxPoolService.getAllowedDelegateCallTargets(connectionState.safeAddress);
+      setAllowedTargets(targets);
     } catch (error) {
       console.error('Error loading delegate call settings:', error);
       const errorDetails = ErrorHandler.classifyError(error);
