@@ -106,6 +106,18 @@ The new flow ensures proper execution:
 3. **Consistent Flow**: Uses the same transaction pattern as other Safe operations
 4. **Error Resolution**: Eliminates the `NotSafeWallet()` revert error
 
+## 🔄 **Additional Fix: Correct Status Display**
+
+### **Issue**: Status showed incorrect state immediately after transaction creation
+The UI was showing the new delegate call state immediately after creating the transaction, but the actual on-chain state hadn't changed yet since transactions need to be executed.
+
+### **Solution**:
+- Removed immediate local state updates after transaction creation
+- Status now only reflects actual on-chain state
+- Added refresh button (↻) for manual status updates
+- Added informational note explaining the transaction flow
+- Changed success messages to indicate "transaction proposed" rather than "setting updated"
+
 ## 🧪 Testing
 
 The fix has been validated through:
@@ -113,6 +125,8 @@ The fix has been validated through:
 - ✅ Build process completed without errors
 - ✅ Proper transaction parameter generation
 - ✅ Safe transaction flow integration
+- ✅ Correct status display behavior
+- ✅ Layout fixes for button wrapping
 
 ## 🚀 Usage
 
