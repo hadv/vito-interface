@@ -4,6 +4,7 @@ import { ethers } from 'ethers';
 import { theme } from '../../../theme';
 import { SafeTxPoolService } from '../../../services/SafeTxPoolService';
 import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
+import { safeWalletService } from '../../../services/SafeWalletService';
 import { useToast } from '../../../hooks/useToast';
 import { ErrorHandler } from '../../../utils/errorHandling';
 import Button from '../../ui/Button';
@@ -118,7 +119,23 @@ const TargetItem = styled.div`
 const AddTargetForm = styled.div`
   display: flex;
   gap: ${theme.spacing[3]};
-  align-items: flex-end;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+
+  /* Ensure input takes available space and button doesn't wrap */
+  > div:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Align button with the input field, not the bottom of the input container */
+  > button {
+    flex-shrink: 0;
+    white-space: nowrap;
+    min-width: fit-content;
+    margin-top: 28px; /* Offset for label height (text-sm + gap) to align with input field */
+    height: 48px; /* Match input field height (h-12 = 48px) */
+  }
 `;
 
 const StatusBadge = styled.div<{ enabled: boolean }>`
@@ -201,9 +218,9 @@ const DelegateCallControlSection: React.FC<DelegateCallControlSectionProps> = ({
       const enabled = await safeTxPoolService.isDelegateCallEnabled(connectionState.safeAddress);
       setIsDelegateCallEnabled(enabled);
 
-      // For now, we'll track targets in component state
-      // In a full implementation, you might want to track them via events or additional contract methods
-      setAllowedTargets([]);
+      // Load allowed delegate call targets from contract events
+      const targets = await safeTxPoolService.getAllowedDelegateCallTargets(connectionState.safeAddress);
+      setAllowedTargets(targets);
     } catch (error) {
       console.error('Error loading delegate call settings:', error);
       const errorDetails = ErrorHandler.classifyError(error);
@@ -266,20 +283,30 @@ const DelegateCallControlSection: React.FC<DelegateCallControlSectionProps> = ({
 
       setIsSubmitting(true);
       try {
-        // Set signer for SafeTxPoolService
-        const signer = walletConnectionService.getSigner();
-        if (signer) {
-          safeTxPoolService.setSigner(signer);
-        }
-
         const newState = !isDelegateCallEnabled;
-        await safeTxPoolService.setDelegateCallEnabled(connectionState.safeAddress, newState);
-        
-        setIsDelegateCallEnabled(newState);
-        addToast('Delegate Call Setting Updated', {
+
+        // Create Safe transaction parameters
+        const txParams = await safeTxPoolService.setDelegateCallEnabled(connectionState.safeAddress, newState);
+
+        // Create and execute Safe transaction
+        const transactionRequest = {
+          to: txParams.to,
+          value: txParams.value,
+          data: txParams.data,
+          operation: txParams.operation
+        };
+
+        // Create the Safe transaction (this will sign and propose it)
+        await safeWalletService.createTransaction(transactionRequest);
+
+        // Don't update local state immediately - wait for transaction execution
+        addToast('Transaction Proposed', {
           type: 'success',
-          message: `Delegate calls have been ${newState ? 'enabled' : 'disabled'} for this Safe.`
+          message: `Delegate call ${newState ? 'enable' : 'disable'} transaction has been proposed. It will be executed when the required signatures are collected.`
         });
+
+        // Optionally monitor transaction status and update UI when executed
+        // For now, user can refresh or the status will update on next load
       } catch (error) {
         console.error('Error toggling delegate call:', error);
         const errorDetails = ErrorHandler.classifyError(error);
@@ -299,18 +326,27 @@ const DelegateCallControlSection: React.FC<DelegateCallControlSectionProps> = ({
 
       setIsSubmitting(true);
       try {
-        const signer = walletConnectionService.getSigner();
-        if (signer) {
-          safeTxPoolService.setSigner(signer);
-        }
+        const targetAddress = newTargetAddress.trim();
 
-        await safeTxPoolService.addDelegateCallTarget(connectionState.safeAddress, newTargetAddress.trim());
-        
-        setAllowedTargets([...allowedTargets, newTargetAddress.toLowerCase()]);
+        // Create Safe transaction parameters
+        const txParams = await safeTxPoolService.addDelegateCallTarget(connectionState.safeAddress, targetAddress);
+
+        // Create and execute Safe transaction
+        const transactionRequest = {
+          to: txParams.to,
+          value: txParams.value,
+          data: txParams.data,
+          operation: txParams.operation
+        };
+
+        // Create the Safe transaction (this will sign and propose it)
+        await safeWalletService.createTransaction(transactionRequest);
+
+        // Don't update local state immediately - wait for transaction execution
         setNewTargetAddress('');
-        addToast('Target Added', {
+        addToast('Transaction Proposed', {
           type: 'success',
-          message: 'Delegate call target has been added successfully.'
+          message: 'Add delegate call target transaction has been proposed. It will be executed when the required signatures are collected.'
         });
       } catch (error) {
         console.error('Error adding delegate call target:', error);
@@ -331,17 +367,24 @@ const DelegateCallControlSection: React.FC<DelegateCallControlSectionProps> = ({
 
       setIsSubmitting(true);
       try {
-        const signer = walletConnectionService.getSigner();
-        if (signer) {
-          safeTxPoolService.setSigner(signer);
-        }
+        // Create Safe transaction parameters
+        const txParams = await safeTxPoolService.removeDelegateCallTarget(connectionState.safeAddress, target);
 
-        await safeTxPoolService.removeDelegateCallTarget(connectionState.safeAddress, target);
-        
-        setAllowedTargets(allowedTargets.filter(t => t !== target.toLowerCase()));
-        addToast('Target Removed', {
+        // Create and execute Safe transaction
+        const transactionRequest = {
+          to: txParams.to,
+          value: txParams.value,
+          data: txParams.data,
+          operation: txParams.operation
+        };
+
+        // Create the Safe transaction (this will sign and propose it)
+        await safeWalletService.createTransaction(transactionRequest);
+
+        // Don't update local state immediately - wait for transaction execution
+        addToast('Transaction Proposed', {
           type: 'success',
-          message: 'Delegate call target has been removed successfully.'
+          message: 'Remove delegate call target transaction has been proposed. It will be executed when the required signatures are collected.'
         });
       } catch (error) {
         console.error('Error removing delegate call target:', error);
@@ -381,9 +424,24 @@ const DelegateCallControlSection: React.FC<DelegateCallControlSectionProps> = ({
     <Container>
       <SectionTitle>Delegate Call Control</SectionTitle>
       <Description>
-        Delegate calls allow your Safe to execute code in the context of another contract. 
-        This is a powerful but potentially dangerous feature that should be used with extreme caution. 
+        Delegate calls allow your Safe to execute code in the context of another contract.
+        This is a powerful but potentially dangerous feature that should be used with extreme caution.
         Only enable delegate calls to trusted contracts.
+      </Description>
+
+      <Description style={{
+        color: theme.colors.text.muted,
+        fontSize: theme.typography.fontSize.sm,
+        fontStyle: 'italic',
+        marginTop: theme.spacing[2],
+        padding: theme.spacing[3],
+        backgroundColor: theme.colors.neutral[800],
+        borderRadius: theme.borderRadius.md,
+        border: `1px solid ${theme.colors.neutral[700]}`
+      }}>
+        💡 Note: Changes to delegate call settings require Safe transaction execution.
+        After proposing a transaction, the status will update once the transaction is executed on-chain.
+        Use the refresh button (↻) to check for updates.
       </Description>
 
       {/* Delegate Call Toggle */}
@@ -394,13 +452,28 @@ const DelegateCallControlSection: React.FC<DelegateCallControlSectionProps> = ({
             <StatusBadge enabled={isDelegateCallEnabled}>
               {isDelegateCallEnabled ? 'Enabled' : 'Disabled'}
             </StatusBadge>
+            {isLoading && (
+              <span style={{ marginLeft: theme.spacing[2], color: theme.colors.text.muted, fontSize: theme.typography.fontSize.sm }}>
+                Loading...
+              </span>
+            )}
           </ToggleDescription>
         </ToggleLabel>
-        <Toggle
-          enabled={isDelegateCallEnabled}
-          disabled={!isSignerConnected || isSubmitting}
-          onClick={handleToggleDelegateCall}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing[2] }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={loadDelegateCallSettings}
+            disabled={isLoading}
+          >
+            ↻
+          </Button>
+          <Toggle
+            enabled={isDelegateCallEnabled}
+            disabled={!isSignerConnected || isSubmitting}
+            onClick={handleToggleDelegateCall}
+          />
+        </div>
       </ToggleSection>
 
       {/* Allowed Targets Section */}

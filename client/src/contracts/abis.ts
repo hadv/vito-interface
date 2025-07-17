@@ -245,6 +245,28 @@ export const SAFE_TX_POOL_ABI = [
     ],
     "stateMutability": "view"
   },
+  {
+    "type": "function",
+    "name": "getDelegateCallTargets",
+    "inputs": [
+      {"name": "safe", "type": "address"}
+    ],
+    "outputs": [
+      {"name": "targets", "type": "address[]"}
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getDelegateCallTargetsCount",
+    "inputs": [
+      {"name": "safe", "type": "address"}
+    ],
+    "outputs": [
+      {"name": "count", "type": "uint256"}
+    ],
+    "stateMutability": "view"
+  },
   // Delegate Call Control events
   {
     "type": "event",
