@@ -4,7 +4,7 @@ import { ethers } from 'ethers';
 import { theme } from '../../../theme';
 import { useAddressBook } from '../../../hooks/useAddressBook';
 import { createSafeTxPoolService } from '../../../services/SafeTxPoolService';
-import { getSafeTxPoolAddress } from '../../../contracts/abis';
+import { getSafeTxPoolRegistryAddress } from '../../../contracts/abis';
 import { walletConnectionService } from '../../../services/WalletConnectionService';
 import { useToast } from '../../../hooks/useToast';
 import Button from '../../ui/Button';
@@ -146,7 +146,7 @@ const GuardAddressBookManager: React.FC<GuardAddressBookManagerProps> = ({ safeA
 
       // This will create a Safe transaction to add the address to the address book
       // The transaction will call the SafeTxPool contract (which is allowed by the guard)
-      const safeTxPoolAddress = getSafeTxPoolAddress(network);
+      const safeTxPoolAddress = getSafeTxPoolRegistryAddress(network);
       if (!safeTxPoolAddress) {
         throw new Error(`SafeTxPool not configured for ${network} network`);
       }

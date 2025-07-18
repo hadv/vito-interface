@@ -240,8 +240,8 @@ export const SAFE_TX_POOL_REGISTRY_ABI = [
   }
 ];
 
-// SafeTxPool contract ABI (legacy - for backward compatibility)
-export const SAFE_TX_POOL_ABI = [
+// Safe Wallet contract ABI (core methods we need)
+export const SAFE_TX_POOL_REGISTRY_EXTENDED_ABI = [
   {
     "type": "function",
     "name": "proposeTx",
@@ -805,20 +805,12 @@ export const TOKEN_ADDRESSES = {
   }
 };
 
-// SafeTxPoolRegistry contract addresses for different networks (new architecture)
+// SafeTxPoolRegistry contract addresses for different networks
 // These addresses should be updated with the actual deployed registry contract addresses
 export const SAFE_TX_POOL_REGISTRY_ADDRESSES = {
   ethereum: process.env.REACT_APP_SAFE_TX_POOL_REGISTRY_ETHEREUM || '0x0000000000000000000000000000000000000000',
   sepolia: process.env.REACT_APP_SAFE_TX_POOL_REGISTRY_SEPOLIA || '0x0000000000000000000000000000000000000000',
   arbitrum: process.env.REACT_APP_SAFE_TX_POOL_REGISTRY_ARBITRUM || '0x0000000000000000000000000000000000000000'
-};
-
-// SafeTxPool contract addresses for different networks (legacy - for backward compatibility)
-// These addresses should be updated with the actual deployed contract addresses
-export const SAFE_TX_POOL_ADDRESSES = {
-  ethereum: process.env.REACT_APP_SAFE_TX_POOL_ETHEREUM || '0x0000000000000000000000000000000000000000',
-  sepolia: process.env.REACT_APP_SAFE_TX_POOL_SEPOLIA || '0x0000000000000000000000000000000000000000',
-  arbitrum: process.env.REACT_APP_SAFE_TX_POOL_ARBITRUM || '0x0000000000000000000000000000000000000000'
 };
 
 // Utility function to check if a Safe TX Pool Registry address is configured
@@ -833,18 +825,6 @@ export const getSafeTxPoolRegistryAddress = (network: string): string | null => 
   return isSafeTxPoolRegistryConfigured(network) ? address : null;
 };
 
-// Utility function to check if a Safe TX Pool address is configured (legacy)
-export const isSafeTxPoolConfigured = (network: string): boolean => {
-  const address = SAFE_TX_POOL_ADDRESSES[network as keyof typeof SAFE_TX_POOL_ADDRESSES];
-  return Boolean(address && address !== '0x0000000000000000000000000000000000000000');
-};
-
-// Utility function to get Safe TX Pool address with validation (legacy)
-export const getSafeTxPoolAddress = (network: string): string | null => {
-  const address = SAFE_TX_POOL_ADDRESSES[network as keyof typeof SAFE_TX_POOL_ADDRESSES];
-  return isSafeTxPoolConfigured(network) ? address : null;
-};
-
 // Network configurations
 export const NETWORK_CONFIGS = {
   ethereum: {
@@ -853,7 +833,6 @@ export const NETWORK_CONFIGS = {
     rpcUrl: 'https://mainnet.infura.io/v3/',
     blockExplorer: 'https://etherscan.io',
     safeTxPoolRegistryAddress: SAFE_TX_POOL_REGISTRY_ADDRESSES.ethereum,
-    safeTxPoolAddress: SAFE_TX_POOL_ADDRESSES.ethereum, // legacy
     isTestnet: false
   },
   sepolia: {
@@ -862,7 +841,6 @@ export const NETWORK_CONFIGS = {
     rpcUrl: 'https://ethereum-sepolia-rpc.publicnode.com',
     blockExplorer: 'https://sepolia.etherscan.io',
     safeTxPoolRegistryAddress: SAFE_TX_POOL_REGISTRY_ADDRESSES.sepolia,
-    safeTxPoolAddress: SAFE_TX_POOL_ADDRESSES.sepolia, // legacy
     isTestnet: true
   },
   arbitrum: {
@@ -871,7 +849,6 @@ export const NETWORK_CONFIGS = {
     rpcUrl: 'https://arb1.arbitrum.io/rpc',
     blockExplorer: 'https://arbiscan.io',
     safeTxPoolRegistryAddress: SAFE_TX_POOL_REGISTRY_ADDRESSES.arbitrum,
-    safeTxPoolAddress: SAFE_TX_POOL_ADDRESSES.arbitrum, // legacy
     isTestnet: false
   }
 };

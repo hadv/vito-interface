@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { NETWORK_CONFIGS, isSafeTxPoolConfigured, getSafeTxPoolAddress } from '../../../contracts/abis';
+import { NETWORK_CONFIGS, isSafeTxPoolRegistryConfigured, getSafeTxPoolRegistryAddress } from '../../../contracts/abis';
 import { theme } from '../../../theme';
 
 const StatusContainer = styled.div`
@@ -119,7 +119,7 @@ const NetworkConfigStatus: React.FC<NetworkConfigStatusProps> = ({ className }) 
   const [isExpanded, setIsExpanded] = useState(false);
 
   const networks = Object.entries(NETWORK_CONFIGS);
-  const configuredCount = networks.filter(([networkKey]) => isSafeTxPoolConfigured(networkKey)).length;
+  const configuredCount = networks.filter(([networkKey]) => isSafeTxPoolRegistryConfigured(networkKey)).length;
   const totalCount = networks.length;
 
   const toggleExpanded = () => {
@@ -139,8 +139,8 @@ const NetworkConfigStatus: React.FC<NetworkConfigStatusProps> = ({ className }) 
 
       <NetworkList isExpanded={isExpanded}>
         {networks.map(([networkKey, networkConfig]) => {
-          const isConfigured = isSafeTxPoolConfigured(networkKey);
-          const contractAddress = getSafeTxPoolAddress(networkKey);
+          const isConfigured = isSafeTxPoolRegistryConfigured(networkKey);
+          const contractAddress = getSafeTxPoolRegistryAddress(networkKey);
 
           return (
             <NetworkItem key={networkKey}>

@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { SAFE_TX_POOL_ABI, SAFE_ABI, NETWORK_CONFIGS, isSafeTxPoolConfigured, getSafeTxPoolAddress } from '../contracts/abis';
+import { SAFE_TX_POOL_REGISTRY_ABI, SAFE_ABI, NETWORK_CONFIGS, isSafeTxPoolRegistryConfigured, getSafeTxPoolRegistryAddress } from '../contracts/abis';
 import { getProviderForNetwork } from '../utils/ens';
 import { createSafeContractTransactionHash, SafeTransactionData } from '../utils/eip712';
 
@@ -57,8 +57,8 @@ export class SafeTxPoolService {
       return;
     }
 
-    if (!isSafeTxPoolConfigured(this.network)) {
-      console.warn(`SafeTxPool contract address not configured for network: ${this.network}. Please set the contract address in environment variables or abis.ts`);
+    if (!isSafeTxPoolRegistryConfigured(this.network)) {
+      console.warn(`SafeTxPoolRegistry contract address not configured for network: ${this.network}. Please set the contract address in environment variables or abis.ts`);
       return;
     }
 
@@ -67,15 +67,15 @@ export class SafeTxPoolService {
       return;
     }
 
-    const contractAddress = getSafeTxPoolAddress(this.network);
+    const contractAddress = getSafeTxPoolRegistryAddress(this.network);
     if (!contractAddress) {
-      console.error(`Failed to get SafeTxPool address for network: ${this.network}`);
+      console.error(`Failed to get SafeTxPoolRegistry address for network: ${this.network}`);
       return;
     }
 
     this.contract = new ethers.Contract(
       contractAddress,
-      SAFE_TX_POOL_ABI,
+      SAFE_TX_POOL_REGISTRY_ABI,
       this.provider
     );
   }
@@ -106,7 +106,7 @@ export class SafeTxPoolService {
    * Get the contract address for the current network
    */
   getContractAddress(): string | null {
-    return getSafeTxPoolAddress(this.network);
+    return getSafeTxPoolRegistryAddress(this.network);
   }
 
   /**
@@ -117,10 +117,10 @@ export class SafeTxPoolService {
   }
 
   /**
-   * Check if SafeTxPool is configured for the current network
+   * Check if SafeTxPoolRegistry is configured for the current network
    */
   isConfigured(): boolean {
-    return isSafeTxPoolConfigured(this.network);
+    return isSafeTxPoolRegistryConfigured(this.network);
   }
 
   /**
@@ -717,7 +717,7 @@ export class SafeTxPoolService {
     }
 
     // Create contract interface
-    const contractInterface = new ethers.utils.Interface(SAFE_TX_POOL_ABI);
+    const contractInterface = new ethers.utils.Interface(SAFE_TX_POOL_REGISTRY_ABI);
 
     // Convert string name to bytes32
     const nameBytes32 = ethers.utils.formatBytes32String(name.trim().substring(0, 31));
@@ -817,7 +817,7 @@ export class SafeTxPoolService {
     }
 
     // Create contract interface
-    const contractInterface = new ethers.utils.Interface(SAFE_TX_POOL_ABI);
+    const contractInterface = new ethers.utils.Interface(SAFE_TX_POOL_REGISTRY_ABI);
 
     // Encode function call
     const data = contractInterface.encodeFunctionData('addTrustedContract', [
@@ -837,7 +837,7 @@ export class SafeTxPoolService {
     }
 
     // Create contract interface
-    const contractInterface = new ethers.utils.Interface(SAFE_TX_POOL_ABI);
+    const contractInterface = new ethers.utils.Interface(SAFE_TX_POOL_REGISTRY_ABI);
 
     // Encode function call
     const data = contractInterface.encodeFunctionData('removeTrustedContract', [

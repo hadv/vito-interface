@@ -90,7 +90,12 @@ Successfully updated the vito-contracts submodule to the latest version and enha
 2. **Gas Estimation**: Enhance gas estimation for new contract methods
 3. **Batch Operations**: Support for batch address book operations
 
+## Registry-Only Implementation
+- **Focused Architecture**: Removed legacy SafeTxPool support to focus exclusively on the new SafeTxPoolRegistry
+- **Clean Codebase**: Eliminated dual contract support complexity for better maintainability
+- **Modern Implementation**: All components now use the latest registry contract architecture
+
 ## Compatibility Notes
-- **Backward Compatible**: All existing functionality continues to work
-- **Progressive Enhancement**: New features activate automatically when registry contracts are deployed
-- **No Breaking Changes**: Existing integrations remain functional
+- **Registry Required**: Application now requires SafeTxPoolRegistry contracts to be deployed
+- **No Legacy Support**: Legacy SafeTxPool contracts are no longer supported
+- **Clean Migration**: All references updated to use registry contracts exclusively

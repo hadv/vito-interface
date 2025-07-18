@@ -1,10 +1,8 @@
 import { ethers } from 'ethers';
 import { TokenService } from '../services/TokenService';
 import {
-  getSafeTxPoolAddress,
   getSafeTxPoolRegistryAddress,
   SAFE_TX_POOL_REGISTRY_ABI,
-  SAFE_TX_POOL_ABI,
   SAFE_ABI
 } from '../contracts/abis';
 
@@ -614,21 +612,6 @@ export class TransactionDecoder {
       if (registryDecoded) return registryDecoded;
     }
 
-    // Check if this is a SafeTxPool method (legacy)
-    const poolAddress = getSafeTxPoolAddress(this.network);
-    if (poolAddress && contractAddress.toLowerCase() === poolAddress.toLowerCase()) {
-      const poolDecoded = this.decodePoolMethod(methodId, data);
-      if (poolDecoded) return poolDecoded;
-    }
-
-    // Check if this is SafeTxPool proposeTx (legacy hardcoded)
-    if (methodId === '0x10ff18f9') {
-      const proposeTxDecoded = this.decodeSafeTxPoolProposeTx(data);
-      if (proposeTxDecoded) {
-        return proposeTxDecoded;
-      }
-    }
-
     // Known method IDs for other contracts
     const knownMethods: { [key: string]: { name: string; description: string } } = {
       '0x09959f6b': {
@@ -744,47 +727,7 @@ export class TransactionDecoder {
     return null;
   }
 
-  /**
-   * Decode SafeTxPool methods (legacy)
-   */
-  private decodePoolMethod(methodId: string, data: string): DecodedTransactionData | null {
-    try {
-      const poolInterface = new ethers.utils.Interface(SAFE_TX_POOL_ABI);
 
-      switch (methodId) {
-        case '0x10ff18f9': // proposeTx
-          return this.decodeSafeTxPoolProposeTx(data);
-
-        case '0x4ce38b5f': // addAddressBookEntry
-          try {
-            const decoded = poolInterface.decodeFunctionData('addAddressBookEntry', data);
-            const nameBytes32 = decoded.name;
-            const nameString = ethers.utils.parseBytes32String(nameBytes32);
-            return {
-              type: 'CONTRACT_CALL',
-              description: 'Add Address Book Entry',
-              details: {
-                method: methodId,
-                methodName: 'addAddressBookEntry',
-                decodedInputs: [
-                  { name: 'safe', type: 'address', value: decoded.safe, description: 'Safe wallet address' },
-                  { name: 'walletAddress', type: 'address', value: decoded.walletAddress, description: 'Address to add' },
-                  { name: 'name', type: 'bytes32', value: nameString, description: 'Contact name' }
-                ],
-                contractName: 'SafeTxPool',
-                functionType: 'Address Book'
-              }
-            };
-          } catch (e) { break; }
-
-        default:
-          return null;
-      }
-    } catch (error) {
-      console.error('Error decoding pool method:', error);
-    }
-    return null;
-  }
 
   /**
    * Get contract name and ABI for known contracts
@@ -803,111 +746,6 @@ export class TransactionDecoder {
       };
     }
 
-    // Check if this is a SafeTxPool contract (legacy)
-    const poolAddress = getSafeTxPoolAddress(this.network);
-    if (poolAddress && lowerAddress === poolAddress.toLowerCase()) {
-      console.log('✅ Matched SafeTxPool contract!');
-      return {
-        name: 'SafeTxPool',
-        abi: SAFE_TX_POOL_ABI
-      };
-    }
-
-    // SafeTxPool contract (unverified on Sepolia but we know the ABI) - hardcoded for backward compatibility
-    if (lowerAddress === '0x1f738438af91442ffa472d4bd40e13fe0a264db8') {
-      console.log('✅ Matched hardcoded SafeTxPool contract!');
-      return {
-        name: 'SafeTxPool',
-        abi: [
-          {
-            "type": "function",
-            "name": "proposeTx",
-            "inputs": [
-              {"name": "txHash", "type": "bytes32"},
-              {"name": "safe", "type": "address"},
-              {"name": "to", "type": "address"},
-              {"name": "value", "type": "uint256"},
-              {"name": "data", "type": "bytes"},
-              {"name": "operation", "type": "uint8"},
-              {"name": "nonce", "type": "uint256"}
-            ],
-            "outputs": [],
-            "stateMutability": "nonpayable"
-          },
-          {
-            "type": "function",
-            "name": "signTransaction",
-            "inputs": [
-              {"name": "txHash", "type": "bytes32"},
-              {"name": "signature", "type": "bytes"}
-            ],
-            "outputs": [],
-            "stateMutability": "nonpayable"
-          },
-          {
-            "type": "function",
-            "name": "addSigner",
-            "inputs": [
-              {"name": "safe", "type": "address"},
-              {"name": "signer", "type": "address"},
-              {"name": "txHash", "type": "bytes32"}
-            ],
-            "outputs": [],
-            "stateMutability": "nonpayable"
-          },
-          {
-            "type": "function",
-            "name": "removeSigner",
-            "inputs": [
-              {"name": "safe", "type": "address"},
-              {"name": "signer", "type": "address"}
-            ],
-            "outputs": [],
-            "stateMutability": "nonpayable"
-          },
-          {
-            "type": "function",
-            "name": "addAddressBookEntry",
-            "inputs": [
-              {"name": "safe", "type": "address"},
-              {"name": "walletAddress", "type": "address"},
-              {"name": "amount", "type": "uint256"}
-            ],
-            "outputs": [],
-            "stateMutability": "nonpayable"
-          },
-          {
-            "type": "function",
-            "name": "removeAddressBookEntry",
-            "inputs": [
-              {"name": "safe", "type": "address"},
-              {"name": "walletAddress", "type": "address"}
-            ],
-            "outputs": [],
-            "stateMutability": "nonpayable"
-          },
-          {
-            "type": "function",
-            "name": "executeTransaction",
-            "inputs": [
-              {"name": "txHash", "type": "bytes32"}
-            ],
-            "outputs": [],
-            "stateMutability": "nonpayable"
-          },
-          {
-            "type": "function",
-            "name": "cancelTransaction",
-            "inputs": [
-              {"name": "txHash", "type": "bytes32"}
-            ],
-            "outputs": [],
-            "stateMutability": "nonpayable"
-          }
-        ]
-      };
-    }
-
     console.log('❌ No known contract found for this address');
     // Add more known contracts here
     return null;
@@ -922,12 +760,12 @@ export class TransactionDecoder {
       return contractInfo.name;
     }
 
-    // Check if this is a SafeTxPool address from configuration
+    // Check if this is a SafeTxPoolRegistry address from configuration
     const networks = ['ethereum', 'sepolia', 'arbitrum'];
     for (const network of networks) {
-      const safeTxPoolAddress = getSafeTxPoolAddress(network);
-      if (safeTxPoolAddress && address.toLowerCase() === safeTxPoolAddress.toLowerCase()) {
-        return 'SafeTxPool';
+      const safeTxPoolRegistryAddress = getSafeTxPoolRegistryAddress(network);
+      if (safeTxPoolRegistryAddress && address.toLowerCase() === safeTxPoolRegistryAddress.toLowerCase()) {
+        return 'SafeTxPoolRegistry';
       }
     }
 

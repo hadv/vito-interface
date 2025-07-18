@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { ethers } from 'ethers';
 import { theme } from '../../../theme';
 import { safeWalletService } from '../../../services/SafeWalletService';
-import { getSafeTxPoolAddress, getRpcUrl } from '../../../contracts/abis';
+import { getSafeTxPoolRegistryAddress, getRpcUrl } from '../../../contracts/abis';
 import { walletConnectionService } from '../../../services/WalletConnectionService';
 import { useToast } from '../../../hooks/useToast';
 import Button from '../../ui/Button';
@@ -129,12 +129,12 @@ const SafeGuardDiagnostic: React.FC<SafeGuardDiagnosticProps> = ({ safeAddress, 
       setIsLoading(true);
       setError('');
 
-      // Get SafeTxPool address for current network
-      const poolAddress = getSafeTxPoolAddress(network);
+      // Get SafeTxPoolRegistry address for current network
+      const poolAddress = getSafeTxPoolRegistryAddress(network);
       setSafeTxPoolAddress(poolAddress || '');
 
       if (!poolAddress) {
-        setError(`SafeTxPool not configured for ${network} network`);
+        setError(`SafeTxPoolRegistry not configured for ${network} network`);
         return;
       }
 

@@ -8,7 +8,7 @@ import { isValidEthereumAddress } from '../../../utils/ens';
 import { safeWalletService, SafeWalletService } from '../../../services/SafeWalletService';
 import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
 import { createSafeTxPoolService, AddressBookEntry } from '../../../services/SafeTxPoolService';
-import { isSafeTxPoolConfigured } from '../../../contracts/abis';
+import { isSafeTxPoolRegistryConfigured } from '../../../contracts/abis';
 import { useToast } from '../../../hooks/useToast';
 import { ErrorHandler } from '../../../utils/errorHandling';
 import { errorRecoveryService } from '../../../services/ErrorRecoveryService';
@@ -439,9 +439,9 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       return;
     }
 
-    // Check if Safe TX Pool is configured for the current network
-    if (!isSafeTxPoolConfigured(connectionState.network || 'ethereum')) {
-      setError(`Safe TX Pool contract is not configured for ${connectionState.network}. Please configure the contract address to enable transactions.`);
+    // Check if Safe TX Pool Registry is configured for the current network
+    if (!isSafeTxPoolRegistryConfigured(connectionState.network || 'ethereum')) {
+      setError(`Safe TX Pool Registry contract is not configured for ${connectionState.network}. Please configure the contract address to enable transactions.`);
       return;
     }
 
