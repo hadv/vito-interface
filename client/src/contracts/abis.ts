@@ -1,6 +1,246 @@
 // Contract ABIs for interacting with smart contracts
 
-// SafeTxPool contract ABI
+// SafeTxPoolRegistry contract ABI - Main coordinator contract (updated architecture)
+export const SAFE_TX_POOL_REGISTRY_ABI = [
+  // Transaction Pool Functions
+  {
+    "type": "function",
+    "name": "proposeTx",
+    "inputs": [
+      {"name": "txHash", "type": "bytes32"},
+      {"name": "safe", "type": "address"},
+      {"name": "to", "type": "address"},
+      {"name": "value", "type": "uint256"},
+      {"name": "data", "type": "bytes"},
+      {"name": "operation", "type": "uint8"},
+      {"name": "nonce", "type": "uint256"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "signTx",
+    "inputs": [
+      {"name": "txHash", "type": "bytes32"},
+      {"name": "signature", "type": "bytes"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "markAsExecuted",
+    "inputs": [
+      {"name": "txHash", "type": "bytes32"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "deleteTx",
+    "inputs": [
+      {"name": "txHash", "type": "bytes32"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getTxDetails",
+    "inputs": [
+      {"name": "txHash", "type": "bytes32"}
+    ],
+    "outputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "to", "type": "address"},
+      {"name": "value", "type": "uint256"},
+      {"name": "data", "type": "bytes"},
+      {"name": "operation", "type": "uint8"},
+      {"name": "proposer", "type": "address"},
+      {"name": "nonce", "type": "uint256"},
+      {"name": "txId", "type": "uint256"}
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getSignatures",
+    "inputs": [
+      {"name": "txHash", "type": "bytes32"}
+    ],
+    "outputs": [
+      {"name": "", "type": "bytes[]"}
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "hasSignedTx",
+    "inputs": [
+      {"name": "txHash", "type": "bytes32"},
+      {"name": "signer", "type": "address"}
+    ],
+    "outputs": [
+      {"name": "", "type": "bool"}
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getPendingTxHashes",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "offset", "type": "uint256"},
+      {"name": "limit", "type": "uint256"}
+    ],
+    "outputs": [
+      {"name": "", "type": "bytes32[]"}
+    ],
+    "stateMutability": "view"
+  },
+  // Address Book Functions
+  {
+    "type": "function",
+    "name": "addAddressBookEntry",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "walletAddress", "type": "address"},
+      {"name": "name", "type": "bytes32"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "removeAddressBookEntry",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "walletAddress", "type": "address"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getAddressBookEntries",
+    "inputs": [
+      {"name": "safe", "type": "address"}
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple[]",
+        "components": [
+          {"name": "name", "type": "bytes32"},
+          {"name": "walletAddress", "type": "address"}
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  // Delegate Call Functions
+  {
+    "type": "function",
+    "name": "setDelegateCallEnabled",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "enabled", "type": "bool"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "addDelegateCallTarget",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "target", "type": "address"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "removeDelegateCallTarget",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "target", "type": "address"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "isDelegateCallEnabled",
+    "inputs": [
+      {"name": "safe", "type": "address"}
+    ],
+    "outputs": [
+      {"name": "", "type": "bool"}
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isDelegateCallTargetAllowed",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "target", "type": "address"}
+    ],
+    "outputs": [
+      {"name": "", "type": "bool"}
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getDelegateCallTargets",
+    "inputs": [
+      {"name": "safe", "type": "address"}
+    ],
+    "outputs": [
+      {"name": "", "type": "address[]"}
+    ],
+    "stateMutability": "view"
+  },
+  // Trusted Contract Functions
+  {
+    "type": "function",
+    "name": "addTrustedContract",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "contractAddress", "type": "address"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "removeTrustedContract",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "contractAddress", "type": "address"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "isTrustedContract",
+    "inputs": [
+      {"name": "safe", "type": "address"},
+      {"name": "contractAddress", "type": "address"}
+    ],
+    "outputs": [
+      {"name": "", "type": "bool"}
+    ],
+    "stateMutability": "view"
+  }
+];
+
+// SafeTxPool contract ABI (legacy - for backward compatibility)
 export const SAFE_TX_POOL_ABI = [
   {
     "type": "function",
@@ -565,7 +805,15 @@ export const TOKEN_ADDRESSES = {
   }
 };
 
-// SafeTxPool contract addresses for different networks
+// SafeTxPoolRegistry contract addresses for different networks (new architecture)
+// These addresses should be updated with the actual deployed registry contract addresses
+export const SAFE_TX_POOL_REGISTRY_ADDRESSES = {
+  ethereum: process.env.REACT_APP_SAFE_TX_POOL_REGISTRY_ETHEREUM || '0x0000000000000000000000000000000000000000',
+  sepolia: process.env.REACT_APP_SAFE_TX_POOL_REGISTRY_SEPOLIA || '0x0000000000000000000000000000000000000000',
+  arbitrum: process.env.REACT_APP_SAFE_TX_POOL_REGISTRY_ARBITRUM || '0x0000000000000000000000000000000000000000'
+};
+
+// SafeTxPool contract addresses for different networks (legacy - for backward compatibility)
 // These addresses should be updated with the actual deployed contract addresses
 export const SAFE_TX_POOL_ADDRESSES = {
   ethereum: process.env.REACT_APP_SAFE_TX_POOL_ETHEREUM || '0x0000000000000000000000000000000000000000',
@@ -573,13 +821,25 @@ export const SAFE_TX_POOL_ADDRESSES = {
   arbitrum: process.env.REACT_APP_SAFE_TX_POOL_ARBITRUM || '0x0000000000000000000000000000000000000000'
 };
 
-// Utility function to check if a Safe TX Pool address is configured
+// Utility function to check if a Safe TX Pool Registry address is configured
+export const isSafeTxPoolRegistryConfigured = (network: string): boolean => {
+  const address = SAFE_TX_POOL_REGISTRY_ADDRESSES[network as keyof typeof SAFE_TX_POOL_REGISTRY_ADDRESSES];
+  return Boolean(address && address !== '0x0000000000000000000000000000000000000000');
+};
+
+// Utility function to get Safe TX Pool Registry address with validation
+export const getSafeTxPoolRegistryAddress = (network: string): string | null => {
+  const address = SAFE_TX_POOL_REGISTRY_ADDRESSES[network as keyof typeof SAFE_TX_POOL_REGISTRY_ADDRESSES];
+  return isSafeTxPoolRegistryConfigured(network) ? address : null;
+};
+
+// Utility function to check if a Safe TX Pool address is configured (legacy)
 export const isSafeTxPoolConfigured = (network: string): boolean => {
   const address = SAFE_TX_POOL_ADDRESSES[network as keyof typeof SAFE_TX_POOL_ADDRESSES];
   return Boolean(address && address !== '0x0000000000000000000000000000000000000000');
 };
 
-// Utility function to get Safe TX Pool address with validation
+// Utility function to get Safe TX Pool address with validation (legacy)
 export const getSafeTxPoolAddress = (network: string): string | null => {
   const address = SAFE_TX_POOL_ADDRESSES[network as keyof typeof SAFE_TX_POOL_ADDRESSES];
   return isSafeTxPoolConfigured(network) ? address : null;
@@ -592,7 +852,8 @@ export const NETWORK_CONFIGS = {
     name: 'Ethereum Mainnet',
     rpcUrl: 'https://mainnet.infura.io/v3/',
     blockExplorer: 'https://etherscan.io',
-    safeTxPoolAddress: SAFE_TX_POOL_ADDRESSES.ethereum,
+    safeTxPoolRegistryAddress: SAFE_TX_POOL_REGISTRY_ADDRESSES.ethereum,
+    safeTxPoolAddress: SAFE_TX_POOL_ADDRESSES.ethereum, // legacy
     isTestnet: false
   },
   sepolia: {
@@ -600,7 +861,8 @@ export const NETWORK_CONFIGS = {
     name: 'Sepolia Testnet',
     rpcUrl: 'https://ethereum-sepolia-rpc.publicnode.com',
     blockExplorer: 'https://sepolia.etherscan.io',
-    safeTxPoolAddress: SAFE_TX_POOL_ADDRESSES.sepolia,
+    safeTxPoolRegistryAddress: SAFE_TX_POOL_REGISTRY_ADDRESSES.sepolia,
+    safeTxPoolAddress: SAFE_TX_POOL_ADDRESSES.sepolia, // legacy
     isTestnet: true
   },
   arbitrum: {
@@ -608,7 +870,8 @@ export const NETWORK_CONFIGS = {
     name: 'Arbitrum One',
     rpcUrl: 'https://arb1.arbitrum.io/rpc',
     blockExplorer: 'https://arbiscan.io',
-    safeTxPoolAddress: SAFE_TX_POOL_ADDRESSES.arbitrum,
+    safeTxPoolRegistryAddress: SAFE_TX_POOL_REGISTRY_ADDRESSES.arbitrum,
+    safeTxPoolAddress: SAFE_TX_POOL_ADDRESSES.arbitrum, // legacy
     isTestnet: false
   }
 };
