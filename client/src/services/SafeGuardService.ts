@@ -14,6 +14,16 @@ export class SafeGuardService {
     guardAddress: string,
     nonce: number
   ): SafeTransactionData {
+    console.log('🛡️ SafeGuardService: Creating setGuard transaction');
+    console.log('📋 Safe address:', safeAddress);
+    console.log('📋 Guard address:', guardAddress);
+    console.log('📋 Nonce:', nonce);
+
+    // Validate Safe address
+    if (!isValidAddress(safeAddress)) {
+      throw new Error('Invalid Safe address format');
+    }
+
     // Validate guard address
     if (!isValidAddress(guardAddress)) {
       throw new Error('Invalid guard address format');
@@ -23,21 +33,30 @@ export class SafeGuardService {
     const safeInterface = new ethers.utils.Interface([
       'function setGuard(address guard)'
     ]);
-    
-    const data = safeInterface.encodeFunctionData('setGuard', [guardAddress]);
 
-    return {
-      to: safeAddress, // Transaction to the Safe itself
-      value: '0',
-      data,
-      operation: 0, // CALL operation
-      safeTxGas: '0',
-      baseGas: '0',
-      gasPrice: '0',
-      gasToken: ethers.constants.AddressZero,
-      refundReceiver: ethers.constants.AddressZero,
-      nonce
-    };
+    try {
+      const data = safeInterface.encodeFunctionData('setGuard', [guardAddress]);
+      console.log('📋 Encoded setGuard data:', data);
+
+      const safeTransactionData: SafeTransactionData = {
+        to: safeAddress, // Transaction to the Safe itself
+        value: '0',
+        data,
+        operation: 0, // CALL operation
+        safeTxGas: '0',
+        baseGas: '0',
+        gasPrice: '0',
+        gasToken: ethers.constants.AddressZero,
+        refundReceiver: ethers.constants.AddressZero,
+        nonce
+      };
+
+      console.log('✅ SafeGuardService: setGuard transaction created successfully');
+      return safeTransactionData;
+    } catch (error) {
+      console.error('❌ SafeGuardService: Failed to create setGuard transaction:', error);
+      throw new Error(`Failed to create setGuard transaction: ${error}`);
+    }
   }
 
   /**

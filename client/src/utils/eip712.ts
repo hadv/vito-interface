@@ -180,19 +180,46 @@ export async function signSafeTransaction(
     const isWalletConnectSigner = (signer as any).isWalletConnectSigner === true;
 
     if (isWalletConnectSigner) {
-      console.log('🔐 WalletConnect signer detected - using direct EIP-712 method');
-      console.log('📱 MOBILE WALLET: You should see an EIP-712 signing request now!');
+      console.log('🔐 WalletConnect signer detected - using enhanced EIP-712 method');
+      console.log('📱 MOBILE WALLET: Preparing EIP-712 signing request for Safe transaction');
       console.log('📋 This will be the ONLY signing popup for WalletConnect');
 
       try {
-        // For WalletConnect, use _signTypedData directly (it's implemented properly)
+        // Validate WalletConnect session before signing
+        const walletConnectService = (signer as any).walletConnectService;
+        if (walletConnectService && typeof walletConnectService.validateSessionForSigning === 'function') {
+          const sessionValidation = walletConnectService.validateSessionForSigning();
+          if (!sessionValidation.isValid) {
+            throw new Error(`WalletConnect session invalid: ${sessionValidation.error}`);
+          }
+          console.log('✅ WalletConnect session validated for signing');
+        }
+
+        // Ensure proper typed data structure for Safe transactions
+        const safeTypedData = {
+          SafeTx: typedData.types.SafeTx
+        };
+
+        console.log('📋 Sending Safe transaction EIP-712 data to mobile wallet...');
+        console.log('📋 Domain:', typedData.domain);
+        console.log('📋 Types:', safeTypedData);
+        console.log('📋 Message:', typedData.message);
+
+        // For WalletConnect, use _signTypedData directly with proper error handling
         const signature = await (signer as any)._signTypedData(
           typedData.domain,
-          { SafeTx: typedData.types.SafeTx },
+          safeTypedData,
           typedData.message
         );
+
         console.log('✅ WalletConnect EIP-712 signing successful');
-        console.log('📋 Signature received:', signature);
+        console.log('📋 Signature received and validated');
+
+        // Validate signature format
+        if (!signature || typeof signature !== 'string' || signature.length < 130) {
+          throw new Error('Invalid signature format received from WalletConnect');
+        }
+
         return signature;
       } catch (wcError: any) {
         console.error('❌ WalletConnect EIP-712 signing failed:', wcError);
@@ -200,15 +227,23 @@ export async function signSafeTransaction(
         // Provide user-friendly error messages for WalletConnect
         const errorMessage = wcError?.message || wcError?.reason || 'Unknown WalletConnect signing error';
 
-        if (errorMessage.includes('rejected') || errorMessage.includes('denied')) {
-          throw new Error('Transaction signing was rejected by user');
+        if (errorMessage.includes('rejected') || errorMessage.includes('denied') || errorMessage.includes('cancelled')) {
+          throw new Error('Transaction signing was rejected by user in mobile wallet');
         }
 
-        if (errorMessage.includes('timeout')) {
-          throw new Error('Signing timeout - Please ensure your mobile wallet app is open and check for pending signing requests');
+        if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
+          throw new Error('Signing request timed out. Please ensure your mobile wallet app is open and responsive.');
         }
 
-        throw new Error(`WalletConnect signing failed: ${errorMessage}`);
+        if (errorMessage.includes('session') || errorMessage.includes('connection')) {
+          throw new Error('WalletConnect session error. Please disconnect and reconnect your wallet.');
+        }
+
+        if (errorMessage.includes('Invalid signature')) {
+          throw new Error('Invalid signature received from mobile wallet. Please try again.');
+        }
+
+        throw new Error(`WalletConnect signing failed: ${errorMessage}. Please try again or reconnect your wallet.`);
       }
     }
 

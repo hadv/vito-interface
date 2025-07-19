@@ -283,7 +283,21 @@ const GuardTransactionModal: React.FC<GuardTransactionModalProps> = ({
       onClose();
     } catch (error: any) {
       console.error('Error creating guard transaction:', error);
-      showError(`Failed to create transaction: ${error.message}`);
+
+      // Provide user-friendly error messages
+      let errorMessage = error?.message || 'Unknown error occurred';
+
+      if (errorMessage.includes('rejected') || errorMessage.includes('denied')) {
+        errorMessage = 'Transaction was rejected by user. Please try again.';
+      } else if (errorMessage.includes('timeout')) {
+        errorMessage = 'Transaction signing timed out. Please ensure your wallet app is open and try again.';
+      } else if (errorMessage.includes('WalletConnect')) {
+        errorMessage = 'WalletConnect error. Please check your mobile wallet connection and try again.';
+      } else if (errorMessage.includes('session')) {
+        errorMessage = 'Wallet session error. Please disconnect and reconnect your wallet.';
+      }
+
+      showError(`Failed to create guard transaction: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
