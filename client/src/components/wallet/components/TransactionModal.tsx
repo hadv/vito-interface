@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { ethers } from 'ethers';
 import { Button, Input } from '@components/ui';
@@ -19,6 +19,7 @@ import { getRpcUrl } from '../../../contracts/abis';
 import AddressDisplay from './AddressDisplay';
 import AddressBookSelector from './AddressBookSelector';
 import ParameterDisplay from './ParameterDisplay';
+import { diagnoseTransactionModal, logTransactionModalDiagnostics } from '../../../utils/transactionModalDebug';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   position: fixed;
@@ -285,6 +286,20 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   // Initialize toast system
   const toast = useToast();
 
+  // Comprehensive form reset function
+  const resetFormState = useCallback(() => {
+    console.log('🔄 TransactionModal: Comprehensive form reset');
+    setToAddress('');
+    setAmount('');
+    setError('');
+    setSuccess('');
+    setCurrentStep('form');
+    setIsLoading(false);
+    setShowAddressBookWarning(false);
+    setDecodedTransaction(null);
+    // Note: nonce will be reset when fetchNonce completes
+  }, []);
+
   // Subscribe to wallet connection state changes
   useEffect(() => {
     setConnectionState(walletConnectionService.getState());
@@ -329,18 +344,14 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     fetchNonce();
   }, [isOpen, fromAddress, connectionState.network]);
 
-  // Reset form when modal opens
+  // Reset form when modal opens or preSelectedAsset changes
   useEffect(() => {
     if (isOpen) {
-      setToAddress('');
-      setAmount('');
-      setError('');
-      setSuccess('');
-      setCurrentStep('form');
-      setShowAddressBookWarning(false);
-      // Nonce will be reset when fetchNonce completes
+      console.log('🔄 TransactionModal: Modal opened, resetting form state');
+      console.log('📋 preSelectedAsset:', preSelectedAsset);
+      resetFormState();
     }
-  }, [isOpen]);
+  }, [isOpen, preSelectedAsset, resetFormState]); // Add preSelectedAsset as dependency
 
   // Decode transaction data when inputs change
   useEffect(() => {
@@ -417,6 +428,17 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     setError('');
     setSuccess('');
 
+    console.log('📝 TransactionModal: Form submitted');
+    console.log('📋 Form data:', {
+      toAddress,
+      amount,
+      preSelectedAsset: preSelectedAsset ? {
+        type: preSelectedAsset.type,
+        symbol: preSelectedAsset.symbol,
+        contractAddress: preSelectedAsset.contractAddress
+      } : null
+    });
+
     // Validation - show these in modal only (immediate feedback)
     if (!toAddress.trim()) {
       setError('Recipient address is required');
@@ -431,6 +453,21 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     if (!amount.trim() || parseFloat(amount) <= 0) {
       setError('Amount must be greater than 0');
       return;
+    }
+
+    // Additional validation for native ETH transactions
+    if (!preSelectedAsset || preSelectedAsset.type === 'native') {
+      try {
+        const ethAmount = ethers.utils.parseEther(amount);
+        console.log('💎 Native ETH amount validation:', {
+          inputAmount: amount,
+          parsedAmount: ethAmount.toString()
+        });
+      } catch (parseError) {
+        console.error('❌ Invalid ETH amount:', parseError);
+        setError('Invalid ETH amount format');
+        return;
+      }
     }
 
     // Check if signer is connected
@@ -471,10 +508,24 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     setCurrentStep('proposing');
 
     try {
+      console.log('💰 TransactionModal: Creating transaction');
+      console.log('📋 Transaction details:', {
+        toAddress,
+        amount,
+        preSelectedAsset: preSelectedAsset ? {
+          type: preSelectedAsset.type,
+          symbol: preSelectedAsset.symbol,
+          contractAddress: preSelectedAsset.contractAddress
+        } : null,
+        customNonce
+      });
+
       // Create and propose transaction directly (without signing)
       const result = await errorRecoveryService.retry(async () => {
         // Handle ERC-20 token transfers vs ETH transfers
         if (preSelectedAsset && preSelectedAsset.type === 'erc20' && preSelectedAsset.contractAddress) {
+          console.log('🪙 Creating ERC-20 token transfer transaction');
+
           // ERC-20 token transfer
           const transferInterface = new ethers.utils.Interface([
             'function transfer(address to, uint256 amount) returns (bool)'
@@ -484,6 +535,14 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
           const parsedAmount = ethers.utils.parseUnits(amount, decimals);
           const data = transferInterface.encodeFunctionData('transfer', [toAddress, parsedAmount]);
 
+          console.log('📋 ERC-20 transaction data:', {
+            to: preSelectedAsset.contractAddress,
+            value: '0',
+            data,
+            decimals,
+            parsedAmount: parsedAmount.toString()
+          });
+
           return await safeWalletService.proposeUnsignedTransaction({
             to: preSelectedAsset.contractAddress,
             value: '0',
@@ -491,10 +550,22 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             operation: 0
           }, customNonce);
         } else {
+          console.log('💎 Creating native ETH transfer transaction');
+
           // ETH transfer
+          const ethValue = ethers.utils.parseEther(amount).toString();
+
+          console.log('📋 ETH transaction data:', {
+            to: toAddress,
+            value: ethValue,
+            data: '0x',
+            amount,
+            parsedAmount: ethValue
+          });
+
           return await safeWalletService.proposeUnsignedTransaction({
             to: toAddress,
-            value: ethers.utils.parseEther(amount).toString(),
+            value: ethValue,
             data: '0x',
             operation: 0
           }, customNonce);
@@ -510,10 +581,10 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       console.log('✅ TRANSACTION MODAL: Transaction proposed successfully');
       console.log('📋 Result:', result);
 
-      setSuccess(`Transaction proposed successfully! Hash: ${result.txHash}`);
-
+      // Show success toast
       toast.transactionSuccess(result.txHash, 'Transaction proposed successfully');
 
+      // Call the callback immediately
       if (onTransactionCreated) {
         onTransactionCreated({
           ...result,
@@ -521,15 +592,12 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         });
       }
 
-      // Reset form
-      setTimeout(() => {
-        setToAddress('');
-        setAmount('');
-        setCustomNonce(currentNonce); // Reset to current nonce
-        setSuccess('');
-        setCurrentStep('form');
-        onClose();
-      }, 2000);
+      // Reset form state immediately and close modal
+      console.log('🔄 TransactionModal: Resetting state after successful transaction');
+      setCustomNonce(currentNonce); // Reset to current nonce
+
+      // Close modal immediately with proper state reset
+      handleClose();
 
     } catch (error: any) {
       console.error('❌ TRANSACTION MODAL: Error creating transaction:', error);
@@ -542,11 +610,19 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       const errorDetails = ErrorHandler.classifyError(error);
       console.error('❌ Classified error details:', errorDetails);
 
+      // Reset loading state and step
+      setIsLoading(false);
+      setCurrentStep('form');
+
       // Show error in modal for critical validation issues, toast for others
       if (errorDetails.category === 'validation') {
         setError(errorDetails.userMessage);
+      } else {
+        // For non-validation errors, show toast and reset form
+        console.log('🔄 TransactionModal: Resetting state after transaction error');
+        setError('');
+        setSuccess('');
       }
-      setIsLoading(false);
 
       toast.transactionError(errorDetails.userMessage, errorDetails.message);
     }
@@ -556,9 +632,16 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
-      onClose();
+      handleClose();
     }
   };
+
+  // Handle modal close with proper state reset
+  const handleClose = useCallback(() => {
+    console.log('🔄 TransactionModal: Modal closing, ensuring clean state');
+    resetFormState();
+    onClose();
+  }, [resetFormState, onClose]);
 
   const estimatedGas = '0.001'; // Mock gas estimation
   const networkFee = '0.002'; // Mock network fee
@@ -570,7 +653,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
           <ModalTitle>
             {preSelectedAsset?.type === 'native' ? 'Send ETH' : 'Send Transaction'}
           </ModalTitle>
-          <CloseButton onClick={onClose}>&times;</CloseButton>
+          <CloseButton onClick={handleClose}>&times;</CloseButton>
         </ModalHeader>
 
         <StepIndicator>
