@@ -1,6 +1,10 @@
 import { ethers } from 'ethers';
 import { TokenService } from '../services/TokenService';
-import { getSafeTxPoolAddress } from '../contracts/abis';
+import {
+  getSafeTxPoolRegistryAddress,
+  SAFE_TX_POOL_REGISTRY_ABI,
+  SAFE_ABI
+} from '../contracts/abis';
 
 export interface DecodedTransactionData {
   type: 'ETH_TRANSFER' | 'ERC20_TRANSFER' | 'CONTRACT_CALL' | 'UNKNOWN';
@@ -354,19 +358,34 @@ export class TransactionDecoder {
    */
   private decodeSafeExecTransaction(data: string): DecodedTransactionData | null {
     try {
-      // Safe execTransaction ABI
-      const safeInterface = new ethers.utils.Interface([
-        'function execTransaction(address to, uint256 value, bytes calldata data, uint8 operation, uint256 safeTxGas, uint256 baseGas, uint256 gasPrice, address gasToken, address refundReceiver, bytes memory signatures)'
-      ]);
+      // Safe execTransaction ABI - use the complete ABI from our contracts
+      const safeInterface = new ethers.utils.Interface(SAFE_ABI);
 
       const decoded = safeInterface.decodeFunctionData('execTransaction', data);
       const innerTo = decoded.to;
       const innerValue = decoded.value;
       const innerData = decoded.data;
+      const operation = decoded.operation;
+
+      console.log('🔍 Safe execTransaction decoded:', {
+        to: innerTo,
+        value: innerValue.toString(),
+        dataLength: innerData.length,
+        operation: operation.toString()
+      });
 
       // If there's inner transaction data, decode that with the TARGET CONTRACT (innerTo)
       if (innerData && innerData !== '0x' && innerData.length > 10) {
         const innerMethodId = innerData.slice(0, 10);
+        console.log(`🔍 Inner transaction method ID: ${innerMethodId} to contract: ${innerTo}`);
+
+        // Check for common Safe operations first (self-calls to the Safe contract)
+        // Note: We need to get the Safe address from the transaction context
+        // For now, we'll check if this looks like a Safe method call
+        const safeMethodDecoded = this.decodeSafeMethod(innerMethodId, innerData);
+        if (safeMethodDecoded) {
+          return safeMethodDecoded;
+        }
 
         // Decode the inner transaction using the TARGET CONTRACT ADDRESS (innerTo), not the Safe address
         const innerDecoded = this.decodeKnownMethod(innerMethodId, innerTo, innerData);
@@ -419,6 +438,98 @@ export class TransactionDecoder {
       // If decoding fails, return null to try other methods
       return null;
     }
+  }
+
+  /**
+   * Decode common Safe wallet methods
+   */
+  private decodeSafeMethod(methodId: string, data: string): DecodedTransactionData | null {
+    try {
+      const safeInterface = new ethers.utils.Interface(SAFE_ABI);
+
+      switch (methodId) {
+        case '0x0d582f13': // addOwnerWithThreshold
+          try {
+            const decoded = safeInterface.decodeFunctionData('addOwnerWithThreshold', data);
+            return {
+              type: 'CONTRACT_CALL',
+              description: 'Add Safe Owner',
+              details: {
+                method: methodId,
+                methodName: 'addOwnerWithThreshold',
+                decodedInputs: [
+                  { name: 'owner', type: 'address', value: decoded.owner, description: 'New owner address' },
+                  { name: '_threshold', type: 'uint256', value: decoded._threshold.toString(), description: 'New threshold' }
+                ],
+                contractName: 'Safe Wallet',
+                functionType: 'Owner Management'
+              }
+            };
+          } catch (e) { break; }
+
+        case '0xf8dc5dd9': // removeOwner
+          try {
+            const decoded = safeInterface.decodeFunctionData('removeOwner', data);
+            return {
+              type: 'CONTRACT_CALL',
+              description: 'Remove Safe Owner',
+              details: {
+                method: methodId,
+                methodName: 'removeOwner',
+                decodedInputs: [
+                  { name: 'prevOwner', type: 'address', value: decoded.prevOwner, description: 'Previous owner in linked list' },
+                  { name: 'owner', type: 'address', value: decoded.owner, description: 'Owner to remove' },
+                  { name: '_threshold', type: 'uint256', value: decoded._threshold.toString(), description: 'New threshold' }
+                ],
+                contractName: 'Safe Wallet',
+                functionType: 'Owner Management'
+              }
+            };
+          } catch (e) { break; }
+
+        case '0x694e80c3': // changeThreshold
+          try {
+            const decoded = safeInterface.decodeFunctionData('changeThreshold', data);
+            return {
+              type: 'CONTRACT_CALL',
+              description: 'Change Safe Threshold',
+              details: {
+                method: methodId,
+                methodName: 'changeThreshold',
+                decodedInputs: [
+                  { name: '_threshold', type: 'uint256', value: decoded._threshold.toString(), description: 'New threshold' }
+                ],
+                contractName: 'Safe Wallet',
+                functionType: 'Configuration'
+              }
+            };
+          } catch (e) { break; }
+
+        case '0xe318b52b': // setGuard
+          try {
+            const decoded = safeInterface.decodeFunctionData('setGuard', data);
+            return {
+              type: 'CONTRACT_CALL',
+              description: 'Set Safe Guard',
+              details: {
+                method: methodId,
+                methodName: 'setGuard',
+                decodedInputs: [
+                  { name: 'guard', type: 'address', value: decoded.guard, description: 'Guard contract address' }
+                ],
+                contractName: 'Safe Wallet',
+                functionType: 'Configuration'
+              }
+            };
+          } catch (e) { break; }
+
+        default:
+          return null;
+      }
+    } catch (error) {
+      console.error('Error decoding Safe method:', error);
+    }
+    return null;
   }
 
   /**
@@ -494,12 +605,11 @@ export class TransactionDecoder {
    * Decode known method IDs without requiring ABI
    */
   private decodeKnownMethod(methodId: string, contractAddress: string, data: string): DecodedTransactionData | null {
-    // Check if this is SafeTxPool proposeTx
-    if (methodId === '0x10ff18f9') {
-      const proposeTxDecoded = this.decodeSafeTxPoolProposeTx(data);
-      if (proposeTxDecoded) {
-        return proposeTxDecoded;
-      }
+    // Check if this is a SafeTxPoolRegistry method
+    const registryAddress = getSafeTxPoolRegistryAddress(this.network);
+    if (registryAddress && contractAddress.toLowerCase() === registryAddress.toLowerCase()) {
+      const registryDecoded = this.decodeRegistryMethod(methodId, data);
+      if (registryDecoded) return registryDecoded;
     }
 
     // Known method IDs for other contracts
@@ -536,6 +646,109 @@ export class TransactionDecoder {
     };
   }
 
+  /**
+   * Decode SafeTxPoolRegistry methods
+   */
+  private decodeRegistryMethod(methodId: string, data: string): DecodedTransactionData | null {
+    try {
+      const registryInterface = new ethers.utils.Interface(SAFE_TX_POOL_REGISTRY_ABI);
+
+      switch (methodId) {
+        case '0x10ff18f9': // proposeTx
+          try {
+            const decoded = registryInterface.decodeFunctionData('proposeTx', data);
+            return {
+              type: 'CONTRACT_CALL',
+              description: 'Propose Safe Transaction',
+              details: {
+                method: methodId,
+                methodName: 'proposeTx',
+                decodedInputs: [
+                  { name: 'txHash', type: 'bytes32', value: decoded.txHash, description: 'Transaction hash' },
+                  { name: 'safe', type: 'address', value: decoded.safe, description: 'Safe wallet address' },
+                  { name: 'to', type: 'address', value: decoded.to, description: 'Target address' },
+                  { name: 'value', type: 'uint256', value: decoded.value.toString(), description: 'ETH value' },
+                  { name: 'operation', type: 'uint8', value: decoded.operation.toString(), description: 'Operation type' },
+                  { name: 'nonce', type: 'uint256', value: decoded.nonce.toString(), description: 'Safe nonce' }
+                ],
+                contractName: 'SafeTxPoolRegistry',
+                functionType: 'Transaction Management'
+              }
+            };
+          } catch (e) { break; }
+
+        case '0x4ce38b5f': // addAddressBookEntry
+          try {
+            const decoded = registryInterface.decodeFunctionData('addAddressBookEntry', data);
+            const nameBytes32 = decoded.name;
+            const nameString = ethers.utils.parseBytes32String(nameBytes32);
+            return {
+              type: 'CONTRACT_CALL',
+              description: 'Add Address Book Entry',
+              details: {
+                method: methodId,
+                methodName: 'addAddressBookEntry',
+                decodedInputs: [
+                  { name: 'safe', type: 'address', value: decoded.safe, description: 'Safe wallet address' },
+                  { name: 'walletAddress', type: 'address', value: decoded.walletAddress, description: 'Address to add' },
+                  { name: 'name', type: 'bytes32', value: nameString, description: 'Contact name' }
+                ],
+                contractName: 'SafeTxPoolRegistry',
+                functionType: 'Address Book'
+              }
+            };
+          } catch (e) { break; }
+
+        case '0x55ae89c8': // addTrustedContract (updated with name parameter)
+          try {
+            const decoded = registryInterface.decodeFunctionData('addTrustedContract', data);
+            const nameBytes32 = decoded.name;
+            const nameString = ethers.utils.parseBytes32String(nameBytes32);
+            return {
+              type: 'CONTRACT_CALL',
+              description: 'Add Trusted Contract',
+              details: {
+                method: methodId,
+                methodName: 'addTrustedContract',
+                decodedInputs: [
+                  { name: 'safe', type: 'address', value: decoded.safe, description: 'Safe wallet address' },
+                  { name: 'contractAddress', type: 'address', value: decoded.contractAddress, description: 'Contract address to trust' },
+                  { name: 'name', type: 'bytes32', value: nameString, description: 'Contract name' }
+                ],
+                contractName: 'SafeTxPoolRegistry',
+                functionType: 'Trusted Contracts'
+              }
+            };
+          } catch (e) { break; }
+
+        case '0x2f54bf6e': // removeAddressBookEntry
+          try {
+            const decoded = registryInterface.decodeFunctionData('removeAddressBookEntry', data);
+            return {
+              type: 'CONTRACT_CALL',
+              description: 'Remove Address Book Entry',
+              details: {
+                method: methodId,
+                methodName: 'removeAddressBookEntry',
+                decodedInputs: [
+                  { name: 'safe', type: 'address', value: decoded.safe, description: 'Safe wallet address' },
+                  { name: 'walletAddress', type: 'address', value: decoded.walletAddress, description: 'Address to remove' }
+                ],
+                contractName: 'SafeTxPoolRegistry',
+                functionType: 'Address Book'
+              }
+            };
+          } catch (e) { break; }
+
+        default:
+          return null;
+      }
+    } catch (error) {
+      console.error('Error decoding registry method:', error);
+    }
+    return null;
+  }
+
 
 
   /**
@@ -545,98 +758,13 @@ export class TransactionDecoder {
     const lowerAddress = address.toLowerCase();
     console.log(`🔍 Checking known contracts for address: ${lowerAddress}`);
 
-    // SafeTxPool contract (unverified on Sepolia but we know the ABI)
-    if (lowerAddress === '0x1f738438af91442ffa472d4bd40e13fe0a264db8') {
-      console.log('✅ Matched SafeTxPool contract!');
+    // Check if this is a SafeTxPoolRegistry contract
+    const registryAddress = getSafeTxPoolRegistryAddress(this.network);
+    if (registryAddress && lowerAddress === registryAddress.toLowerCase()) {
+      console.log('✅ Matched SafeTxPoolRegistry contract!');
       return {
-        name: 'SafeTxPool',
-        abi: [
-          {
-            "type": "function",
-            "name": "proposeTx",
-            "inputs": [
-              {"name": "txHash", "type": "bytes32"},
-              {"name": "safe", "type": "address"},
-              {"name": "to", "type": "address"},
-              {"name": "value", "type": "uint256"},
-              {"name": "data", "type": "bytes"},
-              {"name": "operation", "type": "uint8"},
-              {"name": "nonce", "type": "uint256"}
-            ],
-            "outputs": [],
-            "stateMutability": "nonpayable"
-          },
-          {
-            "type": "function",
-            "name": "signTransaction",
-            "inputs": [
-              {"name": "txHash", "type": "bytes32"},
-              {"name": "signature", "type": "bytes"}
-            ],
-            "outputs": [],
-            "stateMutability": "nonpayable"
-          },
-          {
-            "type": "function",
-            "name": "addSigner",
-            "inputs": [
-              {"name": "safe", "type": "address"},
-              {"name": "signer", "type": "address"},
-              {"name": "txHash", "type": "bytes32"}
-            ],
-            "outputs": [],
-            "stateMutability": "nonpayable"
-          },
-          {
-            "type": "function",
-            "name": "removeSigner",
-            "inputs": [
-              {"name": "safe", "type": "address"},
-              {"name": "signer", "type": "address"}
-            ],
-            "outputs": [],
-            "stateMutability": "nonpayable"
-          },
-          {
-            "type": "function",
-            "name": "addAddressBookEntry",
-            "inputs": [
-              {"name": "safe", "type": "address"},
-              {"name": "walletAddress", "type": "address"},
-              {"name": "amount", "type": "uint256"}
-            ],
-            "outputs": [],
-            "stateMutability": "nonpayable"
-          },
-          {
-            "type": "function",
-            "name": "removeAddressBookEntry",
-            "inputs": [
-              {"name": "safe", "type": "address"},
-              {"name": "walletAddress", "type": "address"}
-            ],
-            "outputs": [],
-            "stateMutability": "nonpayable"
-          },
-          {
-            "type": "function",
-            "name": "executeTransaction",
-            "inputs": [
-              {"name": "txHash", "type": "bytes32"}
-            ],
-            "outputs": [],
-            "stateMutability": "nonpayable"
-          },
-          {
-            "type": "function",
-            "name": "cancelTransaction",
-            "inputs": [
-              {"name": "txHash", "type": "bytes32"}
-            ],
-            "outputs": [],
-            "stateMutability": "nonpayable"
-          }
-        ]
+        name: 'SafeTxPoolRegistry',
+        abi: SAFE_TX_POOL_REGISTRY_ABI
       };
     }
 
@@ -654,12 +782,12 @@ export class TransactionDecoder {
       return contractInfo.name;
     }
 
-    // Check if this is a SafeTxPool address from configuration
+    // Check if this is a SafeTxPoolRegistry address from configuration
     const networks = ['ethereum', 'sepolia', 'arbitrum'];
     for (const network of networks) {
-      const safeTxPoolAddress = getSafeTxPoolAddress(network);
-      if (safeTxPoolAddress && address.toLowerCase() === safeTxPoolAddress.toLowerCase()) {
-        return 'SafeTxPool';
+      const safeTxPoolRegistryAddress = getSafeTxPoolRegistryAddress(network);
+      if (safeTxPoolRegistryAddress && address.toLowerCase() === safeTxPoolRegistryAddress.toLowerCase()) {
+        return 'SafeTxPoolRegistry';
       }
     }
 

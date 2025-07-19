@@ -221,10 +221,12 @@ export class WalletConnectService {
               'personal_sign',
               'eth_signTypedData',
               'eth_signTypedData_v4',
-              'eth_sendTransaction'
+              'eth_sendTransaction',
+              'eth_accounts',
+              'eth_requestAccounts'
             ],
             chains: [`eip155:${chainId}`],
-            events: ['accountsChanged', 'chainChanged']
+            events: ['accountsChanged', 'chainChanged', 'disconnect']
           }
         }
       });
@@ -296,10 +298,12 @@ export class WalletConnectService {
                 'personal_sign',
                 'eth_signTypedData',
                 'eth_signTypedData_v4',
-                'eth_sendTransaction'
+                'eth_sendTransaction',
+                'eth_accounts',
+                'eth_requestAccounts'
               ],
               chains: ['eip155:1'], // Default to Ethereum mainnet
-              events: ['accountsChanged', 'chainChanged']
+              events: ['accountsChanged', 'chainChanged', 'disconnect']
             }
           }
         });
@@ -404,6 +408,47 @@ export class WalletConnectService {
    */
   public isConnected(): boolean {
     return !!this.sessionTopic && !!this.signClient;
+  }
+
+  /**
+   * Validate WalletConnect session health for signing operations
+   */
+  public validateSessionForSigning(): { isValid: boolean; error?: string } {
+    if (!this.signClient) {
+      return { isValid: false, error: 'WalletConnect SignClient not initialized' };
+    }
+
+    if (!this.sessionTopic) {
+      return { isValid: false, error: 'No active WalletConnect session' };
+    }
+
+    try {
+      // Check if session still exists
+      const activeSessions = this.signClient.session.getAll();
+      const activeSession = activeSessions.find((s: any) => s.topic === this.sessionTopic);
+
+      if (!activeSession) {
+        return { isValid: false, error: 'WalletConnect session is no longer active' };
+      }
+
+      // Check if session has required methods
+      const eip155Namespace = activeSession.namespaces?.eip155;
+      if (!eip155Namespace) {
+        return { isValid: false, error: 'EIP155 namespace not found in session' };
+      }
+
+      const requiredMethods = ['eth_signTypedData_v4'];
+      const availableMethods = eip155Namespace.methods || [];
+      const missingMethods = requiredMethods.filter(method => !availableMethods.includes(method));
+
+      if (missingMethods.length > 0) {
+        return { isValid: false, error: `Missing required methods: ${missingMethods.join(', ')}` };
+      }
+
+      return { isValid: true };
+    } catch (error) {
+      return { isValid: false, error: `Session validation failed: ${error}` };
+    }
   }
 
   /**

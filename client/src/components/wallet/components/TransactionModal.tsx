@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { ethers } from 'ethers';
 import { Button, Input } from '@components/ui';
@@ -8,7 +8,7 @@ import { isValidEthereumAddress } from '../../../utils/ens';
 import { safeWalletService, SafeWalletService } from '../../../services/SafeWalletService';
 import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
 import { createSafeTxPoolService, AddressBookEntry } from '../../../services/SafeTxPoolService';
-import { isSafeTxPoolConfigured } from '../../../contracts/abis';
+import { isSafeTxPoolRegistryConfigured } from '../../../contracts/abis';
 import { useToast } from '../../../hooks/useToast';
 import { ErrorHandler } from '../../../utils/errorHandling';
 import { errorRecoveryService } from '../../../services/ErrorRecoveryService';
@@ -285,6 +285,19 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   // Initialize toast system
   const toast = useToast();
 
+  // Comprehensive form reset function
+  const resetFormState = useCallback(() => {
+    setToAddress('');
+    setAmount('');
+    setError('');
+    setSuccess('');
+    setCurrentStep('form');
+    setIsLoading(false);
+    setShowAddressBookWarning(false);
+    setDecodedTransaction(null);
+    // Note: nonce will be reset when fetchNonce completes
+  }, []);
+
   // Subscribe to wallet connection state changes
   useEffect(() => {
     setConnectionState(walletConnectionService.getState());
@@ -329,18 +342,12 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     fetchNonce();
   }, [isOpen, fromAddress, connectionState.network]);
 
-  // Reset form when modal opens
+  // Reset form when modal opens or preSelectedAsset changes
   useEffect(() => {
     if (isOpen) {
-      setToAddress('');
-      setAmount('');
-      setError('');
-      setSuccess('');
-      setCurrentStep('form');
-      setShowAddressBookWarning(false);
-      // Nonce will be reset when fetchNonce completes
+      resetFormState();
     }
-  }, [isOpen]);
+  }, [isOpen, preSelectedAsset, resetFormState]); // Add preSelectedAsset as dependency
 
   // Decode transaction data when inputs change
   useEffect(() => {
@@ -417,6 +424,8 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     setError('');
     setSuccess('');
 
+
+
     // Validation - show these in modal only (immediate feedback)
     if (!toAddress.trim()) {
       setError('Recipient address is required');
@@ -433,15 +442,25 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       return;
     }
 
+    // Additional validation for native ETH transactions
+    if (!preSelectedAsset || preSelectedAsset.type === 'native') {
+      try {
+        ethers.utils.parseEther(amount);
+      } catch (parseError) {
+        setError('Invalid ETH amount format');
+        return;
+      }
+    }
+
     // Check if signer is connected
     if (!connectionState.signerConnected) {
       setError('Please connect your wallet to sign transactions');
       return;
     }
 
-    // Check if Safe TX Pool is configured for the current network
-    if (!isSafeTxPoolConfigured(connectionState.network || 'ethereum')) {
-      setError(`Safe TX Pool contract is not configured for ${connectionState.network}. Please configure the contract address to enable transactions.`);
+    // Check if Safe TX Pool Registry is configured for the current network
+    if (!isSafeTxPoolRegistryConfigured(connectionState.network || 'ethereum')) {
+      setError(`Safe TX Pool Registry contract is not configured for ${connectionState.network}. Please configure the contract address to enable transactions.`);
       return;
     }
 
@@ -471,6 +490,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     setCurrentStep('proposing');
 
     try {
+
       // Create and propose transaction directly (without signing)
       const result = await errorRecoveryService.retry(async () => {
         // Handle ERC-20 token transfers vs ETH transfers
@@ -492,9 +512,11 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
           }, customNonce);
         } else {
           // ETH transfer
+          const ethValue = ethers.utils.parseEther(amount).toString();
+
           return await safeWalletService.proposeUnsignedTransaction({
             to: toAddress,
-            value: ethers.utils.parseEther(amount).toString(),
+            value: ethValue,
             data: '0x',
             operation: 0
           }, customNonce);
@@ -507,13 +529,12 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         }
       });
 
-      console.log('✅ TRANSACTION MODAL: Transaction proposed successfully');
-      console.log('📋 Result:', result);
 
-      setSuccess(`Transaction proposed successfully! Hash: ${result.txHash}`);
 
+      // Show success toast
       toast.transactionSuccess(result.txHash, 'Transaction proposed successfully');
 
+      // Call the callback immediately
       if (onTransactionCreated) {
         onTransactionCreated({
           ...result,
@@ -521,32 +542,27 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         });
       }
 
-      // Reset form
-      setTimeout(() => {
-        setToAddress('');
-        setAmount('');
-        setCustomNonce(currentNonce); // Reset to current nonce
-        setSuccess('');
-        setCurrentStep('form');
-        onClose();
-      }, 2000);
+      // Reset form state immediately and close modal
+      setCustomNonce(currentNonce); // Reset to current nonce
+
+      // Close modal immediately with proper state reset
+      handleClose();
 
     } catch (error: any) {
-      console.error('❌ TRANSACTION MODAL: Error creating transaction:', error);
-      console.error('❌ Error details:', {
-        message: error.message,
-        code: error.code,
-        stack: error.stack
-      });
-
       const errorDetails = ErrorHandler.classifyError(error);
-      console.error('❌ Classified error details:', errorDetails);
+
+      // Reset loading state and step
+      setIsLoading(false);
+      setCurrentStep('form');
 
       // Show error in modal for critical validation issues, toast for others
       if (errorDetails.category === 'validation') {
         setError(errorDetails.userMessage);
+      } else {
+        // For non-validation errors, show toast and reset form
+        setError('');
+        setSuccess('');
       }
-      setIsLoading(false);
 
       toast.transactionError(errorDetails.userMessage, errorDetails.message);
     }
@@ -556,9 +572,15 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
-      onClose();
+      handleClose();
     }
   };
+
+  // Handle modal close with proper state reset
+  const handleClose = useCallback(() => {
+    resetFormState();
+    onClose();
+  }, [resetFormState, onClose]);
 
   const estimatedGas = '0.001'; // Mock gas estimation
   const networkFee = '0.002'; // Mock network fee
@@ -570,7 +592,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
           <ModalTitle>
             {preSelectedAsset?.type === 'native' ? 'Send ETH' : 'Send Transaction'}
           </ModalTitle>
-          <CloseButton onClick={onClose}>&times;</CloseButton>
+          <CloseButton onClick={handleClose}>&times;</CloseButton>
         </ModalHeader>
 
         <StepIndicator>

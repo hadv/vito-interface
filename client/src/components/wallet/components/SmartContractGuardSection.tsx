@@ -7,7 +7,7 @@ import { SafeGuardService } from '../../../services/SafeGuardService';
 import { walletConnectionService, WalletConnectionState } from '../../../services/WalletConnectionService';
 import { useToast } from '../../../hooks/useToast';
 import { ErrorHandler } from '../../../utils/errorHandling';
-import { getSafeTxPoolAddress } from '../../../contracts/abis';
+import { getSafeTxPoolRegistryAddress } from '../../../contracts/abis';
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
 import AddressDisplay from './AddressDisplay';
@@ -210,20 +210,10 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
     loadCurrentGuard();
   }, [connectionState.safeAddress, loadCurrentGuard]);
 
-  // Set default guard address to SafeTxPool address when network changes
+  // Set default guard address to SafeTxPoolRegistry address when network changes
   useEffect(() => {
     if (network && !newGuardAddress) {
-      const safeTxPoolAddress = getSafeTxPoolAddress(network);
-      if (safeTxPoolAddress) {
-        setNewGuardAddress(safeTxPoolAddress);
-      }
-    }
-  }, [network, newGuardAddress]);
-
-  // Set default guard address to SafeTxPool address when network changes
-  useEffect(() => {
-    if (network && !newGuardAddress) {
-      const safeTxPoolAddress = getSafeTxPoolAddress(network);
+      const safeTxPoolAddress = getSafeTxPoolRegistryAddress(network);
       if (safeTxPoolAddress) {
         setNewGuardAddress(safeTxPoolAddress);
       }
@@ -474,17 +464,17 @@ const SmartContractGuardSection: React.FC<SmartContractGuardSectionProps> = ({ n
             helperText={
               isValidating
                 ? "Validating contract..."
-                : getSafeTxPoolAddress(network)
-                  ? "Defaults to SafeTxPool address from configuration. Enter a different address to use a custom guard contract."
+                : getSafeTxPoolRegistryAddress(network)
+                  ? "Defaults to SafeTxPoolRegistry address from configuration. Enter a different address to use a custom guard contract."
                   : "Enter the address of a smart contract that implements the Guard interface"
             }
             fullWidth
           />
 
-          {/* Show indicator when using SafeTxPool address */}
-          {newGuardAddress && newGuardAddress === getSafeTxPoolAddress(network) && (
+          {/* Show indicator when using SafeTxPoolRegistry address */}
+          {newGuardAddress && newGuardAddress === getSafeTxPoolRegistryAddress(network) && (
             <DefaultAddressIndicator>
-              ℹ️ Using SafeTxPool address from {network} network configuration
+              ℹ️ Using SafeTxPoolRegistry address from {network} network configuration
             </DefaultAddressIndicator>
           )}
 

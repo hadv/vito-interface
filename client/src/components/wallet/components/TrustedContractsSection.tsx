@@ -147,19 +147,7 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
 
   const { addToast } = useToast();
 
-  // Local storage key for trusted contract names
-  const getStorageKey = useCallback((safeAddress: string) => `trustedContracts_${safeAddress.toLowerCase()}_${network}`, [network]);
 
-  // Load trusted contract names from local storage
-  const loadTrustedContractNames = useCallback((safeAddress: string): Record<string, { name: string; dateAdded: string }> => {
-    try {
-      const stored = localStorage.getItem(getStorageKey(safeAddress));
-      return stored ? JSON.parse(stored) : {};
-    } catch (error) {
-      console.error('Error loading trusted contract names:', error);
-      return {};
-    }
-  }, [getStorageKey]);
 
 
 
@@ -175,7 +163,7 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
     return unsubscribe;
   }, []);
 
-  // Load trusted contracts for the current Safe
+  // Load trusted contracts for the current Safe from on-chain data
   const loadTrustedContracts = useCallback(async () => {
     if (!connectionState.isConnected || !connectionState.safeAddress) {
       setIsLoading(false);
@@ -185,35 +173,17 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
     try {
       setIsLoading(true);
 
-      // Load stored contract names and metadata
-      const storedNames = loadTrustedContractNames(connectionState.safeAddress);
+      // Get trusted contracts directly from the blockchain
+      const onChainContracts = await safeTxPoolService.getTrustedContracts(connectionState.safeAddress);
 
-      // Filter to only include contracts that are actually trusted on-chain
-      const verifiedContracts: TrustedContract[] = [];
+      // Convert to our TrustedContract format
+      const trustedContractsList: TrustedContract[] = onChainContracts.map(contract => ({
+        address: contract.contractAddress,
+        name: contract.name,
+        dateAdded: new Date().toISOString() // We don't have dateAdded on-chain, use current date
+      }));
 
-      for (const [address, data] of Object.entries(storedNames)) {
-        try {
-          // Check if contract is actually trusted on-chain
-          const isTrusted = await safeTxPoolService.isTrustedContract(connectionState.safeAddress, address);
-          if (isTrusted) {
-            verifiedContracts.push({
-              address,
-              name: data.name,
-              dateAdded: data.dateAdded
-            });
-          }
-        } catch (error) {
-          console.warn(`Failed to verify trusted status for ${address}:`, error);
-          // Include in list anyway, but user will see if it's not actually trusted when they try to use it
-          verifiedContracts.push({
-            address,
-            name: data.name,
-            dateAdded: data.dateAdded
-          });
-        }
-      }
-
-      setTrustedContracts(verifiedContracts);
+      setTrustedContracts(trustedContractsList);
     } catch (error) {
       console.error('Error loading trusted contracts:', error);
       const errorDetails = ErrorHandler.classifyError(error);
@@ -224,7 +194,7 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
     } finally {
       setIsLoading(false);
     }
-  }, [connectionState.isConnected, connectionState.safeAddress, addToast, loadTrustedContractNames, safeTxPoolService]);
+  }, [connectionState.isConnected, connectionState.safeAddress, addToast, safeTxPoolService]);
 
   useEffect(() => {
     loadTrustedContracts();
@@ -329,8 +299,17 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
       try {
         // Check if SafeTxPoolService is properly initialized
         if (!safeTxPoolService.isInitialized()) {
-          throw new Error(`SafeTxPool contract is not configured for ${network} network. Please check the contract address configuration.`);
+          throw new Error(`SafeTxPoolRegistry contract is not configured for ${network} network. Please check the contract address configuration.`);
         }
+
+        // Check if SafeTxPoolRegistry is configured
+        if (!safeTxPoolService.isConfigured()) {
+          throw new Error(`SafeTxPoolRegistry contract is not deployed or configured for ${network} network. Please deploy the SafeTxPoolRegistry contract and configure the address in environment variables.`);
+        }
+
+        // Additional check: The SafeTxPoolRegistry contract may be deployed but not properly initialized
+        // The manager contracts need to have their registry address set to the SafeTxPoolRegistry address
+        console.warn('Note: If this transaction fails, it may be because the SafeTxPoolRegistry manager contracts are not properly initialized. Each manager contract (TrustedContractManager, AddressBookManager, etc.) needs to have setRegistry() called with the SafeTxPoolRegistry address.');
 
         // Set signer for SafeTxPoolService
         const signer = walletConnectionService.getSigner();
@@ -343,7 +322,8 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
         // Create transaction data for adding trusted contract
         const txData = safeTxPoolService.createAddTrustedContractTxData(
           connectionState.safeAddress,
-          newContractAddress.trim()
+          newContractAddress.trim(),
+          newContractName.trim()
         );
 
         // Get current nonce from Safe contract
@@ -368,6 +348,9 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
           operation: 0, // operation (CALL)
           nonce: nonce
         });
+
+        // Note: Contract will appear in the list after the Safe transaction is executed
+        // The UI will refresh automatically when the transaction is completed
 
         // Clear form
         setNewContractAddress('');
@@ -418,7 +401,12 @@ const TrustedContractsSection: React.FC<TrustedContractsSectionProps> = ({ netwo
       try {
         // Check if SafeTxPoolService is properly initialized
         if (!safeTxPoolService.isInitialized()) {
-          throw new Error(`SafeTxPool contract is not configured for ${network} network. Please check the contract address configuration.`);
+          throw new Error(`SafeTxPoolRegistry contract is not configured for ${network} network. Please check the contract address configuration.`);
+        }
+
+        // Check if SafeTxPoolRegistry is configured
+        if (!safeTxPoolService.isConfigured()) {
+          throw new Error(`SafeTxPoolRegistry contract is not deployed or configured for ${network} network. Please deploy the SafeTxPoolRegistry contract and configure the address in environment variables.`);
         }
 
         // Set signer for SafeTxPoolService

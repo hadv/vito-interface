@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { isSafeTxPoolConfigured } from '../../../contracts/abis';
+import { isSafeTxPoolRegistryConfigured } from '../../../contracts/abis';
 import { theme } from '../../../theme';
 
 const BannerContainer = styled.div`
@@ -103,8 +103,8 @@ const SafeTxPoolWarningBanner: React.FC<SafeTxPoolWarningBannerProps> = ({
   onOpenSettings,
   className 
 }) => {
-  // Only show banner if Safe TX Pool is not configured for the current network
-  if (isSafeTxPoolConfigured(network)) {
+  // Only show banner if Safe TX Pool Registry is not configured for the current network
+  if (isSafeTxPoolRegistryConfigured(network)) {
     return null;
   }
 

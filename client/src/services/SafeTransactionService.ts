@@ -1,5 +1,8 @@
 import { ethers } from 'ethers';
-import { SAFE_TX_POOL_ABI, getSafeTxPoolAddress } from '../contracts/abis';
+import {
+  SAFE_TX_POOL_REGISTRY_ABI,
+  getSafeTxPoolRegistryAddress
+} from '../contracts/abis';
 
 export interface SafeTransactionData {
   to: string;
@@ -17,16 +20,18 @@ export interface SafeTransactionData {
 export class SafeTransactionService {
   private provider: ethers.providers.Provider | null = null;
   private signer: ethers.Signer | null = null;
-  private safeTxPoolAddress: string | null;
+  private safeTxPoolRegistryAddress: string | null;
   private network: string;
 
   constructor(network: string = 'ethereum') {
     this.network = network;
-    // Get SafeTxPool address from configuration
-    this.safeTxPoolAddress = getSafeTxPoolAddress(network);
+    // Get SafeTxPool Registry address from configuration
+    this.safeTxPoolRegistryAddress = getSafeTxPoolRegistryAddress(network);
 
-    if (!this.safeTxPoolAddress) {
-      console.warn(`SafeTxPool address not configured for network: ${network}. Please configure the contract address.`);
+    if (!this.safeTxPoolRegistryAddress) {
+      console.warn(`SafeTxPoolRegistry address not configured for network: ${network}. Please configure the registry contract address.`);
+    } else {
+      console.log(`Using SafeTxPoolRegistry for network: ${network}`);
     }
   }
 
@@ -46,6 +51,13 @@ export class SafeTransactionService {
   }
 
   /**
+   * Get the registry contract address and ABI
+   */
+  private getContractConfig(): { address: string | null; abi: any[] } {
+    return { address: this.safeTxPoolRegistryAddress, abi: SAFE_TX_POOL_REGISTRY_ABI };
+  }
+
+  /**
    * Create transaction data for adding an address book entry
    */
   createAddAddressBookEntryTxData(safe: string, walletAddress: string, name: string): string {
@@ -57,8 +69,9 @@ export class SafeTransactionService {
       throw new Error('Name is required');
     }
 
-    // Create contract interface
-    const contractInterface = new ethers.utils.Interface(SAFE_TX_POOL_ABI);
+    // Create contract interface using appropriate ABI
+    const { abi } = this.getContractConfig();
+    const contractInterface = new ethers.utils.Interface(abi);
     
     // Convert string name to bytes32
     const nameBytes32 = ethers.utils.formatBytes32String(name.trim().substring(0, 31));
@@ -81,8 +94,9 @@ export class SafeTransactionService {
       throw new Error('Invalid wallet address');
     }
 
-    // Create contract interface
-    const contractInterface = new ethers.utils.Interface(SAFE_TX_POOL_ABI);
+    // Create contract interface using appropriate ABI
+    const { abi } = this.getContractConfig();
+    const contractInterface = new ethers.utils.Interface(abi);
 
     // Encode function call
     const data = contractInterface.encodeFunctionData('removeAddressBookEntry', [
@@ -102,14 +116,15 @@ export class SafeTransactionService {
     name: string,
     nonce: number
   ): Promise<SafeTransactionData> {
-    if (!this.safeTxPoolAddress) {
-      throw new Error(`SafeTxPool address not configured for network: ${this.network}. Please configure the contract address in environment variables.`);
+    const { address } = this.getContractConfig();
+    if (!address) {
+      throw new Error(`SafeTxPoolRegistry address not configured for network: ${this.network}. Please configure the registry contract address in environment variables.`);
     }
 
     const data = this.createAddAddressBookEntryTxData(safeAddress, walletAddress, name);
 
     return {
-      to: this.safeTxPoolAddress,
+      to: address,
       value: '0',
       data,
       operation: 0, // CALL operation
@@ -130,14 +145,15 @@ export class SafeTransactionService {
     walletAddress: string,
     nonce: number
   ): Promise<SafeTransactionData> {
-    if (!this.safeTxPoolAddress) {
-      throw new Error(`SafeTxPool address not configured for network: ${this.network}. Please configure the contract address in environment variables.`);
+    const { address } = this.getContractConfig();
+    if (!address) {
+      throw new Error(`SafeTxPoolRegistry address not configured for network: ${this.network}. Please configure the registry contract address in environment variables.`);
     }
 
     const data = this.createRemoveAddressBookEntryTxData(safeAddress, walletAddress);
 
     return {
-      to: this.safeTxPoolAddress,
+      to: address,
       value: '0',
       data,
       operation: 0, // CALL operation
