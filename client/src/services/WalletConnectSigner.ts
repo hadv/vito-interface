@@ -1,6 +1,5 @@
 import { ethers } from 'ethers';
 import { WalletConnectService } from './WalletConnectService';
-import { preflightCheckWalletConnectSigning, logWalletConnectDiagnostics, diagnoseWalletConnectSession } from '../utils/walletConnectDebug';
 
 /**
  * WalletConnect Signer Adapter
@@ -164,20 +163,16 @@ export class WalletConnectSigner extends ethers.Signer {
       throw new Error('WalletConnect SignClient not available. Please reconnect your wallet.');
     }
 
-    // Perform comprehensive pre-flight check
-    console.log('🔍 Performing WalletConnect pre-flight check for signing...');
-    const preflightCheck = preflightCheckWalletConnectSigning(this.walletConnectService, this.chainId);
-
-    if (!preflightCheck.canSign) {
-      console.error('❌ WalletConnect pre-flight check failed');
-      const diagnostics = diagnoseWalletConnectSession(this.walletConnectService, this.chainId);
-      logWalletConnectDiagnostics(diagnostics, 'Pre-flight Check');
-
-      const issuesText = preflightCheck.issues.join('; ');
-      throw new Error(`WalletConnect session not ready for signing: ${issuesText}. Please reconnect your wallet.`);
+    // Validate WalletConnect session before signing
+    try {
+      const activeSessions = signClient.session.getAll();
+      const activeSession = activeSessions.find((s: any) => s.topic === sessionTopic);
+      if (!activeSession) {
+        throw new Error('WalletConnect session is no longer active. Please reconnect your wallet.');
+      }
+    } catch (sessionError) {
+      throw new Error('WalletConnect session validation failed. Please reconnect your wallet.');
     }
-
-    console.log('✅ WalletConnect pre-flight check passed');
 
     // Prepare the typed data in the correct format for WalletConnect
     // Ensure domain has all required fields for Safe transactions
@@ -192,9 +187,8 @@ export class WalletConnectSigner extends ethers.Signer {
       const activeSessions = signClient.session.getAll();
       const activeSession = activeSessions.find((s: any) => s.topic === sessionTopic);
       walletName = activeSession?.peer?.metadata?.name || 'Unknown';
-      console.log('📱 Detected wallet:', walletName);
     } catch (error) {
-      console.log('⚠️ Could not detect wallet type:', error);
+      // Wallet detection failed, continue with default behavior
     }
 
     // Build complete EIP-712 typed data structure with wallet-specific optimizations
@@ -215,8 +209,6 @@ export class WalletConnectSigner extends ethers.Signer {
 
     // For Uniswap wallet, ensure all addresses are properly checksummed
     if (isUniswapWallet) {
-      console.log('🦄 Applying Uniswap wallet optimizations...');
-
       // Ensure domain verifyingContract is checksummed
       if (typedData.domain.verifyingContract) {
         typedData.domain.verifyingContract = ethers.utils.getAddress(typedData.domain.verifyingContract);
@@ -237,10 +229,7 @@ export class WalletConnectSigner extends ethers.Signer {
       }
     }
 
-    console.log('🔐 WalletConnect Signer: Preparing EIP-712 signing request');
-    console.log('📋 Domain:', safeDomain);
-    console.log('📋 Primary type:', typedData.primaryType);
-    console.log('📋 Message:', value);
+
 
     // Validate the typed data structure
     if (!typedData.primaryType || !(typedData.primaryType in typedData.types)) {
@@ -252,15 +241,6 @@ export class WalletConnectSigner extends ethers.Signer {
     const signerAddress = ethers.utils.getAddress(this.address); // Ensure proper checksum
     const typedDataString = JSON.stringify(typedData, null, 0); // Compact JSON without spaces
 
-    console.log('📱 MOBILE WALLET: Preparing EIP-712 request for Uniswap wallet compatibility');
-    console.log('📋 Signer address (checksummed):', signerAddress);
-    console.log('📋 Chain ID format:', `eip155:${this.chainId}`);
-    console.log('📋 Typed data structure:', {
-      domain: typedData.domain,
-      primaryType: typedData.primaryType,
-      types: Object.keys(typedData.types)
-    });
-
     const request = {
       topic: sessionTopic,
       chainId: `eip155:${this.chainId}`,
@@ -270,13 +250,7 @@ export class WalletConnectSigner extends ethers.Signer {
       }
     };
 
-    console.log('📱 MOBILE WALLET: Sending EIP-712 signing request via WalletConnect');
-    console.log('🔗 Request details:', {
-      method: request.request.method,
-      addressParam: request.request.params[0],
-      dataLength: request.request.params[1].length
-    });
-    console.log('📱 This should trigger a signing request in your mobile wallet app');
+
 
     try {
       // Add timeout to prevent hanging
@@ -288,9 +262,6 @@ export class WalletConnectSigner extends ethers.Signer {
 
       const signature = await Promise.race([signPromise, timeoutPromise]);
 
-      console.log('✅ WalletConnect Signer: EIP-712 signature received successfully');
-      console.log('📋 Signature length:', signature?.length || 0);
-
       // Validate signature format
       if (!signature || typeof signature !== 'string' || !signature.startsWith('0x')) {
         throw new Error('Invalid signature format received from mobile wallet');
@@ -298,12 +269,8 @@ export class WalletConnectSigner extends ethers.Signer {
 
       return signature;
     } catch (error: any) {
-      console.error('❌ Primary signing method failed:', error);
-
       // For Uniswap wallet, try alternative signing method if primary fails
       if (isUniswapWallet && !error.message.includes('rejected') && !error.message.includes('denied')) {
-        console.log('🦄 Trying Uniswap wallet fallback signing method...');
-
         try {
           // Try with eth_signTypedData (v3) instead of v4
           const fallbackRequest = {
@@ -315,20 +282,14 @@ export class WalletConnectSigner extends ethers.Signer {
             }
           };
 
-          console.log('📱 UNISWAP FALLBACK: Trying eth_signTypedData (v3)...');
           const fallbackSignature = await signClient.request(fallbackRequest);
 
           if (fallbackSignature && typeof fallbackSignature === 'string' && fallbackSignature.startsWith('0x')) {
-            console.log('✅ Uniswap wallet fallback signing successful!');
             return fallbackSignature;
           }
         } catch (fallbackError) {
-          console.error('❌ Uniswap wallet fallback also failed:', fallbackError);
-
           // Last resort: try personal_sign with the transaction hash
           try {
-            console.log('🦄 UNISWAP LAST RESORT: Trying personal_sign with transaction hash...');
-
             // Create the transaction hash manually
             const encoder = ethers.utils.defaultAbiCoder;
             const txHashData = encoder.encode(
@@ -362,12 +323,10 @@ export class WalletConnectSigner extends ethers.Signer {
             const personalSignature = await signClient.request(personalSignRequest);
 
             if (personalSignature && typeof personalSignature === 'string' && personalSignature.startsWith('0x')) {
-              console.log('✅ Uniswap wallet personal_sign fallback successful!');
-              console.log('⚠️ Note: This is a personal signature, not EIP-712. May need additional handling.');
               return personalSignature;
             }
           } catch (personalSignError) {
-            console.error('❌ Uniswap wallet personal_sign fallback also failed:', personalSignError);
+            // All fallbacks failed, continue to error handling
           }
         }
       }
