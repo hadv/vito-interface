@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { SafeTxPoolService } from './SafeTxPoolService';
 import { OnChainDataService, OnChainTransactionStatus } from './OnChainDataService';
+import { GasErrorRecoveryService } from './GasErrorRecoveryService';
 import { SAFE_ABI, getRpcUrl } from '../contracts/abis';
 import {
   signSafeTransaction,
@@ -50,6 +51,7 @@ export class SafeWalletService {
   private config: SafeWalletConfig | null = null;
   private safeTxPoolService: SafeTxPoolService | null = null;
   private onChainDataService: OnChainDataService | null = null;
+  private gasErrorRecoveryService: GasErrorRecoveryService | null = null;
 
   /**
    * Check if a Safe address is valid on the given network
@@ -133,6 +135,9 @@ export class SafeWalletService {
 
     // Initialize OnChainData service
     this.onChainDataService = new OnChainDataService(config.network);
+
+    // Initialize Gas Error Recovery service
+    this.gasErrorRecoveryService = new GasErrorRecoveryService(this.provider, config.network);
   }
 
   /**
@@ -463,15 +468,19 @@ export class SafeWalletService {
         verifyingContract: this.config!.safeAddress
       };
 
-      // Create Safe transaction data with default gas parameters
+      // Estimate gas for the inner transaction
+      const estimatedSafeTxGas = await this.estimateInnerTransactionGas(transactionRequest);
+      const estimatedBaseGas = await this.estimateBaseGas();
+
+      // Create Safe transaction data with proper gas parameters
       const safeTransactionData: SafeTransactionData = {
         to: transactionRequest.to,
         value: transactionRequest.value,
         data: transactionRequest.data || '0x',
         operation: transactionRequest.operation || 0,
-        safeTxGas: '0', // Let Safe estimate
-        baseGas: '0',   // Let Safe estimate
-        gasPrice: '0',  // Use network gas price
+        safeTxGas: estimatedSafeTxGas.toString(),
+        baseGas: estimatedBaseGas.toString(),
+        gasPrice: '0',  // Use network gas price (0 means no gas payment to relayer)
         gasToken: ethers.constants.AddressZero, // Pay in ETH
         refundReceiver: ethers.constants.AddressZero,
         nonce
@@ -805,6 +814,136 @@ export class SafeWalletService {
   }
 
   /**
+   * Estimate gas for the inner transaction (safeTxGas)
+   */
+  private async estimateInnerTransactionGas(transactionRequest: TransactionRequest): Promise<number> {
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+
+    try {
+      // For simple ETH transfers
+      if (!transactionRequest.data || transactionRequest.data === '0x') {
+        return 21000; // Standard ETH transfer gas
+      }
+
+      // For contract interactions, try to estimate
+      const gasEstimate = await this.provider.estimateGas({
+        to: transactionRequest.to,
+        value: transactionRequest.value,
+        data: transactionRequest.data
+      });
+
+      // Add buffer for Safe overhead
+      return Math.floor(gasEstimate.toNumber() * 1.1);
+
+    } catch (error) {
+      console.warn('⚠️ Inner transaction gas estimation failed, using fallback:', error);
+
+      // Fallback based on transaction type
+      if (!transactionRequest.data || transactionRequest.data === '0x') {
+        return 21000; // ETH transfer
+      } else if (transactionRequest.data.startsWith('0xa9059cbb')) {
+        return 65000; // ERC-20 transfer
+      } else {
+        return 100000; // Generic contract call
+      }
+    }
+  }
+
+  /**
+   * Estimate base gas for Safe transaction overhead
+   */
+  private async estimateBaseGas(): Promise<number> {
+    // Base gas includes:
+    // - Signature verification: ~6000 gas per signature
+    // - Safe contract overhead: ~20000 gas
+    // - Event emission: ~1000 gas
+    // - Hash generation: ~1500 gas
+
+    const signatureGas = 6000; // Assume single signature
+    const safeOverhead = 20000;
+    const eventGas = 1000;
+    const hashGas = 1500;
+
+    return signatureGas + safeOverhead + eventGas + hashGas;
+  }
+
+  /**
+   * Estimate gas for Safe transaction execution
+   */
+  private async estimateSafeTransactionGas(
+    safeTransaction: SafeTransactionData,
+    signatures: string
+  ): Promise<number> {
+    if (!this.safeContract) {
+      throw new Error('Safe contract not initialized');
+    }
+
+    try {
+      // Try to estimate gas using the Safe contract
+      const gasEstimate = await this.safeContract.estimateGas.execTransaction(
+        safeTransaction.to,
+        safeTransaction.value,
+        safeTransaction.data,
+        safeTransaction.operation,
+        safeTransaction.safeTxGas,
+        safeTransaction.baseGas,
+        safeTransaction.gasPrice,
+        safeTransaction.gasToken,
+        safeTransaction.refundReceiver,
+        signatures
+      );
+
+      // Add buffer for Safe overhead (20% buffer)
+      const gasWithBuffer = Math.floor(gasEstimate.toNumber() * 1.2);
+
+      // Ensure minimum gas for Safe transactions
+      const minGasForSafe = 200000;
+      const finalGas = Math.max(gasWithBuffer, minGasForSafe);
+
+      console.log(`📊 Gas estimation: ${gasEstimate.toNumber()} -> ${finalGas} (with buffer)`);
+      return finalGas;
+
+    } catch (error: any) {
+      console.warn('⚠️ Gas estimation failed, using fallback calculation:', error.message);
+
+      // Fallback gas calculation based on transaction type
+      return this.calculateFallbackGas(safeTransaction);
+    }
+  }
+
+  /**
+   * Calculate fallback gas based on transaction complexity
+   */
+  private calculateFallbackGas(safeTransaction: SafeTransactionData): number {
+    let baseGas = 150000; // Base gas for Safe transaction
+
+    // Add gas based on data size
+    const dataSize = safeTransaction.data.length / 2 - 1; // Remove 0x prefix
+    const dataGas = dataSize * 16; // 16 gas per byte
+
+    // Add gas for different operation types
+    if (safeTransaction.data !== '0x' && safeTransaction.data.length > 10) {
+      // Contract interaction
+      baseGas += 50000;
+
+      // Check if it's an ERC-20 transfer (method signature: 0xa9059cbb)
+      if (safeTransaction.data.startsWith('0xa9059cbb')) {
+        baseGas += 30000; // Additional gas for ERC-20 transfer
+      }
+    }
+
+    // Add signature verification gas (approximately 6000 gas per signature)
+    const signatureGas = 6000; // Assume single signature for fallback
+
+    const totalGas = baseGas + dataGas + signatureGas;
+
+    console.log(`📊 Fallback gas calculation: base=${baseGas}, data=${dataGas}, signature=${signatureGas}, total=${totalGas}`);
+    return totalGas;
+  }
+
+  /**
    * Execute a Safe transaction when threshold is met
    */
   async executeTransaction(
@@ -849,42 +988,38 @@ export class SafeWalletService {
 
       console.log('🔐 Executing transaction on Safe contract...');
 
-      // Execute the transaction on the Safe contract with manual gas limit
-      try {
-        const tx = await this.safeContract.execTransaction(
-          safeTransaction.to,
-          safeTransaction.value,
-          safeTransaction.data,
-          safeTransaction.operation,
-          safeTransaction.safeTxGas,
-          safeTransaction.baseGas,
-          safeTransaction.gasPrice,
-          safeTransaction.gasToken,
-          safeTransaction.refundReceiver,
-          combinedSignatures
-        );
-        return tx;
-      } catch (gasError: any) {
-        console.warn('⚠️ Gas estimation failed, trying with manual gas limit...');
+      // Estimate gas for the Safe transaction execution
+      const gasEstimate = await this.estimateSafeTransactionGas(safeTransaction, combinedSignatures);
+      console.log(`📊 Using gas limit: ${gasEstimate}`);
 
-        // If gas estimation fails, try with a manual gas limit
-        const tx = await this.safeContract.execTransaction(
-          safeTransaction.to,
-          safeTransaction.value,
-          safeTransaction.data,
-          safeTransaction.operation,
-          safeTransaction.safeTxGas,
-          safeTransaction.baseGas,
-          safeTransaction.gasPrice,
-          safeTransaction.gasToken,
-          safeTransaction.refundReceiver,
-          combinedSignatures,
-          {
-            gasLimit: 500000 // Manual gas limit
-          }
-        );
-        return tx;
+      // Execute transaction with automatic retry on gas errors
+      if (!this.gasErrorRecoveryService) {
+        throw new Error('Gas error recovery service not initialized');
       }
+
+      return await this.gasErrorRecoveryService.executeWithRetry(
+        async (gasLimit?: number, gasPrice?: string) => {
+          const overrides: any = {};
+          if (gasLimit) overrides.gasLimit = gasLimit;
+          if (gasPrice) overrides.gasPrice = gasPrice;
+
+          return await this.safeContract!.execTransaction(
+            safeTransaction.to,
+            safeTransaction.value,
+            safeTransaction.data,
+            safeTransaction.operation,
+            safeTransaction.safeTxGas,
+            safeTransaction.baseGas,
+            safeTransaction.gasPrice,
+            safeTransaction.gasToken,
+            safeTransaction.refundReceiver,
+            combinedSignatures,
+            overrides
+          );
+        },
+        gasEstimate,
+        await this.gasErrorRecoveryService.getOptimalGasPrice()
+      );
     } catch (error: any) {
       console.error('❌ Error executing Safe transaction:', error);
 

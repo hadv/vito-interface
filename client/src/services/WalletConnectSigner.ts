@@ -98,7 +98,7 @@ export class WalletConnectSigner extends ethers.Signer {
   }
 
   /**
-   * Send a transaction using WalletConnect
+   * Send a transaction using WalletConnect with improved gas estimation
    */
   async sendTransaction(transaction: ethers.providers.TransactionRequest): Promise<ethers.providers.TransactionResponse> {
     const sessionTopic = this.walletConnectService.getSessionTopic();
@@ -112,17 +112,55 @@ export class WalletConnectSigner extends ethers.Signer {
       throw new Error('WalletConnect SignClient not available');
     }
 
+    // Improve gas estimation for WalletConnect transactions
+    let enhancedTransaction = { ...transaction };
+
+    try {
+      // If no gas limit is provided, estimate it
+      if (!enhancedTransaction.gasLimit && this.provider) {
+        console.log('🔍 Estimating gas for WalletConnect transaction...');
+
+        const gasEstimate = await this.provider.estimateGas({
+          to: transaction.to,
+          value: transaction.value,
+          data: transaction.data,
+          from: this.address
+        });
+
+        // Add 20% buffer for WalletConnect transactions
+        const gasWithBuffer = Math.floor(gasEstimate.toNumber() * 1.2);
+        enhancedTransaction.gasLimit = `0x${gasWithBuffer.toString(16)}`;
+
+        console.log(`📊 Gas estimated: ${gasEstimate.toNumber()} -> ${gasWithBuffer} (with buffer)`);
+      }
+
+      // If no gas price is provided, get current gas price
+      if (!enhancedTransaction.gasPrice && !enhancedTransaction.maxFeePerGas && this.provider) {
+        const feeData = await this.provider.getFeeData();
+        if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+          // Use EIP-1559 pricing
+          enhancedTransaction.maxFeePerGas = feeData.maxFeePerGas.toHexString();
+          enhancedTransaction.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas.toHexString();
+        } else if (feeData.gasPrice) {
+          enhancedTransaction.gasPrice = feeData.gasPrice.toHexString();
+        }
+      }
+    } catch (gasError) {
+      console.warn('⚠️ Gas estimation failed for WalletConnect transaction:', gasError);
+      // Continue with original transaction if gas estimation fails
+    }
+
     const request = {
       topic: sessionTopic,
       chainId: `eip155:${this.chainId}`,
       request: {
         method: 'eth_sendTransaction',
-        params: [transaction]
+        params: [enhancedTransaction]
       }
     };
 
     const txHash = await signClient.request(request);
-    
+
     // Return a transaction response
     if (!this.provider) {
       throw new Error('Provider not available for transaction response');
