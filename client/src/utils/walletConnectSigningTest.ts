@@ -5,7 +5,7 @@
 
 import { ethers } from 'ethers';
 import { SafeTransactionData, SafeDomain } from './eip712';
-import { diagnoseWalletConnectSession, logWalletConnectDiagnostics } from './walletConnectDebug';
+import { diagnoseWalletConnectSession, logWalletConnectDiagnostics, getUniswapWalletGuidance } from './walletConnectDebug';
 
 export interface SigningTestResult {
   success: boolean;
@@ -170,7 +170,7 @@ export async function testWalletConnectMessageSigning(
 }
 
 /**
- * Run comprehensive WalletConnect signing tests
+ * Run comprehensive WalletConnect signing tests with Uniswap wallet support
  */
 export async function runWalletConnectSigningTests(
   walletConnectSigner: any,
@@ -181,13 +181,24 @@ export async function runWalletConnectSigningTests(
   messageTest: SigningTestResult;
   guardTest: SigningTestResult;
   overall: boolean;
+  uniswapGuidance?: string[];
 }> {
   console.group('🧪 WalletConnect Signing Test Suite');
-  
+
+  // Check if this is Uniswap wallet and provide guidance
+  const walletConnectService = walletConnectSigner.walletConnectService;
+  const { isUniswapWallet, guidance } = getUniswapWalletGuidance(walletConnectService);
+
+  if (isUniswapWallet) {
+    console.group('🦄 Uniswap Wallet Detected');
+    guidance.forEach(line => console.log(line));
+    console.groupEnd();
+  }
+
   // Test 1: Basic message signing
   console.log('📝 Test 1: Basic message signing...');
   const messageTest = await testWalletConnectMessageSigning(walletConnectSigner);
-  
+
   // Test 2: Safe guard transaction signing
   console.log('🛡️ Test 2: Safe guard transaction signing...');
   const guardTest = await testWalletConnectGuardSigning(
@@ -196,14 +207,14 @@ export async function runWalletConnectSigningTests(
     guardAddress,
     chainId
   );
-  
+
   const overall = messageTest.success && guardTest.success;
-  
+
   console.log('📊 Test Results Summary:');
   console.log('  Message Signing:', messageTest.success ? '✅ PASS' : '❌ FAIL');
   console.log('  Guard Transaction:', guardTest.success ? '✅ PASS' : '❌ FAIL');
   console.log('  Overall:', overall ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED');
-  
+
   if (!overall) {
     console.log('🔧 Troubleshooting Tips:');
     if (!messageTest.success) {
@@ -211,14 +222,18 @@ export async function runWalletConnectSigningTests(
     }
     if (!guardTest.success) {
       console.log('  - EIP-712 signing failed - check typed data format and mobile wallet compatibility');
+      if (isUniswapWallet) {
+        console.log('  - For Uniswap wallet: ensure Accept button is tapped and app is responsive');
+      }
     }
   }
-  
+
   console.groupEnd();
-  
+
   return {
     messageTest,
     guardTest,
-    overall
+    overall,
+    uniswapGuidance: isUniswapWallet ? guidance : undefined
   };
 }

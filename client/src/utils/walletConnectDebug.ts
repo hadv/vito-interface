@@ -188,18 +188,57 @@ export function preflightCheckWalletConnectSigning(
   expectedChainId?: number
 ): { canSign: boolean; issues: string[] } {
   const diagnostics = diagnoseWalletConnectSession(walletConnectService, expectedChainId);
-  
+
   const issues: string[] = [...diagnostics.errors];
-  
+
   // Add critical warnings as issues
   diagnostics.warnings.forEach(warning => {
     if (warning.includes('expired') || warning.includes('Chain ID mismatch')) {
       issues.push(warning);
     }
   });
-  
+
   return {
     canSign: issues.length === 0,
     issues
   };
+}
+
+/**
+ * Detect and provide specific guidance for Uniswap wallet
+ */
+export function getUniswapWalletGuidance(
+  walletConnectService: any
+): { isUniswapWallet: boolean; guidance: string[] } {
+  let isUniswapWallet = false;
+  const guidance: string[] = [];
+
+  try {
+    const signClient = walletConnectService.signClient;
+    if (signClient) {
+      const activeSessions = signClient.session.getAll();
+      const activeSession = activeSessions.find((s: any) => s.topic === walletConnectService.getSessionTopic());
+      const walletName = activeSession?.peer?.metadata?.name || '';
+
+      isUniswapWallet = walletName.toLowerCase().includes('uniswap');
+
+      if (isUniswapWallet) {
+        guidance.push('🦄 Uniswap Wallet Detected');
+        guidance.push('');
+        guidance.push('Tips for successful signing:');
+        guidance.push('1. Keep the Uniswap app open and in foreground');
+        guidance.push('2. Look for the signing request notification');
+        guidance.push('3. Tap "Accept" button when it appears');
+        guidance.push('4. If Accept button is unresponsive:');
+        guidance.push('   - Close and reopen Uniswap app');
+        guidance.push('   - Disconnect and reconnect WalletConnect');
+        guidance.push('   - Ensure you\'re on the correct network');
+        guidance.push('5. Make sure Uniswap app is updated to latest version');
+      }
+    }
+  } catch (error) {
+    console.error('Error detecting Uniswap wallet:', error);
+  }
+
+  return { isUniswapWallet, guidance };
 }

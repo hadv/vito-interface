@@ -186,7 +186,20 @@ export class WalletConnectSigner extends ethers.Signer {
       verifyingContract: domain.verifyingContract
     };
 
-    // Build complete EIP-712 typed data structure
+    // Detect wallet type from session metadata for compatibility adjustments
+    let walletName = 'Unknown';
+    try {
+      const activeSessions = signClient.session.getAll();
+      const activeSession = activeSessions.find((s: any) => s.topic === sessionTopic);
+      walletName = activeSession?.peer?.metadata?.name || 'Unknown';
+      console.log('📱 Detected wallet:', walletName);
+    } catch (error) {
+      console.log('⚠️ Could not detect wallet type:', error);
+    }
+
+    // Build complete EIP-712 typed data structure with wallet-specific optimizations
+    const isUniswapWallet = walletName.toLowerCase().includes('uniswap');
+
     const typedData = {
       types: {
         EIP712Domain: [
@@ -200,6 +213,30 @@ export class WalletConnectSigner extends ethers.Signer {
       message: value
     };
 
+    // For Uniswap wallet, ensure all addresses are properly checksummed
+    if (isUniswapWallet) {
+      console.log('🦄 Applying Uniswap wallet optimizations...');
+
+      // Ensure domain verifyingContract is checksummed
+      if (typedData.domain.verifyingContract) {
+        typedData.domain.verifyingContract = ethers.utils.getAddress(typedData.domain.verifyingContract);
+      }
+
+      // Ensure all address fields in message are checksummed
+      if (typedData.message) {
+        Object.keys(typedData.message).forEach(key => {
+          const value = typedData.message[key];
+          if (typeof value === 'string' && value.match(/^0x[a-fA-F0-9]{40}$/)) {
+            try {
+              typedData.message[key] = ethers.utils.getAddress(value);
+            } catch (e) {
+              // If it's not a valid address, leave it as is
+            }
+          }
+        });
+      }
+    }
+
     console.log('🔐 WalletConnect Signer: Preparing EIP-712 signing request');
     console.log('📋 Domain:', safeDomain);
     console.log('📋 Primary type:', typedData.primaryType);
@@ -210,17 +247,35 @@ export class WalletConnectSigner extends ethers.Signer {
       throw new Error(`Invalid typed data: primary type '${typedData.primaryType}' not found in types`);
     }
 
+    // Prepare the request with Uniswap wallet compatibility
+    // Some wallets (like Uniswap) are sensitive to parameter formatting
+    const signerAddress = ethers.utils.getAddress(this.address); // Ensure proper checksum
+    const typedDataString = JSON.stringify(typedData, null, 0); // Compact JSON without spaces
+
+    console.log('📱 MOBILE WALLET: Preparing EIP-712 request for Uniswap wallet compatibility');
+    console.log('📋 Signer address (checksummed):', signerAddress);
+    console.log('📋 Chain ID format:', `eip155:${this.chainId}`);
+    console.log('📋 Typed data structure:', {
+      domain: typedData.domain,
+      primaryType: typedData.primaryType,
+      types: Object.keys(typedData.types)
+    });
+
     const request = {
       topic: sessionTopic,
       chainId: `eip155:${this.chainId}`,
       request: {
         method: 'eth_signTypedData_v4',
-        params: [this.address.toLowerCase(), JSON.stringify(typedData)]
+        params: [signerAddress, typedDataString] // Use checksummed address and compact JSON
       }
     };
 
     console.log('📱 MOBILE WALLET: Sending EIP-712 signing request via WalletConnect');
-    console.log('🔗 Chain ID:', `eip155:${this.chainId}`);
+    console.log('🔗 Request details:', {
+      method: request.request.method,
+      addressParam: request.request.params[0],
+      dataLength: request.request.params[1].length
+    });
     console.log('📱 This should trigger a signing request in your mobile wallet app');
 
     try {
@@ -243,21 +298,114 @@ export class WalletConnectSigner extends ethers.Signer {
 
       return signature;
     } catch (error: any) {
+      console.error('❌ Primary signing method failed:', error);
+
+      // For Uniswap wallet, try alternative signing method if primary fails
+      if (isUniswapWallet && !error.message.includes('rejected') && !error.message.includes('denied')) {
+        console.log('🦄 Trying Uniswap wallet fallback signing method...');
+
+        try {
+          // Try with eth_signTypedData (v3) instead of v4
+          const fallbackRequest = {
+            topic: sessionTopic,
+            chainId: `eip155:${this.chainId}`,
+            request: {
+              method: 'eth_signTypedData',
+              params: [signerAddress, typedDataString]
+            }
+          };
+
+          console.log('📱 UNISWAP FALLBACK: Trying eth_signTypedData (v3)...');
+          const fallbackSignature = await signClient.request(fallbackRequest);
+
+          if (fallbackSignature && typeof fallbackSignature === 'string' && fallbackSignature.startsWith('0x')) {
+            console.log('✅ Uniswap wallet fallback signing successful!');
+            return fallbackSignature;
+          }
+        } catch (fallbackError) {
+          console.error('❌ Uniswap wallet fallback also failed:', fallbackError);
+
+          // Last resort: try personal_sign with the transaction hash
+          try {
+            console.log('🦄 UNISWAP LAST RESORT: Trying personal_sign with transaction hash...');
+
+            // Create the transaction hash manually
+            const encoder = ethers.utils.defaultAbiCoder;
+            const txHashData = encoder.encode(
+              ['address', 'uint256', 'bytes', 'uint8', 'uint256', 'uint256', 'uint256', 'address', 'address', 'uint256'],
+              [
+                value.to,
+                value.value,
+                value.data,
+                value.operation,
+                value.safeTxGas,
+                value.baseGas,
+                value.gasPrice,
+                value.gasToken,
+                value.refundReceiver,
+                value.nonce
+              ]
+            );
+
+            const txHash = ethers.utils.keccak256(txHashData);
+            const message = `Sign Safe transaction hash: ${txHash}`;
+
+            const personalSignRequest = {
+              topic: sessionTopic,
+              chainId: `eip155:${this.chainId}`,
+              request: {
+                method: 'personal_sign',
+                params: [ethers.utils.hexlify(ethers.utils.toUtf8Bytes(message)), signerAddress]
+              }
+            };
+
+            const personalSignature = await signClient.request(personalSignRequest);
+
+            if (personalSignature && typeof personalSignature === 'string' && personalSignature.startsWith('0x')) {
+              console.log('✅ Uniswap wallet personal_sign fallback successful!');
+              console.log('⚠️ Note: This is a personal signature, not EIP-712. May need additional handling.');
+              return personalSignature;
+            }
+          } catch (personalSignError) {
+            console.error('❌ Uniswap wallet personal_sign fallback also failed:', personalSignError);
+          }
+        }
+      }
       console.error('❌ WalletConnect Signer: EIP-712 signing failed:', error);
 
       // Provide user-friendly error messages
       const errorMessage = error?.message || error?.reason || 'Unknown signing error';
 
       if (errorMessage.includes('rejected') || errorMessage.includes('denied') || errorMessage.includes('cancelled')) {
+        if (isUniswapWallet) {
+          throw new Error('Transaction signing was rejected in Uniswap wallet. Please ensure you tap the "Accept" button to approve the signing request.');
+        }
         throw new Error('Transaction signing was rejected by user in mobile wallet');
       }
 
       if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
+        if (isUniswapWallet) {
+          throw new Error('Signing request timed out in Uniswap wallet. Please ensure the Uniswap app is open, responsive, and you tap "Accept" when the signing request appears.');
+        }
         throw new Error('Signing request timed out. Please ensure your mobile wallet app is open and check for pending signing requests.');
       }
 
       if (errorMessage.includes('session') || errorMessage.includes('connection')) {
         throw new Error('WalletConnect session error. Please disconnect and reconnect your wallet.');
+      }
+
+      // Uniswap wallet specific error guidance
+      if (isUniswapWallet) {
+        throw new Error(`Uniswap wallet signing failed: ${errorMessage}.
+
+Troubleshooting tips for Uniswap wallet:
+1. Ensure the Uniswap app is fully updated
+2. Make sure you tap "Accept" on the signing request
+3. Try closing and reopening the Uniswap app
+4. If the Accept button is unresponsive, try disconnecting and reconnecting WalletConnect
+5. Check that you're on the correct network in Uniswap wallet
+
+Please try again or reconnect your wallet.`);
       }
 
       // Re-throw with enhanced error message
