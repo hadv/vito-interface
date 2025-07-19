@@ -872,27 +872,6 @@ export class SafeWalletService {
         );
 
         console.log('✅ Safe transaction executed successfully');
-
-        // Wait for transaction confirmation
-        const receipt = await tx.wait();
-        console.log(`📋 Transaction confirmed in block ${receipt.blockNumber}`);
-
-        // Manually mark as executed in SafeTxPool (Guard hash mismatch workaround)
-        try {
-          // Create the transaction hash using the same method as when it was proposed
-          const network = await this.provider!.getNetwork();
-          const originalTxHash = createSafeContractTransactionHash(this.config!.safeAddress, network.chainId, safeTransaction);
-          console.log(`🔧 Marking transaction as executed: ${originalTxHash}`);
-
-          if (this.safeTxPoolService) {
-            await this.safeTxPoolService.markAsExecuted(originalTxHash);
-            console.log('✅ Transaction marked as executed in SafeTxPool');
-          }
-        } catch (markError: any) {
-          console.warn('⚠️ Failed to mark transaction as executed:', markError.message);
-          // Don't throw - transaction was successful, this is just cleanup
-        }
-
         return tx;
 
       } catch (error: any) {
@@ -932,27 +911,6 @@ export class SafeWalletService {
           );
 
           console.log('✅ Safe transaction executed with manual gas estimation');
-
-          // Wait for transaction confirmation
-          const receipt = await tx.wait();
-          console.log(`📋 Transaction confirmed in block ${receipt.blockNumber}`);
-
-          // Manually mark as executed in SafeTxPool (Guard hash mismatch workaround)
-          try {
-            // Create the transaction hash using the same method as when it was proposed
-            const network = await this.provider!.getNetwork();
-            const originalTxHash = createSafeContractTransactionHash(this.config!.safeAddress, network.chainId, safeTransaction);
-            console.log(`🔧 Marking transaction as executed: ${originalTxHash}`);
-
-            if (this.safeTxPoolService) {
-              await this.safeTxPoolService.markAsExecuted(originalTxHash);
-              console.log('✅ Transaction marked as executed in SafeTxPool');
-            }
-          } catch (markError: any) {
-            console.warn('⚠️ Failed to mark transaction as executed:', markError.message);
-            // Don't throw - transaction was successful, this is just cleanup
-          }
-
           return tx;
 
         } catch (manualError: any) {
