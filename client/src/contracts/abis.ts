@@ -211,7 +211,8 @@ export const SAFE_TX_POOL_REGISTRY_ABI = [
     "name": "addTrustedContract",
     "inputs": [
       {"name": "safe", "type": "address"},
-      {"name": "contractAddress", "type": "address"}
+      {"name": "contractAddress", "type": "address"},
+      {"name": "name", "type": "bytes32"}
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
@@ -235,6 +236,24 @@ export const SAFE_TX_POOL_REGISTRY_ABI = [
     ],
     "outputs": [
       {"name": "", "type": "bool"}
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getTrustedContracts",
+    "inputs": [
+      {"name": "safe", "type": "address"}
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple[]",
+        "components": [
+          {"name": "name", "type": "bytes32"},
+          {"name": "contractAddress", "type": "address"}
+        ]
+      }
     ],
     "stateMutability": "view"
   }

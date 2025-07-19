@@ -699,6 +699,28 @@ export class TransactionDecoder {
             };
           } catch (e) { break; }
 
+        case '0x55ae89c8': // addTrustedContract (updated with name parameter)
+          try {
+            const decoded = registryInterface.decodeFunctionData('addTrustedContract', data);
+            const nameBytes32 = decoded.name;
+            const nameString = ethers.utils.parseBytes32String(nameBytes32);
+            return {
+              type: 'CONTRACT_CALL',
+              description: 'Add Trusted Contract',
+              details: {
+                method: methodId,
+                methodName: 'addTrustedContract',
+                decodedInputs: [
+                  { name: 'safe', type: 'address', value: decoded.safe, description: 'Safe wallet address' },
+                  { name: 'contractAddress', type: 'address', value: decoded.contractAddress, description: 'Contract address to trust' },
+                  { name: 'name', type: 'bytes32', value: nameString, description: 'Contract name' }
+                ],
+                contractName: 'SafeTxPoolRegistry',
+                functionType: 'Trusted Contracts'
+              }
+            };
+          } catch (e) { break; }
+
         case '0x2f54bf6e': // removeAddressBookEntry
           try {
             const decoded = registryInterface.decodeFunctionData('removeAddressBookEntry', data);

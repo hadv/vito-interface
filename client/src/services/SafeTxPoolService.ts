@@ -809,20 +809,48 @@ export class SafeTxPoolService {
   }
 
   /**
+   * Get all trusted contracts for a Safe
+   */
+  async getTrustedContracts(safe: string): Promise<Array<{contractAddress: string, name: string}>> {
+    if (!this.contract) {
+      throw new Error('Contract not initialized');
+    }
+
+    try {
+      const contracts = await this.contract.getTrustedContracts(safe);
+      return contracts.map((contract: any) => ({
+        contractAddress: contract.contractAddress,
+        name: ethers.utils.parseBytes32String(contract.name) // Convert bytes32 to string
+      }));
+    } catch (error) {
+      console.error('Error getting trusted contracts:', error);
+      return [];
+    }
+  }
+
+  /**
    * Create transaction data for adding a trusted contract
    */
-  createAddTrustedContractTxData(safe: string, contractAddress: string): string {
+  createAddTrustedContractTxData(safe: string, contractAddress: string, name: string): string {
     if (!contractAddress || contractAddress === ethers.constants.AddressZero) {
       throw new Error('Invalid contract address');
+    }
+
+    if (!name || name.trim().length === 0) {
+      throw new Error('Contract name is required');
     }
 
     // Create contract interface
     const contractInterface = new ethers.utils.Interface(SAFE_TX_POOL_REGISTRY_ABI);
 
+    // Convert string name to bytes32
+    const nameBytes32 = ethers.utils.formatBytes32String(name.trim());
+
     // Encode function call
     const data = contractInterface.encodeFunctionData('addTrustedContract', [
       safe,
-      contractAddress
+      contractAddress,
+      nameBytes32
     ]);
 
     return data;
