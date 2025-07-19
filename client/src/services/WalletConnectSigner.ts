@@ -112,12 +112,12 @@ export class WalletConnectSigner extends ethers.Signer {
       throw new Error('WalletConnect SignClient not available');
     }
 
-    // Improve gas estimation for WalletConnect transactions
+    // Only add gas estimation if not provided and we have a provider
     let enhancedTransaction = { ...transaction };
 
-    try {
-      // If no gas limit is provided, estimate it
-      if (!enhancedTransaction.gasLimit && this.provider) {
+    // Only estimate gas if not already provided
+    if (!transaction.gasLimit && this.provider) {
+      try {
         console.log('🔍 Estimating gas for WalletConnect transaction...');
 
         const gasEstimate = await this.provider.estimateGas({
@@ -127,27 +127,15 @@ export class WalletConnectSigner extends ethers.Signer {
           from: this.address
         });
 
-        // Add 20% buffer for WalletConnect transactions
-        const gasWithBuffer = Math.floor(gasEstimate.toNumber() * 1.2);
+        // Add modest 10% buffer for WalletConnect transactions
+        const gasWithBuffer = Math.floor(gasEstimate.toNumber() * 1.1);
         enhancedTransaction.gasLimit = `0x${gasWithBuffer.toString(16)}`;
 
-        console.log(`📊 Gas estimated: ${gasEstimate.toNumber()} -> ${gasWithBuffer} (with buffer)`);
+        console.log(`📊 WalletConnect gas estimated: ${gasEstimate.toNumber()} -> ${gasWithBuffer} (with 10% buffer)`);
+      } catch (gasError) {
+        console.warn('⚠️ Gas estimation failed, letting wallet handle it:', gasError);
+        // Don't add gas limit - let the wallet estimate
       }
-
-      // If no gas price is provided, get current gas price
-      if (!enhancedTransaction.gasPrice && !enhancedTransaction.maxFeePerGas && this.provider) {
-        const feeData = await this.provider.getFeeData();
-        if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
-          // Use EIP-1559 pricing
-          enhancedTransaction.maxFeePerGas = feeData.maxFeePerGas.toHexString();
-          enhancedTransaction.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas.toHexString();
-        } else if (feeData.gasPrice) {
-          enhancedTransaction.gasPrice = feeData.gasPrice.toHexString();
-        }
-      }
-    } catch (gasError) {
-      console.warn('⚠️ Gas estimation failed for WalletConnect transaction:', gasError);
-      // Continue with original transaction if gas estimation fails
     }
 
     const request = {

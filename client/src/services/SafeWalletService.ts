@@ -468,19 +468,16 @@ export class SafeWalletService {
         verifyingContract: this.config!.safeAddress
       };
 
-      // Estimate gas for the inner transaction
-      const estimatedSafeTxGas = await this.estimateInnerTransactionGas(transactionRequest);
-      const estimatedBaseGas = await this.estimateBaseGas();
-
-      // Create Safe transaction data with proper gas parameters
+      // Create Safe transaction data with default gas parameters (like legacy approach)
+      // Let the Safe contract and RPC provider handle gas estimation
       const safeTransactionData: SafeTransactionData = {
         to: transactionRequest.to,
         value: transactionRequest.value,
         data: transactionRequest.data || '0x',
         operation: transactionRequest.operation || 0,
-        safeTxGas: estimatedSafeTxGas.toString(),
-        baseGas: estimatedBaseGas.toString(),
-        gasPrice: '0',  // Use network gas price (0 means no gas payment to relayer)
+        safeTxGas: '0', // Let Safe estimate (same as legacy)
+        baseGas: '0',   // Let Safe estimate (same as legacy)
+        gasPrice: '0',  // Use network gas price (same as legacy)
         gasToken: ethers.constants.AddressZero, // Pay in ETH
         refundReceiver: ethers.constants.AddressZero,
         nonce
@@ -992,18 +989,51 @@ export class SafeWalletService {
       const gasEstimate = await this.estimateSafeTransactionGas(safeTransaction, combinedSignatures);
       console.log(`📊 Using gas limit: ${gasEstimate}`);
 
-      // Execute transaction with automatic retry on gas errors
-      if (!this.gasErrorRecoveryService) {
-        throw new Error('Gas error recovery service not initialized');
-      }
+      // Execute the transaction - let RPC provider handle gas estimation
+      try {
+        console.log('🔄 Executing Safe transaction with RPC gas estimation...');
 
-      return await this.gasErrorRecoveryService.executeWithRetry(
-        async (gasLimit?: number, gasPrice?: string) => {
-          const overrides: any = {};
-          if (gasLimit) overrides.gasLimit = gasLimit;
-          if (gasPrice) overrides.gasPrice = gasPrice;
+        // First attempt: Let ethers.js and RPC provider estimate gas automatically
+        const tx = await this.safeContract.execTransaction(
+          safeTransaction.to,
+          safeTransaction.value,
+          safeTransaction.data,
+          safeTransaction.operation,
+          safeTransaction.safeTxGas,
+          safeTransaction.baseGas,
+          safeTransaction.gasPrice,
+          safeTransaction.gasToken,
+          safeTransaction.refundReceiver,
+          combinedSignatures
+          // No gas overrides - let RPC provider estimate
+        );
 
-          return await this.safeContract!.execTransaction(
+        console.log('✅ Safe transaction executed successfully');
+        return tx;
+
+      } catch (error: any) {
+        console.warn('⚠️ First attempt failed, trying with manual gas estimation...', error.message);
+
+        // Second attempt: Manual gas estimation with buffer
+        try {
+          const gasEstimate = await this.safeContract.estimateGas.execTransaction(
+            safeTransaction.to,
+            safeTransaction.value,
+            safeTransaction.data,
+            safeTransaction.operation,
+            safeTransaction.safeTxGas,
+            safeTransaction.baseGas,
+            safeTransaction.gasPrice,
+            safeTransaction.gasToken,
+            safeTransaction.refundReceiver,
+            combinedSignatures
+          );
+
+          // Add 20% buffer to the estimate
+          const gasWithBuffer = Math.floor(gasEstimate.toNumber() * 1.2);
+          console.log(`📊 Manual gas estimation: ${gasEstimate.toNumber()} -> ${gasWithBuffer} (with 20% buffer)`);
+
+          const tx = await this.safeContract.execTransaction(
             safeTransaction.to,
             safeTransaction.value,
             safeTransaction.data,
@@ -1014,12 +1044,17 @@ export class SafeWalletService {
             safeTransaction.gasToken,
             safeTransaction.refundReceiver,
             combinedSignatures,
-            overrides
+            { gasLimit: gasWithBuffer }
           );
-        },
-        gasEstimate,
-        await this.gasErrorRecoveryService.getOptimalGasPrice()
-      );
+
+          console.log('✅ Safe transaction executed with manual gas estimation');
+          return tx;
+
+        } catch (manualError: any) {
+          console.error('❌ Manual gas estimation also failed:', manualError.message);
+          throw manualError;
+        }
+      }
     } catch (error: any) {
       console.error('❌ Error executing Safe transaction:', error);
 
