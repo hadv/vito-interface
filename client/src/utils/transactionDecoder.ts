@@ -612,6 +612,13 @@ export class TransactionDecoder {
       if (registryDecoded) return registryDecoded;
     }
 
+    // Check if this is a Safe contract method
+    // We can identify Safe contracts by checking if they have common Safe method signatures
+    const safeMethodDecoded = this.decodeSafeMethod(methodId, data);
+    if (safeMethodDecoded) {
+      return safeMethodDecoded;
+    }
+
     // Known method IDs for other contracts
     const knownMethods: { [key: string]: { name: string; description: string } } = {
       '0x09959f6b': {
@@ -845,8 +852,18 @@ export class TransactionDecoder {
       }
       console.log('❌ Common signature decoding failed');
 
-      // FOURTH: Try to decode basic function signature
-      console.log('🔍 Step 3: Using basic function signature...');
+      // FOURTH: Try Safe contract methods before falling back to basic signature
+      console.log('🔍 Step 3: Trying Safe contract methods...');
+      const methodId = data.slice(0, 10);
+      const safeMethodResult = this.decodeSafeMethod(methodId, data);
+      if (safeMethodResult) {
+        console.log('✅ Safe method decoding successful:', safeMethodResult);
+        return safeMethodResult;
+      }
+      console.log('❌ Safe method decoding failed');
+
+      // FIFTH: Try to decode basic function signature
+      console.log('🔍 Step 4: Using basic function signature...');
       const basicResult = this.decodeBasicFunctionSignature(contractAddress, data);
       console.log('✅ Basic signature decoding complete');
       return basicResult;

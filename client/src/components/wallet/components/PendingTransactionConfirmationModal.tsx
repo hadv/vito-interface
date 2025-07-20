@@ -607,7 +607,7 @@ const PendingTransactionConfirmationModal: React.FC<PendingTransactionConfirmati
                       <span style={{ color: '#0ea5e9' }}>ERC-20 Transfer Function</span>
                     ) : decodedTransaction?.type === 'CONTRACT_CALL' ? (
                       <span style={{ color: '#3b82f6' }}>
-                        {decodedTransaction.details.methodName || 'Contract Interaction'}
+                        {decodedTransaction.description || decodedTransaction.details.methodName || 'Contract Interaction'}
                         {decodedTransaction.details.contractName && (
                           <span style={{ color: '#888', fontSize: '12px', marginLeft: '8px' }}>
                             on {decodedTransaction.details.contractName}
