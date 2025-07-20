@@ -505,7 +505,7 @@ export class TransactionDecoder {
             };
           } catch (e) { break; }
 
-        case '0xe318b52b': // setGuard
+        case '0xe19a9dd9': // setGuard
           try {
             const decoded = safeInterface.decodeFunctionData('setGuard', data);
             return {
