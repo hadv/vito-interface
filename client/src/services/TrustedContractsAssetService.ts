@@ -20,56 +20,44 @@ export class TrustedContractsAssetService {
     this.tokenService = new TokenService(provider, network);
   }
 
-  /**
-   * Load trusted contract names from localStorage
-   */
-  private loadTrustedContractNames(safeAddress: string): Record<string, { name: string; dateAdded: string }> {
-    try {
-      const storageKey = `trustedContracts_${safeAddress.toLowerCase()}_${this.network}`;
-      const stored = localStorage.getItem(storageKey);
-      return stored ? JSON.parse(stored) : {};
-    } catch (error) {
-      console.error('Error loading trusted contract names:', error);
-      return {};
-    }
-  }
+  // Removed localStorage functions - using on-chain data only
 
   /**
-   * Get trusted contracts for a Safe from on-chain data
+   * Get trusted contracts for a Safe from on-chain data only
    */
-  private async getTrustedContractsFromChain(safeAddress: string): Promise<string[]> {
+  private async getTrustedContractsFromChain(safeAddress: string): Promise<Array<{address: string, name: string}>> {
     try {
       const safeTxPoolService = createSafeTxPoolService(this.network);
-      
+
       if (!safeTxPoolService.isInitialized()) {
-        console.warn('SafeTxPool not configured for network:', this.network);
+        console.warn(`SafeTxPool not configured for network: ${this.network}. Trusted contracts feature not available.`);
+        console.warn('To enable trusted contracts, configure the SafeTxPoolRegistry contract address for this network.');
         return [];
       }
 
-      // Note: Since the smart contract doesn't have a method to get all trusted contracts,
-      // we'll need to rely on localStorage for now. In the future, we could:
-      // 1. Add an event listener to track TrustedContractAdded/Removed events
-      // 2. Add a method to the smart contract to enumerate trusted contracts
-      // 3. Use a subgraph to index the events
-      
-      // For now, we'll verify each stored contract against the chain
-      const storedContracts = this.loadTrustedContractNames(safeAddress);
-      const verifiedContracts: string[] = [];
-
-      for (const address of Object.keys(storedContracts)) {
-        try {
-          const isTrusted = await safeTxPoolService.isTrustedContract(safeAddress, address);
-          if (isTrusted) {
-            verifiedContracts.push(address);
-          }
-        } catch (error) {
-          console.warn(`Failed to verify trusted status for ${address}:`, error);
-          // Include anyway - user will see if it's not working when they try to use it
-          verifiedContracts.push(address);
-        }
+      if (!safeTxPoolService.isConfigured()) {
+        console.warn(`SafeTxPool contract address not configured for network: ${this.network}. Trusted contracts not available.`);
+        return [];
       }
 
-      return verifiedContracts;
+      console.log(`🔍 Loading trusted contracts from on-chain for Safe: ${safeAddress}`);
+
+      // Get trusted contracts directly from the smart contract
+      const onChainContracts = await safeTxPoolService.getTrustedContracts(safeAddress);
+
+      console.log(`📋 Found ${onChainContracts.length} trusted contracts on-chain for Safe ${safeAddress}`);
+
+      if (onChainContracts.length > 0) {
+        onChainContracts.forEach(contract => {
+          console.log(`✅ Trusted contract: ${contract.name} (${contract.contractAddress})`);
+        });
+      }
+
+      return onChainContracts.map(contract => ({
+        address: contract.contractAddress,
+        name: contract.name
+      }));
+
     } catch (error) {
       console.error('Error getting trusted contracts from chain:', error);
       return [];
@@ -77,17 +65,16 @@ export class TrustedContractsAssetService {
   }
 
   /**
-   * Get trusted contracts with their metadata
+   * Get trusted contracts with their metadata (on-chain only)
    */
   async getTrustedContracts(safeAddress: string): Promise<TrustedContractInfo[]> {
     try {
-      const trustedAddresses = await this.getTrustedContractsFromChain(safeAddress);
-      const storedNames = this.loadTrustedContractNames(safeAddress);
+      const trustedContracts = await this.getTrustedContractsFromChain(safeAddress);
 
-      return trustedAddresses.map(address => ({
-        address,
-        name: storedNames[address.toLowerCase()]?.name || `Contract ${address.slice(0, 6)}...`,
-        dateAdded: storedNames[address.toLowerCase()]?.dateAdded
+      return trustedContracts.map(contract => ({
+        address: contract.address,
+        name: contract.name,
+        dateAdded: undefined // We don't store dateAdded on-chain yet
       }));
     } catch (error) {
       console.error('Error getting trusted contracts:', error);
@@ -257,15 +244,22 @@ export class TrustedContractsAssetService {
     }
   }
 
+  // Removed localStorage debug functions - using on-chain data only
+
   /**
-   * Refresh trusted contract assets (force reload balances)
+   * Refresh trusted contract assets (force reload balances from on-chain)
    */
   async refreshTrustedContractAssets(safeAddress: string): Promise<Asset[]> {
     try {
-      console.log('🔄 Refreshing trusted contract assets...');
+      console.log('🔄 Refreshing trusted contract assets from on-chain...');
 
-      // Clear any cached token information for trusted contracts
+      // Get trusted contracts from on-chain
       const trustedContracts = await this.getTrustedContracts(safeAddress);
+
+      if (trustedContracts.length === 0) {
+        console.log('ℹ️ No trusted contracts found on-chain for this Safe');
+        return [];
+      }
 
       // Force refresh of token balances by creating a new TokenService instance
       const refreshedTokenService = new TokenService(this.provider, this.network);
@@ -302,18 +296,20 @@ export class TrustedContractsAssetService {
                   isTrusted: true // Mark as trusted
                 });
 
-                console.log(`✅ Refreshed trusted token: ${tokenInfo.symbol} - ${formattedBalance}`);
+                console.log(`✅ Refreshed trusted token: ${tokenInfo.symbol} - ${formattedBalance} (${contract.name})`);
               } else {
-                console.log(`⚠️ Trusted token ${tokenInfo.symbol} has zero balance, skipping`);
+                console.log(`⚪ Trusted token ${tokenInfo.symbol} has zero balance, skipping`);
               }
             }
+          } else {
+            console.log(`ℹ️ Trusted contract ${contract.name} is not an ERC20 token, skipping asset loading`);
           }
         } catch (error) {
           console.error(`❌ Error refreshing trusted contract ${contract.address}:`, error);
         }
       }
 
-      console.log(`🔄 Refreshed ${assets.length} trusted contract assets`);
+      console.log(`🎯 Refreshed ${assets.length} trusted contract assets from ${trustedContracts.length} on-chain trusted contracts`);
       return assets;
 
     } catch (error) {
