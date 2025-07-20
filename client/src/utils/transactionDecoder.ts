@@ -612,6 +612,13 @@ export class TransactionDecoder {
       if (registryDecoded) return registryDecoded;
     }
 
+    // Check if this is a Safe contract method
+    // We can identify Safe contracts by checking if they have common Safe method signatures
+    const safeMethodDecoded = this.decodeSafeMethod(methodId, data);
+    if (safeMethodDecoded) {
+      return safeMethodDecoded;
+    }
+
     // Known method IDs for other contracts
     const knownMethods: { [key: string]: { name: string; description: string } } = {
       '0x09959f6b': {
