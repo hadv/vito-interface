@@ -40,10 +40,22 @@ export class TrustedContractsAssetService {
   private async getTrustedContractsFromChain(safeAddress: string): Promise<string[]> {
     try {
       const safeTxPoolService = createSafeTxPoolService(this.network);
-      
+
       if (!safeTxPoolService.isInitialized()) {
-        console.warn('SafeTxPool not configured for network:', this.network);
-        return [];
+        console.warn(`SafeTxPool not configured for network: ${this.network}. Trusted contracts feature will use localStorage only.`);
+        console.warn('To enable on-chain verification, configure the SafeTxPoolRegistry contract address for this network.');
+
+        // Fall back to localStorage-only mode
+        const storedContracts = this.loadTrustedContractNames(safeAddress);
+        return Object.keys(storedContracts);
+      }
+
+      if (!safeTxPoolService.isConfigured()) {
+        console.warn(`SafeTxPool contract address not configured for network: ${this.network}. Using localStorage only.`);
+
+        // Fall back to localStorage-only mode
+        const storedContracts = this.loadTrustedContractNames(safeAddress);
+        return Object.keys(storedContracts);
       }
 
       // Note: Since the smart contract doesn't have a method to get all trusted contracts,
@@ -51,28 +63,39 @@ export class TrustedContractsAssetService {
       // 1. Add an event listener to track TrustedContractAdded/Removed events
       // 2. Add a method to the smart contract to enumerate trusted contracts
       // 3. Use a subgraph to index the events
-      
+
       // For now, we'll verify each stored contract against the chain
       const storedContracts = this.loadTrustedContractNames(safeAddress);
       const verifiedContracts: string[] = [];
+
+      console.log(`🔍 Verifying ${Object.keys(storedContracts).length} stored trusted contracts against chain...`);
 
       for (const address of Object.keys(storedContracts)) {
         try {
           const isTrusted = await safeTxPoolService.isTrustedContract(safeAddress, address);
           if (isTrusted) {
             verifiedContracts.push(address);
+            console.log(`✅ Verified trusted contract: ${address}`);
+          } else {
+            console.log(`❌ Contract not trusted on-chain: ${address}`);
           }
         } catch (error) {
-          console.warn(`Failed to verify trusted status for ${address}:`, error);
+          console.warn(`⚠️ Failed to verify trusted status for ${address}:`, error);
           // Include anyway - user will see if it's not working when they try to use it
           verifiedContracts.push(address);
+          console.log(`⚠️ Including unverified contract: ${address}`);
         }
       }
 
+      console.log(`📋 Found ${verifiedContracts.length} trusted contracts for Safe ${safeAddress}`);
       return verifiedContracts;
     } catch (error) {
       console.error('Error getting trusted contracts from chain:', error);
-      return [];
+
+      // Fall back to localStorage-only mode
+      console.log('Falling back to localStorage-only mode for trusted contracts');
+      const storedContracts = this.loadTrustedContractNames(safeAddress);
+      return Object.keys(storedContracts);
     }
   }
 
