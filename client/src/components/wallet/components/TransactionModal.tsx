@@ -339,52 +339,61 @@ const TokenSymbol = styled.span`
 
 const PercentageButtonsSection = styled.div`
   display: flex;
-  gap: 2px;
-  padding: 4px;
+  gap: 1px;
+  padding: 6px 8px;
+  opacity: 0.8;
+
+  &:hover {
+    opacity: 1;
+  }
 `;
 
 const CompactPercentageButton = styled.button`
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
-  color: #e2e8f0;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  min-width: 44px;
+  transition: all 0.2s ease;
+  min-width: 40px;
   white-space: nowrap;
+  opacity: 0.7;
 
   &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.25);
-    transform: translateY(-1px);
-    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #cbd5e1;
+    opacity: 1;
   }
 
   &:active:not(:disabled) {
-    transform: translateY(0);
+    background: rgba(255, 255, 255, 0.06);
   }
 
   &:disabled {
-    opacity: 0.4;
+    opacity: 0.3;
     cursor: not-allowed;
   }
 `;
 
 const CompactMaxButton = styled(CompactPercentageButton)`
-  background: linear-gradient(135deg, #007bff, #0056b3);
-  border-color: #007bff;
-  color: #fff;
-  font-weight: 700;
-  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+  background: rgba(0, 123, 255, 0.1);
+  border-color: rgba(0, 123, 255, 0.2);
+  color: #60a5fa;
+  font-weight: 600;
 
   &:hover:not(:disabled) {
-    background: linear-gradient(135deg, #0056b3, #004085);
-    border-color: #0056b3;
-    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
-    transform: translateY(-2px);
+    background: rgba(0, 123, 255, 0.15);
+    border-color: rgba(0, 123, 255, 0.3);
+    color: #3b82f6;
+    opacity: 1;
+  }
+
+  &:active:not(:disabled) {
+    background: rgba(0, 123, 255, 0.12);
   }
 `;
 
