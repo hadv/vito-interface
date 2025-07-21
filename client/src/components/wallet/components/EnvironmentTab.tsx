@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { theme } from '../../../theme';
 import { rpcConfigService, RpcValidationResult } from '../../../services/RpcConfigService';
-import { getRpcUrl as getDefaultRpcUrl } from '../../../contracts/abis';
 
 const Container = styled.div`
   max-width: 800px;
@@ -213,9 +212,7 @@ const ValidationInfo = styled.div`
   font-size: ${theme.typography.fontSize.sm};
 `;
 
-const ResetAllButton = styled(Button)`
-  margin-top: ${theme.spacing[6]};
-`;
+
 
 interface EnvironmentTabProps {
   network: string;
@@ -228,228 +225,199 @@ interface NetworkState {
   hasChanges: boolean;
 }
 
-const NETWORKS = [
-  { key: 'ethereum', name: 'Ethereum Mainnet', chainId: 1 },
-  { key: 'sepolia', name: 'Sepolia Testnet', chainId: 11155111 },
-  { key: 'arbitrum', name: 'Arbitrum One', chainId: 42161 },
-] as const;
+const NETWORK_INFO = {
+  ethereum: { name: 'Ethereum Mainnet', chainId: 1 },
+  sepolia: { name: 'Sepolia Testnet', chainId: 11155111 },
+  arbitrum: { name: 'Arbitrum One', chainId: 42161 },
+} as const;
 
 const EnvironmentTab: React.FC<EnvironmentTabProps> = ({ network }) => {
-  const [networkStates, setNetworkStates] = useState<Record<string, NetworkState>>({});
+  const [networkState, setNetworkState] = useState<NetworkState>({
+    customUrl: '',
+    isValidating: false,
+    validationResult: null,
+    hasChanges: false,
+  });
 
   useEffect(() => {
-    // Initialize network states
-    const initialStates: Record<string, NetworkState> = {};
-    NETWORKS.forEach(net => {
-      const customUrl = rpcConfigService.getCustomRpcUrl(net.key as any) || '';
-      initialStates[net.key] = {
-        customUrl,
-        isValidating: false,
-        validationResult: null,
-        hasChanges: false,
-      };
+    // Initialize state for current network only
+    const customUrl = rpcConfigService.getCustomRpcUrl(network as any) || '';
+    setNetworkState({
+      customUrl,
+      isValidating: false,
+      validationResult: null,
+      hasChanges: false,
     });
-    setNetworkStates(initialStates);
-  }, []);
+  }, [network]);
 
-  const updateNetworkState = (networkKey: string, updates: Partial<NetworkState>) => {
-    setNetworkStates(prev => ({
+  const handleUrlChange = (url: string) => {
+    const originalUrl = rpcConfigService.getCustomRpcUrl(network as any) || '';
+    setNetworkState(prev => ({
       ...prev,
-      [networkKey]: { ...prev[networkKey], ...updates }
-    }));
-  };
-
-  const handleUrlChange = (networkKey: string, url: string) => {
-    const originalUrl = rpcConfigService.getCustomRpcUrl(networkKey as any) || '';
-    updateNetworkState(networkKey, {
       customUrl: url,
       hasChanges: url !== originalUrl,
       validationResult: null,
-    });
+    }));
   };
 
-  const validateUrl = async (networkKey: string) => {
-    const state = networkStates[networkKey];
-    if (!state?.customUrl.trim()) return;
+  const validateUrl = async () => {
+    if (!networkState.customUrl.trim()) return;
 
-    updateNetworkState(networkKey, { isValidating: true });
+    setNetworkState(prev => ({ ...prev, isValidating: true }));
 
     try {
-      const result = await rpcConfigService.validateRpcUrl(state.customUrl);
-      updateNetworkState(networkKey, {
+      const result = await rpcConfigService.validateRpcUrl(networkState.customUrl);
+      setNetworkState(prev => ({
+        ...prev,
         isValidating: false,
         validationResult: result,
-      });
+      }));
     } catch (error) {
-      updateNetworkState(networkKey, {
+      setNetworkState(prev => ({
+        ...prev,
         isValidating: false,
         validationResult: {
           isValid: false,
           error: 'Validation failed'
         },
-      });
+      }));
     }
   };
 
-  const saveUrl = (networkKey: string) => {
-    const state = networkStates[networkKey];
-    if (!state) return;
-
-    rpcConfigService.setCustomRpcUrl(networkKey as any, state.customUrl);
-    updateNetworkState(networkKey, { hasChanges: false });
+  const saveUrl = () => {
+    rpcConfigService.setCustomRpcUrl(network as any, networkState.customUrl);
+    setNetworkState(prev => ({ ...prev, hasChanges: false }));
   };
 
-  const resetUrl = (networkKey: string) => {
-    rpcConfigService.resetToDefault(networkKey as any);
-    updateNetworkState(networkKey, {
+  const resetUrl = () => {
+    rpcConfigService.resetToDefault(network as any);
+    setNetworkState({
       customUrl: '',
-      hasChanges: false,
+      isValidating: false,
       validationResult: null,
+      hasChanges: false,
     });
   };
 
-  const resetAllUrls = () => {
-    rpcConfigService.resetAllToDefaults();
-    const resetStates: Record<string, NetworkState> = {};
-    NETWORKS.forEach(net => {
-      resetStates[net.key] = {
-        customUrl: '',
-        isValidating: false,
-        validationResult: null,
-        hasChanges: false,
-      };
-    });
-    setNetworkStates(resetStates);
-  };
-
-  const getStatusBadge = (networkKey: string) => {
-    const state = networkStates[networkKey];
-    if (!state) return { status: 'default' as const, text: 'Default' };
-
-    if (state.isValidating) {
+  const getStatusBadge = () => {
+    if (networkState.isValidating) {
       return { status: 'validating' as const, text: 'Validating...' };
     }
 
-    if (state.validationResult?.isValid === false) {
+    if (networkState.validationResult?.isValid === false) {
       return { status: 'error' as const, text: 'Invalid' };
     }
 
-    if (rpcConfigService.hasCustomRpcUrl(networkKey as any)) {
+    if (rpcConfigService.hasCustomRpcUrl(network as any)) {
       return { status: 'custom' as const, text: 'Custom' };
     }
 
     return { status: 'default' as const, text: 'Default' };
   };
 
+  const currentNetworkInfo = NETWORK_INFO[network as keyof typeof NETWORK_INFO];
+  const badge = getStatusBadge();
+  const isUsingCustomRpc = rpcConfigService.hasCustomRpcUrl(network as any);
+
+  if (!currentNetworkInfo) {
+    return (
+      <Container>
+        <Section>
+          <SectionTitle>RPC Configuration</SectionTitle>
+          <ErrorMessage>
+            Unsupported network: {network}
+          </ErrorMessage>
+        </Section>
+      </Container>
+    );
+  }
+
   return (
     <Container>
       <Section>
         <SectionTitle>RPC Configuration</SectionTitle>
         <SectionDescription>
-          Configure custom RPC endpoints for each network. Custom URLs will be used instead of the default 
-          endpoints. Leave empty to use default RPC URLs. Changes are saved automatically and will persist 
+          Configure a custom RPC endpoint for <strong>{currentNetworkInfo.name}</strong>.
+          When set, your custom RPC URL will be used instead of the default endpoint.
+          Leave empty to use the default RPC endpoint. Changes are saved automatically and will persist
           across browser sessions.
         </SectionDescription>
 
-        {NETWORKS.map(net => {
-          const state = networkStates[net.key];
-          const currentUrl = rpcConfigService.getRpcUrl(net.key);
-          const defaultUrl = getDefaultRpcUrl(net.key);
-          const badge = getStatusBadge(net.key);
+        <NetworkCard>
+          <NetworkHeader>
+            <NetworkName>{currentNetworkInfo.name}</NetworkName>
+            <StatusBadge status={badge.status}>{badge.text}</StatusBadge>
+          </NetworkHeader>
 
-          if (!state) return null;
+          {isUsingCustomRpc && (
+            <CurrentUrl>
+              <UrlLabel>Currently using custom RPC endpoint</UrlLabel>
+              <UrlValue>{rpcConfigService.getCustomRpcUrl(network as any)}</UrlValue>
+            </CurrentUrl>
+          )}
 
-          return (
-            <NetworkCard key={net.key}>
-              <NetworkHeader>
-                <NetworkName>{net.name}</NetworkName>
-                <StatusBadge status={badge.status}>{badge.text}</StatusBadge>
-              </NetworkHeader>
+          <InputGroup>
+            <Label htmlFor={`rpc-${network}`}>Custom RPC URL</Label>
+            <Input
+              id={`rpc-${network}`}
+              type="url"
+              value={networkState.customUrl}
+              onChange={(e) => handleUrlChange(e.target.value)}
+              placeholder={`Enter custom RPC URL for ${currentNetworkInfo.name}...`}
+              hasError={networkState.validationResult?.isValid === false}
+            />
+          </InputGroup>
 
-              <CurrentUrl>
-                <UrlLabel>Current RPC URL:</UrlLabel>
-                <UrlValue>{currentUrl}</UrlValue>
-              </CurrentUrl>
+          {networkState.validationResult?.isValid === false && (
+            <ErrorMessage>
+              {networkState.validationResult.error}
+            </ErrorMessage>
+          )}
 
-              {currentUrl !== defaultUrl && (
-                <CurrentUrl>
-                  <UrlLabel>Default RPC URL:</UrlLabel>
-                  <UrlValue>{defaultUrl}</UrlValue>
-                </CurrentUrl>
-              )}
-
-              <InputGroup>
-                <Label htmlFor={`rpc-${net.key}`}>Custom RPC URL</Label>
-                <Input
-                  id={`rpc-${net.key}`}
-                  type="url"
-                  value={state.customUrl}
-                  onChange={(e) => handleUrlChange(net.key, e.target.value)}
-                  placeholder={`Enter custom RPC URL for ${net.name}...`}
-                  hasError={state.validationResult?.isValid === false}
-                />
-              </InputGroup>
-
-              {state.validationResult?.isValid === false && (
-                <ErrorMessage>
-                  {state.validationResult.error}
-                </ErrorMessage>
-              )}
-
-              {state.validationResult?.isValid === true && (
-                <ValidationInfo>
-                  ✅ RPC endpoint is valid
-                  {state.validationResult.chainId && (
-                    <>
-                      {' • '}Chain ID: {state.validationResult.chainId}
-                      {state.validationResult.chainId !== net.chainId && (
-                        <span style={{ color: theme.colors.text.warning }}>
-                          {' '}(Expected: {net.chainId})
-                        </span>
-                      )}
-                    </>
+          {networkState.validationResult?.isValid === true && (
+            <ValidationInfo>
+              ✅ RPC endpoint is valid
+              {networkState.validationResult.chainId && (
+                <>
+                  {' • '}Chain ID: {networkState.validationResult.chainId}
+                  {networkState.validationResult.chainId !== currentNetworkInfo.chainId && (
+                    <span style={{ color: theme.colors.text.warning }}>
+                      {' '}(Expected: {currentNetworkInfo.chainId})
+                    </span>
                   )}
-                  {state.validationResult.blockNumber && (
-                    <>{' • '}Block: {state.validationResult.blockNumber}</>
-                  )}
-                </ValidationInfo>
+                </>
               )}
+              {networkState.validationResult.blockNumber && (
+                <>{' • '}Block: {networkState.validationResult.blockNumber}</>
+              )}
+            </ValidationInfo>
+          )}
 
-              <ButtonGroup>
-                <Button
-                  onClick={() => validateUrl(net.key)}
-                  disabled={!state.customUrl.trim() || state.isValidating}
-                >
-                  {state.isValidating ? 'Validating...' : 'Test Connection'}
-                </Button>
-                
-                <Button
-                  variant="primary"
-                  onClick={() => saveUrl(net.key)}
-                  disabled={!state.hasChanges}
-                >
-                  Save
-                </Button>
-                
-                <Button
-                  variant="secondary"
-                  onClick={() => resetUrl(net.key)}
-                  disabled={!rpcConfigService.hasCustomRpcUrl(net.key as any)}
-                >
-                  Reset to Default
-                </Button>
-              </ButtonGroup>
-            </NetworkCard>
-          );
-        })}
+          <ButtonGroup>
+            <Button
+              onClick={validateUrl}
+              disabled={!networkState.customUrl.trim() || networkState.isValidating}
+            >
+              {networkState.isValidating ? 'Validating...' : 'Test Connection'}
+            </Button>
 
-        <ResetAllButton
-          variant="danger"
-          onClick={resetAllUrls}
-          disabled={!NETWORKS.some(net => rpcConfigService.hasCustomRpcUrl(net.key as any))}
-        >
-          Reset All to Defaults
-        </ResetAllButton>
+            <Button
+              variant="primary"
+              onClick={saveUrl}
+              disabled={!networkState.hasChanges}
+            >
+              Save
+            </Button>
+
+            <Button
+              variant="secondary"
+              onClick={resetUrl}
+              disabled={!isUsingCustomRpc}
+            >
+              Reset to Default
+            </Button>
+          </ButtonGroup>
+        </NetworkCard>
       </Section>
     </Container>
   );
