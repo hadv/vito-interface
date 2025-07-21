@@ -152,15 +152,24 @@ const WalletPage: React.FC<WalletPageProps> = ({
     refreshTokenBalances();
   };
 
-  // Function to refresh token balances
+  // Function to refresh token balances with trusted contract enhancement
   const refreshTokenBalances = async () => {
     if (!walletAddress) return;
 
     try {
-      console.log('🔄 Refreshing token balances...');
-      const refreshedAssets = await loadTokenBalances(walletAddress, network || 'ethereum');
-      setAssets(refreshedAssets);
-      console.log('✅ Token balances refreshed');
+      console.log('🔄 Refreshing token balances with trusted contracts...');
+
+      // Load regular token balances first
+      const regularAssets = await loadTokenBalances(walletAddress, network || 'ethereum');
+
+      // Enhance with trusted contracts
+      const rpcUrl = getRpcUrl(network || 'ethereum');
+      const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+      const trustedAssetService = new TrustedContractsAssetService(network || 'ethereum', provider);
+
+      const enhancedAssets = await trustedAssetService.enhanceAssetsWithTrustedContracts(regularAssets, walletAddress);
+      setAssets(enhancedAssets);
+      console.log('✅ Token balances refreshed with trusted contract enhancement');
     } catch (error) {
       console.error('❌ Error refreshing token balances:', error);
     }
