@@ -13,21 +13,42 @@ export const WALLETCONNECT_METADATA = {
   icons: [typeof window !== 'undefined' ? `${window.location.origin}/favicon.ico` : 'https://localhost:3000/favicon.ico']
 };
 
+// Get configured RPC URL for WalletConnect
+const getConfiguredRpcUrl = (network: string): string => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { rpcConfigService } = require('../services/RpcConfigService');
+    return rpcConfigService.getRpcUrl(network);
+  } catch (error) {
+    // Fallback to default URLs
+    switch (network) {
+      case 'ethereum':
+        return 'https://mainnet.infura.io/v3/YOUR_INFURA_KEY';
+      case 'sepolia':
+        return 'https://sepolia.infura.io/v3/YOUR_INFURA_KEY';
+      case 'arbitrum':
+        return 'https://arb1.arbitrum.io/rpc';
+      default:
+        return 'https://mainnet.infura.io/v3/YOUR_INFURA_KEY';
+    }
+  }
+};
+
 export const SUPPORTED_CHAINS = {
   ethereum: {
     chainId: 1,
     name: 'Ethereum',
-    rpcUrl: 'https://mainnet.infura.io/v3/YOUR_INFURA_KEY'
+    rpcUrl: getConfiguredRpcUrl('ethereum')
   },
   sepolia: {
     chainId: 11155111,
     name: 'Sepolia',
-    rpcUrl: 'https://sepolia.infura.io/v3/YOUR_INFURA_KEY'
+    rpcUrl: getConfiguredRpcUrl('sepolia')
   },
   arbitrum: {
     chainId: 42161,
     name: 'Arbitrum One',
-    rpcUrl: 'https://arb1.arbitrum.io/rpc'
+    rpcUrl: getConfiguredRpcUrl('arbitrum')
   }
 };
 

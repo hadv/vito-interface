@@ -1736,9 +1736,10 @@ export const NETWORK_CONFIGS = {
 };
 
 /**
- * Get RPC URL for a specific network with environment variable support
+ * Get default RPC URL for a specific network with environment variable support
+ * This function provides the default/fallback RPC URLs and is used by RpcConfigService
  * @param network The network name (ethereum, sepolia, arbitrum)
- * @returns RPC URL for the network
+ * @returns Default RPC URL for the network
  */
 export const getRpcUrl = (network: string): string => {
   const ALCHEMY_KEY = process.env.REACT_APP_ALCHEMY_KEY || 'YOUR_ALCHEMY_KEY';
@@ -1757,5 +1758,24 @@ export const getRpcUrl = (network: string): string => {
       return ALCHEMY_KEY !== 'YOUR_ALCHEMY_KEY'
         ? `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`
         : 'https://ethereum-rpc.publicnode.com';
+  }
+};
+
+/**
+ * Get RPC URL for a specific network (custom or default)
+ * This function checks for custom RPC URLs first, then falls back to defaults
+ * @param network The network name (ethereum, sepolia, arbitrum)
+ * @returns RPC URL for the network (custom if configured, otherwise default)
+ */
+export const getConfiguredRpcUrl = (network: string): string => {
+  // Import RpcConfigService dynamically to avoid circular dependencies
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { rpcConfigService } = require('../services/RpcConfigService');
+    return rpcConfigService.getRpcUrl(network);
+  } catch (error) {
+    // Fallback to default if service is not available
+    console.warn('RpcConfigService not available, using default RPC URL:', error);
+    return getRpcUrl(network);
   }
 };
