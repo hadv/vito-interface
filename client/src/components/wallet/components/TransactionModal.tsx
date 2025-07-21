@@ -250,6 +250,153 @@ const NonceDescription = styled.p`
   line-height: 1.5;
 `;
 
+// Smart Single-Line Amount Input Component
+const SmartAmountContainer = styled.div`
+  display: flex;
+  align-items: center;
+  background: linear-gradient(135deg, rgba(0, 123, 255, 0.08), rgba(0, 86, 179, 0.04));
+  border: 1px solid rgba(0, 123, 255, 0.2);
+  border-radius: 16px;
+  padding: 4px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 123, 255, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 4px;
+
+  &:hover {
+    border-color: rgba(0, 123, 255, 0.3);
+    box-shadow: 0 6px 24px rgba(0, 123, 255, 0.15);
+  }
+
+  &:focus-within {
+    border-color: rgba(0, 123, 255, 0.5);
+    box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.1);
+  }
+`;
+
+const BalanceSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 12px 16px;
+  min-width: 140px;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+`;
+
+const BalanceLabel = styled.span`
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+`;
+
+const BalanceAmount = styled.span`
+  font-size: 14px;
+  color: #fff;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+`;
+
+const AmountInputSection = styled.div`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+`;
+
+const SmartAmountInput = styled.input`
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  text-align: center;
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 400;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
+const TokenSymbol = styled.span`
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 600;
+  margin-left: 8px;
+  text-transform: uppercase;
+`;
+
+const PercentageButtonsSection = styled.div`
+  display: flex;
+  gap: 1px;
+  padding: 6px 8px;
+  opacity: 0.8;
+
+  &:hover {
+    opacity: 1;
+  }
+`;
+
+const CompactPercentageButton = styled.button`
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 40px;
+  white-space: nowrap;
+  opacity: 0.7;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #cbd5e1;
+    opacity: 1;
+  }
+
+  &:active:not(:disabled) {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+`;
+
+const CompactMaxButton = styled(CompactPercentageButton)`
+  background: rgba(0, 123, 255, 0.1);
+  border-color: rgba(0, 123, 255, 0.2);
+  color: #60a5fa;
+  font-weight: 600;
+
+  &:hover:not(:disabled) {
+    background: rgba(0, 123, 255, 0.15);
+    border-color: rgba(0, 123, 255, 0.3);
+    color: #3b82f6;
+    opacity: 1;
+  }
+
+  &:active:not(:disabled) {
+    background: rgba(0, 123, 255, 0.12);
+  }
+`;
+
 interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -419,6 +566,35 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     }
   };
 
+  // Handle percentage button clicks
+  const handlePercentageClick = (percentage: number) => {
+    if (!preSelectedAsset?.balance) return;
+
+    const balance = parseFloat(preSelectedAsset.balance);
+    if (balance <= 0) return;
+
+    let calculatedAmount: number;
+
+    if (percentage === 100) {
+      // MAX button logic
+      if (preSelectedAsset.type === 'native') {
+        // For native ETH, subtract estimated gas fees (rough estimate: 0.001 ETH)
+        const gasEstimate = 0.001;
+        calculatedAmount = Math.max(0, balance - gasEstimate);
+      } else {
+        // For ERC20 tokens, use full balance
+        calculatedAmount = balance;
+      }
+    } else {
+      // Calculate percentage of balance
+      calculatedAmount = (balance * percentage) / 100;
+    }
+
+    // Format to 6 decimal places and remove trailing zeros
+    const formattedAmount = parseFloat(calculatedAmount.toFixed(6)).toString();
+    setAmount(formattedAmount);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -440,6 +616,23 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     if (!amount.trim() || parseFloat(amount) <= 0) {
       setError('Amount must be greater than 0');
       return;
+    }
+
+    // Balance validation
+    if (preSelectedAsset?.balance) {
+      const availableBalance = parseFloat(preSelectedAsset.balance);
+      const requestedAmount = parseFloat(amount);
+
+      if (requestedAmount > availableBalance) {
+        setError(`💰 Insufficient balance. You have ${preSelectedAsset.balance} ${preSelectedAsset.symbol} available.`);
+        return;
+      }
+
+      // For native ETH, warn if amount is very close to balance (might not have enough for gas)
+      if (preSelectedAsset.type === 'native' && requestedAmount > (availableBalance - 0.001)) {
+        setError('⛽ Please leave some ETH for transaction fees (~0.001 ETH recommended).');
+        return;
+      }
     }
 
     // Additional validation for native ETH transactions
@@ -705,18 +898,66 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
           <FormGroup>
             <Label>Amount ({preSelectedAsset?.symbol || 'ETH'})</Label>
-            <Input
-              type="number"
-              step="0.000001"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.0"
-              disabled={isLoading}
-              autoComplete="off"
-              data-1p-ignore="true"
-              data-lpignore="true"
-              data-form-type="other"
-            />
+
+            {/* Smart Single-Line Amount Input */}
+            <SmartAmountContainer>
+              {/* Balance Section */}
+              <BalanceSection>
+                <BalanceLabel>Balance</BalanceLabel>
+                <BalanceAmount>
+                  {preSelectedAsset?.balance || '0'}
+                </BalanceAmount>
+              </BalanceSection>
+
+              {/* Amount Input Section */}
+              <AmountInputSection>
+                <SmartAmountInput
+                  type="number"
+                  step="0.000001"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.0"
+                  disabled={isLoading}
+                  autoComplete="off"
+                  data-1p-ignore="true"
+                  data-lpignore="true"
+                  data-form-type="other"
+                />
+                <TokenSymbol>{preSelectedAsset?.symbol || 'ETH'}</TokenSymbol>
+              </AmountInputSection>
+
+              {/* Percentage Buttons Section */}
+              <PercentageButtonsSection>
+                <CompactPercentageButton
+                  type="button"
+                  onClick={() => handlePercentageClick(25)}
+                  disabled={isLoading || !preSelectedAsset?.balance}
+                >
+                  25%
+                </CompactPercentageButton>
+                <CompactPercentageButton
+                  type="button"
+                  onClick={() => handlePercentageClick(50)}
+                  disabled={isLoading || !preSelectedAsset?.balance}
+                >
+                  50%
+                </CompactPercentageButton>
+                <CompactPercentageButton
+                  type="button"
+                  onClick={() => handlePercentageClick(75)}
+                  disabled={isLoading || !preSelectedAsset?.balance}
+                >
+                  75%
+                </CompactPercentageButton>
+                <CompactMaxButton
+                  type="button"
+                  onClick={() => handlePercentageClick(100)}
+                  disabled={isLoading || !preSelectedAsset?.balance}
+                >
+                  MAX
+                </CompactMaxButton>
+              </PercentageButtonsSection>
+            </SmartAmountContainer>
           </FormGroup>
 
           <FormGroup>
