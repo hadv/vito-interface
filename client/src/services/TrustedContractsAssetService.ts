@@ -205,6 +205,7 @@ export class TrustedContractsAssetService {
 
   /**
    * Combine regular assets with trusted contract assets
+   * Trusted contract tokens have higher priority and will overwrite pre-defined tokens
    */
   async enhanceAssetsWithTrustedContracts(
     regularAssets: Asset[],
@@ -213,18 +214,46 @@ export class TrustedContractsAssetService {
     try {
       const trustedAssets = await this.loadTrustedContractAssets(safeAddress);
 
-      // Merge assets, avoiding duplicates
-      const combinedAssets = [...regularAssets];
-      const existingAddresses = new Set(
-        regularAssets
+      // Create a map of trusted contract addresses for quick lookup
+      const trustedAddressMap = new Map<string, Asset>();
+      trustedAssets.forEach(asset => {
+        if (asset.contractAddress) {
+          trustedAddressMap.set(asset.contractAddress.toLowerCase(), asset);
+        }
+      });
+
+      // Start with regular assets, but replace any that conflict with trusted contracts
+      const combinedAssets: Asset[] = [];
+
+      for (const regularAsset of regularAssets) {
+        if (regularAsset.contractAddress) {
+          const trustedVersion = trustedAddressMap.get(regularAsset.contractAddress.toLowerCase());
+          if (trustedVersion) {
+            // Use trusted contract version instead of pre-defined token
+            combinedAssets.push(trustedVersion);
+            console.log(`🔄 Replaced pre-defined token ${regularAsset.symbol} with trusted contract version`);
+          } else {
+            // No trusted version exists, use regular asset
+            combinedAssets.push(regularAsset);
+          }
+        } else {
+          // Native assets (like ETH) - always include
+          combinedAssets.push(regularAsset);
+        }
+      }
+
+      // Add any trusted assets that weren't already included (no conflict with regular assets)
+      const includedAddresses = new Set(
+        combinedAssets
           .filter(asset => asset.contractAddress)
           .map(asset => asset.contractAddress!.toLowerCase())
       );
 
       for (const trustedAsset of trustedAssets) {
         if (trustedAsset.contractAddress &&
-            !existingAddresses.has(trustedAsset.contractAddress.toLowerCase())) {
+            !includedAddresses.has(trustedAsset.contractAddress.toLowerCase())) {
           combinedAssets.push(trustedAsset);
+          console.log(`➕ Added new trusted contract token: ${trustedAsset.symbol}`);
         }
       }
 
