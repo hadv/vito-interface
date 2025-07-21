@@ -16,34 +16,42 @@ export const WEB3AUTH_NETWORK_TYPE = process.env.NODE_ENV === 'production'
   ? WEB3AUTH_NETWORK.SAPPHIRE_MAINNET
   : WEB3AUTH_NETWORK.SAPPHIRE_DEVNET;
 
-// Get RPC URL with Infura key fallback
-const getInfuraRpcUrl = (network: string): string => {
-  const INFURA_KEY = process.env.REACT_APP_INFURA_KEY;
+// Get RPC URL with custom configuration support
+const getConfiguredRpcUrl = (network: string): string => {
+  // Try to use configured RPC URL first
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { rpcConfigService } = require('../services/RpcConfigService');
+    return rpcConfigService.getRpcUrl(network);
+  } catch (error) {
+    // Fallback to default logic if service is not available
+    const INFURA_KEY = process.env.REACT_APP_INFURA_KEY;
 
-  if (!INFURA_KEY || INFURA_KEY === 'YOUR_INFURA_KEY') {
-    // Fallback to public RPC endpoints if Infura key not configured
+    if (!INFURA_KEY || INFURA_KEY === 'YOUR_INFURA_KEY') {
+      // Fallback to public RPC endpoints if Infura key not configured
+      switch (network) {
+        case 'ethereum':
+          return 'https://ethereum.publicnode.com';
+        case 'sepolia':
+          return 'https://ethereum-sepolia.publicnode.com';
+        case 'arbitrum':
+          return 'https://arb1.arbitrum.io/rpc';
+        default:
+          return 'https://ethereum-sepolia.publicnode.com';
+      }
+    }
+
+    // Use Infura with the configured key
     switch (network) {
       case 'ethereum':
-        return 'https://ethereum.publicnode.com';
+        return `https://mainnet.infura.io/v3/${INFURA_KEY}`;
       case 'sepolia':
-        return 'https://ethereum-sepolia.publicnode.com';
+        return `https://sepolia.infura.io/v3/${INFURA_KEY}`;
       case 'arbitrum':
-        return 'https://arb1.arbitrum.io/rpc';
+        return 'https://arb1.arbitrum.io/rpc'; // Arbitrum doesn't use Infura
       default:
-        return 'https://ethereum-sepolia.publicnode.com';
+        return `https://sepolia.infura.io/v3/${INFURA_KEY}`;
     }
-  }
-
-  // Use Infura with the configured key
-  switch (network) {
-    case 'ethereum':
-      return `https://mainnet.infura.io/v3/${INFURA_KEY}`;
-    case 'sepolia':
-      return `https://sepolia.infura.io/v3/${INFURA_KEY}`;
-    case 'arbitrum':
-      return 'https://arb1.arbitrum.io/rpc'; // Arbitrum doesn't use Infura
-    default:
-      return `https://sepolia.infura.io/v3/${INFURA_KEY}`;
   }
 };
 
@@ -52,7 +60,7 @@ export const SUPPORTED_CHAINS = {
   ethereum: {
     chainNamespace: "eip155",
     chainId: "0x1", // Ethereum Mainnet
-    rpcTarget: getInfuraRpcUrl('ethereum'),
+    rpcTarget: getConfiguredRpcUrl('ethereum'),
     displayName: "Ethereum Mainnet",
     blockExplorer: "https://etherscan.io",
     ticker: "ETH",
@@ -61,7 +69,7 @@ export const SUPPORTED_CHAINS = {
   sepolia: {
     chainNamespace: "eip155",
     chainId: "0xaa36a7", // Sepolia Testnet
-    rpcTarget: getInfuraRpcUrl('sepolia'),
+    rpcTarget: getConfiguredRpcUrl('sepolia'),
     displayName: "Sepolia Testnet",
     blockExplorer: "https://sepolia.etherscan.io",
     ticker: "ETH",
@@ -70,7 +78,7 @@ export const SUPPORTED_CHAINS = {
   arbitrum: {
     chainNamespace: "eip155",
     chainId: "0xa4b1", // Arbitrum One
-    rpcTarget: getInfuraRpcUrl('arbitrum'),
+    rpcTarget: getConfiguredRpcUrl('arbitrum'),
     displayName: "Arbitrum One",
     blockExplorer: "https://arbiscan.io",
     ticker: "ETH",

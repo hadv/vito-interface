@@ -230,20 +230,28 @@ export class TransactionDecoder {
    * Get RPC URL for the current network
    */
   private getRpcUrl(): string {
-    const ALCHEMY_KEY = process.env.REACT_APP_ALCHEMY_KEY || 'YOUR_ALCHEMY_KEY';
+    // Import the configured RPC URL function
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { getConfiguredRpcUrl } = require('../contracts/abis');
+      return getConfiguredRpcUrl(this.network);
+    } catch (error) {
+      // Fallback to default logic if import fails
+      const ALCHEMY_KEY = process.env.REACT_APP_ALCHEMY_KEY || 'YOUR_ALCHEMY_KEY';
 
-    switch(this.network.toLowerCase()) {
-      case 'arbitrum':
-        return 'https://arb1.arbitrum.io/rpc';
-      case 'sepolia':
-        return ALCHEMY_KEY !== 'YOUR_ALCHEMY_KEY'
-          ? `https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_KEY}`
-          : 'https://ethereum-sepolia-rpc.publicnode.com';
-      case 'ethereum':
-      default:
-        return ALCHEMY_KEY !== 'YOUR_ALCHEMY_KEY'
-          ? `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`
-          : 'https://ethereum-rpc.publicnode.com';
+      switch(this.network.toLowerCase()) {
+        case 'arbitrum':
+          return 'https://arb1.arbitrum.io/rpc';
+        case 'sepolia':
+          return ALCHEMY_KEY !== 'YOUR_ALCHEMY_KEY'
+            ? `https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_KEY}`
+            : 'https://ethereum-sepolia-rpc.publicnode.com';
+        case 'ethereum':
+        default:
+          return ALCHEMY_KEY !== 'YOUR_ALCHEMY_KEY'
+            ? `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`
+            : 'https://ethereum-rpc.publicnode.com';
+      }
     }
   }
 
