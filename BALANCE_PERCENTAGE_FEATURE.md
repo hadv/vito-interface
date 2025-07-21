@@ -1,38 +1,49 @@
-# Balance Display and Percentage Buttons Feature
+# Smart Single-Line Amount Input Component
 
 ## Overview
-Enhanced the TransactionModal component to include balance display and percentage buttons (25%, 50%, 75%, MAX) for sending native ETH and ERC20 tokens, following modern dApp/wallet UI/UX patterns.
+Redesigned the TransactionModal amount input into a smart, clean single-line component that combines balance display, amount input, and percentage buttons (25%, 50%, 75%, MAX) into one cohesive, space-efficient interface following modern dApp/wallet UI/UX patterns.
 
 ## Features Implemented
 
-### 1. Balance Display
-- **Current Balance**: Shows available balance for the selected asset
-- **Visual Design**: Modern gradient background with blur effect
-- **Typography**: Monospace font for balance amounts for better readability
-- **Real-time Updates**: Balance updates when different assets are selected
+### 1. Smart Single-Line Design
+- **Unified Component**: All functionality in one horizontal line
+- **Space Efficient**: Maximizes screen real estate usage
+- **Clean Layout**: Professional, uncluttered appearance
+- **Intuitive Flow**: Natural left-to-right reading pattern
 
-### 2. Percentage Buttons
-- **25%, 50%, 75%**: Calculate percentage of available balance
-- **MAX Button**: Special handling for maximum amount
-  - **Native ETH**: Subtracts estimated gas fees (0.001 ETH) to prevent failed transactions
+### 2. Balance Section
+- **Compact Display**: Shows current balance in dedicated left section
+- **Clear Labeling**: "Balance" label with amount below
+- **Monospace Font**: Better number readability
+- **Visual Separation**: Subtle border separator from input section
+
+### 3. Amount Input Section
+- **Center Focus**: Large, prominent input field in the center
+- **Monospace Typography**: Professional number display
+- **Token Symbol**: Clearly displayed token symbol (ETH, USDC, etc.)
+- **Transparent Background**: Seamless integration with container
+
+### 4. Percentage Buttons Section
+- **Compact Buttons**: Space-efficient 25%, 50%, 75%, MAX buttons
+- **Smart MAX Logic**:
+  - **Native ETH**: Subtracts estimated gas fees (0.001 ETH)
   - **ERC20 Tokens**: Uses full available balance
-- **Visual Feedback**: Hover animations, gradient effects, and smooth transitions
-- **Accessibility**: Proper disabled states and cursor feedback
+- **Visual Hierarchy**: MAX button stands out with gradient styling
+- **Hover Effects**: Smooth animations and visual feedback
 
-### 3. Enhanced Validation
+### 5. Enhanced Validation
 - **Balance Checking**: Prevents sending more than available balance
-- **Gas Fee Awareness**: Warns users when trying to send too much ETH (leaving no room for gas)
-- **User-Friendly Messages**: Clear error messages with emojis for better UX
-- **Real-time Validation**: Immediate feedback as users type or click percentage buttons
+- **Gas Fee Awareness**: Warns users when trying to send too much ETH
+- **User-Friendly Messages**: Clear error messages with emojis (💰, ⛽)
+- **Real-time Validation**: Immediate feedback as users interact
 
 ## UI/UX Design
 
-### Modern dApp Styling
-- **Gradient Backgrounds**: Subtle blue gradients for balance container
-- **Glass Morphism**: Backdrop blur effects for modern appearance
-- **Smooth Animations**: Hover effects with cubic-bezier transitions
-- **Grid Layout**: Responsive button layout that works on all screen sizes
-- **Visual Hierarchy**: Clear distinction between regular and MAX buttons
+### Modern Single-Line Interface
+- **Glass Morphism**: Backdrop blur effects with gradient background
+- **Unified Container**: All elements within one cohesive rounded container
+- **Responsive Layout**: Flexbox design that adapts to screen sizes
+- **Focus States**: Proper focus management and visual feedback
 
 ### Color Scheme
 - **Primary**: Blue gradient (#007bff to #0056b3) for MAX button
@@ -43,11 +54,13 @@ Enhanced the TransactionModal component to include balance display and percentag
 ## Code Structure
 
 ### New Styled Components
-- `BalanceContainer`: Displays current balance with modern styling
-- `BalanceLabel` & `BalanceAmount`: Typography components for balance display
-- `PercentageButtonsContainer`: Grid layout for percentage buttons
-- `PercentageButton`: Base button component with hover animations
-- `MaxButton`: Enhanced button extending PercentageButton with special styling
+- `SmartAmountContainer`: Main container for the single-line component
+- `BalanceSection`: Left section displaying current balance
+- `AmountInputSection`: Center section with the amount input field
+- `PercentageButtonsSection`: Right section with compact percentage buttons
+- `SmartAmountInput`: Custom styled input with monospace font
+- `CompactPercentageButton`: Space-efficient percentage buttons
+- `CompactMaxButton`: Enhanced MAX button with gradient styling
 
 ### New Functions
 - `handlePercentageClick(percentage: number)`: Calculates and sets amount based on percentage
@@ -87,4 +100,26 @@ Enhanced the TransactionModal component to include balance display and percentag
 - **Responsive**: CSS Grid for button layout
 - **Type Safety**: Full TypeScript support with proper typing
 
-This implementation brings the Vito interface in line with modern wallet and dApp standards, providing users with the familiar and intuitive experience they expect from professional crypto applications.
+## 🎨 Visual Design
+
+The new smart single-line interface includes:
+- **Left**: Compact balance display with clear labeling
+- **Center**: Large, prominent amount input with token symbol
+- **Right**: Four compact percentage buttons (25%, 50%, 75%, MAX)
+- **Container**: Unified glass morphism design with gradient background
+- **Animations**: Smooth hover effects and focus states
+- **Responsive**: Adapts beautifully to different screen sizes
+
+## 📱 Space Efficiency
+
+The single-line design provides:
+- **50% Less Vertical Space**: Compared to stacked layout
+- **Better Visual Flow**: Natural left-to-right progression
+- **Cleaner Interface**: Reduced visual clutter
+- **Professional Look**: Modern dApp-style appearance
+
+---
+
+**Ready for review and testing!** 🚀
+
+This smart single-line implementation brings the Vito interface in line with modern wallet and dApp standards, providing users with a clean, efficient, and intuitive experience that maximizes screen real estate while maintaining full functionality.

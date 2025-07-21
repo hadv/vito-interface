@@ -250,114 +250,141 @@ const NonceDescription = styled.p`
   line-height: 1.5;
 `;
 
-// Balance and Percentage Button Styles
-const BalanceContainer = styled.div`
+// Smart Single-Line Amount Input Component
+const SmartAmountContainer = styled.div`
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  background: linear-gradient(135deg, rgba(0, 123, 255, 0.1), rgba(0, 86, 179, 0.05));
+  background: linear-gradient(135deg, rgba(0, 123, 255, 0.08), rgba(0, 86, 179, 0.04));
   border: 1px solid rgba(0, 123, 255, 0.2);
-  border-radius: 12px;
-  margin-bottom: 16px;
+  border-radius: 16px;
+  padding: 4px;
   backdrop-filter: blur(10px);
-  box-shadow: 0 4px 16px rgba(0, 123, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 123, 255, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 4px;
+
+  &:hover {
+    border-color: rgba(0, 123, 255, 0.3);
+    box-shadow: 0 6px 24px rgba(0, 123, 255, 0.15);
+  }
+
+  &:focus-within {
+    border-color: rgba(0, 123, 255, 0.5);
+    box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.1);
+  }
+`;
+
+const BalanceSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 12px 16px;
+  min-width: 140px;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
 `;
 
 const BalanceLabel = styled.span`
-  font-size: 14px;
+  font-size: 11px;
   color: #94a3b8;
   font-weight: 500;
+  text-transform: uppercase;
   letter-spacing: 0.5px;
+  margin-bottom: 2px;
 `;
 
 const BalanceAmount = styled.span`
-  font-size: 18px;
+  font-size: 14px;
   color: #fff;
   font-weight: 700;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 `;
 
-const AmountInputContainer = styled.div`
-  position: relative;
+const AmountInputSection = styled.div`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
 `;
 
-const PercentageButtonsContainer = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1.2fr;
-  gap: 10px;
-  margin-top: 16px;
-`;
-
-const PercentageButton = styled.button`
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  color: #e2e8f0;
-  font-size: 14px;
+const SmartAmountInput = styled.input`
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 20px;
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  text-align: center;
 
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    transition: left 0.5s;
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 400;
   }
 
-  &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.25);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-    color: #fff;
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
 
-    &::before {
-      left: 100%;
-    }
+const TokenSymbol = styled.span`
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 600;
+  margin-left: 8px;
+  text-transform: uppercase;
+`;
+
+const PercentageButtonsSection = styled.div`
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+`;
+
+const CompactPercentageButton = styled.button`
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 44px;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+    color: #fff;
   }
 
   &:active:not(:disabled) {
-    transform: translateY(-1px);
+    transform: translateY(0);
   }
 
   &:disabled {
     opacity: 0.4;
     cursor: not-allowed;
-    transform: none;
   }
 `;
 
-const MaxButton = styled(PercentageButton)`
+const CompactMaxButton = styled(CompactPercentageButton)`
   background: linear-gradient(135deg, #007bff, #0056b3);
   border-color: #007bff;
   color: #fff;
   font-weight: 700;
-  font-size: 15px;
-  box-shadow: 0 4px 16px rgba(0, 123, 255, 0.2);
-
-  &::before {
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  }
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
 
   &:hover:not(:disabled) {
     background: linear-gradient(135deg, #0056b3, #004085);
     border-color: #0056b3;
-    box-shadow: 0 8px 24px rgba(0, 123, 255, 0.4);
-    transform: translateY(-3px);
-  }
-
-  &:active:not(:disabled) {
-    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+    transform: translateY(-2px);
   }
 `;
 
@@ -863,67 +890,65 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
           <FormGroup>
             <Label>Amount ({preSelectedAsset?.symbol || 'ETH'})</Label>
 
-            {/* Balance Display */}
-            <BalanceContainer>
-              <BalanceLabel>Available Balance:</BalanceLabel>
-              <BalanceAmount>
-                {preSelectedAsset?.balance || '0'} {preSelectedAsset?.symbol || 'ETH'}
-              </BalanceAmount>
-            </BalanceContainer>
+            {/* Smart Single-Line Amount Input */}
+            <SmartAmountContainer>
+              {/* Balance Section */}
+              <BalanceSection>
+                <BalanceLabel>Balance</BalanceLabel>
+                <BalanceAmount>
+                  {preSelectedAsset?.balance || '0'}
+                </BalanceAmount>
+              </BalanceSection>
 
-            {/* Amount Input with Percentage Buttons */}
-            <AmountInputContainer>
-              <Input
-                type="number"
-                step="0.000001"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder={`Enter ${preSelectedAsset?.symbol || 'ETH'} amount`}
-                disabled={isLoading}
-                autoComplete="off"
-                data-1p-ignore="true"
-                data-lpignore="true"
-                data-form-type="other"
-                style={{
-                  fontSize: '18px',
-                  fontWeight: '600',
-                  textAlign: 'center',
-                  fontFamily: "'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace"
-                }}
-              />
+              {/* Amount Input Section */}
+              <AmountInputSection>
+                <SmartAmountInput
+                  type="number"
+                  step="0.000001"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.0"
+                  disabled={isLoading}
+                  autoComplete="off"
+                  data-1p-ignore="true"
+                  data-lpignore="true"
+                  data-form-type="other"
+                />
+                <TokenSymbol>{preSelectedAsset?.symbol || 'ETH'}</TokenSymbol>
+              </AmountInputSection>
 
-              {/* Percentage Buttons */}
-              <PercentageButtonsContainer>
-                <PercentageButton
+              {/* Percentage Buttons Section */}
+              <PercentageButtonsSection>
+                <CompactPercentageButton
                   type="button"
                   onClick={() => handlePercentageClick(25)}
                   disabled={isLoading || !preSelectedAsset?.balance}
                 >
                   25%
-                </PercentageButton>
-                <PercentageButton
+                </CompactPercentageButton>
+                <CompactPercentageButton
                   type="button"
                   onClick={() => handlePercentageClick(50)}
                   disabled={isLoading || !preSelectedAsset?.balance}
                 >
                   50%
-                </PercentageButton>
-                <PercentageButton
+                </CompactPercentageButton>
+                <CompactPercentageButton
                   type="button"
                   onClick={() => handlePercentageClick(75)}
                   disabled={isLoading || !preSelectedAsset?.balance}
                 >
                   75%
-                </PercentageButton>
-                <MaxButton
+                </CompactPercentageButton>
+                <CompactMaxButton
                   type="button"
                   onClick={() => handlePercentageClick(100)}
                   disabled={isLoading || !preSelectedAsset?.balance}
                 >
                   MAX
-                </MaxButton>
-              </PercentageButtonsContainer>
-            </AmountInputContainer>
+                </CompactMaxButton>
+              </PercentageButtonsSection>
+            </SmartAmountContainer>
           </FormGroup>
 
           <FormGroup>
