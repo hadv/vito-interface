@@ -250,6 +250,117 @@ const NonceDescription = styled.p`
   line-height: 1.5;
 `;
 
+// Balance and Percentage Button Styles
+const BalanceContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(0, 123, 255, 0.1), rgba(0, 86, 179, 0.05));
+  border: 1px solid rgba(0, 123, 255, 0.2);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 16px rgba(0, 123, 255, 0.1);
+`;
+
+const BalanceLabel = styled.span`
+  font-size: 14px;
+  color: #94a3b8;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+`;
+
+const BalanceAmount = styled.span`
+  font-size: 18px;
+  color: #fff;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+`;
+
+const AmountInputContainer = styled.div`
+  position: relative;
+`;
+
+const PercentageButtonsContainer = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1.2fr;
+  gap: 10px;
+  margin-top: 16px;
+`;
+
+const PercentageButton = styled.button`
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s;
+  }
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    color: #fff;
+
+    &::before {
+      left: 100%;
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
+const MaxButton = styled(PercentageButton)`
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  border-color: #007bff;
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  box-shadow: 0 4px 16px rgba(0, 123, 255, 0.2);
+
+  &::before {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  }
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #0056b3, #004085);
+    border-color: #0056b3;
+    box-shadow: 0 8px 24px rgba(0, 123, 255, 0.4);
+    transform: translateY(-3px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(-1px);
+  }
+`;
+
 interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -419,6 +530,35 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     }
   };
 
+  // Handle percentage button clicks
+  const handlePercentageClick = (percentage: number) => {
+    if (!preSelectedAsset?.balance) return;
+
+    const balance = parseFloat(preSelectedAsset.balance);
+    if (balance <= 0) return;
+
+    let calculatedAmount: number;
+
+    if (percentage === 100) {
+      // MAX button logic
+      if (preSelectedAsset.type === 'native') {
+        // For native ETH, subtract estimated gas fees (rough estimate: 0.001 ETH)
+        const gasEstimate = 0.001;
+        calculatedAmount = Math.max(0, balance - gasEstimate);
+      } else {
+        // For ERC20 tokens, use full balance
+        calculatedAmount = balance;
+      }
+    } else {
+      // Calculate percentage of balance
+      calculatedAmount = (balance * percentage) / 100;
+    }
+
+    // Format to 6 decimal places and remove trailing zeros
+    const formattedAmount = parseFloat(calculatedAmount.toFixed(6)).toString();
+    setAmount(formattedAmount);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -440,6 +580,23 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     if (!amount.trim() || parseFloat(amount) <= 0) {
       setError('Amount must be greater than 0');
       return;
+    }
+
+    // Balance validation
+    if (preSelectedAsset?.balance) {
+      const availableBalance = parseFloat(preSelectedAsset.balance);
+      const requestedAmount = parseFloat(amount);
+
+      if (requestedAmount > availableBalance) {
+        setError(`💰 Insufficient balance. You have ${preSelectedAsset.balance} ${preSelectedAsset.symbol} available.`);
+        return;
+      }
+
+      // For native ETH, warn if amount is very close to balance (might not have enough for gas)
+      if (preSelectedAsset.type === 'native' && requestedAmount > (availableBalance - 0.001)) {
+        setError('⛽ Please leave some ETH for transaction fees (~0.001 ETH recommended).');
+        return;
+      }
     }
 
     // Additional validation for native ETH transactions
@@ -705,18 +862,68 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
           <FormGroup>
             <Label>Amount ({preSelectedAsset?.symbol || 'ETH'})</Label>
-            <Input
-              type="number"
-              step="0.000001"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.0"
-              disabled={isLoading}
-              autoComplete="off"
-              data-1p-ignore="true"
-              data-lpignore="true"
-              data-form-type="other"
-            />
+
+            {/* Balance Display */}
+            <BalanceContainer>
+              <BalanceLabel>Available Balance:</BalanceLabel>
+              <BalanceAmount>
+                {preSelectedAsset?.balance || '0'} {preSelectedAsset?.symbol || 'ETH'}
+              </BalanceAmount>
+            </BalanceContainer>
+
+            {/* Amount Input with Percentage Buttons */}
+            <AmountInputContainer>
+              <Input
+                type="number"
+                step="0.000001"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder={`Enter ${preSelectedAsset?.symbol || 'ETH'} amount`}
+                disabled={isLoading}
+                autoComplete="off"
+                data-1p-ignore="true"
+                data-lpignore="true"
+                data-form-type="other"
+                style={{
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  textAlign: 'center',
+                  fontFamily: "'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace"
+                }}
+              />
+
+              {/* Percentage Buttons */}
+              <PercentageButtonsContainer>
+                <PercentageButton
+                  type="button"
+                  onClick={() => handlePercentageClick(25)}
+                  disabled={isLoading || !preSelectedAsset?.balance}
+                >
+                  25%
+                </PercentageButton>
+                <PercentageButton
+                  type="button"
+                  onClick={() => handlePercentageClick(50)}
+                  disabled={isLoading || !preSelectedAsset?.balance}
+                >
+                  50%
+                </PercentageButton>
+                <PercentageButton
+                  type="button"
+                  onClick={() => handlePercentageClick(75)}
+                  disabled={isLoading || !preSelectedAsset?.balance}
+                >
+                  75%
+                </PercentageButton>
+                <MaxButton
+                  type="button"
+                  onClick={() => handlePercentageClick(100)}
+                  disabled={isLoading || !preSelectedAsset?.balance}
+                >
+                  MAX
+                </MaxButton>
+              </PercentageButtonsContainer>
+            </AmountInputContainer>
           </FormGroup>
 
           <FormGroup>
