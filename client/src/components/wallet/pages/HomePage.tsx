@@ -132,6 +132,7 @@ interface HomePageProps {
   ensName?: string;
   network: string;
   onTransactionCreated?: (transaction: any) => void;
+  onNavigateToSection?: (section: 'assets' | 'transactions' | 'addressbook' | 'settings') => void;
 }
 
 // Mock data - In a real app these would be fetched from an API
@@ -164,7 +165,7 @@ interface HomePageProps {
 //   }
 // ];
 
-const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, onTransactionCreated }) => {
+const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, onTransactionCreated, onNavigateToSection }) => {
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
 
   const handleSendETHClick = () => {
@@ -177,6 +178,12 @@ const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, on
     }
   };
 
+  const handleNavigateToSection = (section: 'assets' | 'transactions' | 'addressbook' | 'settings') => {
+    if (onNavigateToSection) {
+      onNavigateToSection(section);
+    }
+  };
+
   const quickActions = [
     {
       icon: (
@@ -185,7 +192,20 @@ const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, on
         </svg>
       ),
       title: 'Send ETH',
-      description: 'Transfer native Ethereum to other addresses'
+      description: 'Transfer native Ethereum to other addresses',
+      action: 'send'
+    },
+    {
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ),
+      title: 'View Assets',
+      description: 'Manage your tokens and NFTs',
+      action: 'assets'
     },
     {
       icon: (
@@ -199,22 +219,19 @@ const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, on
         </svg>
       ),
       title: 'View Transactions',
-      description: 'Browse transaction history'
+      description: 'Browse transaction history',
+      action: 'transactions'
     },
     {
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/>
-          <path d="M8 14V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          <path d="M12 14V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          <path d="M16 14V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          <path d="M8 10V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          <path d="M12 10V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          <path d="M16 10V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2"/>
         </svg>
       ),
-      title: 'Manage Assets',
-      description: 'View and manage your tokens'
+      title: 'Address Book',
+      description: 'Manage saved addresses',
+      action: 'addressbook'
     },
     {
       icon: (
@@ -224,7 +241,8 @@ const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, on
         </svg>
       ),
       title: 'Settings',
-      description: 'Configure wallet preferences'
+      description: 'Configure wallet preferences',
+      action: 'settings'
     }
   ];
 
@@ -271,7 +289,13 @@ const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, on
               variant="glass"
               padding="lg"
               hover
-              onClick={index === 0 ? handleSendETHClick : undefined}
+              onClick={() => {
+                if (action.action === 'send') {
+                  handleSendETHClick();
+                } else if (action.action && ['assets', 'transactions', 'addressbook', 'settings'].includes(action.action)) {
+                  handleNavigateToSection(action.action as 'assets' | 'transactions' | 'addressbook' | 'settings');
+                }
+              }}
             >
               <ActionIcon>{action.icon}</ActionIcon>
               <ActionTitle>{action.title}</ActionTitle>
