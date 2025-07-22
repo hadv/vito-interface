@@ -189,7 +189,7 @@ const Header: React.FC<HeaderProps> = ({
     'flex justify-between items-center',
     'bg-white/5 backdrop-blur-md',
     'px-6 py-4 border-b border-gray-800',
-    'h-16 box-border relative overflow-visible',
+    'h-20 box-border relative overflow-visible',
     'z-50'
   );
 
