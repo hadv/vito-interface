@@ -16,24 +16,30 @@ interface MessageSigningModalProps {
 }
 
 export const MessageSigningModal: React.FC<MessageSigningModalProps> = ({ isOpen, onClose }) => {
+  const [allMessages, setAllMessages] = useState<MessageSigningRequest[]>([]);
   const [pendingMessages, setPendingMessages] = useState<MessageSigningRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [signingMessage, setSigningMessage] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
-  // Load pending messages when modal opens
+  // Load messages when modal opens
   useEffect(() => {
     if (isOpen) {
-      loadPendingMessages();
+      loadMessages();
     }
   }, [isOpen]);
 
-  const loadPendingMessages = async () => {
+  const loadMessages = async () => {
     setIsLoading(true);
     try {
-      const messages = await dAppWalletConnectService.getPendingMessages();
-      setPendingMessages(messages);
+      const [pending, all] = await Promise.all([
+        dAppWalletConnectService.getPendingMessages(),
+        dAppWalletConnectService.getAllMessages()
+      ]);
+      setPendingMessages(pending);
+      setAllMessages(all);
     } catch (error) {
-      console.error('Failed to load pending messages:', error);
+      console.error('Failed to load messages:', error);
     } finally {
       setIsLoading(false);
     }
@@ -44,7 +50,7 @@ export const MessageSigningModal: React.FC<MessageSigningModalProps> = ({ isOpen
     try {
       await dAppWalletConnectService.signPendingMessage(messageHash, message);
       // Reload messages to show updated signature count
-      await loadPendingMessages();
+      await loadMessages();
     } catch (error: any) {
       console.error('Failed to sign message:', error);
       alert(`Failed to sign message: ${error.message}`);
@@ -70,7 +76,7 @@ export const MessageSigningModal: React.FC<MessageSigningModalProps> = ({ isOpen
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">
-            Pending Message Signatures
+            Message Signatures
           </h2>
           <button
             onClick={onClose}
@@ -82,28 +88,57 @@ export const MessageSigningModal: React.FC<MessageSigningModalProps> = ({ isOpen
           </button>
         </div>
 
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200">
+          <button
+            onClick={() => setShowHistory(false)}
+            className={`px-6 py-3 text-sm font-medium transition-colors ${
+              !showHistory
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Pending ({pendingMessages.length})
+          </button>
+          <button
+            onClick={() => setShowHistory(true)}
+            className={`px-6 py-3 text-sm font-medium transition-colors ${
+              showHistory
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            History ({allMessages.length})
+          </button>
+        </div>
+
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[60vh]">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600">Loading pending messages...</span>
+              <span className="ml-3 text-gray-600">Loading messages...</span>
             </div>
-          ) : pendingMessages.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-gray-400 mb-2">
-                <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+          ) : (() => {
+            const messagesToShow = showHistory ? allMessages : pendingMessages;
+            const emptyMessage = showHistory ? 'No message history' : 'No pending message signatures';
+            const emptySubMessage = showHistory
+              ? 'Executed message signatures will appear here'
+              : 'Message signing requests from dApps will appear here';
+
+            return messagesToShow.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="text-gray-400 mb-2">
+                  <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <p className="text-gray-600">{emptyMessage}</p>
+                <p className="text-sm text-gray-500 mt-1">{emptySubMessage}</p>
               </div>
-              <p className="text-gray-600">No pending message signatures</p>
-              <p className="text-sm text-gray-500 mt-1">
-                Message signing requests from dApps will appear here
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {pendingMessages.map((messageRequest) => (
+            ) : (
+              <div className="space-y-4">
+                {messagesToShow.map((messageRequest) => (
                 <div
                   key={messageRequest.messageHash}
                   className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors"
@@ -166,7 +201,7 @@ export const MessageSigningModal: React.FC<MessageSigningModalProps> = ({ isOpen
 
                   {/* Actions */}
                   <div className="flex justify-end space-x-3">
-                    {!messageRequest.isExecuted && (
+                    {!showHistory && !messageRequest.isExecuted && (
                       <button
                         onClick={() => handleSignMessage(messageRequest.messageHash, messageRequest.message)}
                         disabled={signingMessage === messageRequest.messageHash}
@@ -182,24 +217,30 @@ export const MessageSigningModal: React.FC<MessageSigningModalProps> = ({ isOpen
                         )}
                       </button>
                     )}
+                    {showHistory && messageRequest.isExecuted && (
+                      <span className="px-4 py-2 bg-green-100 text-green-800 rounded-lg text-sm font-medium">
+                        ✓ Executed
+                      </span>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Footer */}
         <div className="flex justify-between items-center p-6 border-t border-gray-200 bg-gray-50">
           <p className="text-sm text-gray-600">
-            {pendingMessages.length > 0 
-              ? `${pendingMessages.length} pending message${pendingMessages.length !== 1 ? 's' : ''}`
-              : 'No pending messages'
+            {showHistory
+              ? `${allMessages.length} total message${allMessages.length !== 1 ? 's' : ''}`
+              : `${pendingMessages.length} pending message${pendingMessages.length !== 1 ? 's' : ''}`
             }
           </p>
           <div className="flex space-x-3">
             <button
-              onClick={loadPendingMessages}
+              onClick={loadMessages}
               disabled={isLoading}
               className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors text-sm font-medium"
             >

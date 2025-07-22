@@ -256,6 +256,42 @@ export class SafeMessageSigningService {
   }
 
   /**
+   * Get all messages for the configured Safe (including executed ones for history)
+   */
+  async getAllMessages(): Promise<MessageSigningResult[]> {
+    if (!this.config) {
+      throw new Error('Service not configured');
+    }
+
+    try {
+      const allMessages = await this.messagePoolService.getAllMessages(this.config.safeAddress);
+      const results: MessageSigningResult[] = [];
+
+      // Get Safe threshold once
+      const threshold = await this.safeContract!.getThreshold();
+
+      for (const messageDetails of allMessages) {
+        const signatureCount = messageDetails.signatures.length;
+        const isExecuted = signatureCount >= threshold.toNumber();
+
+        results.push({
+          messageHash: messageDetails.messageHash,
+          message: messageDetails.message,
+          signatures: messageDetails.signatures.map(s => s.signature),
+          isExecuted,
+          confirmations: signatureCount,
+          threshold: threshold.toNumber()
+        });
+      }
+
+      return results;
+    } catch (error: any) {
+      console.error('❌ Error getting all messages:', error);
+      return [];
+    }
+  }
+
+  /**
    * Execute a message signing (mark as executed when threshold is met)
    */
   async executeMessageSigning(messageHash: string): Promise<void> {

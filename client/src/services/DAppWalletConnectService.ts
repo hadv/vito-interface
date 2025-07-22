@@ -621,6 +621,22 @@ export class DAppWalletConnectService {
   }
 
   /**
+   * Get all messages for the current Safe wallet (including executed ones for history)
+   */
+  public async getAllMessages(): Promise<any[]> {
+    if (!this.messageSigningService) {
+      return [];
+    }
+
+    try {
+      return await this.messageSigningService.getAllMessages();
+    } catch (error) {
+      console.error('❌ Error getting all messages:', error);
+      return [];
+    }
+  }
+
+  /**
    * Sign a pending message
    */
   public async signPendingMessage(messageHash: string, message: string): Promise<string> {

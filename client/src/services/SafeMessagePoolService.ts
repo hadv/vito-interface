@@ -238,6 +238,32 @@ export class SafeMessagePoolService {
   }
 
   /**
+   * Get all messages for a Safe (including executed ones for history)
+   */
+  async getAllMessages(safeAddress: string): Promise<SafeMessagePoolMessage[]> {
+    if (!this.contract) {
+      throw new Error('Contract not initialized');
+    }
+
+    try {
+      const messageHashes = await this.contract.getAllMessages(safeAddress);
+      const messages: SafeMessagePoolMessage[] = [];
+
+      for (const messageHash of messageHashes) {
+        const messageDetails = await this.getMessageDetails(messageHash);
+        if (messageDetails) {
+          messages.push(messageDetails);
+        }
+      }
+
+      return messages;
+    } catch (error: any) {
+      console.error('❌ Error getting all messages:', error);
+      return [];
+    }
+  }
+
+  /**
    * Check if an address has signed a message
    */
   async hasSignedMessage(messageHash: string, signerAddress: string): Promise<boolean> {
