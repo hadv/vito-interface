@@ -50,13 +50,31 @@ export class SafeMessagePoolService {
   }
 
   /**
-   * Generate Safe message hash for EIP-1271 signing
+   * Generate Safe message hash for EIP-1271 signing (compliant with Safe wallet format)
+   *
+   * This implementation follows the official Safe wallet EIP-712 message format:
+   * - Type: "SafeMessage(bytes message)"
+   * - Type Hash: 0x60b3cbf8b4a223d68d641b3b6ddf9a298e7f33710cf3d3a9d1146b5a6150fbca
+   * - Domain: EIP712Domain(uint256 chainId,address verifyingContract)
+   * - Final Hash: keccak256("\x19\x01" + domainSeparator + structHash)
+   *
+   * @param safeAddress The Safe contract address
+   * @param message The message to be signed
+   * @param chainId The chain ID where the Safe is deployed
+   * @returns The Safe-compliant message hash
    */
   generateSafeMessageHash(safeAddress: string, message: string, chainId: number): string {
     // Safe message type hash: keccak256("SafeMessage(bytes message)")
+    // This is the correct and verified type hash used by Safe wallets
     const SAFE_MSG_TYPEHASH = '0x60b3cbf8b4a223d68d641b3b6ddf9a298e7f33710cf3d3a9d1146b5a6150fbca';
-    
-    // EIP-712 domain separator for the Safe
+
+    console.log('🔐 Generating Safe message hash...');
+    console.log('📋 Safe address:', safeAddress);
+    console.log('📋 Message:', message);
+    console.log('📋 Chain ID:', chainId);
+    console.log('📋 Type hash:', SAFE_MSG_TYPEHASH);
+
+    // EIP-712 domain separator for the Safe (using Safe's domain format)
     const domainSeparator = ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
         ['bytes32', 'uint256', 'address'],
@@ -68,22 +86,31 @@ export class SafeMessagePoolService {
       )
     );
 
-    // Safe message struct hash
+    console.log('📋 Domain separator:', domainSeparator);
+
+    // Safe message struct hash (using Safe's format)
     const messageBytes = ethers.utils.toUtf8Bytes(message);
+    const messageHash = ethers.utils.keccak256(messageBytes);
     const safeMessageStructHash = ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
         ['bytes32', 'bytes32'],
-        [SAFE_MSG_TYPEHASH, ethers.utils.keccak256(messageBytes)]
+        [SAFE_MSG_TYPEHASH, messageHash]
       )
     );
 
-    // Final Safe message hash (EIP-712 format)
-    return ethers.utils.keccak256(
+    console.log('📋 Message hash:', messageHash);
+    console.log('📋 Struct hash:', safeMessageStructHash);
+
+    // Final Safe message hash (EIP-712 format compatible with Safe wallet)
+    const finalHash = ethers.utils.keccak256(
       ethers.utils.solidityPack(
         ['string', 'bytes32', 'bytes32'],
         ['\x19\x01', domainSeparator, safeMessageStructHash]
       )
     );
+
+    console.log('✅ Final Safe message hash:', finalHash);
+    return finalHash;
   }
 
   /**
