@@ -198,12 +198,12 @@ const Header: React.FC<HeaderProps> = ({
   );
 
   const logoClasses = cn(
-    'h-8 w-8 transition-transform duration-300 hover:scale-110',
+    'h-10 w-10 transition-transform duration-300 hover:scale-110',
     onLogoClick ? 'cursor-pointer' : ''
   );
 
   const appNameClasses = cn(
-    'text-white text-xl font-bold tracking-wide'
+    'text-white text-2xl font-bold tracking-wide'
   );
 
 
@@ -223,11 +223,11 @@ const Header: React.FC<HeaderProps> = ({
             <button
               onClick={() => setShowDAppModal(true)}
               title="WalletConnect"
-              className="w-8 h-8 flex items-center justify-center hover:bg-gray-700/50 transition-colors rounded"
+              className="w-10 h-10 flex items-center justify-center hover:bg-gray-700/50 transition-colors rounded"
             >
               <svg
-                width="28"
-                height="28"
+                width="32"
+                height="32"
                 viewBox="0 0 24 24"
                 xmlns="http://www.w3.org/2000/svg"
                 fill="#3a99fb"
@@ -250,7 +250,7 @@ const Header: React.FC<HeaderProps> = ({
                 onClick={() => setShowSignerMenu(!showSignerMenu)}
                 className={cn(
                   'bg-sky-500/20 text-sky-400',
-                  'px-4 py-2 font-medium text-sm',
+                  'px-5 py-3 font-medium text-base',
                   'transition-all duration-200 flex items-center gap-2',
                   'hover:bg-sky-500/30',
                   'hover:shadow-lg active:scale-95'
@@ -261,7 +261,7 @@ const Header: React.FC<HeaderProps> = ({
                 type="button"
               >
                 <div className="w-2 h-2 bg-sky-400 rounded-full animate-pulse" />
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M21 12V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M3 10H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M7 15H7.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -281,7 +281,7 @@ const Header: React.FC<HeaderProps> = ({
                 disabled={isConnectingWallet}
                 className={cn(
                   'bg-blue-500 hover:bg-blue-600 text-white',
-                  'px-4 py-2 rounded-lg font-medium text-sm',
+                  'px-5 py-3 rounded-lg font-medium text-base',
                   'transition-all duration-200 flex items-center gap-2',
                   'disabled:opacity-50 disabled:cursor-not-allowed',
                   'hover:shadow-lg active:scale-95'
@@ -298,7 +298,7 @@ const Header: React.FC<HeaderProps> = ({
                   </>
                 ) : (
                   <>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                       <path d="M21 12V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                       <path d="M3 10H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                       <path d="M7 15H7.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -477,7 +477,7 @@ const Header: React.FC<HeaderProps> = ({
                     data-lpignore="true"
                     type="button"
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                       <path d="M21 12V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                       <path d="M3 10H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                       <path d="M7 15H7.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -495,7 +495,7 @@ const Header: React.FC<HeaderProps> = ({
                     data-lpignore="true"
                     type="button"
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                       <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       <polyline points="16,17 21,12 16,7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -514,7 +514,7 @@ const Header: React.FC<HeaderProps> = ({
         <div className="relative network-selector h-full flex items-center px-4">
           <div className="absolute left-0 w-px bg-gray-600" style={{ top: 0, bottom: 0, height: '100%' }}></div>
           <div
-            className={`text-white px-4 py-2 h-full cursor-pointer font-medium text-base flex items-center capitalize transition-all duration-200 hover:bg-white/10 ${networkSelectorOpen ? 'bg-white/10' : ''}`}
+            className={`text-white px-5 py-3 h-full cursor-pointer font-medium text-lg flex items-center capitalize transition-all duration-200 hover:bg-white/10 ${networkSelectorOpen ? 'bg-white/10' : ''}`}
             onClick={onToggleNetworkSelector}
             title="Click to switch network"
             data-1p-ignore="true"
@@ -544,7 +544,7 @@ const Header: React.FC<HeaderProps> = ({
               disabled={isConnectingWallet}
               className={cn(
                 'bg-blue-500 hover:bg-blue-600 text-white',
-                'px-4 py-2 rounded-lg font-medium text-sm',
+                'px-5 py-3 rounded-lg font-medium text-base',
                 'transition-all duration-200 flex items-center gap-2',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
                 'hover:shadow-lg active:scale-95'
@@ -561,7 +561,7 @@ const Header: React.FC<HeaderProps> = ({
                 </>
               ) : (
                 <>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                     <path d="M21 12V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M3 10H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M7 15H7.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
