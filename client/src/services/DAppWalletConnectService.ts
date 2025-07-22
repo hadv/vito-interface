@@ -3,6 +3,7 @@ import { SessionTypes } from '@walletconnect/types';
 import { WALLETCONNECT_PROJECT_ID, WALLETCONNECT_METADATA } from '../config/walletconnect';
 import { walletConnectionService } from './WalletConnectionService';
 import { safeWalletService } from './SafeWalletService';
+import { SafeMessageSigningService } from './SafeMessageSigningService';
 
 /**
  * DApp WalletConnect Service
@@ -14,10 +15,33 @@ import { safeWalletService } from './SafeWalletService';
 export class DAppWalletConnectService {
   private signClient: any = null;
   private activeSessions: Map<string, SessionTypes.Struct> = new Map();
+  private messageSigningService?: SafeMessageSigningService;
   private eventListeners: Map<string, Function[]> = new Map();
 
   constructor() {
     this.initialize();
+  }
+
+  /**
+   * Initialize message signing service when Safe wallet is connected
+   */
+  private initializeMessageSigningService(): void {
+    const walletState = walletConnectionService.getWalletState();
+    if (walletState.isConnected && walletState.safeAddress && walletState.network) {
+      this.messageSigningService = new SafeMessageSigningService(walletState.network);
+      this.messageSigningService.configure({
+        safeAddress: walletState.safeAddress,
+        network: walletState.network
+      });
+
+      // Set signer if available
+      const signer = safeWalletService.getSigner();
+      if (signer) {
+        this.messageSigningService.setSigner(signer);
+      }
+
+      console.log('✅ Message signing service initialized for Safe:', walletState.safeAddress);
+    }
   }
 
   /**
@@ -41,6 +65,9 @@ export class DAppWalletConnectService {
 
       // Load existing sessions (only legitimate dApp sessions)
       this.loadExistingSessions();
+
+      // Initialize message signing service
+      this.initializeMessageSigningService();
 
       console.log('✅ DApp WalletConnect service initialized');
     } catch (error) {
@@ -310,18 +337,70 @@ export class DAppWalletConnectService {
    */
   private async handlePersonalSignRequest(topic: string, id: number, params: any[]): Promise<void> {
     console.log('✍️ Handling personal sign request:', params);
-    
-    // For now, auto-reject signing requests as they need signer wallet
-    await this.signClient?.respond({
-      topic,
-      response: {
-        id,
-        error: {
-          code: 4001,
-          message: 'Personal signing not supported in Safe wallet mode'
+
+    if (!this.messageSigningService) {
+      console.log('❌ Message signing service not initialized');
+      await this.signClient?.respond({
+        topic,
+        response: {
+          id,
+          error: {
+            code: 4001,
+            message: 'Safe wallet not connected'
+          }
+        }
+      });
+      return;
+    }
+
+    try {
+      // Extract message from params
+      const [message, address] = params;
+      console.log('📋 Message to sign:', message);
+      console.log('📋 Address:', address);
+
+      // Convert hex message to string if needed
+      let messageText = message;
+      if (message.startsWith('0x')) {
+        try {
+          messageText = Buffer.from(message.slice(2), 'hex').toString('utf8');
+        } catch (e) {
+          messageText = message; // Keep as hex if conversion fails
         }
       }
-    });
+
+      // Create message signing request
+      const signingResult = await this.messageSigningService.signAndProposeMessage({
+        message: messageText,
+        dAppTopic: topic,
+        dAppRequestId: id
+      });
+
+      console.log('✅ Message signed and proposed:', signingResult);
+
+      // For now, respond with the signature (in a real implementation,
+      // we'd wait for enough signatures from Safe owners)
+      await this.signClient?.respond({
+        topic,
+        response: {
+          id,
+          result: signingResult.signature
+        }
+      });
+
+    } catch (error: any) {
+      console.error('❌ Error handling personal sign request:', error);
+      await this.signClient?.respond({
+        topic,
+        response: {
+          id,
+          error: {
+            code: 4001,
+            message: `Failed to sign message: ${error.message}`
+          }
+        }
+      });
+    }
   }
 
   /**
@@ -329,18 +408,65 @@ export class DAppWalletConnectService {
    */
   private async handleTypedDataSignRequest(topic: string, id: number, params: any[]): Promise<void> {
     console.log('📝 Handling typed data sign request:', params);
-    
-    // For now, auto-reject signing requests as they need signer wallet
-    await this.signClient?.respond({
-      topic,
-      response: {
-        id,
-        error: {
-          code: 4001,
-          message: 'Typed data signing not supported in Safe wallet mode'
+
+    if (!this.messageSigningService) {
+      console.log('❌ Message signing service not initialized');
+      await this.signClient?.respond({
+        topic,
+        response: {
+          id,
+          error: {
+            code: 4001,
+            message: 'Safe wallet not connected'
+          }
         }
-      }
-    });
+      });
+      return;
+    }
+
+    try {
+      // Extract typed data from params
+      const [address, typedDataString] = params;
+      console.log('📋 Address:', address);
+      console.log('📋 Typed data:', typedDataString);
+
+      // Parse typed data
+      const typedData = JSON.parse(typedDataString);
+
+      // Convert typed data to a readable message format
+      const messageText = `Sign typed data for ${typedData.domain?.name || 'dApp'}: ${JSON.stringify(typedData.message, null, 2)}`;
+
+      // Create message signing request
+      const signingResult = await this.messageSigningService.signAndProposeMessage({
+        message: messageText,
+        dAppTopic: topic,
+        dAppRequestId: id
+      });
+
+      console.log('✅ Typed data signed and proposed:', signingResult);
+
+      // Respond with the signature
+      await this.signClient?.respond({
+        topic,
+        response: {
+          id,
+          result: signingResult.signature
+        }
+      });
+
+    } catch (error: any) {
+      console.error('❌ Error handling typed data sign request:', error);
+      await this.signClient?.respond({
+        topic,
+        response: {
+          id,
+          error: {
+            code: 4001,
+            message: `Failed to sign typed data: ${error.message}`
+          }
+        }
+      });
+    }
   }
 
   /**
@@ -469,6 +595,40 @@ export class DAppWalletConnectService {
     if (listeners) {
       listeners.forEach(callback => callback(data));
     }
+  }
+
+  /**
+   * Reinitialize message signing service (call when wallet state changes)
+   */
+  public reinitializeMessageSigningService(): void {
+    this.initializeMessageSigningService();
+  }
+
+  /**
+   * Get pending messages for the current Safe wallet
+   */
+  public async getPendingMessages(): Promise<any[]> {
+    if (!this.messageSigningService) {
+      return [];
+    }
+
+    try {
+      return await this.messageSigningService.getPendingMessages();
+    } catch (error) {
+      console.error('❌ Error getting pending messages:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Sign a pending message
+   */
+  public async signPendingMessage(messageHash: string, message: string): Promise<string> {
+    if (!this.messageSigningService) {
+      throw new Error('Message signing service not initialized');
+    }
+
+    return await this.messageSigningService.signSafeMessage(messageHash, message);
   }
 }
 

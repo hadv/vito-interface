@@ -3,6 +3,7 @@ import { safeWalletService, SafeWalletService, SafeWalletConfig } from './SafeWa
 import { getRpcUrl, NETWORK_CONFIGS, SAFE_ABI } from '../contracts/abis';
 import { walletConnectService } from './WalletConnectService';
 import { web3AuthService } from './Web3AuthService';
+import { dAppWalletConnectService } from './DAppWalletConnectService';
 
 export interface WalletConnectionState {
   isConnected: boolean;
@@ -1299,6 +1300,13 @@ export class WalletConnectionService {
         console.error('Error in wallet state listener:', error);
       }
     });
+
+    // Reinitialize message signing service when wallet state changes
+    try {
+      dAppWalletConnectService.reinitializeMessageSigningService();
+    } catch (error) {
+      console.error('Error reinitializing message signing service:', error);
+    }
   }
 
   /**
