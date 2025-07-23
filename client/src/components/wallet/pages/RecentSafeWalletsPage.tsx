@@ -87,7 +87,6 @@ const WalletInfo = styled.div`
 const WalletHeader = styled.div`
   display: flex;
   align-items: center;
-  gap: ${theme.spacing[3]};
   margin-bottom: ${theme.spacing[1]};
 `;
 
@@ -101,33 +100,6 @@ const WalletName = styled.h3`
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-`;
-
-const EditNameButton = styled.button`
-  background: none;
-  border: 1px solid transparent;
-  color: ${theme.colors.neutral[400]};
-  cursor: pointer;
-  padding: ${theme.spacing[1]};
-  border-radius: ${theme.borderRadius.md};
-  font-size: ${theme.typography.fontSize.sm};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  transition: all 0.2s ease;
-
-  &:hover {
-    color: ${theme.colors.neutral[200]};
-    background: ${theme.colors.neutral[700]};
-    border-color: ${theme.colors.neutral[600]};
-  }
-
-  svg {
-    width: 14px;
-    height: 14px;
-  }
 `;
 
 const WalletDetails = styled.div`
@@ -183,6 +155,14 @@ const ActionButton = styled.button`
     border-color: ${theme.colors.neutral[500]};
     color: ${theme.colors.neutral[200]};
     transform: translateY(-1px);
+  }
+
+  &.edit {
+    &:hover {
+      background: #1e3a8a;
+      border-color: #3b82f6;
+      color: #93c5fd;
+    }
   }
 
   &.delete {
@@ -246,23 +226,19 @@ const EmptyStateText = styled.p`
   margin-bottom: ${theme.spacing[6]};
 `;
 
-const ActionButtons = styled.div`
-  display: flex;
-  gap: ${theme.spacing[4]};
-  justify-content: center;
-  margin-top: ${theme.spacing[6]};
-  padding-top: ${theme.spacing[6]};
-`;
 
-const ClearAllContainer = styled.div`
+
+const BottomActions = styled.div`
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
   margin-top: ${theme.spacing[6]};
   padding-top: ${theme.spacing[4]};
   border-top: 1px solid ${theme.colors.neutral[800]};
+  gap: ${theme.spacing[4]};
 `;
 
-const ClearAllButton = styled.button`
+const SecondaryButton = styled.button`
   font-size: ${theme.typography.fontSize.sm};
   font-weight: ${theme.typography.fontWeight.medium};
   color: ${theme.colors.neutral[400]};
@@ -277,15 +253,37 @@ const ClearAllButton = styled.button`
   transition: all 0.2s ease;
 
   &:hover {
-    color: #fca5a5;
-    border-color: #b91c1c;
-    background: #7f1d1d;
+    color: ${theme.colors.neutral[200]};
+    border-color: ${theme.colors.neutral[600]};
+    background: ${theme.colors.neutral[800]};
     transform: translateY(-1px);
+  }
+
+  &.destructive {
+    &:hover {
+      color: #fca5a5;
+      border-color: #b91c1c;
+      background: #7f1d1d;
+    }
   }
 
   svg {
     width: 16px;
     height: 16px;
+  }
+`;
+
+const PrimaryButton = styled(Button)`
+  background: ${theme.colors.primary[600]};
+  border-color: ${theme.colors.primary[600]};
+  color: white;
+  font-weight: ${theme.typography.fontWeight.medium};
+  padding: ${theme.spacing[3]} ${theme.spacing[6]};
+
+  &:hover {
+    background: ${theme.colors.primary[700]};
+    border-color: ${theme.colors.primary[700]};
+    transform: translateY(-1px);
   }
 `;
 
@@ -409,18 +407,7 @@ const RecentSafeWalletsPage: React.FC<RecentSafeWalletsPageProps> = ({
                             }}
                           />
                         ) : (
-                          <>
-                            <WalletName>{wallet.name}</WalletName>
-                            <EditNameButton
-                              onClick={(e) => handleEditName(wallet, e)}
-                              title="Edit wallet name"
-                            >
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                              </svg>
-                            </EditNameButton>
-                          </>
+                          <WalletName>{wallet.name}</WalletName>
                         )}
                       </WalletHeader>
 
@@ -441,6 +428,16 @@ const RecentSafeWalletsPage: React.FC<RecentSafeWalletsPageProps> = ({
                     </WalletInfo>
 
                     <WalletActions>
+                      <ActionButton
+                        className="edit"
+                        onClick={(e) => handleEditName(wallet, e)}
+                        title="Edit wallet name"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </ActionButton>
                       <ActionButton
                         className="delete"
                         onClick={(e) => handleRemoveWallet(wallet, e)}
@@ -469,8 +466,9 @@ const RecentSafeWalletsPage: React.FC<RecentSafeWalletsPageProps> = ({
               })}
             </WalletsList>
 
-            <ClearAllContainer>
-              <ClearAllButton
+            <BottomActions>
+              <SecondaryButton
+                className="destructive"
                 onClick={handleClearAll}
                 title="Clear all wallet history"
               >
@@ -482,8 +480,20 @@ const RecentSafeWalletsPage: React.FC<RecentSafeWalletsPageProps> = ({
                   <line x1="14" x2="14" y1="11" y2="17"/>
                 </svg>
                 Clear All History
-              </ClearAllButton>
-            </ClearAllContainer>
+              </SecondaryButton>
+
+              <PrimaryButton
+                onClick={onAddNew}
+                size="lg"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: theme.spacing[2] }}>
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 8v8"/>
+                  <path d="M8 12h8"/>
+                </svg>
+                Add Safe Wallet
+              </PrimaryButton>
+            </BottomActions>
           </>
         ) : (
           <EmptyState>
@@ -492,30 +502,20 @@ const RecentSafeWalletsPage: React.FC<RecentSafeWalletsPageProps> = ({
               No recent Safe wallets found
             </EmptyStateText>
             <p>Connect to your first Safe wallet to get started</p>
-            <div style={{ marginTop: theme.spacing[4] }}>
-              <Button
-                variant="primary"
-                size="lg"
+            <div style={{ marginTop: theme.spacing[6] }}>
+              <PrimaryButton
                 onClick={onAddNew}
-                className="bg-sky-500 border-sky-500 hover:bg-sky-600 hover:border-sky-600"
+                size="lg"
               >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: theme.spacing[2] }}>
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 8v8"/>
+                  <path d="M8 12h8"/>
+                </svg>
                 Add Safe Wallet
-              </Button>
+              </PrimaryButton>
             </div>
           </EmptyState>
-        )}
-
-        {recentWallets.length > 0 && (
-          <ActionButtons>
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={onAddNew}
-              className="bg-sky-500 border-sky-500 hover:bg-sky-600 hover:border-sky-600"
-            >
-              Add Another Safe Wallet
-            </Button>
-          </ActionButtons>
         )}
       </ContentCard>
     </Container>
