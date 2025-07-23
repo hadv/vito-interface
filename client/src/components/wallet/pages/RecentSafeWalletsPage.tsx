@@ -484,7 +484,6 @@ const RecentSafeWalletsPage: React.FC<RecentSafeWalletsPageProps> = ({
 
               <PrimaryButton
                 onClick={onAddNew}
-                size="lg"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: theme.spacing[2] }}>
                   <circle cx="12" cy="12" r="10"/>
@@ -505,7 +504,6 @@ const RecentSafeWalletsPage: React.FC<RecentSafeWalletsPageProps> = ({
             <div style={{ marginTop: theme.spacing[6] }}>
               <PrimaryButton
                 onClick={onAddNew}
-                size="lg"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: theme.spacing[2] }}>
                   <circle cx="12" cy="12" r="10"/>
