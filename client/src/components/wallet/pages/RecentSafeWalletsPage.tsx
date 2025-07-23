@@ -135,14 +135,34 @@ const ActionButtons = styled.div`
   display: flex;
   gap: ${theme.spacing[4]};
   justify-content: center;
-  margin-top: ${theme.spacing[8]};
+  margin-top: ${theme.spacing[6]};
+  padding-top: ${theme.spacing[6]};
+`;
+
+const ClearAllContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-top: ${theme.spacing[6]};
+  padding-top: ${theme.spacing[4]};
+  border-top: 1px solid ${theme.colors.neutral[800]};
 `;
 
 const ClearAllButton = styled(Button)`
-  margin-top: ${theme.spacing[4]};
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
+  font-size: ${theme.typography.fontSize.sm};
+  color: ${theme.colors.neutral[400]};
+  background: transparent;
+  border: 1px solid ${theme.colors.neutral[700]};
+  padding: ${theme.spacing[2]} ${theme.spacing[4]};
+
+  &:hover {
+    color: ${theme.colors.neutral[300]};
+    border-color: ${theme.colors.neutral[600]};
+    background: ${theme.colors.neutral[800]};
+  }
+
+  &:active {
+    background: ${theme.colors.neutral[700]};
+  }
 `;
 
 const RecentSafeWalletsPage: React.FC<RecentSafeWalletsPageProps> = ({
@@ -241,13 +261,15 @@ const RecentSafeWalletsPage: React.FC<RecentSafeWalletsPageProps> = ({
               ))}
             </WalletsList>
 
-            <ClearAllButton
-              variant="outline"
-              size="sm"
-              onClick={handleClearAll}
-            >
-              Clear All History
-            </ClearAllButton>
+            <ClearAllContainer>
+              <ClearAllButton
+                variant="ghost"
+                size="sm"
+                onClick={handleClearAll}
+              >
+                🗑️ Clear All History
+              </ClearAllButton>
+            </ClearAllContainer>
           </>
         ) : (
           <EmptyState>
