@@ -100,9 +100,13 @@ jest.mock('./components/ui', () => ({
 
 test('renders app component', () => {
   render(<App />);
-  // App should render the AddSafeAccountPage when no wallet is connected
+  // App should render the RecentSafeWalletsPage when no wallet is connected
   // Should show the header with Vito branding
   expect(screen.getByText('Vito')).toBeInTheDocument();
-  // Should show the main page title
-  expect(screen.getByText('Add existing Safe Account')).toBeInTheDocument();
+  // Should show the recent wallets page title
+  expect(screen.getByText('Your Safe Wallets')).toBeInTheDocument();
+  // Should show the subtitle
+  expect(screen.getByText('Connect to a recent Safe wallet or add a new one')).toBeInTheDocument();
+  // Should show the "Add Safe Wallet" button since no recent wallets exist
+  expect(screen.getByText('Add Safe Wallet')).toBeInTheDocument();
 });
