@@ -496,6 +496,7 @@ const WalletPage: React.FC<WalletPageProps> = ({
             walletAddress={walletAddress}
             ensName={ensName}
             network={currentNetwork}
+            assets={assets}
             onTransactionCreated={handleTransactionCreated}
             onNavigateToSection={setActiveSection}
           />

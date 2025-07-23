@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import WalletPage from './components/wallet/WalletPage';
 import AddSafeAccountPage from './components/wallet/pages/AddSafeAccountPage';
+import RecentSafeWalletsPage from './components/wallet/pages/RecentSafeWalletsPage';
 import { resolveAddressToEns, isValidEthereumAddress } from './utils';
 import { walletConnectionService } from './services/WalletConnectionService';
+import { safeWalletStorageService, RecentSafeWallet } from './services/SafeWalletStorageService';
 import { cn } from './utils/cn';
 import './App.css';
 import ErrorBoundary from './components/ui/ErrorBoundary';
@@ -40,6 +42,8 @@ interface SafeAccountData {
   address: string;
 }
 
+type AppScreen = 'recent' | 'add' | 'connected';
+
 function App() {
   const [network, setNetwork] = useState('ethereum');
   const [walletConnected, setWalletConnected] = useState(false);
@@ -48,6 +52,7 @@ function App() {
   const [isLoadingEns, setIsLoadingEns] = useState(false);
   const [networkSelectorOpen, setNetworkSelectorOpen] = useState(false);
   const [isNetworkSwitching, setIsNetworkSwitching] = useState(false);
+  const [currentScreen, setCurrentScreen] = useState<AppScreen>('recent');
   // Remove redundant error state - using toast system instead
   // const [error, setError] = useState<string | null>(null);
 
@@ -113,7 +118,17 @@ function App() {
           readOnlyMode: true
         });
 
+        // Save to recent wallets
+        if (safeData) {
+          safeWalletStorageService.addRecentWallet({
+            address: safeData.address,
+            network: safeData.network,
+            name: safeData.name
+          });
+        }
+
         setWalletConnected(true);
+        setCurrentScreen('connected');
         toast.success('Wallet Connected', {
           message: `Successfully connected to Safe wallet "${safeData?.name || 'Safe'}" on ${networkToConnect}`
         });
@@ -145,6 +160,7 @@ function App() {
         setWalletAddress('');
         setEnsName('');
         setIsLoadingEns(false);
+        setCurrentScreen('recent');
 
         toast.success('Disconnected', {
           message: 'Successfully disconnected from Safe wallet'
@@ -220,6 +236,24 @@ function App() {
     }
   }, [walletConnected]);
 
+  // Navigation functions
+  const handleConnectExistingWallet = async (wallet: RecentSafeWallet) => {
+    const safeData: SafeAccountData = {
+      name: wallet.name,
+      network: wallet.network,
+      address: wallet.address
+    };
+    await connectWallet(safeData);
+  };
+
+  const handleAddNewWallet = () => {
+    setCurrentScreen('add');
+  };
+
+  const handleBackToRecent = () => {
+    setCurrentScreen('recent');
+  };
+
 
 
   return (
@@ -255,16 +289,22 @@ function App() {
 
       <div className={getOverlayClasses(networkSelectorOpen)} />
       <div className={contentContainerClasses}>
-        {walletConnected ? (
+        {currentScreen === 'connected' && walletConnected ? (
           <WalletPage
             walletAddress={walletAddress}
             ensName={ensName}
             network={network}
             isLoadingEns={isLoadingEns}
           />
-        ) : (
+        ) : currentScreen === 'add' ? (
           <AddSafeAccountPage
             onConnect={connectWallet}
+            onBack={handleBackToRecent}
+          />
+        ) : (
+          <RecentSafeWalletsPage
+            onConnectExisting={handleConnectExistingWallet}
+            onAddNew={handleAddNewWallet}
           />
         )}
       </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-// import { Asset, Transaction } from '../types';
+import { Asset } from '../types';
 import { formatWalletAddress } from '@utils';
 import { theme } from '../../../theme';
 import { Card } from '../../ui';
@@ -131,6 +131,7 @@ interface HomePageProps {
   walletAddress: string;
   ensName?: string;
   network: string;
+  assets?: Asset[];
   onTransactionCreated?: (transaction: any) => void;
   onNavigateToSection?: (section: 'assets' | 'transactions' | 'addressbook' | 'settings') => void;
 }
@@ -165,8 +166,11 @@ interface HomePageProps {
 //   }
 // ];
 
-const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, onTransactionCreated, onNavigateToSection }) => {
+const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, assets, onTransactionCreated, onNavigateToSection }) => {
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+
+  // Find ETH asset from the assets list
+  const ethAsset = assets?.find(asset => asset.type === 'native' && asset.symbol === 'ETH');
 
   const handleSendETHClick = () => {
     setIsTransactionModalOpen(true);
@@ -310,7 +314,7 @@ const HomePage: React.FC<HomePageProps> = ({ walletAddress, ensName, network, on
         onClose={() => setIsTransactionModalOpen(false)}
         onTransactionCreated={handleTransactionCreated}
         fromAddress={walletAddress}
-        preSelectedAsset={{
+        preSelectedAsset={ethAsset || {
           type: 'native',
           symbol: 'ETH',
           name: 'Ethereum',

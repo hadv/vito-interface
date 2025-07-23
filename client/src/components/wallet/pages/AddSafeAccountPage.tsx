@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { theme } from '../../../theme';
 import { Button, Input, Card } from '../../ui';
-import { isValidEthereumAddress } from '../../../utils';
+import { isValidEthereumAddress, generateRandomWalletName } from '../../../utils';
 
 // Types
 interface AddSafeAccountPageProps {
@@ -233,6 +233,8 @@ const ButtonRow = styled.div`
   align-items: center;
 `;
 
+
+
 // Network options - consistent with header
 const NETWORKS = [
   { id: 'ethereum', name: 'Ethereum', color: '#627EEA' },
@@ -242,7 +244,7 @@ const NETWORKS = [
 
 const AddSafeAccountPage: React.FC<AddSafeAccountPageProps> = ({ onConnect, onBack }) => {
   const [formData, setFormData] = useState<SafeAccountData>({
-    name: '',
+    name: generateRandomWalletName(),
     network: 'sepolia',
     address: ''
   });
@@ -287,12 +289,12 @@ const AddSafeAccountPage: React.FC<AddSafeAccountPageProps> = ({ onConnect, onBa
   };
 
   const handleSubmit = () => {
-    if (formData.address && isValidAddress) {
+    if (formData.address && isValidAddress && formData.name.trim()) {
       onConnect(formData);
     }
   };
 
-  const isFormValid = formData.address.trim() && isValidAddress;
+  const isFormValid = formData.address.trim() && formData.name.trim() && isValidAddress;
   const selectedNetwork = NETWORKS.find(n => n.id === formData.network) || NETWORKS[1];
 
   return (
@@ -308,6 +310,18 @@ const AddSafeAccountPage: React.FC<AddSafeAccountPageProps> = ({ onConnect, onBa
         </Header>
 
         <FormSection>
+          <FormRow>
+            <Input
+              label="Wallet Name"
+              placeholder="Enter a name for your Safe wallet"
+              value={formData.name}
+              onChange={(e) => handleInputChange('name', e.target.value)}
+              variant="outlined"
+              inputSize="xl"
+              fullWidth
+            />
+          </FormRow>
+
           <FormRow>
             <Input
               label="Safe Address"
