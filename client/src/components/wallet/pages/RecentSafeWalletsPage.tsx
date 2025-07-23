@@ -279,11 +279,21 @@ const PrimaryButton = styled(Button)`
   color: white;
   font-weight: ${theme.typography.fontWeight.medium};
   padding: ${theme.spacing[3]} ${theme.spacing[6]};
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing[2]};
+  font-size: ${theme.typography.fontSize.sm};
 
   &:hover {
     background: ${theme.colors.primary[700]};
     border-color: ${theme.colors.primary[700]};
     transform: translateY(-1px);
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
   }
 `;
 
@@ -485,7 +495,7 @@ const RecentSafeWalletsPage: React.FC<RecentSafeWalletsPageProps> = ({
               <PrimaryButton
                 onClick={onAddNew}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: theme.spacing[2] }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="10"/>
                   <path d="M12 8v8"/>
                   <path d="M8 12h8"/>
@@ -505,7 +515,7 @@ const RecentSafeWalletsPage: React.FC<RecentSafeWalletsPageProps> = ({
               <PrimaryButton
                 onClick={onAddNew}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: theme.spacing[2] }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="10"/>
                   <path d="M12 8v8"/>
                   <path d="M8 12h8"/>
