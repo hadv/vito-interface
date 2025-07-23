@@ -233,42 +233,7 @@ const ButtonRow = styled.div`
   align-items: center;
 `;
 
-const NameInputContainer = styled.div`
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  gap: ${theme.spacing[2]};
-`;
 
-const RefreshButton = styled.button`
-  background: none;
-  border: 1px solid ${theme.colors.neutral[600]};
-  border-radius: ${theme.borderRadius.md};
-  color: ${theme.colors.neutral[400]};
-  cursor: pointer;
-  padding: ${theme.spacing[2]};
-  height: 48px;
-  width: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-
-  &:hover {
-    color: ${theme.colors.neutral[300]};
-    border-color: ${theme.colors.neutral[500]};
-    background: ${theme.colors.neutral[800]};
-  }
-
-  &:active {
-    transform: rotate(180deg);
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-`;
 
 // Network options - consistent with header
 const NETWORKS = [
@@ -323,10 +288,6 @@ const AddSafeAccountPage: React.FC<AddSafeAccountPageProps> = ({ onConnect, onBa
     setIsNetworkDropdownOpen(false);
   };
 
-  const handleGenerateNewName = () => {
-    handleInputChange('name', generateRandomWalletName());
-  };
-
   const handleSubmit = () => {
     if (formData.address && isValidAddress && formData.name.trim()) {
       onConnect(formData);
@@ -350,29 +311,15 @@ const AddSafeAccountPage: React.FC<AddSafeAccountPageProps> = ({ onConnect, onBa
 
         <FormSection>
           <FormRow>
-            <NameInputContainer>
-              <Input
-                label="Wallet Name"
-                placeholder="Enter a name for your Safe wallet"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                variant="outlined"
-                inputSize="xl"
-                fullWidth
-              />
-              <RefreshButton
-                type="button"
-                onClick={handleGenerateNewName}
-                title="Generate new random name"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-                  <path d="M21 3v5h-5"/>
-                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-                  <path d="M3 21v-5h5"/>
-                </svg>
-              </RefreshButton>
-            </NameInputContainer>
+            <Input
+              label="Wallet Name"
+              placeholder="Enter a name for your Safe wallet"
+              value={formData.name}
+              onChange={(e) => handleInputChange('name', e.target.value)}
+              variant="outlined"
+              inputSize="xl"
+              fullWidth
+            />
           </FormRow>
 
           <FormRow>
