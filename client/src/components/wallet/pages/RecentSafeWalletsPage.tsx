@@ -105,16 +105,28 @@ const WalletName = styled.h3`
 
 const EditNameButton = styled.button`
   background: none;
-  border: none;
+  border: 1px solid transparent;
   color: ${theme.colors.neutral[400]};
   cursor: pointer;
   padding: ${theme.spacing[1]};
   border-radius: ${theme.borderRadius.md};
   font-size: ${theme.typography.fontSize.sm};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  transition: all 0.2s ease;
 
   &:hover {
-    color: ${theme.colors.neutral[300]};
+    color: ${theme.colors.neutral[200]};
     background: ${theme.colors.neutral[700]};
+    border-color: ${theme.colors.neutral[600]};
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
   }
 `;
 
@@ -150,6 +162,54 @@ const WalletActions = styled.div`
   gap: ${theme.spacing[2]};
   align-items: center;
   flex-shrink: 0;
+`;
+
+const ActionButton = styled.button`
+  background: ${theme.colors.neutral[800]};
+  border: 1px solid ${theme.colors.neutral[600]};
+  color: ${theme.colors.neutral[300]};
+  cursor: pointer;
+  padding: ${theme.spacing[2]};
+  border-radius: ${theme.borderRadius.md};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: ${theme.colors.neutral[700]};
+    border-color: ${theme.colors.neutral[500]};
+    color: ${theme.colors.neutral[200]};
+    transform: translateY(-1px);
+  }
+
+  &.delete {
+    &:hover {
+      background: #7f1d1d;
+      border-color: #b91c1c;
+      color: #fca5a5;
+    }
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+`;
+
+const ConnectButton = styled(Button)`
+  background: ${theme.colors.primary[600]};
+  border-color: ${theme.colors.primary[600]};
+  color: white;
+  font-weight: ${theme.typography.fontWeight.medium};
+
+  &:hover {
+    background: ${theme.colors.primary[700]};
+    border-color: ${theme.colors.primary[700]};
+    transform: translateY(-1px);
+  }
 `;
 
 const ConnectHint = styled.div`
@@ -202,21 +262,30 @@ const ClearAllContainer = styled.div`
   border-top: 1px solid ${theme.colors.neutral[800]};
 `;
 
-const ClearAllButton = styled(Button)`
+const ClearAllButton = styled.button`
   font-size: ${theme.typography.fontSize.sm};
+  font-weight: ${theme.typography.fontWeight.medium};
   color: ${theme.colors.neutral[400]};
   background: transparent;
   border: 1px solid ${theme.colors.neutral[700]};
-  padding: ${theme.spacing[2]} ${theme.spacing[4]};
+  padding: ${theme.spacing[3]} ${theme.spacing[4]};
+  border-radius: ${theme.borderRadius.md};
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing[2]};
+  transition: all 0.2s ease;
 
   &:hover {
-    color: ${theme.colors.neutral[300]};
-    border-color: ${theme.colors.neutral[600]};
-    background: ${theme.colors.neutral[800]};
+    color: #fca5a5;
+    border-color: #b91c1c;
+    background: #7f1d1d;
+    transform: translateY(-1px);
   }
 
-  &:active {
-    background: ${theme.colors.neutral[700]};
+  svg {
+    width: 16px;
+    height: 16px;
   }
 `;
 
@@ -346,7 +415,10 @@ const RecentSafeWalletsPage: React.FC<RecentSafeWalletsPageProps> = ({
                               onClick={(e) => handleEditName(wallet, e)}
                               title="Edit wallet name"
                             >
-                              ✏️
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                              </svg>
                             </EditNameButton>
                           </>
                         )}
@@ -369,24 +441,28 @@ const RecentSafeWalletsPage: React.FC<RecentSafeWalletsPageProps> = ({
                     </WalletInfo>
 
                     <WalletActions>
-                      <Button
-                        variant="outline"
-                        size="sm"
+                      <ActionButton
+                        className="delete"
                         onClick={(e) => handleRemoveWallet(wallet, e)}
+                        title="Remove wallet from history"
                       >
-                        🗑️
-                      </Button>
-                      <Button
-                        variant="primary"
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M3 6h18"/>
+                          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                          <line x1="10" x2="10" y1="11" y2="17"/>
+                          <line x1="14" x2="14" y1="11" y2="17"/>
+                        </svg>
+                      </ActionButton>
+                      <ConnectButton
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleConnectWallet(wallet);
                         }}
-                        className="bg-sky-500 border-sky-500 hover:bg-sky-600 hover:border-sky-600"
                       >
                         Connect
-                      </Button>
+                      </ConnectButton>
                     </WalletActions>
                   </WalletItem>
                 );
@@ -395,11 +471,17 @@ const RecentSafeWalletsPage: React.FC<RecentSafeWalletsPageProps> = ({
 
             <ClearAllContainer>
               <ClearAllButton
-                variant="ghost"
-                size="sm"
                 onClick={handleClearAll}
+                title="Clear all wallet history"
               >
-                🗑️ Clear All History
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 6h18"/>
+                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                  <line x1="10" x2="10" y1="11" y2="17"/>
+                  <line x1="14" x2="14" y1="11" y2="17"/>
+                </svg>
+                Clear All History
               </ClearAllButton>
             </ClearAllContainer>
           </>
