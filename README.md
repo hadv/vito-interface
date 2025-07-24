@@ -1,38 +1,41 @@
 # Vito Safe{Wallet}
 
-A secure and efficient application designed to interact with Safe{Wallet} through a minimalist interface.
+A secure and efficient static web application designed to interact with Safe{Wallet} through a minimalist interface. Fully client-side with no backend dependencies.
 
 ## Features
 
-- Command-based interface (:command)
-- Safe Wallet management
-- Transaction viewing and execution
+- **Static Deployment**: No server required - deploy anywhere
+- **Safe Wallet Management**: Connect and manage Safe wallets
+- **Multi-Network Support**: Ethereum, Sepolia, Arbitrum
+- **WalletConnect Integration**: Connect mobile wallets via QR codes
+- **Web3Auth Social Login**: Google OAuth integration
+- **Transaction Management**: View, create, and execute transactions
+- **Address Book**: Manage trusted addresses
+- **PWA Support**: Mobile app-like experience
 
 ## Tech Stack
 
-- **Frontend**: React, TypeScript, Styled Components
-- **Backend**: Node.js, Express, TypeScript
-- **Styling**: CSS-in-JS with styled-components
+- **Frontend**: React, TypeScript, Tailwind CSS
+- **Wallet Integration**: WalletConnect v2, Web3Auth, Ethers.js
+- **Build System**: Create React App with custom webpack config
+- **Deployment**: Static files (HTML, CSS, JS)
 
 ## Project Structure
 
 ```
 vito-interface/
-├── client/                # React frontend
+├── client/                # React frontend (static app)
 │   ├── src/
 │   │   ├── components/    # Reusable UI components
 │   │   ├── hooks/         # Custom React hooks
 │   │   ├── models/        # TypeScript interfaces/types
-│   │   ├── pages/         # Page components
-│   │   ├── styles/        # Global styles
-│   │   └── utils/         # Utility functions
+│   │   ├── services/      # External API services
+│   │   ├── utils/         # Utility functions
+│   │   └── contracts/     # Smart contract ABIs
 │   ├── public/            # Static assets
-│   └── .env               # Frontend environment variables
-├── server/                # Express backend
-│   ├── src/
-│   │   ├── routes/        # API endpoints
-│   │   └── index.ts       # Server entry point
-│   └── .env               # Backend environment variables
+│   ├── build/             # Production build output
+│   └── .env               # Environment variables
+├── vito-contracts/        # Smart contracts
 └── package.json          # Root package configuration
 ```
 
@@ -45,13 +48,9 @@ vito-interface/
 
 ### Environment Setup
 
-1. Configure the client environment:
-   - Copy `.env.example` to `.env` in the client directory
-   - Set appropriate values for all environment variables
-
-2. Configure the server environment:
-   - Create or edit `.env` file in the server directory
-   - Set required API keys and configuration values
+Configure the environment variables:
+- Copy `client/.env.example` to `client/.env.local`
+- Set appropriate values for all environment variables (see STATIC_DEPLOYMENT_GUIDE.md for details)
 
 ### Installation
 
@@ -63,38 +62,34 @@ cd vito-interface
 
 2. Install dependencies:
 ```bash
-# Use nvm to set the correct Node.js version
+# Use nvm to set the correct Node.js version (if available)
 nvm use --lts
 
-# Install all dependencies
+# Install dependencies
 npm run install:all
 ```
 
 ### Running the Development Server
 
-Run both the client and server in development mode:
+Run the client in development mode:
 
 ```bash
 npm run dev
+# or
+npm start
 ```
 
-You can also run them separately:
-
-```bash
-# Run just the client
-npm run start:client
-
-# Run just the server
-npm run start:server
-```
+The application will be available at `http://localhost:3000`
 
 ### Building for Production
 
-To create production builds for both client and server:
+To create a production build:
 
 ```bash
 npm run build
 ```
+
+This creates a `client/build/` directory with static files ready for deployment to any web server or hosting service.
 
 ## Web3Auth-Style Social Login Setup
 
