@@ -9,7 +9,11 @@
     "install:all": "npm install && cd client && npm install",
     "build": "cd client && npm run build",
     "test": "cd client && npm test",
-    "test:ci": "cd client && npm run test:ci"
+    "test:ci": "cd client && npm run test:ci",
+    "deploy:ipfs": "./scripts/deploy-ipfs.sh",
+    "ens:manager": "node scripts/ens-manager.js",
+    "setup:ipfs": "npm install -g @pinata/cli @fleek-platform/cli",
+    "setup:ens": "npm install ethers bs58"
   },
   "keywords": [
     "safe-wallet",
