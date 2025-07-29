@@ -63,10 +63,10 @@ export const useAddressBook = (options: UseAddressBookOptions = {}): UseAddressB
       try {
         const connectionState = walletConnectionService.getState();
 
-        // Only set up provider if signer is already connected AND it's MetaMask
+        // Only set up provider if signer is already connected AND it's MetaMask or Rabby
         // Avoid window.ethereum for WalletConnect to prevent Chrome extension popups
-        if (connectionState.signerConnected && connectionState.walletType === 'metamask' && window.ethereum) {
-          console.log('📚 AddressBook: Setting up provider with MetaMask signer');
+        if (connectionState.signerConnected && (connectionState.walletType === 'metamask' || connectionState.walletType === 'rabby') && window.ethereum) {
+          console.log(`📚 AddressBook: Setting up provider with ${connectionState.walletType} signer`);
           const provider = new ethers.providers.Web3Provider(window.ethereum);
           const signer = provider.getSigner();
           service.initialize(provider, signer);
