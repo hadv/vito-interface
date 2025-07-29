@@ -523,12 +523,18 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
             </linearGradient>
           </defs>
           <rect width="32" height="32" rx="8" fill="url(#rabbyGradient)"/>
-          <path d="M8 12C8 10.8954 8.89543 10 10 10H22C23.1046 10 24 10.8954 24 12V20C24 21.1046 23.1046 22 22 22H10C8.89543 22 8 21.1046 8 20V12Z" fill="white"/>
-          <circle cx="13" cy="15" r="1.5" fill="#7084FF"/>
-          <circle cx="19" cy="15" r="1.5" fill="#7084FF"/>
-          <path d="M14 18.5C14 18.5 15 19.5 16 19.5C17 19.5 18 18.5 18 18.5" stroke="#7084FF" strokeWidth="1.5" strokeLinecap="round"/>
-          <path d="M10 8C10 8 12 6 16 6C20 6 22 8 22 8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-          <path d="M10 24C10 24 12 26 16 26C20 26 22 24 22 24" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+          {/* Rabbit head shape */}
+          <path d="M16 6C19.5 6 22 8.5 22 12V18C22 21.5 19.5 24 16 24C12.5 24 10 21.5 10 18V12C10 8.5 12.5 6 16 6Z" fill="white"/>
+          {/* Rabbit ears */}
+          <ellipse cx="13" cy="8" rx="1.5" ry="3" fill="white"/>
+          <ellipse cx="19" cy="8" rx="1.5" ry="3" fill="white"/>
+          {/* Eyes */}
+          <circle cx="13.5" cy="14" r="1.5" fill="#7084FF"/>
+          <circle cx="18.5" cy="14" r="1.5" fill="#7084FF"/>
+          {/* Nose */}
+          <path d="M16 17L15 18.5L17 18.5Z" fill="#7084FF"/>
+          {/* Mouth */}
+          <path d="M14 19.5C14 19.5 15 20.5 16 20.5C17 20.5 18 19.5 18 19.5" stroke="#7084FF" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
         </svg>
       ),
       bgColor: 'transparent',
@@ -576,26 +582,6 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
           <g transform="scale(0.2)">
             <rect width="160" height="160" rx="16" fill="#00000D"/>
             <path d="M93.1482 119.207V125H135V98.8769H128.902V119.207H93.1482ZM93.1482 33V38.792H128.902V59.1231H135V33H93.1482ZM74.0104 59.1231H67.9125V98.8769H95.4153V93.6539H74.0104V59.1231ZM26 98.8769V125H67.8518V119.207H32.0979V98.8769H26ZM26 33V59.1231H32.0979V38.792H67.8518V33H26Z" fill="white"/>
-          </g>
-        </svg>
-      ),
-      bgColor: 'transparent',
-      available: false
-    },
-    {
-      id: 'privatekey',
-      name: 'Private key',
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-          <defs>
-            <linearGradient id="keyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#6B7280"/>
-              <stop offset="100%" stopColor="#374151"/>
-            </linearGradient>
-          </defs>
-          <rect width="32" height="32" rx="8" fill="url(#keyGradient)"/>
-          <g transform="translate(3.5, 4) scale(0.38)">
-            <path fillRule="evenodd" clipRule="evenodd" d="M19.3337 7C18.4255 7 17.6893 7.73621 17.6893 8.64436V11.9999H14.334C13.4258 11.9999 12.6896 12.7361 12.6896 13.6443V16.9999H16.0452C16.9534 16.9999 17.6896 16.2637 17.6896 15.3556V12H47.6893V15.3556C47.6893 16.2637 48.4255 16.9999 49.3337 16.9999H52.689V46.9999H56.0447C56.9528 46.9999 57.689 46.2637 57.689 45.3555V18.6442C57.689 17.7361 56.9528 16.9999 56.0447 16.9999H52.6893V13.6443C52.6893 12.7361 51.9531 11.9999 51.0449 11.9999H47.6894V8.64436C47.6894 7.73621 46.9532 7 46.045 7H19.3337ZM47.6893 48.6444C47.6893 47.7363 48.4255 47.0001 49.3337 47.0001H52.6893V50.3557C52.6893 51.2639 51.9531 52.0001 51.0449 52.0001H47.6894V55.3556C47.6894 56.2638 46.9532 57 46.045 57H19.3337C18.4255 57 17.6893 56.2638 17.6893 55.3556V52.0001H14.334C13.4258 52.0001 12.6896 51.2639 12.6896 50.3557V47.0001H16.0452C16.9534 47.0001 17.6896 47.7363 17.6896 48.6444V52H47.6893V48.6444ZM9.33382 16.9999C8.42566 16.9999 7.68945 17.7361 7.68945 18.6442V45.3555C7.68945 46.2637 8.42566 46.9999 9.33382 46.9999H12.6895V16.9999H9.33382ZM36.8004 27.248C36.8004 28.9337 35.7858 30.3824 34.3339 31.0168V40.403C34.3339 40.857 33.9658 41.2252 33.5117 41.2252H31.8673C31.4133 41.2252 31.0452 40.857 31.0452 40.403V31.0168C29.5932 30.3825 28.5786 28.9337 28.5786 27.248C28.5786 24.9776 30.4191 23.1371 32.6895 23.1371C34.9599 23.1371 36.8004 24.9776 36.8004 27.248Z" fill="white"/>
           </g>
         </svg>
       ),

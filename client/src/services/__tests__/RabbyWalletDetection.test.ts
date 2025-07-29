@@ -110,7 +110,7 @@ describe('Rabby Wallet Detection', () => {
 
   test('should validate wallet type enum includes rabby', () => {
     // Test that the wallet type includes 'rabby'
-    const validWalletTypes = ['metamask', 'walletconnect', 'ledger', 'privatekey', 'web3auth', 'rabby'];
+    const validWalletTypes = ['metamask', 'walletconnect', 'ledger', 'web3auth', 'rabby'];
     expect(validWalletTypes).toContain('rabby');
   });
 });

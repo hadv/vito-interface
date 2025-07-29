@@ -19,7 +19,7 @@ export interface WalletConnectionState {
   readOnlyMode?: boolean;
   chainId?: number;
   // Track wallet type for proper icon display
-  walletType?: 'metamask' | 'walletconnect' | 'ledger' | 'privatekey' | 'web3auth' | 'rabby';
+  walletType?: 'metamask' | 'walletconnect' | 'ledger' | 'web3auth' | 'rabby';
 }
 
 export interface ConnectWalletParams {
@@ -703,19 +703,33 @@ export class WalletConnectionService {
         throw new Error('No wallet detected. Please install MetaMask or another Web3 wallet.');
       }
 
-      // Detect and use MetaMask specifically to avoid Phantom interference
+      // Detect wallet type and use appropriate provider
       let provider = window.ethereum;
+      let detectedWalletType: 'metamask' | 'rabby' = 'metamask'; // Default fallback
 
-      // If multiple wallets are installed, try to use MetaMask specifically
+      // If multiple wallets are installed, detect the specific wallet type
       if (window.ethereum.providers && Array.isArray(window.ethereum.providers)) {
+        // Try to find MetaMask first (for backward compatibility)
         const metamaskProvider = window.ethereum.providers.find((p: any) => p.isMetaMask);
+        const rabbyProvider = window.ethereum.providers.find((p: any) => p.isRabby);
+
         if (metamaskProvider) {
           provider = metamaskProvider;
+          detectedWalletType = 'metamask';
           console.log('🎯 Using MetaMask provider specifically');
+        } else if (rabbyProvider) {
+          provider = rabbyProvider;
+          detectedWalletType = 'rabby';
+          console.log('🎯 Using Rabby provider specifically');
         }
       } else if (window.ethereum.isMetaMask) {
         provider = window.ethereum;
+        detectedWalletType = 'metamask';
         console.log('🎯 Using MetaMask provider');
+      } else if (window.ethereum.isRabby) {
+        provider = window.ethereum;
+        detectedWalletType = 'rabby';
+        console.log('🎯 Using Rabby provider');
       }
 
       // Check and switch network if needed
@@ -755,7 +769,7 @@ export class WalletConnectionService {
         signerBalance: formattedSignerBalance,
         readOnlyMode: false,
         error: undefined,
-        walletType: 'metamask'
+        walletType: detectedWalletType
       };
 
       // Set up event listeners for account/network changes
