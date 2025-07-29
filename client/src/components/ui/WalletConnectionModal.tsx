@@ -473,39 +473,11 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
       available: true
     },
     {
-      id: 'metamask',
-      name: 'MetaMask',
+      id: 'walletconnect',
+      name: 'WalletConnect',
       icon: (
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-          <path d="M30.0389 1.51562L17.8555 10.4844L20.2278 4.82812L30.0389 1.51562Z" fill="#E17726" stroke="#E17726" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M1.95117 1.51562L14.0278 10.5625L11.7722 4.82812L1.95117 1.51562Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M25.5889 23.0156L22.4445 27.7656L29.4445 29.7656L31.5556 23.1719L25.5889 23.0156Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M0.453125 23.1719L2.55556 29.7656L9.55556 27.7656L6.41112 23.0156L0.453125 23.1719Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M9.22223 14.0469L7.16668 17.2969L14.1111 17.6406L13.8889 10.0156L9.22223 14.0469Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M22.7778 14.0469L18.0278 9.9375L17.8889 17.6406L24.8333 17.2969L22.7778 14.0469Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M9.55556 27.7656L13.6111 25.7969L10.1111 23.2188L9.55556 27.7656Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M18.3889 25.7969L22.4445 27.7656L21.8889 23.2188L18.3889 25.7969Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M22.4445 27.7656L18.3889 25.7969L18.7222 28.5781L18.6667 29.6875L22.4445 27.7656Z" fill="#D5BFB2" stroke="#D5BFB2" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M9.55556 27.7656L13.3333 29.6875L13.2889 28.5781L13.6111 25.7969L9.55556 27.7656Z" fill="#D5BFB2" stroke="#D5BFB2" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M13.3889 21.2969L10.0278 20.3281L12.3889 19.2188L13.3889 21.2969Z" fill="#233447" stroke="#233447" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M18.6111 21.2969L19.6111 19.2188L21.9722 20.3281L18.6111 21.2969Z" fill="#233447" stroke="#233447" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M9.55556 27.7656L10.1389 23.0156L6.41112 23.1719L9.55556 27.7656Z" fill="#CC6228" stroke="#CC6228" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M21.8611 23.0156L22.4445 27.7656L25.5889 23.1719L21.8611 23.0156Z" fill="#CC6228" stroke="#CC6228" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M24.8333 17.2969L17.8889 17.6406L18.6111 21.2969L19.6111 19.2188L21.9722 20.3281L24.8333 17.2969Z" fill="#CC6228" stroke="#CC6228" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M10.0278 20.3281L12.3889 19.2188L13.3889 21.2969L14.1111 17.6406L7.16668 17.2969L10.0278 20.3281Z" fill="#CC6228" stroke="#CC6228" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M7.16668 17.2969L10.1111 23.2188L10.0278 20.3281L7.16668 17.2969Z" fill="#E27525" stroke="#E27525" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M21.9722 20.3281L21.8889 23.2188L24.8333 17.2969L21.9722 20.3281Z" fill="#E27525" stroke="#E27525" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M14.1111 17.6406L13.3889 21.2969L14.3333 25.2969L14.5556 19.9531L14.1111 17.6406Z" fill="#E27525" stroke="#E27525" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M17.8889 17.6406L17.4445 19.9375L17.6667 25.2969L18.6111 21.2969L17.8889 17.6406Z" fill="#E27525" stroke="#E27525" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M18.6111 21.2969L17.6667 25.2969L18.3889 25.7969L21.8889 23.2188L21.9722 20.3281L18.6111 21.2969Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M10.0278 20.3281L10.1111 23.2188L13.6111 25.7969L14.3333 25.2969L13.3889 21.2969L10.0278 20.3281Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M18.6667 29.6875L18.7222 28.5781L18.4167 28.3125H13.5833L13.2889 28.5781L13.3333 29.6875L9.55556 27.7656L10.9722 28.9375L13.5278 30.7656H18.4722L21.0278 28.9375L22.4445 27.7656L18.6667 29.6875Z" fill="#C0AC9D" stroke="#C0AC9D" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M18.3889 25.7969L17.6667 25.2969H14.3333L13.6111 25.7969L13.2889 28.5781L13.5833 28.3125H18.4167L18.7222 28.5781L18.3889 25.7969Z" fill="#161616" stroke="#161616" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M30.5556 11.2188L32 5.20312L30.0389 1.51562L18.3889 10.2969L22.7778 14.0469L29.3333 15.9531L30.6111 14.4531L30.0278 14.0156L31.4167 12.7656L30.6667 12.1719L32.0556 11.1406L30.5556 11.2188Z" fill="#763E1A" stroke="#763E1A" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M0 5.20312L1.44445 11.2188L-0.0555556 11.1406L1.33334 12.1719L0.583334 12.7656L1.97223 14.0156L1.38889 14.4531L2.66667 15.9531L9.22223 14.0469L13.6111 10.2969L1.96112 1.51562L0 5.20312Z" fill="#763E1A" stroke="#763E1A" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M29.3333 15.9531L22.7778 14.0469L24.8333 17.2969L21.8889 23.2188L25.5889 23.1719H31.5556L29.3333 15.9531Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M9.22223 14.0469L2.66667 15.9531L0.453125 23.1719H6.41112L10.1111 23.2188L7.16668 17.2969L9.22223 14.0469Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M17.8889 17.6406L18.3889 10.2969L20.2278 4.82812H11.7722L13.6111 10.2969L14.1111 17.6406L14.3333 19.9688L14.3333 25.2969H17.6667L17.6667 19.9688L17.8889 17.6406Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+        <svg width="32" height="20" viewBox="0 0 40 25" fill="none">
+          <path d="m8.19180572 4.83416816c6.52149658-6.38508884 17.09493158-6.38508884 23.61642788 0l.7848727.76845565c.3260748.31925442.3260748.83686816 0 1.15612272l-2.6848927 2.62873374c-.1630375.15962734-.4273733.15962734-.5904108 0l-1.0800779-1.05748639c-4.5495589-4.45439756-11.9258514-4.45439756-16.4754105 0l-1.1566741 1.13248068c-.1630376.15962721-.4273735.15962721-.5904108 0l-2.68489263-2.62873375c-.32607483-.31925456-.32607483-.83686829 0-1.15612272zm29.16903948 5.43649934 2.3895596 2.3395862c.3260732.319253.3260751.8368636.0000041 1.1561187l-10.7746894 10.5494845c-.3260726.3192568-.8547443.3192604-1.1808214.0000083-.0000013-.0000013-.0000029-.0000029-.0000042-.0000043l-7.6472191-7.4872762c-.0815187-.0798136-.2136867-.0798136-.2952053 0-.0000006.0000005-.000001.000001-.0000015.0000014l-7.6470562 7.4872708c-.3260715.3192576-.8547434.319263-1.1808215.0000116-.0000019-.0000018-.0000039-.0000037-.0000059-.0000058l-10.7749893-10.5496247c-.32607469-.3192544-.32607469-.8368682 0-1.1561226l2.38956395-2.3395823c.3260747-.31925446.85474652-.31925446 1.18082136 0l7.64733029 7.4873809c.0815188.0798136.2136866.0798136.2952054 0 .0000012-.0000012.0000023-.0000023.0000035-.0000032l7.6469471-7.4873777c.3260673-.31926181.8547392-.31927378 1.1808214-.0000267.0000046.0000045.0000091.000009.0000135.0000135l7.6473203 7.4873909c.0815186.0798135.2136866.0798135.2952053 0l7.6471967-7.4872433c.3260748-.31925458.8547465-.31925458 1.1808213 0z" fill="#3b99fc"/>
         </svg>
       ),
       bgColor: 'transparent',
@@ -567,6 +539,45 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
       available: typeof window !== 'undefined' && window.ethereum && (window.ethereum.isRabby || (window.ethereum.providers && window.ethereum.providers.some((p: any) => p.isRabby)))
     },
     {
+      id: 'metamask',
+      name: 'MetaMask',
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <path d="M30.0389 1.51562L17.8555 10.4844L20.2278 4.82812L30.0389 1.51562Z" fill="#E17726" stroke="#E17726" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M1.95117 1.51562L14.0278 10.5625L11.7722 4.82812L1.95117 1.51562Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M25.5889 23.0156L22.4445 27.7656L29.4445 29.7656L31.5556 23.1719L25.5889 23.0156Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M0.453125 23.1719L2.55556 29.7656L9.55556 27.7656L6.41112 23.0156L0.453125 23.1719Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M9.22223 14.0469L7.16668 17.2969L14.1111 17.6406L13.8889 10.0156L9.22223 14.0469Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M22.7778 14.0469L18.0278 9.9375L17.8889 17.6406L24.8333 17.2969L22.7778 14.0469Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M9.55556 27.7656L13.6111 25.7969L10.1111 23.2188L9.55556 27.7656Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M18.3889 25.7969L22.4445 27.7656L21.8889 23.2188L18.3889 25.7969Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M22.4445 27.7656L18.3889 25.7969L18.7222 28.5781L18.6667 29.6875L22.4445 27.7656Z" fill="#D5BFB2" stroke="#D5BFB2" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M9.55556 27.7656L13.3333 29.6875L13.2889 28.5781L13.6111 25.7969L9.55556 27.7656Z" fill="#D5BFB2" stroke="#D5BFB2" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M13.3889 21.2969L10.0278 20.3281L12.3889 19.2188L13.3889 21.2969Z" fill="#233447" stroke="#233447" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M18.6111 21.2969L19.6111 19.2188L21.9722 20.3281L18.6111 21.2969Z" fill="#233447" stroke="#233447" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M9.55556 27.7656L10.1389 23.0156L6.41112 23.1719L9.55556 27.7656Z" fill="#CC6228" stroke="#CC6228" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M21.8611 23.0156L22.4445 27.7656L25.5889 23.1719L21.8611 23.0156Z" fill="#CC6228" stroke="#CC6228" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M24.8333 17.2969L17.8889 17.6406L18.6111 21.2969L19.6111 19.2188L21.9722 20.3281L24.8333 17.2969Z" fill="#CC6228" stroke="#CC6228" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M10.0278 20.3281L12.3889 19.2188L13.3889 21.2969L14.1111 17.6406L7.16668 17.2969L10.0278 20.3281Z" fill="#CC6228" stroke="#CC6228" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M7.16668 17.2969L10.1111 23.2188L10.0278 20.3281L7.16668 17.2969Z" fill="#E27525" stroke="#E27525" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M21.9722 20.3281L21.8889 23.2188L24.8333 17.2969L21.9722 20.3281Z" fill="#E27525" stroke="#E27525" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M14.1111 17.6406L13.3889 21.2969L14.3333 25.2969L14.5556 19.9531L14.1111 17.6406Z" fill="#E27525" stroke="#E27525" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M17.8889 17.6406L17.4445 19.9375L17.6667 25.2969L18.6111 21.2969L17.8889 17.6406Z" fill="#E27525" stroke="#E27525" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M18.6111 21.2969L17.6667 25.2969L18.3889 25.7969L21.8889 23.2188L21.9722 20.3281L18.6111 21.2969Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M10.0278 20.3281L10.1111 23.2188L13.6111 25.7969L14.3333 25.2969L13.3889 21.2969L10.0278 20.3281Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M18.6667 29.6875L18.7222 28.5781L18.4167 28.3125H13.5833L13.2889 28.5781L13.3333 29.6875L9.55556 27.7656L10.9722 28.9375L13.5278 30.7656H18.4722L21.0278 28.9375L22.4445 27.7656L18.6667 29.6875Z" fill="#C0AC9D" stroke="#C0AC9D" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M18.3889 25.7969L17.6667 25.2969H14.3333L13.6111 25.7969L13.2889 28.5781L13.5833 28.3125H18.4167L18.7222 28.5781L18.3889 25.7969Z" fill="#161616" stroke="#161616" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M30.5556 11.2188L32 5.20312L30.0389 1.51562L18.3889 10.2969L22.7778 14.0469L29.3333 15.9531L30.6111 14.4531L30.0278 14.0156L31.4167 12.7656L30.6667 12.1719L32.0556 11.1406L30.5556 11.2188Z" fill="#763E1A" stroke="#763E1A" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M0 5.20312L1.44445 11.2188L-0.0555556 11.1406L1.33334 12.1719L0.583334 12.7656L1.97223 14.0156L1.38889 14.4531L2.66667 15.9531L9.22223 14.0469L13.6111 10.2969L1.96112 1.51562L0 5.20312Z" fill="#763E1A" stroke="#763E1A" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M29.3333 15.9531L22.7778 14.0469L24.8333 17.2969L21.8889 23.2188L25.5889 23.1719H31.5556L29.3333 15.9531Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M9.22223 14.0469L2.66667 15.9531L0.453125 23.1719H6.41112L10.1111 23.2188L7.16668 17.2969L9.22223 14.0469Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M17.8889 17.6406L18.3889 10.2969L20.2278 4.82812H11.7722L13.6111 10.2969L14.1111 17.6406L14.3333 19.9688L14.3333 25.2969H17.6667L17.6667 19.9688L17.8889 17.6406Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ),
+      bgColor: 'transparent',
+      available: true
+    },
+    {
       id: 'phantom',
       name: 'Phantom',
       icon: (
@@ -588,17 +599,6 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
       ),
       bgColor: 'transparent',
       available: false
-    },
-    {
-      id: 'walletconnect',
-      name: 'WalletConnect',
-      icon: (
-        <svg width="32" height="20" viewBox="0 0 40 25" fill="none">
-          <path d="m8.19180572 4.83416816c6.52149658-6.38508884 17.09493158-6.38508884 23.61642788 0l.7848727.76845565c.3260748.31925442.3260748.83686816 0 1.15612272l-2.6848927 2.62873374c-.1630375.15962734-.4273733.15962734-.5904108 0l-1.0800779-1.05748639c-4.5495589-4.45439756-11.9258514-4.45439756-16.4754105 0l-1.1566741 1.13248068c-.1630376.15962721-.4273735.15962721-.5904108 0l-2.68489263-2.62873375c-.32607483-.31925456-.32607483-.83686829 0-1.15612272zm29.16903948 5.43649934 2.3895596 2.3395862c.3260732.319253.3260751.8368636.0000041 1.1561187l-10.7746894 10.5494845c-.3260726.3192568-.8547443.3192604-1.1808214.0000083-.0000013-.0000013-.0000029-.0000029-.0000042-.0000043l-7.6472191-7.4872762c-.0815187-.0798136-.2136867-.0798136-.2952053 0-.0000006.0000005-.000001.000001-.0000015.0000014l-7.6470562 7.4872708c-.3260715.3192576-.8547434.319263-1.1808215.0000116-.0000019-.0000018-.0000039-.0000037-.0000059-.0000058l-10.7749893-10.5496247c-.32607469-.3192544-.32607469-.8368682 0-1.1561226l2.38956395-2.3395823c.3260747-.31925446.85474652-.31925446 1.18082136 0l7.64733029 7.4873809c.0815188.0798136.2136866.0798136.2952054 0 .0000012-.0000012.0000023-.0000023.0000035-.0000032l7.6469471-7.4873777c.3260673-.31926181.8547392-.31927378 1.1808214-.0000267.0000046.0000045.0000091.000009.0000135.0000135l7.6473203 7.4873909c.0815186.0798135.2136866.0798135.2952053 0l7.6471967-7.4872433c.3260748-.31925458.8547465-.31925458 1.1808213 0z" fill="#3b99fc"/>
-        </svg>
-      ),
-      bgColor: 'transparent',
-      available: true
     },
     {
       id: 'ledger',
