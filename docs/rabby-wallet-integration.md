@@ -146,5 +146,21 @@ Rabby wallet integration works in all modern browsers that support:
 - Try disconnecting and reconnecting Rabby wallet
 
 ### Multiple Wallets Conflict
-- The integration automatically selects Rabby when multiple wallets are present
+- The integration automatically detects and selects the appropriate wallet type
+- Supports both MetaMask and Rabby in multi-wallet environments
 - If conflicts occur, try disabling other wallet extensions temporarily
+
+## Recent Improvements
+
+### v2.0 Updates
+- **Improved Wallet Detection**: Automatic detection of wallet type (MetaMask vs Rabby)
+- **Correct Wallet Display**: Connected Rabby wallets now properly display as "Rabby" instead of "MetaMask"
+- **Enhanced Icon**: Updated to use rabbit-themed icon design matching Rabby's brand
+- **Removed Private Key Option**: Simplified wallet options by removing private key connection
+- **Better Multi-wallet Support**: Improved handling of environments with multiple wallet extensions
+
+### Technical Improvements
+- Enhanced `connectSignerWallet()` method with automatic wallet type detection
+- Improved provider selection logic for multi-wallet environments
+- Better error handling and user feedback
+- Comprehensive test coverage for wallet detection scenarios
