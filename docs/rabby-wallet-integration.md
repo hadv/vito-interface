@@ -110,13 +110,13 @@ Rabby wallet integration supports all networks that the Safe wallet supports:
 
 The integration includes comprehensive tests covering:
 - Wallet detection scenarios
-- Successful connection flow
-- Error handling for various failure cases
 - Multi-wallet environment handling
+- Provider selection logic
+- Error handling for various failure cases
 
 Run tests with:
 ```bash
-npm test -- --testPathPattern=rabby-wallet.test.ts
+npm test -- --testPathPattern=RabbyWalletDetection.test.ts
 ```
 
 ## Security Considerations
