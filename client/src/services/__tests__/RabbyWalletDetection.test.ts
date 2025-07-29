@@ -9,6 +9,9 @@ Object.defineProperty(global, 'window', {
   writable: true
 });
 
+// Make this file a module to satisfy TypeScript --isolatedModules
+export {};
+
 describe('Rabby Wallet Detection', () => {
   // Store original window.ethereum
   const originalWindow = global.window;
