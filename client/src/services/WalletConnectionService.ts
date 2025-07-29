@@ -19,7 +19,7 @@ export interface WalletConnectionState {
   readOnlyMode?: boolean;
   chainId?: number;
   // Track wallet type for proper icon display
-  walletType?: 'metamask' | 'walletconnect' | 'ledger' | 'privatekey' | 'web3auth';
+  walletType?: 'metamask' | 'walletconnect' | 'ledger' | 'privatekey' | 'web3auth' | 'rabby';
 }
 
 export interface ConnectWalletParams {
@@ -576,6 +576,106 @@ export class WalletConnectionService {
     } catch (error: any) {
       console.error('Error in connectWalletConnectSigner:', error);
       const errorMessage = error.message || 'Failed to connect WalletConnect signer';
+      this.state = {
+        ...this.state,
+        error: errorMessage
+      };
+
+      this.notifyListeners();
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
+   * Connect Rabby wallet as signer to an already connected Safe wallet
+   */
+  async connectRabbyWallet(): Promise<WalletConnectionState> {
+    if (!this.state.isConnected || !this.state.safeAddress) {
+      throw new Error('Safe wallet must be connected first');
+    }
+
+    try {
+      console.log('🦊 User explicitly requested Rabby wallet connection');
+
+      // Check if Rabby is available
+      if (typeof window.ethereum === 'undefined') {
+        throw new Error('No wallet detected. Please install Rabby wallet.');
+      }
+
+      // Detect and use Rabby specifically
+      let provider = window.ethereum;
+
+      // If multiple wallets are installed, try to use Rabby specifically
+      if (window.ethereum.providers && Array.isArray(window.ethereum.providers)) {
+        const rabbyProvider = window.ethereum.providers.find((p: any) => p.isRabby);
+        if (rabbyProvider) {
+          provider = rabbyProvider;
+          console.log('🎯 Using Rabby provider specifically');
+        } else {
+          throw new Error('Rabby wallet not found. Please install Rabby wallet.');
+        }
+      } else if (window.ethereum.isRabby) {
+        provider = window.ethereum;
+        console.log('🎯 Using Rabby provider');
+      } else {
+        throw new Error('Rabby wallet not detected. Please install Rabby wallet.');
+      }
+
+      console.log('📱 Requesting Rabby wallet account access (user initiated)...');
+      // Request account access from the specific provider
+      await provider.request({ method: 'eth_requestAccounts' });
+
+      // Create provider and signer using the specific provider
+      this.provider = new ethers.providers.Web3Provider(provider);
+      this.signer = this.provider.getSigner();
+
+      // Get user address
+      const userAddress = await this.signer.getAddress();
+
+      // Get signer balance
+      const signerBalance = await this.provider.getBalance(userAddress);
+      const formattedSignerBalance = ethers.utils.formatEther(signerBalance);
+
+      // Update Safe Wallet Service with signer
+      await safeWalletService.setSigner(this.signer);
+
+      // Check if user is owner
+      const isOwner = await safeWalletService.isOwner(userAddress);
+
+      // Update state
+      this.state = {
+        ...this.state,
+        address: userAddress,
+        isOwner,
+        signerConnected: true,
+        signerAddress: userAddress,
+        signerBalance: formattedSignerBalance,
+        readOnlyMode: false,
+        error: undefined,
+        walletType: 'rabby'
+      };
+
+      // Set up event listeners for account/network changes
+      this.setupEventListeners();
+
+      // Notify listeners
+      this.notifyListeners();
+
+      return this.state;
+    } catch (error: any) {
+      // Handle specific error codes
+      let errorMessage = 'Failed to connect Rabby wallet';
+
+      if (error.code === 4001) {
+        // User rejected the request
+        errorMessage = 'Connection cancelled by user';
+      } else if (error.code === -32002) {
+        // Request already pending
+        errorMessage = 'Connection request already pending. Please check your Rabby wallet.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       this.state = {
         ...this.state,
         error: errorMessage
@@ -1319,6 +1419,7 @@ declare global {
       providers?: any[];
       isMetaMask?: boolean;
       isPhantom?: boolean;
+      isRabby?: boolean;
     };
   }
 }

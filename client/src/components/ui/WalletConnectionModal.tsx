@@ -512,6 +512,29 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
       available: true
     },
     {
+      id: 'rabby',
+      name: 'Rabby',
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <defs>
+            <linearGradient id="rabbyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#7084FF"/>
+              <stop offset="100%" stopColor="#5A6EFF"/>
+            </linearGradient>
+          </defs>
+          <rect width="32" height="32" rx="8" fill="url(#rabbyGradient)"/>
+          <path d="M8 12C8 10.8954 8.89543 10 10 10H22C23.1046 10 24 10.8954 24 12V20C24 21.1046 23.1046 22 22 22H10C8.89543 22 8 21.1046 8 20V12Z" fill="white"/>
+          <circle cx="13" cy="15" r="1.5" fill="#7084FF"/>
+          <circle cx="19" cy="15" r="1.5" fill="#7084FF"/>
+          <path d="M14 18.5C14 18.5 15 19.5 16 19.5C17 19.5 18 18.5 18 18.5" stroke="#7084FF" strokeWidth="1.5" strokeLinecap="round"/>
+          <path d="M10 8C10 8 12 6 16 6C20 6 22 8 22 8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+          <path d="M10 24C10 24 12 26 16 26C20 26 22 24 22 24" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      ),
+      bgColor: 'transparent',
+      available: typeof window !== 'undefined' && window.ethereum && (window.ethereum.isRabby || (window.ethereum.providers && window.ethereum.providers.some((p: any) => p.isRabby)))
+    },
+    {
       id: 'phantom',
       name: 'Phantom',
       icon: (

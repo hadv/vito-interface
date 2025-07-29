@@ -116,6 +116,11 @@ const Header: React.FC<HeaderProps> = ({
         toast.success('Wallet Connected', {
           message: 'Successfully connected MetaMask wallet'
         });
+      } else if (walletType === 'rabby') {
+        await walletConnectionService.connectRabbyWallet();
+        toast.success('Wallet Connected', {
+          message: 'Successfully connected Rabby wallet'
+        });
       } else if (walletType === 'walletconnect') {
         // WalletConnect connection is handled by the WalletConnectModal
         // This is called after successful connection
