@@ -414,6 +414,24 @@ const Header: React.FC<HeaderProps> = ({
                             </clipPath>
                           </defs>
                         </svg>
+                      ) : connectionState.walletType === 'phantom' ? (
+                        // Phantom Wallet Icon - Official
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0">
+                          <defs>
+                            <linearGradient id="phantomGradientHeader" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#AB9FF2"/>
+                              <stop offset="100%" stopColor="#7C3AED"/>
+                            </linearGradient>
+                          </defs>
+                          <rect width="32" height="32" rx="8" fill="url(#phantomGradientHeader)"/>
+                          {/* Phantom ghost shape */}
+                          <path d="M8 12C8 8.68629 10.6863 6 14 6H18C21.3137 6 24 8.68629 24 12V20C24 22 23 24 21 24C20 24 19.5 23.5 19 23C18.5 22.5 18 22 17 22C16 22 15.5 22.5 15 23C14.5 23.5 14 24 13 24C11 24 8 22 8 20V12Z" fill="white"/>
+                          {/* Eyes */}
+                          <circle cx="12.5" cy="14" r="1.5" fill="#7C3AED"/>
+                          <circle cx="19.5" cy="14" r="1.5" fill="#7C3AED"/>
+                          {/* Mouth */}
+                          <path d="M14 18C14 18 15 19 16 19C17 19 18 18 18 18" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round"/>
+                        </svg>
                       ) : (
                         // MetaMask Icon (default)
                         <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="flex-shrink-0">
@@ -453,7 +471,8 @@ const Header: React.FC<HeaderProps> = ({
                       <div className="text-white font-semibold text-sm">
                         {connectionState.walletType === 'walletconnect' ? 'WalletConnect' :
                          connectionState.walletType === 'web3auth' ? 'Web3Auth' :
-                         connectionState.walletType === 'rabby' ? 'Rabby' : 'MetaMask'}
+                         connectionState.walletType === 'rabby' ? 'Rabby' :
+                         connectionState.walletType === 'phantom' ? 'Phantom' : 'MetaMask'}
                       </div>
                       <div className="text-gray-400 text-xs">Connected</div>
                     </div>
