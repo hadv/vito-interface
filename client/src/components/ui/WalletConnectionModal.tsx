@@ -581,7 +581,7 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
       id: 'phantom',
       name: 'Phantom',
       icon: (
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="phantomGradient" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#AB9FF2"/>
@@ -589,16 +589,21 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
             </linearGradient>
           </defs>
           <rect width="32" height="32" rx="8" fill="url(#phantomGradient)"/>
-          <path d="M9.5 24.5C9.5 24.5 8.5 23.5 8.5 21.5C8.5 19.5 9.5 18.5 11.5 18.5C13.5 18.5 14.5 19.5 14.5 21.5C14.5 23.5 13.5 24.5 11.5 24.5H9.5Z" fill="white"/>
-          <path d="M17.5 24.5C17.5 24.5 16.5 23.5 16.5 21.5C16.5 19.5 17.5 18.5 19.5 18.5C21.5 18.5 22.5 19.5 22.5 21.5C22.5 23.5 21.5 24.5 19.5 24.5H17.5Z" fill="white"/>
-          <path d="M6 16C6 12.6863 8.68629 10 12 10H20C23.3137 10 26 12.6863 26 16V18C26 19.1046 25.1046 20 24 20H8C6.89543 20 6 19.1046 6 18V16Z" fill="white"/>
-          <circle cx="12" cy="15" r="1.5" fill="#AB9FF2"/>
-          <circle cx="20" cy="15" r="1.5" fill="#AB9FF2"/>
-          <path d="M14 18C14 18 15 19 16 19C17 19 18 18 18 18" stroke="#AB9FF2" strokeWidth="1" strokeLinecap="round"/>
+          {/* Phantom ghost shape */}
+          <path d="M8 12C8 8.68629 10.6863 6 14 6H18C21.3137 6 24 8.68629 24 12V20C24 22 23 24 21 24C20 24 19.5 23.5 19 23C18.5 22.5 18 22 17 22C16 22 15.5 22.5 15 23C14.5 23.5 14 24 13 24C11 24 8 22 8 20V12Z" fill="white"/>
+          {/* Eyes */}
+          <circle cx="12.5" cy="14" r="1.5" fill="#7C3AED"/>
+          <circle cx="19.5" cy="14" r="1.5" fill="#7C3AED"/>
+          {/* Mouth */}
+          <path d="M14 18C14 18 15 19 16 19C17 19 18 18 18 18" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round"/>
         </svg>
       ),
       bgColor: 'transparent',
-      available: false
+      available: typeof window !== 'undefined' && (
+        (window.phantom?.ethereum) ||
+        (window.ethereum?.isPhantom) ||
+        (window.ethereum?.providers && window.ethereum.providers.some((p: any) => p.isPhantom))
+      )
     },
     {
       id: 'ledger',

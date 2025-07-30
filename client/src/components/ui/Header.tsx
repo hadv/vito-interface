@@ -121,6 +121,11 @@ const Header: React.FC<HeaderProps> = ({
         toast.success('Wallet Connected', {
           message: 'Successfully connected Rabby wallet'
         });
+      } else if (walletType === 'phantom') {
+        await walletConnectionService.connectPhantomWallet();
+        toast.success('Wallet Connected', {
+          message: 'Successfully connected Phantom wallet'
+        });
       } else if (walletType === 'walletconnect') {
         // WalletConnect connection is handled by the WalletConnectModal
         // This is called after successful connection
