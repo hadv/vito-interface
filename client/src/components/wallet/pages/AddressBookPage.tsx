@@ -389,6 +389,8 @@ const AddressBookPage: React.FC<AddressBookPageProps> = ({ network = 'ethereum' 
         await walletConnectionService.connectSignerWallet();
       } else if (walletType === 'rabby') {
         await walletConnectionService.connectRabbyWallet();
+      } else if (walletType === 'phantom') {
+        await walletConnectionService.connectPhantomWallet();
       } else if (walletType === 'walletconnect') {
         // WalletConnect connection is handled by the WalletConnectModal
         // This is called after successful connection

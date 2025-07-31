@@ -121,6 +121,11 @@ const Header: React.FC<HeaderProps> = ({
         toast.success('Wallet Connected', {
           message: 'Successfully connected Rabby wallet'
         });
+      } else if (walletType === 'phantom') {
+        await walletConnectionService.connectPhantomWallet();
+        toast.success('Wallet Connected', {
+          message: 'Successfully connected Phantom wallet'
+        });
       } else if (walletType === 'walletconnect') {
         // WalletConnect connection is handled by the WalletConnectModal
         // This is called after successful connection
@@ -409,6 +414,24 @@ const Header: React.FC<HeaderProps> = ({
                             </clipPath>
                           </defs>
                         </svg>
+                      ) : connectionState.walletType === 'phantom' ? (
+                        // Phantom Wallet Icon - Official
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0">
+                          <defs>
+                            <linearGradient id="phantomGradientHeader" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#AB9FF2"/>
+                              <stop offset="100%" stopColor="#7C3AED"/>
+                            </linearGradient>
+                          </defs>
+                          <rect width="32" height="32" rx="8" fill="url(#phantomGradientHeader)"/>
+                          {/* More accurate Phantom ghost shape based on official logo */}
+                          <path d="M7 11.5C7 7.91015 9.91015 5 13.5 5H18.5C22.0899 5 25 7.91015 25 11.5V20.5C25 22.5 24.5 24.5 22.5 25.5C21.5 26 20.5 25.5 19.8 24.8C19.3 24.3 18.7 23.8 17.5 23.8C16.3 23.8 15.7 24.3 15.2 24.8C14.5 25.5 13.5 26 12.5 25.5C10.5 24.5 7 22.5 7 20.5V11.5Z" fill="white"/>
+                          {/* Eyes - more accurate positioning */}
+                          <ellipse cx="12" cy="13.5" rx="1.2" ry="1.8" fill="#7C3AED"/>
+                          <ellipse cx="20" cy="13.5" rx="1.2" ry="1.8" fill="#7C3AED"/>
+                          {/* Mouth - more subtle curve */}
+                          <path d="M14.5 18.5C14.5 18.5 15.2 19.2 16 19.2C16.8 19.2 17.5 18.5 17.5 18.5" stroke="#7C3AED" strokeWidth="1.2" strokeLinecap="round"/>
+                        </svg>
                       ) : (
                         // MetaMask Icon (default)
                         <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="flex-shrink-0">
@@ -448,7 +471,8 @@ const Header: React.FC<HeaderProps> = ({
                       <div className="text-white font-semibold text-sm">
                         {connectionState.walletType === 'walletconnect' ? 'WalletConnect' :
                          connectionState.walletType === 'web3auth' ? 'Web3Auth' :
-                         connectionState.walletType === 'rabby' ? 'Rabby' : 'MetaMask'}
+                         connectionState.walletType === 'rabby' ? 'Rabby' :
+                         connectionState.walletType === 'phantom' ? 'Phantom' : 'MetaMask'}
                       </div>
                       <div className="text-gray-400 text-xs">Connected</div>
                     </div>
