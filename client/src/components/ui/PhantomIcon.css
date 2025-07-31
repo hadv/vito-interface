@@ -1,0 +1,52 @@
+/* Phantom Icon Styles - Base64 Image Version */
+.phantom-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.phantom-icon:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 4px 8px rgba(171, 159, 242, 0.3));
+}
+
+/* Ensure proper image rendering */
+.phantom-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: inherit;
+}
+
+/* Accessibility improvements */
+.phantom-icon[role="img"] {
+  cursor: pointer;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .phantom-icon {
+    filter: contrast(1.2);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .phantom-icon {
+    transition: none;
+  }
+
+  .phantom-icon:hover {
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Ensure crisp rendering at all sizes */
+.phantom-icon img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
