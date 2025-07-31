@@ -7,71 +7,37 @@ interface PhantomIconProps {
   style?: React.CSSProperties;
 }
 
-const PhantomIcon: React.FC<PhantomIconProps> = ({ 
-  size = 32, 
-  className = '', 
-  style = {} 
+const PhantomIcon: React.FC<PhantomIconProps> = ({
+  size = 32,
+  className = '',
+  style = {}
 }) => {
-  // Generate unique gradient ID to avoid conflicts
-  const gradientId = `phantomGradient-${Math.random().toString(36).substr(2, 9)}`;
-  
+  // Official Phantom wallet icon as base64 - no gradient conflicts!
+  const phantomIconBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAA3pJREFUaIHtmVFuGkkQQF81IO1KiY1vMDlB1icInCCxtEbar/WcIOEEmBtkT9DsVxJjacgJwp4g+HO/wg2MwRLSmpnaD8AeBoYM0DhY4X3NdPV0V1XXTHXXwJ49Pzfy2BMGVov/MSgZkVeq6gnqKRRjCvVAeoh0UD6f+s/by8Z7FAMCq8UR/TOQ10BplWcFuhHUK/5BI0W+PZp2UEJ4LapncS+vg0A3R6F84v/aTbS7J7BDb8SdXdXbGegpplzxn3WmDU4NGIfKbQ30nctxE/TyFI6nK2Fcjdq0g1LI4OuWlQcoTlYXXKzAI3l9DgW/4h80NlqBwA69R/L6HAJ/sskKNO2gJGiw6ddlE5TwOLfOg5f29i3oR+AX92plR5B/Vw6hph3UlOj9ZlNrD7Sap/BCwR9n35gU7QqcKOZ4kfyhH6X8qsqDnm+mPChSjWXWxoXtI2Afekj9d/+gNbnpNO2NB1JLjmOQl5lXwJXyAMltQYGwtUyeT1lxhWImA1wqv4gT/+g+RAS6y+QJvm/AJ9t/41r5wF57s/fD+3sFL7DXxVn57W9pYy01ILBDLzcTm24YkX8bvw/lrpaQ12bl0Uz/OKl5ILBaDBl8VfDS+mxIG/QfkFeLNn0KLUGv0uRMwi3VgMtG36py5lprpwjthSF0YftnO688oKpXcwYEdugZmPvm7ibSmTMglLvaFuPeMWFn5h2YnKS+/TiFsqNot+IfvphZgfhBYdcxSJt4Hri0/TdbOMNuDUX+Jm6AQmqy2DUU7U7rRYaHVP5kvA9Sn14ZFqTyXWb88j7sVs2k9Ul6H0CadlAC/fLjFMrO9NMZbzMQPRHvay8kKidbzWS352QCN+OkUv/DP5o77BgQV2WRz+s9ptUMfeqn/uHCY6UBTT3tZEWgIUgrQ9ekYlVB5rya6FM/9Q9TT4Qb10YV7eYIq9HKBa6xV3OEbUXnjBi3SXmZ8gArlVUWTRISlSv+US+wt50RUdYnq9OQOPGPeh/sdTmHeWdEDiPVG8G0Kv7B0j8zU+TC9r/JGtvnqfLxF6tp+1+WZfRxwcr43/tttArGoCu/fIuUBxgR+enhoPUC0bFL5VknkSn6V4HofEmtZlr4LUZQLFBoJ38LuUTGE96cLyrdJXq2Uam79uCm3J/IPthrL485R3ipOv6iiEhXVa8E09o1xffs2TPmf1vhhyGadgBRAAAAAElFTkSuQmCC";
+
   return (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 32 32" 
-      fill="none" 
-      xmlns="http://www.w3.org/2000/svg" 
+    <div
       className={`phantom-icon ${className}`}
-      style={{ display: 'block', ...style }}
+      style={{
+        display: 'inline-block',
+        width: size,
+        height: size,
+        ...style
+      }}
     >
-      <defs>
-        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#AB9FF2"/>
-          <stop offset="100%" stopColor="#7C3AED"/>
-        </linearGradient>
-      </defs>
-      
-      {/* Background rounded rectangle with gradient */}
-      <rect 
-        width="32" 
-        height="32" 
-        rx="8" 
-        fill={`url(#${gradientId})`}
+      <img
+        src={phantomIconBase64}
+        alt="Phantom Wallet"
+        width={size}
+        height={size}
+        style={{
+          display: 'block',
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain'
+        }}
       />
-      
-      {/* Phantom ghost shape - official design */}
-      <path 
-        d="M7 11.5C7 7.91015 9.91015 5 13.5 5H18.5C22.0899 5 25 7.91015 25 11.5V20.5C25 22.5 24.5 24.5 22.5 25.5C21.5 26 20.5 25.5 19.8 24.8C19.3 24.3 18.7 23.8 17.5 23.8C16.3 23.8 15.7 24.3 15.2 24.8C14.5 25.5 13.5 26 12.5 25.5C10.5 24.5 7 22.5 7 20.5V11.5Z" 
-        fill="white"
-      />
-      
-      {/* Left eye */}
-      <ellipse 
-        cx="12" 
-        cy="13.5" 
-        rx="1.2" 
-        ry="1.8" 
-        fill="#7C3AED"
-      />
-      
-      {/* Right eye */}
-      <ellipse 
-        cx="20" 
-        cy="13.5" 
-        rx="1.2" 
-        ry="1.8" 
-        fill="#7C3AED"
-      />
-      
-      {/* Mouth - subtle smile */}
-      <path 
-        d="M14.5 18.5C14.5 18.5 15.2 19.2 16 19.2C16.8 19.2 17.5 18.5 17.5 18.5" 
-        stroke="#7C3AED" 
-        strokeWidth="1.2" 
-        strokeLinecap="round"
-      />
-    </svg>
+    </div>
   );
 };
 

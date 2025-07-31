@@ -2,8 +2,9 @@ import React from 'react';
 import PhantomIcon from './PhantomIcon';
 
 /**
- * Test component to verify Phantom icon display
+ * Test component to verify Phantom icon display using base64 image
  * This component can be temporarily added to any page to test the icon
+ * Now uses official Phantom base64 image - no more SVG gradient conflicts!
  */
 const PhantomIconTest: React.FC = () => {
   return (
@@ -15,7 +16,7 @@ const PhantomIconTest: React.FC = () => {
       gap: '20px',
       alignItems: 'center'
     }}>
-      <h3 style={{ color: 'white', margin: 0 }}>Phantom Icon Test</h3>
+      <h3 style={{ color: 'white', margin: 0 }}>Phantom Icon Test (Base64 Image)</h3>
       
       <div style={{ 
         display: 'flex', 
@@ -57,7 +58,7 @@ const PhantomIconTest: React.FC = () => {
       }}>
         <PhantomIcon size={32} />
         <p style={{ color: 'white', fontSize: '14px', margin: '10px 0 0 0' }}>
-          Standard 32px icon (as used in wallet selection)
+          Standard 32px icon (base64 image - no SVG conflicts!)
         </p>
       </div>
     </div>
