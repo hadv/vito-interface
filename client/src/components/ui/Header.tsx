@@ -415,23 +415,20 @@ const Header: React.FC<HeaderProps> = ({
                           </defs>
                         </svg>
                       ) : connectionState.walletType === 'phantom' ? (
-                        // Phantom Wallet Icon - Official
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0">
-                          <defs>
-                            <linearGradient id="phantomGradientHeader" x1="0%" y1="0%" x2="100%" y2="100%">
-                              <stop offset="0%" stopColor="#AB9FF2"/>
-                              <stop offset="100%" stopColor="#7C3AED"/>
-                            </linearGradient>
-                          </defs>
-                          <rect width="32" height="32" rx="8" fill="url(#phantomGradientHeader)"/>
-                          {/* More accurate Phantom ghost shape based on official logo */}
-                          <path d="M7 11.5C7 7.91015 9.91015 5 13.5 5H18.5C22.0899 5 25 7.91015 25 11.5V20.5C25 22.5 24.5 24.5 22.5 25.5C21.5 26 20.5 25.5 19.8 24.8C19.3 24.3 18.7 23.8 17.5 23.8C16.3 23.8 15.7 24.3 15.2 24.8C14.5 25.5 13.5 26 12.5 25.5C10.5 24.5 7 22.5 7 20.5V11.5Z" fill="white"/>
-                          {/* Eyes - more accurate positioning */}
-                          <ellipse cx="12" cy="13.5" rx="1.2" ry="1.8" fill="#7C3AED"/>
-                          <ellipse cx="20" cy="13.5" rx="1.2" ry="1.8" fill="#7C3AED"/>
-                          {/* Mouth - more subtle curve */}
-                          <path d="M14.5 18.5C14.5 18.5 15.2 19.2 16 19.2C16.8 19.2 17.5 18.5 17.5 18.5" stroke="#7C3AED" strokeWidth="1.2" strokeLinecap="round"/>
-                        </svg>
+                        // Phantom Wallet Icon - Official PNG
+                        <img
+                          width="32"
+                          height="32"
+                          alt="Phantom Wallet"
+                          src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAA3pJREFUaIHtmVFuGkkQQF81IO1KiY1vMDlB1icInCCxtEbar/WcIOEEmBtkT9DsVxJjacgJwp4g+HO/wg2MwRLSmpnaD8AeBoYM0DhY4X3NdPV0V1XXTHXXwJ49Pzfy2BMGVov/MSgZkVeq6gnqKRRjCvVAeoh0UD6f+s/by8Z7FAMCq8UR/TOQ10BplWcFuhHUK/5BI0W+PZp2UEJ4LapncS+vg0A3R6F84v/aTbS7J7BDb8SdXdXbGegpplzxn3WmDU4NGIfKbQ30nctxE/TyFI6nK2Fcjdq0g1LI4OuWlQcoTlYXXKzAI3l9DgW/4h80NlqBwA69R/L6HAJ/sskKNO2gJGiw6ddlE5TwOLfOg5f29i3oR+AX92plR5B/Vw6hph3UlOj9ZlNrD7Sap/BCwR9n35gU7QqcKOZ4kfyhH6X8qsqDnm+mPChSjWXWxoXtI2Afekj9d/+gNbnpNO2NB1JLjmOQl5lXwJXyAMltQYGwtUyeT1lxhWImA1wqv4gT/+g+RAS6y+QJvm/AJ9t/41r5wF57s/fD+3sFL7DXxVn57W9pYy01ILBaDBl8VfDS+mxIG/QfkFeLNn0KLUGv0uRMwi3VgMtG36py5lprpwjthSF0YftnO688oKpXcwYEdugZmPvm7ibSmTMglLvaFuPeMWFn5h2YnKS+/TiFsqNot+IfvphZgfhBYdcxSJt4Hri0/TdbOMNuDUX+Jm6AQmqy2DUU7U7rRYaHVP5kvA9Sn14ZFqTyXWb88j7sVs2k9Ul6H0CadlAC/fLjFMrO9NMZbzMQPRHvay8kKidbzWS352QCN+OkUv/DP5o77BgQV2WRz+s9ptUMfeqn/uHCY6UBTT3tZEWgIUgrQ9ekYlVB5rya6FM/9Q9TT4Qb10YV7eYIq9HKBa6xV3OEbUXnjBi3SXmZ8gArlVUWTRISlSv+US+wt50RUdYnq9OQOPGPeh/sdTmHeWdEDiPVG8G0Kv7B0j8zU+TC9r/JGtvnqfLxF6tp+1+WZfRxwcr43/tttArGoCu/fIuUBxgR+enhoPUC0bFL5VknkSn6V4HofEmtZlr4LUZQLFBoJ38LuUTGE96cLyrdJXq2Uam79uCm3J/IPthrL485R3ipOv6iiEhXVa8E09o1xffs2TPmf1vhhyGadgBRAAAAAElFTkSuQmCC"
+                          className="flex-shrink-0"
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            objectFit: 'contain',
+                            borderRadius: '8px'
+                          }}
+                        />
                       ) : (
                         // MetaMask Icon (default)
                         <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="flex-shrink-0">
