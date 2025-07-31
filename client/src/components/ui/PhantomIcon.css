@@ -1,0 +1,46 @@
+/* Phantom Icon Styles */
+.phantom-icon {
+  display: block;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.phantom-icon:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 4px 8px rgba(171, 159, 242, 0.3));
+}
+
+/* Ensure proper rendering */
+.phantom-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Fix any potential rendering issues */
+.phantom-icon * {
+  vector-effect: non-scaling-stroke;
+}
+
+/* Accessibility improvements */
+.phantom-icon[role="img"] {
+  cursor: pointer;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .phantom-icon {
+    filter: contrast(1.2);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .phantom-icon {
+    transition: none;
+  }
+  
+  .phantom-icon:hover {
+    transform: none;
+  }
+}
