@@ -3,6 +3,8 @@ import styled from 'styled-components';
 import WalletConnectModal from './WalletConnectModal';
 import Web3AuthSetupInstructions from './Web3AuthSetupInstructions';
 import PhantomIcon from './PhantomIcon';
+import RabbyIcon from './RabbyIcon';
+import MetaMaskIcon from './MetaMaskIcon';
 import { useToast } from '../../hooks/useToast';
 import { WEB3AUTH_CLIENT_ID } from '../../config/web3auth';
 
@@ -487,94 +489,14 @@ const WalletConnectionModal: React.FC<WalletConnectionModalProps> = ({
     {
       id: 'rabby',
       name: 'Rabby',
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <g clipPath="url(#clip0_741_2751)">
-            <mask id="mask0_741_2751" style={{maskType: 'luminance'}} maskUnits="userSpaceOnUse" x="0" y="0" width="32" height="32">
-              <path d="M32 16C32 7.16344 24.8366 0 16 0C7.16344 0 0 7.16344 0 16C0 24.8366 7.16344 32 16 32C24.8366 32 32 24.8366 32 16Z" fill="white"/>
-            </mask>
-            <g mask="url(#mask0_741_2751)">
-              <path d="M32 16C32 7.16344 24.8366 0 16 0C7.16344 0 0 7.16344 0 16C0 24.8366 7.16344 32 16 32C24.8366 32 32 24.8366 32 16Z" fill="#7084FF"/>
-              <g filter="url(#filter0_d_741_2751)">
-                <path d="M27.6019 17.3876C28.5216 15.3261 23.9748 9.56632 19.631 7.16676C16.8929 5.30779 14.0399 5.56318 13.462 6.37938C12.194 8.17069 17.6611 9.68851 21.3174 11.4597C20.5314 11.8022 19.7908 12.4169 19.3552 13.2029C17.9921 11.7098 15.0003 10.4239 11.4897 11.4597C9.12397 12.1577 7.15791 13.8032 6.39804 16.2885C6.21337 16.2062 6.00894 16.1604 5.79387 16.1604C4.97142 16.1604 4.30469 16.8294 4.30469 17.6546C4.30469 18.4799 4.97142 19.1488 5.79387 19.1488C5.94632 19.1488 6.42298 19.0463 6.42298 19.0463L14.0399 19.1016C10.9937 23.9504 8.58635 24.6591 8.58635 25.4992C8.58635 26.3392 10.8898 26.1116 11.7547 25.7984C15.8949 24.2995 20.3417 19.628 21.1048 18.2833C24.3092 18.6844 27.0022 18.7318 27.6019 17.3876Z" fill="url(#paint0_linear_741_2751)"/>
-                <path fillRule="evenodd" clipRule="evenodd" d="M21.3029 11.4538C21.3067 11.4555 21.3106 11.4571 21.3144 11.4588C21.4839 11.3918 21.4565 11.1407 21.4099 10.9435C21.303 10.4901 19.4575 8.66165 17.7245 7.84265C15.3629 6.72665 13.624 6.78421 13.3672 7.29865C13.8472 8.28821 16.0779 9.21727 18.4077 10.1876C19.3971 10.5996 20.4043 11.0191 21.3029 11.4538Z" fill="url(#paint1_linear_741_2751)"/>
-                <path fillRule="evenodd" clipRule="evenodd" d="M18.3228 21.4167C17.8453 21.2337 17.306 21.0658 16.6929 20.9133C17.3469 19.7393 17.4841 18.0011 16.8665 16.9022C15.9998 15.3599 14.9117 14.5391 12.3834 14.5391C10.9928 14.5391 7.24877 15.009 7.18227 18.145C7.17534 18.4738 7.18209 18.7751 7.20577 19.0521L14.043 19.1019C13.121 20.5694 12.2575 21.6577 11.5016 22.4852C12.4092 22.7186 13.1581 22.9144 13.8457 23.0943C14.4978 23.2648 15.0946 23.4209 15.7193 23.5809C16.662 22.8918 17.5483 22.1404 18.3228 21.4167Z" fill="url(#paint2_linear_741_2751)"/>
-                <path d="M6.30874 18.7283C6.58805 21.1105 7.93736 22.0441 10.6946 22.3205C13.4519 22.5968 15.0335 22.4114 17.1391 22.6036C18.8977 22.7641 20.468 23.6633 21.0505 23.3526C21.5747 23.073 21.2814 22.0626 20.5799 21.4144C19.6706 20.5741 18.4121 19.99 16.1977 19.7826C16.639 18.5702 16.5154 16.8703 15.8299 15.9455C14.8389 14.6082 13.0097 14.0036 10.6946 14.2678C8.27586 14.5438 5.95821 15.7386 6.30874 18.7283Z" fill="url(#paint3_linear_741_2751)"/>
-              </g>
-            </g>
-          </g>
-          <defs>
-            <filter id="filter0_d_741_2751" x="-77.6153" y="-76.1602" width="187.254" height="184.162" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
-              <feFlood floodOpacity="0" result="BackgroundImageFix"/>
-              <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-              <feOffset/>
-              <feGaussianBlur stdDeviation="40.96"/>
-              <feComposite in2="hardAlpha" operator="out"/>
-              <feColorMatrix type="matrix" values="0 0 0 0 0.151933 0 0 0 0 0.239238 0 0 0 0 0.490241 0 0 0 0.54 0"/>
-              <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_741_2751"/>
-              <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_741_2751" result="shape"/>
-            </filter>
-            <linearGradient id="paint0_linear_741_2751" x1="11.2142" y1="15.562" x2="27.4119" y2="20.1399" gradientUnits="userSpaceOnUse">
-              <stop stopColor="white"/>
-              <stop offset="1" stopColor="white"/>
-            </linearGradient>
-            <linearGradient id="paint1_linear_741_2751" x1="24.6745" y1="15.2518" x2="12.9536" y2="3.54163" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#8697FF"/>
-              <stop offset="1" stopColor="#8697FF" stopOpacity="0"/>
-            </linearGradient>
-            <linearGradient id="paint2_linear_741_2751" x1="18.6478" y1="21.8261" x2="7.40802" y2="15.3859" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#8697FF"/>
-              <stop offset="1" stopColor="#8697FF" stopOpacity="0"/>
-            </linearGradient>
-            <linearGradient id="paint3_linear_741_2751" x1="12.1827" y1="15.4394" x2="19.7991" y2="25.0843" gradientUnits="userSpaceOnUse">
-              <stop stopColor="white"/>
-              <stop offset="0.983895" stopColor="#D1D8FF"/>
-            </linearGradient>
-            <clipPath id="clip0_741_2751">
-              <rect width="32" height="32" fill="white"/>
-            </clipPath>
-          </defs>
-        </svg>
-      ),
+      icon: <RabbyIcon size={32} />,
       bgColor: 'transparent',
       available: typeof window !== 'undefined' && window.ethereum && (window.ethereum.isRabby || (window.ethereum.providers && window.ethereum.providers.some((p: any) => p.isRabby)))
     },
     {
       id: 'metamask',
       name: 'MetaMask',
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-          <path d="M30.0389 1.51562L17.8555 10.4844L20.2278 4.82812L30.0389 1.51562Z" fill="#E17726" stroke="#E17726" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M1.95117 1.51562L14.0278 10.5625L11.7722 4.82812L1.95117 1.51562Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M25.5889 23.0156L22.4445 27.7656L29.4445 29.7656L31.5556 23.1719L25.5889 23.0156Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M0.453125 23.1719L2.55556 29.7656L9.55556 27.7656L6.41112 23.0156L0.453125 23.1719Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M9.22223 14.0469L7.16668 17.2969L14.1111 17.6406L13.8889 10.0156L9.22223 14.0469Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M22.7778 14.0469L18.0278 9.9375L17.8889 17.6406L24.8333 17.2969L22.7778 14.0469Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M9.55556 27.7656L13.6111 25.7969L10.1111 23.2188L9.55556 27.7656Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M18.3889 25.7969L22.4445 27.7656L21.8889 23.2188L18.3889 25.7969Z" fill="#E27625" stroke="#E27625" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M22.4445 27.7656L18.3889 25.7969L18.7222 28.5781L18.6667 29.6875L22.4445 27.7656Z" fill="#D5BFB2" stroke="#D5BFB2" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M9.55556 27.7656L13.3333 29.6875L13.2889 28.5781L13.6111 25.7969L9.55556 27.7656Z" fill="#D5BFB2" stroke="#D5BFB2" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M13.3889 21.2969L10.0278 20.3281L12.3889 19.2188L13.3889 21.2969Z" fill="#233447" stroke="#233447" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M18.6111 21.2969L19.6111 19.2188L21.9722 20.3281L18.6111 21.2969Z" fill="#233447" stroke="#233447" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M9.55556 27.7656L10.1389 23.0156L6.41112 23.1719L9.55556 27.7656Z" fill="#CC6228" stroke="#CC6228" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M21.8611 23.0156L22.4445 27.7656L25.5889 23.1719L21.8611 23.0156Z" fill="#CC6228" stroke="#CC6228" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M24.8333 17.2969L17.8889 17.6406L18.6111 21.2969L19.6111 19.2188L21.9722 20.3281L24.8333 17.2969Z" fill="#CC6228" stroke="#CC6228" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M10.0278 20.3281L12.3889 19.2188L13.3889 21.2969L14.1111 17.6406L7.16668 17.2969L10.0278 20.3281Z" fill="#CC6228" stroke="#CC6228" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M7.16668 17.2969L10.1111 23.2188L10.0278 20.3281L7.16668 17.2969Z" fill="#E27525" stroke="#E27525" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M21.9722 20.3281L21.8889 23.2188L24.8333 17.2969L21.9722 20.3281Z" fill="#E27525" stroke="#E27525" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M14.1111 17.6406L13.3889 21.2969L14.3333 25.2969L14.5556 19.9531L14.1111 17.6406Z" fill="#E27525" stroke="#E27525" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M17.8889 17.6406L17.4445 19.9375L17.6667 25.2969L18.6111 21.2969L17.8889 17.6406Z" fill="#E27525" stroke="#E27525" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M18.6111 21.2969L17.6667 25.2969L18.3889 25.7969L21.8889 23.2188L21.9722 20.3281L18.6111 21.2969Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M10.0278 20.3281L10.1111 23.2188L13.6111 25.7969L14.3333 25.2969L13.3889 21.2969L10.0278 20.3281Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M18.6667 29.6875L18.7222 28.5781L18.4167 28.3125H13.5833L13.2889 28.5781L13.3333 29.6875L9.55556 27.7656L10.9722 28.9375L13.5278 30.7656H18.4722L21.0278 28.9375L22.4445 27.7656L18.6667 29.6875Z" fill="#C0AC9D" stroke="#C0AC9D" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M18.3889 25.7969L17.6667 25.2969H14.3333L13.6111 25.7969L13.2889 28.5781L13.5833 28.3125H18.4167L18.7222 28.5781L18.3889 25.7969Z" fill="#161616" stroke="#161616" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M30.5556 11.2188L32 5.20312L30.0389 1.51562L18.3889 10.2969L22.7778 14.0469L29.3333 15.9531L30.6111 14.4531L30.0278 14.0156L31.4167 12.7656L30.6667 12.1719L32.0556 11.1406L30.5556 11.2188Z" fill="#763E1A" stroke="#763E1A" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M0 5.20312L1.44445 11.2188L-0.0555556 11.1406L1.33334 12.1719L0.583334 12.7656L1.97223 14.0156L1.38889 14.4531L2.66667 15.9531L9.22223 14.0469L13.6111 10.2969L1.96112 1.51562L0 5.20312Z" fill="#763E1A" stroke="#763E1A" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M29.3333 15.9531L22.7778 14.0469L24.8333 17.2969L21.8889 23.2188L25.5889 23.1719H31.5556L29.3333 15.9531Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M9.22223 14.0469L2.66667 15.9531L0.453125 23.1719H6.41112L10.1111 23.2188L7.16668 17.2969L9.22223 14.0469Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M17.8889 17.6406L18.3889 10.2969L20.2278 4.82812H11.7722L13.6111 10.2969L14.1111 17.6406L14.3333 19.9688L14.3333 25.2969H17.6667L17.6667 19.9688L17.8889 17.6406Z" fill="#F5841F" stroke="#F5841F" strokeWidth="0.25" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      ),
+      icon: <MetaMaskIcon size={32} />,
       bgColor: 'transparent',
       available: true
     },

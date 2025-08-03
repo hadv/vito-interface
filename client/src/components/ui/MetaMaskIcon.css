@@ -1,0 +1,34 @@
+/* MetaMask Icon Styles - Base64 Image Version */
+.metamask-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.metamask-icon:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 4px 8px rgba(225, 119, 38, 0.3));
+}
+
+/* Ensure proper image rendering */
+.metamask-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: inherit;
+}
+
+/* Accessibility improvements */
+.metamask-icon[role="img"] {
+  cursor: pointer;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .metamask-icon {
+    filter: contrast(1.2);
+  }
+}
