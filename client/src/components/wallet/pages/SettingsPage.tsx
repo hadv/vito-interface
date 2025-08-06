@@ -5,6 +5,7 @@ import SafeSetupTab from '../components/SafeSetupTab';
 import SmartContractGuardSection from '../components/SmartContractGuardSection';
 import TrustedContractsSection from '../components/TrustedContractsSection';
 import EnvironmentTab from '../components/EnvironmentTab';
+import ModuleManagementSection from '../components/ModuleManagementSection';
 
 const Container = styled.div`
   padding: 0;
@@ -140,7 +141,7 @@ interface SettingsPageProps {
 }
 
 const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => {
-  const [activeTab, setActiveTab] = useState<'setup' | 'security' | 'trusted' | 'environment' | 'about'>('setup');
+  const [activeTab, setActiveTab] = useState<'setup' | 'security' | 'trusted' | 'modules' | 'environment' | 'about'>('setup');
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -150,6 +151,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => 
         return <SmartContractGuardSection network={network} />;
       case 'trusted':
         return <TrustedContractsSection network={network} />;
+      case 'modules':
+        return <ModuleManagementSection network={network} />;
       case 'environment':
         return <EnvironmentTab network={network} />;
       case 'about':
@@ -196,6 +199,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ network = 'ethereum' }) => 
           onClick={() => setActiveTab('trusted')}
         >
           Trusted Contracts
+        </Tab>
+        <Tab
+          isActive={activeTab === 'modules'}
+          onClick={() => setActiveTab('modules')}
+        >
+          Modules
         </Tab>
         <Tab
           isActive={activeTab === 'environment'}
