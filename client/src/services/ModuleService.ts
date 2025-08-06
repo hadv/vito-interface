@@ -30,7 +30,7 @@ class ModuleService {
   private safeWalletService: SafeWalletService;
 
   private constructor() {
-    this.safeWalletService = SafeWalletService.getInstance();
+    this.safeWalletService = new SafeWalletService();
   }
 
   public static getInstance(): ModuleService {
@@ -51,6 +51,10 @@ class ModuleService {
       }
 
       const provider = this.safeWalletService.getProvider();
+      if (!provider) {
+        throw new Error('Provider not available');
+      }
+
       const safeContract = new ethers.Contract(
         safeInfo.address,
         SAFE_MODULE_MANAGER_ABI,
@@ -89,6 +93,10 @@ class ModuleService {
       }
 
       const provider = this.safeWalletService.getProvider();
+      if (!provider) {
+        throw new Error('Provider not available');
+      }
+
       const safeContract = new ethers.Contract(
         safeInfo.address,
         SAFE_MODULE_MANAGER_ABI,
@@ -177,6 +185,10 @@ class ModuleService {
       }
 
       const provider = this.safeWalletService.getProvider();
+      if (!provider) {
+        throw new Error('Provider not available');
+      }
+
       const safeContract = new ethers.Contract(
         safeInfo.address,
         SAFE_MODULE_MANAGER_ABI,
@@ -265,6 +277,7 @@ class ModuleService {
       // This would typically query the Safe transaction service or blockchain
       // for transactions executed by the specific module
       // For now, return empty array as placeholder
+      console.log('Getting transactions for module:', moduleAddress);
       return [];
     } catch (error) {
       console.error('Error getting module transactions:', error);

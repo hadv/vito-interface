@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { theme } from '../../../theme';
 import { Button, Input } from '../../ui';
@@ -38,8 +38,8 @@ const SectionDescription = styled.p`
 `;
 
 const WarningBox = styled.div`
-  background: ${theme.colors.warning[900]};
-  border: 1px solid ${theme.colors.warning[700]};
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid ${theme.colors.status.warning};
   border-radius: ${theme.borderRadius.md};
   padding: ${theme.spacing[4]};
   margin-bottom: ${theme.spacing[6]};
@@ -49,13 +49,13 @@ const WarningTitle = styled.h4`
   margin: 0 0 ${theme.spacing[2]} 0;
   font-size: ${theme.typography.fontSize.base};
   font-weight: ${theme.typography.fontWeight.semibold};
-  color: ${theme.colors.warning[400]};
+  color: ${theme.colors.status.warning};
 `;
 
 const WarningText = styled.p`
   margin: 0;
   font-size: ${theme.typography.fontSize.sm};
-  color: ${theme.colors.warning[300]};
+  color: ${theme.colors.text.warning};
   line-height: 1.5;
 `;
 
@@ -70,7 +70,7 @@ const ModuleItem = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: ${theme.spacing[4]};
-  background: ${theme.colors.neutral[750]};
+  background: ${theme.colors.neutral[800]};
   border: 1px solid ${theme.colors.neutral[600]};
   border-radius: ${theme.borderRadius.md};
 `;
@@ -116,8 +116,8 @@ const Label = styled.label`
 `;
 
 const InfoBox = styled.div`
-  background: ${theme.colors.primary[900]};
-  border: 1px solid ${theme.colors.primary[700]};
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid ${theme.colors.primary[600]};
   border-radius: ${theme.borderRadius.md};
   padding: ${theme.spacing[4]};
   margin-bottom: ${theme.spacing[4]};
@@ -178,9 +178,9 @@ const ModuleManagementSection: React.FC<ModuleManagementSectionProps> = ({ netwo
     if (isConnected) {
       loadEnabledModules();
     }
-  }, [isConnected]);
+  }, [isConnected, loadEnabledModules]);
 
-  const loadEnabledModules = async () => {
+  const loadEnabledModules = useCallback(async () => {
     setIsLoading(true);
     try {
       const modules = await ModuleService.getEnabledModules();
@@ -193,7 +193,7 @@ const ModuleManagementSection: React.FC<ModuleManagementSectionProps> = ({ netwo
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   const handleDisableModule = async (moduleAddress: string, moduleName: string) => {
     if (!isConnected) {
@@ -364,6 +364,10 @@ const ModuleManagementSection: React.FC<ModuleManagementSectionProps> = ({ netwo
       <WalletConnectionModal
         isOpen={showWalletModal}
         onClose={() => setShowWalletModal(false)}
+        onWalletSelect={(walletType) => {
+          console.log('Wallet selected:', walletType);
+          setShowWalletModal(false);
+        }}
       />
     </Container>
   );

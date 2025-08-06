@@ -24,14 +24,7 @@ The inheritance module implements a "dead man's switch" that allows designated b
 
 ### Step 1: Deploy the Inheritance Module
 
-First, deploy the inheritance module contract:
-
-```bash
-cd vito-contracts
-forge script script/DeployInheritanceModule.s.sol --rpc-url <YOUR_RPC_URL> --broadcast --verify
-```
-
-Copy the deployed contract address from the output.
+First, you'll need to deploy an inheritance module contract. This will be covered in a separate guide for the smart contracts repository.
 
 ### Step 2: Enable the Module
 
