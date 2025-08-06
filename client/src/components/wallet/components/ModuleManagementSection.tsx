@@ -163,6 +163,21 @@ const ModuleManagementSection: React.FC<ModuleManagementSectionProps> = ({ netwo
   const [isEnabling, setIsEnabling] = useState(false);
   const toast = useToast();
 
+  const loadEnabledModules = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const modules = await ModuleService.getEnabledModules();
+      setEnabledModules(modules);
+    } catch (error) {
+      console.error('Error loading enabled modules:', error);
+      toast.error('Failed to load modules', {
+        message: 'Could not retrieve enabled modules from the Safe'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
     const checkConnection = () => {
       const connectionState = walletConnectionService.getConnectionState();
@@ -179,21 +194,6 @@ const ModuleManagementSection: React.FC<ModuleManagementSectionProps> = ({ netwo
       loadEnabledModules();
     }
   }, [isConnected, loadEnabledModules]);
-
-  const loadEnabledModules = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const modules = await ModuleService.getEnabledModules();
-      setEnabledModules(modules);
-    } catch (error) {
-      console.error('Error loading enabled modules:', error);
-      toast.error('Failed to load modules', {
-        message: 'Could not retrieve enabled modules from the Safe'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
 
   const handleDisableModule = async (moduleAddress: string, moduleName: string) => {
     if (!isConnected) {
